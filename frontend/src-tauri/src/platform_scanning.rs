@@ -715,6 +715,14 @@ fn scan_rom_folder(folder: &str, extensions: &[&str], platform_id: &str) -> Vec<
         }
     }
 
+    // A dump collection commonly has more than one file for the same game
+    // (e.g. a "Game.3ds" AND a "Game.cia" side by side) — each valid
+    // extension otherwise added its own separate LocalGame with the
+    // identical display name. Keep just the first file found per
+    // normalized name so it only shows up once.
+    let mut seen_names = std::collections::HashSet::new();
+    games.retain(|g| seen_names.insert(g.name.trim().to_lowercase()));
+
     games
 }
 
