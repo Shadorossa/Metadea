@@ -145,12 +145,12 @@
   display: inline;
 }
 
-@media (max-width: 1799px) {
+@media (max-width: 1800px) {
   .nav-link-icon {
-    display: inline;
+    display: inline !important;
   }
   .nav-link-text {
-    display: none;
+    display: none !important;
   }
 }
 
