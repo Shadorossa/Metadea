@@ -43,8 +43,10 @@
 
 .search-tab {
   position: relative;
-  display: grid !important;
-  place-items: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: clamp(0.2rem, 0.5vw, 0.35rem) !important;
   padding: 0 clamp(0.4rem, 1vw, 0.6rem) !important;
   height: 48px !important;
   font-size: clamp(0.65rem, 1vw, 0.75rem) !important;
@@ -67,9 +69,8 @@
 }
 
 .search-tab-icon {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
   will-change: opacity;
   transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -95,6 +96,8 @@
   .search-tab-label {
     opacity: 0 !important;
     pointer-events: none !important;
+    max-width: 0 !important;
+    overflow: hidden !important;
   }
 }
 .search-tab:hover {
