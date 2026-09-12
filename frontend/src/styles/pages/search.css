@@ -70,15 +70,17 @@
   position: absolute;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--anim-fast) var(--anim-ease);
+  will-change: opacity;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .search-tab-label {
   opacity: 1;
-  transition: opacity var(--anim-fast) var(--anim-ease);
+  will-change: opacity;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@media (max-width: 1800px) {
+@media (max-width: 1799px) {
   .search-tab-icon {
     opacity: 1 !important;
     pointer-events: auto !important;
