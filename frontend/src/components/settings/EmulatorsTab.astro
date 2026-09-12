@@ -410,6 +410,9 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                 const savedValue = emulatorsData[platformId]?.emulator_name || '';
                 if (savedValue) {
                   select.value = savedValue;
+                  updateSupportedDisplay(platformId, savedValue);
+                } else {
+                  updateSupportedDisplay(platformId, '');
                 }
               }
             });
@@ -417,24 +420,28 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
       }
     });
 
+    // Function to update supported extensions display
+    const updateSupportedDisplay = (platformId, selectedEmulator) => {
+      const extensionsDisplay = document.getElementById(`extensions-display-${platformId}`);
+      const supportedContainer = document.getElementById(`supported-container-${platformId}`);
+      const emulators = emulatorsDB[platformId] || [];
+      const emulator = emulators.find(em => em.name === selectedEmulator);
+
+      if (emulator && selectedEmulator) {
+        extensionsDisplay.textContent = emulator.extensions.join(', ');
+        supportedContainer.style.display = 'flex';
+      } else {
+        extensionsDisplay.textContent = '';
+        supportedContainer.style.display = 'none';
+      }
+    };
+
     // Handle emulator selection - show extensions
     document.addEventListener('change', (e) => {
       if (e.target.classList.contains('emulator-select')) {
         const platformId = e.target.dataset.platform;
         const selectedEmulator = e.target.value;
-        const extensionsDisplay = document.getElementById(`extensions-display-${platformId}`);
-        const supportedContainer = document.getElementById(`supported-container-${platformId}`);
-
-        const emulators = emulatorsDB[platformId] || [];
-        const emulator = emulators.find(em => em.name === selectedEmulator);
-
-        if (emulator) {
-          extensionsDisplay.textContent = emulator.extensions.join(', ');
-          supportedContainer.style.display = 'flex';
-        } else {
-          extensionsDisplay.textContent = '';
-          supportedContainer.style.display = 'none';
-        }
+        updateSupportedDisplay(platformId, selectedEmulator);
       }
     });
 
