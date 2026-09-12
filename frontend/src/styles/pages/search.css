@@ -69,18 +69,24 @@
 
 .search-tab-icon {
   display: none;
+  opacity: 0;
+  transition: opacity var(--anim-fast) var(--anim-ease);
 }
 
 .search-tab-label {
   display: inline;
+  opacity: 1;
+  transition: opacity var(--anim-fast) var(--anim-ease);
 }
 
 @media (max-width: 1800px) {
   .search-tab-icon {
     display: inline !important;
+    opacity: 1 !important;
   }
   .search-tab-label {
     display: none !important;
+    opacity: 0 !important;
   }
 }
 .search-tab:hover {
