@@ -24,9 +24,9 @@
 }
 
 .nav-main {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   flex: 1;
   min-width: 0;
   height: 100%;
@@ -37,11 +37,12 @@
 }
 
 .nav-center-wrap {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  grid-column: 2;
   height: 100%;
   overflow: hidden;
   pointer-events: none;
