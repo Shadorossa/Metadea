@@ -240,7 +240,6 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
               const platformId = pBtn.dataset.platform;
               document.querySelectorAll('.platform-form-block').forEach(f => f.classList.add('hidden'));
               document.getElementById(`platform-form-${platformId}`)?.classList.remove('hidden');
-              platformsContainer.classList.add('hidden');
             });
           });
         }
