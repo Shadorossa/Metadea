@@ -1,5 +1,5 @@
 import { fetchAniListDetail, fetchAniListRemainingCharacters } from '../search/providers/anilist';
-import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openlibrary';
+import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { fetchComicVineVolume, fetchComicVineIssue } from '../search/providers/comicvine';
 import { mapAniListToMedia, mapAniListCharacterEdges } from './anilist-mapper';
@@ -126,7 +126,6 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
 
     let firstEditionCover: number | undefined;
     if (!work.covers?.[0]) {
-      const { fetchOpenLibEditions } = await import('../search/providers/openlibrary');
       const editions = await fetchOpenLibEditions(idStr);
       firstEditionCover = editions[0]?.covers?.[0];
     }
