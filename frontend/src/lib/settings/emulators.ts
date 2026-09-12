@@ -107,71 +107,97 @@ export async function initEmulators(showToast: (msg?: string) => void) {
   function showChangeNotification() {
     let notification = document.getElementById('emulator-changes-notification');
     if (notification) {
-      notification.remove();
+      notification.style.opacity = '0';
+      notification.style.pointerEvents = 'none';
+      setTimeout(() => notification?.remove(), 300);
     }
 
     notification = document.createElement('div');
     notification.id = 'emulator-changes-notification';
     notification.style.cssText = `
       position: fixed;
-      bottom: 2rem;
-      right: 2rem;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       background: var(--bg-elevated);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      padding: 1rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 1.2rem 1.5rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       z-index: 9999;
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 1.5rem;
       font-size: 0.9rem;
       color: var(--text-main);
-      max-width: 350px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     `;
 
     const message = document.createElement('span');
     message.textContent = 'Se han realizado cambios';
-    message.style.flex = '1';
+    message.style.fontWeight = '500';
 
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Guardar';
     saveBtn.style.cssText = `
-      padding: 0.5rem 1rem;
+      padding: 0.5rem 1.2rem;
       background: var(--accent);
       color: white;
       border: none;
       border-radius: var(--radius-sm);
       cursor: pointer;
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 0.85rem;
       transition: all 0.2s ease;
     `;
+    saveBtn.addEventListener('mouseover', () => {
+      saveBtn.style.opacity = '0.9';
+      saveBtn.style.transform = 'scale(1.05)';
+    });
+    saveBtn.addEventListener('mouseout', () => {
+      saveBtn.style.opacity = '1';
+      saveBtn.style.transform = 'scale(1)';
+    });
     saveBtn.addEventListener('click', () => {
       emulatorsData = JSON.parse(JSON.stringify(pendingChanges));
       saveEmulators();
       hasChanges = false;
-      notification?.remove();
+      notification.style.opacity = '0';
+      setTimeout(() => notification?.remove(), 300);
       showToast('Cambios guardados');
     });
 
     const discardBtn = document.createElement('button');
     discardBtn.textContent = 'Descartar';
     discardBtn.style.cssText = `
-      padding: 0.5rem 1rem;
+      padding: 0.5rem 1.2rem;
       background: transparent;
       color: var(--text-dim);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
       cursor: pointer;
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 0.85rem;
       transition: all 0.2s ease;
     `;
+    discardBtn.addEventListener('mouseover', () => {
+      discardBtn.style.borderColor = 'var(--accent)';
+      discardBtn.style.color = 'var(--accent)';
+    });
+    discardBtn.addEventListener('mouseout', () => {
+      discardBtn.style.borderColor = 'var(--border-color)';
+      discardBtn.style.color = 'var(--text-dim)';
+    });
     discardBtn.addEventListener('click', () => {
       pendingChanges = JSON.parse(JSON.stringify(emulatorsData));
       hasChanges = false;
-      notification?.remove();
-      // Reload inputs to show original values
-      reloadEmulatorInputs();
+      notification.style.opacity = '0';
+      setTimeout(() => {
+        notification?.remove();
+        reloadEmulatorInputs();
+      }, 300);
       showToast('Cambios descartados');
     });
 
@@ -179,6 +205,11 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     notification.appendChild(saveBtn);
     notification.appendChild(discardBtn);
     document.body.appendChild(notification);
+
+    // Trigger transition after adding to DOM
+    requestAnimationFrame(() => {
+      notification.style.opacity = '1';
+    });
   }
 
   function reloadEmulatorInputs() {
