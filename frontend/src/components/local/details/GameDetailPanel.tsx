@@ -296,7 +296,12 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           )}
         </div>
         <div className="local-game-detail-backdrop" />
-        {(launchTarget.launcher === 'steam' || !!launchTarget.rom_platform) && launchTarget.app_id && (
+        {/* Every real install now carries an app_id (synthetic for
+            Xbox/EA/local-folder/ROM, real for Steam/Epic/GOG), so this is
+            no longer launcher-gated — just excludes a "biblioteca del
+            usuario" Pendiente shown here with no actual install behind it
+            (knownExternalId set, game.app_id always undefined for those). */}
+        {!knownExternalId && launchTarget.app_id && (
           <button className="local-game-detail-edit" onClick={() => setShowPicker(true)} title={t.local.change_igdb_game}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>

@@ -490,11 +490,12 @@ fn scan_xbox_games() -> Vec<LocalGame> {
                 if name.starts_with("ms-resource:") || name.is_empty() {
                     continue;
                 }
+                let install_path = path.to_string_lossy().to_string();
                 games.push(LocalGame::installed(
                     name,
                     "xbox",
-                    None,
-                    Some(path.to_string_lossy().to_string()),
+                    Some(synthetic_app_id("xbox", &install_path)),
+                    Some(install_path),
                 ));
             }
         }
@@ -524,11 +525,12 @@ fn scan_ea_games() -> Vec<LocalGame> {
                             if let Some(name) = extract_xml_attr(&content, "displayName")
                                 .or_else(|| extract_xml_attr(&content, "title"))
                             {
+                                let install_path = path.to_string_lossy().to_string();
                                 games.push(LocalGame::installed(
                                     name,
                                     "ea",
-                                    None,
-                                    Some(path.to_string_lossy().to_string()),
+                                    Some(synthetic_app_id("ea", &install_path)),
+                                    Some(install_path),
                                 ));
                             }
                         }
@@ -567,11 +569,12 @@ fn scan_ea_games() -> Vec<LocalGame> {
                         if let Some(name) =
                             path.file_name().map(|n| n.to_string_lossy().to_string())
                         {
+                            let install_path = path.to_string_lossy().to_string();
                             games.push(LocalGame::installed(
                                 name,
                                 "ea",
-                                None,
-                                Some(path.to_string_lossy().to_string()),
+                                Some(synthetic_app_id("ea", &install_path)),
+                                Some(install_path),
                             ));
                         }
                     }
@@ -594,12 +597,15 @@ fn scan_local_folder(folder: &str) -> Vec<LocalGame> {
             entries
                 .filter_map(|e| e.ok())
                 .filter(|e| e.path().is_dir())
-                .map(|e| LocalGame::installed(
-                    e.file_name().to_string_lossy().to_string(),
-                    "local",
-                    None,
-                    Some(e.path().to_string_lossy().to_string()),
-                ))
+                .map(|e| {
+                    let install_path = e.path().to_string_lossy().to_string();
+                    LocalGame::installed(
+                        e.file_name().to_string_lossy().to_string(),
+                        "local",
+                        Some(synthetic_app_id("local", &install_path)),
+                        Some(install_path),
+                    )
+                })
                 .collect()
         })
         .unwrap_or_default()
@@ -647,21 +653,24 @@ fn rom_extensions_for_platform(platform_id: &str) -> &'static [&'static str] {
 // mechanism in this codebase (readGameInfo, igdb_force_by_igdb_id,
 // game_link_key, IgdbPickerModal's "editar metadatos") keys its cache
 // directory by app_id and only bothers running at all when one is present,
-// so a ROM (which has no real app_id) needs one too, or it'd silently get
-// none of that — cover, manual IGDB link, everything. Deterministic (same
-// ROM path always hashes to the same id, so a pick made once survives every
+// so any launcher that never had a real one (ROMs; Xbox/EA/local-folder
+// installs, whose own scanners have nothing ID-like to report) needs one
+// too, or it'd silently get none of that — cover, manual IGDB link,
+// everything. `prefix` just keeps each launcher's ids visually distinct in
+// debugging; only `install_path` feeds the hash. Deterministic (the same
+// path always hashes to the same id, so a pick made once survives every
 // future rescan) and DefaultHasher::new() is fixed-seed (unlike HashMap's
 // own randomized default), so this doesn't change between runs. Must be
 // plain hex — this gets used as a single path segment (join()) downstream,
 // so anything else (slashes, a drive letter's colon) would either break the
 // join or, worse, get treated as an absolute path and silently escape the
 // intended metadata folder entirely.
-fn synthetic_rom_app_id(install_path: &str) -> String {
+fn synthetic_app_id(prefix: &str, install_path: &str) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     let mut hasher = DefaultHasher::new();
     install_path.hash(&mut hasher);
-    format!("rom_{:016x}", hasher.finish())
+    format!("{}_{:016x}", prefix, hasher.finish())
 }
 
 fn push_if_rom_match(path: &std::path::Path, extensions: &[&str], launcher: &str, platform_id: &str, out: &mut Vec<LocalGame>) {
@@ -675,7 +684,7 @@ fn push_if_rom_match(path: &std::path::Path, extensions: &[&str], launcher: &str
     out.push(LocalGame {
         name: stem.to_string(),
         launcher: launcher.to_string(),
-        app_id: Some(synthetic_rom_app_id(&install_path)),
+        app_id: Some(synthetic_app_id("rom", &install_path)),
         external_id: None,
         install_path: Some(install_path),
         playtime_minutes: None,
