@@ -293,6 +293,16 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   background: var(--text-main);
 }
 
+/* Avoid duplicate bottom border with section divider */
+[data-theme="newspaper-dark"] .local-launcher-title {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .local-sort-select {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
 /* Check badges style */
 [data-theme="newspaper-dark"] .card-rating-badge,
 [data-theme="newspaper-dark"] .theme-card-check {

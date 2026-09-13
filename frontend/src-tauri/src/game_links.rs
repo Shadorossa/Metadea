@@ -111,7 +111,8 @@ pub fn restore_missing_seen_games(
     rows.filter_map(|r| r.ok())
         .filter(|(launcher, link_key, _)| !already_present.contains(&(launcher.clone(), link_key.clone())))
         .map(|(launcher, link_key, name)| {
-            let app_id = if launcher == "steam" { Some(link_key.clone()) } else { None };
+            // Ignore legacy path-based keys so they aren't treated as unsafe app_id cache paths.
+            let app_id = if link_key.contains(['\\', '/', ':']) { None } else { Some(link_key.clone()) };
             crate::platform_scanning::LocalGame {
                 name, launcher, app_id, external_id: None,
                 install_path: None, playtime_minutes: None, last_played: None,
