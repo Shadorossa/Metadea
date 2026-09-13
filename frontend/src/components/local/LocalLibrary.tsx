@@ -13,7 +13,7 @@ import { useActivePlatform }    from './hooks/useActivePlatform';
 import { usePendingLaunchers }  from './hooks/usePendingLaunchers';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame, type StatusEntry } from './utils/catalogGameLinking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, matchGameStatusByName, type StatusEntry } from './utils/catalogGameLinking';
 import { readLocalUrlState } from './utils/urlState';
 import {
   useLocalPanelSelection, resolveCatalogSelection, resolveGameSelection,
@@ -234,23 +234,46 @@ export default function LocalLibrary() {
     [vnovelExternalIds, pathCache],
   );
 
+  const catalogMapById = React.useMemo(
+    () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
+    [mediaRaw],
+  );
+
   // Matches every Steam-scanned game to its real library entry — by actual
   // identity (external_id from local_game_links, or the igdb_id
   // read_metadata_index caches per app_id), same "vnovel:<id>"/"game:<id>"
   // resolution "Ver en catálogo" and the Visual Novel tab's own matching
   // already use. Keyed by the game object itself so callers can look up a
   // status without re-deriving candidate ids each time.
+  //
+  // Games with NEITHER (a restored ghost — see game_links.rs — or one
+  // that's simply never been auto-matched) fall back to the exact same
+  // name-based matching buildLibraryStatusEntries uses for its own
+  // catalog->game direction (matchGameStatusByName), so the two can't
+  // independently reach different verdicts about the same game — which is
+  // exactly what produced a GOG-scanned "Silent Hill 4: The Room" showing
+  // once as an untracked GOG card (ID match found nothing) AND once as a
+  // separate "Pendiente" card for the same title (name match found the
+  // library row) instead of being recognized as the same game.
   const gameStatusMatch = React.useMemo(() => {
     const result = new Map<(typeof games)[number], string | undefined>();
     if (!mediaRaw) return result;
     const byExternalId = new Map(mediaRaw.entries.map(e => [e.external_id, e]));
+    const gameLibraryEntries = mediaRaw.entries
+      .filter(e => e.type === 'game')
+      .map(e => {
+        const meta = catalogMapById.get(e.external_id);
+        const titles = [meta?.title_main, meta?.title_romaji, meta?.title_native].filter((s): s is string => !!s);
+        return { titles, entry: e };
+      })
+      .filter(x => x.titles.length > 0);
     for (const g of Array.isArray(games) ? games : []) {
       const candidateIds = candidateExternalIdsForGame(g, pathCache);
       const matched = candidateIds.map(id => byExternalId.get(id)).find(Boolean);
-      result.set(g, matched?.status ?? undefined);
+      result.set(g, matched?.status ?? matchGameStatusByName(g, gameLibraryEntries));
     }
     return result;
-  }, [games, mediaRaw, pathCache]);
+  }, [games, mediaRaw, pathCache, catalogMapById]);
 
   // Alphabetical — scanAllGames/Steam's API return them in filesystem/API
   // order (installed-then-uninstalled, no name ordering within either),
@@ -348,10 +371,6 @@ export default function LocalLibrary() {
     }
     return ids;
   }, [games, pathCache]);
-  const catalogMapById = React.useMemo(
-    () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
-    [mediaRaw],
-  );
   // Shared with the Visual Novel tab's own library-only entries (see
   // catalogGameLinking.ts) so both get exactly the same "might already be a
   // scanned game under a different identity/edition" matching behavior
@@ -368,14 +387,31 @@ export default function LocalLibrary() {
     const filtered = q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
     return buildLibraryStatusEntries(filtered, Array.isArray(games) ? games : [], catalogMapById);
   }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, games, catalogMapById]);
-  const currentlyEntries: StatusEntry[] = [
+  // Both halves can independently resolve to the SAME installed game — an
+  // ID-matched one already sits in statusBuckets.currently, and a catalog
+  // Pendiente row with no external_id of its own can separately NAME-match
+  // to that exact game too (buildLibraryStatusEntries) — so this dedupes by
+  // game reference (both come from the same underlying `games` array, so
+  // it's the identical object either way) instead of showing it twice.
+  const currentlyRaw: StatusEntry[] = [
     ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
     ...buildCatalogStatusEntries(isInProgressStatus),
   ];
+  const seenCurrentlyGames = new Set<(typeof games)[number]>();
+  const currentlyEntries: StatusEntry[] = currentlyRaw.filter(e => {
+    if (e.kind !== 'game') return true;
+    if (seenCurrentlyGames.has(e.game)) return false;
+    seenCurrentlyGames.add(e.game);
+    return true;
+  });
   // No installed-game half here (unlike currentlyEntries above) — an
   // installed game matched to "planning" now stays in its own platform
-  // section instead (see statusBuckets), so this is catalog-only.
-  const planningEntries: StatusEntry[] = buildCatalogStatusEntries(s => s === 'planning');
+  // section instead (see statusBuckets). buildCatalogStatusEntries can still
+  // NAME-match a catalog row to a real (e.g. ghost/unlinked) install — same
+  // gameStatusMatch now already recognizes by name too — so any kind:'game'
+  // result here is filtered out rather than shown a second time on top of
+  // that install's own platform-section card.
+  const planningEntries: StatusEntry[] = buildCatalogStatusEntries(s => s === 'planning').filter(e => e.kind === 'catalog');
   // mediaRaw (SQLite read) resolves well before games (a real Steam/GOG/etc.
   // disk-and-registry scan) does — without this gate, currentlyEntries/
   // planningEntries above would render their catalog-sourced ("pendiente")

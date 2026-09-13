@@ -1,4 +1,4 @@
-import type { LocalGame, MediaCatalogEntry, MetaEntry } from '../../../lib/tauri';
+import type { LocalGame, LibraryEntry, MediaCatalogEntry, MetaEntry } from '../../../lib/tauri';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { normalizeForMatch } from './folderMatch';
 import { SUB_WORK_FORMATS } from '../../../lib/constants/media';
@@ -113,4 +113,29 @@ export function buildLibraryStatusEntries(
     entries.push(matched ? { kind: 'game', game: matched } : { kind: 'catalog', item });
   }
   return entries;
+}
+
+// The reverse direction of buildLibraryStatusEntries' own matching above —
+// given an installed game with no external_id at all (a restored ghost, or
+// one whose scan never got auto-matched by app_id/igdb_id), finds the
+// library STATUS it corresponds to by name instead. Without this,
+// LocalLibrary's ID-based gameStatusMatch and this file's name-based
+// buildLibraryStatusEntries could independently reach different verdicts
+// about the very same game — one showing it untracked in its own platform
+// section (ID match found nothing) while the other showed a SEPARATE
+// "Pendiente"/"En progreso" card for the same title (name match DID find
+// something) — the exact duplicate a GOG-scanned "Silent Hill 4: The Room"
+// with no external_id produced against its own catalog-only Pendiente row.
+export function matchGameStatusByName(
+  game: LocalGame,
+  libraryTitledEntries: { titles: string[]; entry: LibraryEntry }[],
+): string | undefined {
+  const normGameName = normalizeForMatch(game.name);
+  for (const { titles, entry } of libraryTitledEntries) {
+    if (titles.some(tt => normalizeForMatch(tt) === normGameName)) return entry.status ?? undefined;
+  }
+  for (const { titles, entry } of libraryTitledEntries) {
+    if (titles.some(tt => findEditionPrefixMatch(tt, [game]) === game)) return entry.status ?? undefined;
+  }
+  return undefined;
 }
