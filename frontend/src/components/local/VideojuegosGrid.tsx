@@ -267,16 +267,22 @@ export function VideojuegosGrid({
               className="local-launcher-section"
             >
               <h2 className="local-launcher-title">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                <div className="local-launcher-title-label">
                   <span className="local-launcher-icon">
                     {PLATFORM_LOGO[launcher]
                       ? <img src={PLATFORM_LOGO[launcher]} alt={PLATFORM_LABEL[launcher]} draggable={false} />
                       : <IconFolder />}
                   </span>
-                  {PLATFORM_LABEL[launcher]}
+                  <span className="local-launcher-name">{PLATFORM_LABEL[launcher]}</span>
                   <span className="local-launcher-count">{totalCount} juego{totalCount !== 1 ? 's' : ''}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {/* "Label left, rule fills the rest" — same trick
+                    .library-section-title uses in the newspaper-dark theme,
+                    generalized here to every theme so the sort/refresh
+                    controls always land at the right end of one continuous
+                    line instead of risking a second row. */}
+                <div className="local-launcher-title-rule" />
+                <div className="local-launcher-title-controls">
                   <select
                     className="local-sort-select"
                     value={sortMode}
