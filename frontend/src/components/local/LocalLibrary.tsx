@@ -277,45 +277,28 @@ export default function LocalLibrary() {
     return q ? list.filter(g => g.name.toLowerCase().includes(q)) : list;
   }, [games, isSteamVN, filterName]);
 
-  // Platform groups keep only the games with no real library status worth
-  // pulling out on their own (no match at all, or completed) — anything
-  // matched to En progreso/Pendiente/Pausado/Abandonado moves up into its
-  // own status section instead (see statusBuckets below), same as every
-  // other Local category groups by status. "Agrupar por plataforma" is
-  // still the layout for whatever's left, per the user's own framing:
-  // "dejando los grupos de plataformas [...] muevas a los estados [...]
-  // las obras que correspondan."
+  // Every installed game always has a determinable platform (its own
+  // launcher) — same reasoning usePendingLaunchers already applies to a
+  // launcher-matched catalog "Pendiente": once you know WHERE it lives
+  // (Steam, GOG, Nintendo, ...), that's a more useful spot for it than a
+  // generic status bucket. The one exception is "En progreso" — that status
+  // only ever gets set by actually editing THIS entry in the media editor
+  // (marking it as currently playing), a deliberate, meaningful signal
+  // worth surfacing across every platform in one place — unlike "planning"/
+  // "paused"/"dropped", which a game can pick up merely by incidentally
+  // sharing its external_id with some unrelated catalog-only library row it
+  // was never actually about (a GOG install matched to an old Pendiente
+  // entry, say). Pausado/Abandonado's own top-of-page sections (below) stay
+  // empty as a result — platform grouping is where those live now.
   const statusBuckets = React.useMemo(() => {
-    const buckets: Record<'currently' | 'planning' | 'paused' | 'dropped', (typeof safeGames)> = {
-      currently: [], planning: [], paused: [], dropped: [],
-    };
+    const currently: typeof safeGames = [];
     const rest: typeof safeGames = [];
     for (const g of safeGames) {
       const status = gameStatusMatch.get(g);
-      // A ROM always has a determinable platform (rom_platform) — same
-      // reasoning as usePendingLaunchers keeping a launcher-matched catalog
-      // "Pendiente" out of the general status sections: once you know WHERE
-      // it lives (Nintendo, PlayStation, ...), that's a more useful spot for
-      // it than the generic bucket. The one exception is "En progreso" —
-      // that status only ever gets set by actually editing THIS entry in
-      // the media editor (marking it as currently playing), which is a
-      // deliberate, meaningful signal worth surfacing across every
-      // platform — unlike "planning", which the ROM can pick up merely by
-      // incidentally sharing its external_id with some unrelated
-      // catalog-only Pendiente row it was never actually about.
-      if (g.rom_platform) {
-        if (status && isInProgressStatus(status)) { buckets.currently.push(g); continue; }
-        rest.push(g);
-        continue;
-      }
-      if (!status || status === 'completed') { rest.push(g); continue; }
-      if (isInProgressStatus(status)) buckets.currently.push(g);
-      else if (status === 'planning') buckets.planning.push(g);
-      else if (status === 'paused') buckets.paused.push(g);
-      else if (status === 'dropped') buckets.dropped.push(g);
+      if (status && isInProgressStatus(status)) currently.push(g);
       else rest.push(g);
     }
-    return { ...buckets, rest };
+    return { currently, rest };
   }, [safeGames, gameStatusMatch]);
 
   const groupedGames = LAUNCHER_ORDER.reduce<Map<PlatformId, typeof safeGames>>((acc, id) => {
@@ -323,9 +306,6 @@ export default function LocalLibrary() {
     if (list.length > 0) acc.set(id, list);
     return acc;
   }, new Map());
-  const pausedGames  = filterGames(statusBuckets.paused);
-  const droppedGames = filterGames(statusBuckets.dropped);
-
   const installedPlatforms = new Set(safeGames.map(g => g.launcher));
 
   // Videojuegos' own status sections mix in catalog-tracked 'game' entries
@@ -392,10 +372,10 @@ export default function LocalLibrary() {
     ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
     ...buildCatalogStatusEntries(isInProgressStatus),
   ];
-  const planningEntries: StatusEntry[] = [
-    ...filterGames(statusBuckets.planning).map((game): StatusEntry => ({ kind: 'game', game })),
-    ...buildCatalogStatusEntries(s => s === 'planning'),
-  ];
+  // No installed-game half here (unlike currentlyEntries above) — an
+  // installed game matched to "planning" now stays in its own platform
+  // section instead (see statusBuckets), so this is catalog-only.
+  const planningEntries: StatusEntry[] = buildCatalogStatusEntries(s => s === 'planning');
   // mediaRaw (SQLite read) resolves well before games (a real Steam/GOG/etc.
   // disk-and-registry scan) does — without this gate, currentlyEntries/
   // planningEntries above would render their catalog-sourced ("pendiente")
@@ -410,7 +390,6 @@ export default function LocalLibrary() {
   // icon lights up even with zero scanned installs (e.g. Nintendo with only
   // a Bayonetta 3 pendiente).
   const { pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds } = usePendingLaunchers(
-    sectionsReady ? currentlyEntries : [],
     sectionsReady ? planningEntries : [],
   );
   const availablePlatforms = new Set([...installedPlatforms, ...pendingByLauncher.keys()]);
@@ -545,8 +524,6 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 isMounted={isMounted}
                 currentlyEntries={sectionsReady ? currentlyEntries : []}
                 planningEntries={sectionsReady ? planningEntries : []}
-                pausedGames={pausedGames}
-                droppedGames={droppedGames}
                 coverCache={coverCache}
                 coverCacheHits={coverCacheHits}
                 onSelectGame={setGameSelection}

@@ -63,14 +63,18 @@ function launcherFromIgdbDetail(detail: Record<string, unknown> | null): string 
   return undefined;
 }
 
-// Which pending (catalog-only, no matched local install) games belong to
-// which launcher section — matched first via any already-resolved
+// Which pending ("Planeando", catalog-only, no matched local install) games
+// belong to which launcher section — matched first via any already-resolved
 // launchGame, then the catalog's own (locally cached) shop_links_csv, and
 // finally a live IGDB lookup for whatever's left unresolved. Shared by
 // VideojuegosGrid (to render these into their launcher section) and
 // LocalLibrary (to light up that platform's sidebar icon even when it has
-// zero actually-installed games).
-export function usePendingLaunchers(currentlyEntries: StatusEntry[], planningEntries: StatusEntry[]) {
+// zero actually-installed games). "En progreso" entries are deliberately
+// NOT considered here — that section stays one general list regardless of
+// platform (same reasoning statusBuckets applies to installed games: only
+// an in-progress status is a deliberate enough signal to surface in one
+// place instead of splitting it per platform).
+export function usePendingLaunchers(planningEntries: StatusEntry[]) {
   const [remoteByExternalId, setRemoteByExternalId] = useState<Record<string, string | undefined>>({});
   // Ids whose live IGDB check has actually finished (found a launcher or
   // not) — separate from remoteByExternalId itself, which only records the
@@ -83,19 +87,15 @@ export function usePendingLaunchers(currentlyEntries: StatusEntry[], planningEnt
   // spending a live API call otherwise.
   const idsNeedingRemoteCheck = useMemo(() => {
     const ids = new Set<string>();
-    const consider = (entries: StatusEntry[]) => {
-      for (const entry of entries) {
-        if (entry.kind !== 'catalog') continue;
-        if (entry.launchGame?.launcher) continue;
-        if (getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv)) continue;
-        if (!entry.item.externalId.startsWith('game:')) continue;
-        ids.add(entry.item.externalId);
-      }
-    };
-    consider(currentlyEntries);
-    consider(planningEntries);
+    for (const entry of planningEntries) {
+      if (entry.kind !== 'catalog') continue;
+      if (entry.launchGame?.launcher) continue;
+      if (getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv)) continue;
+      if (!entry.item.externalId.startsWith('game:')) continue;
+      ids.add(entry.item.externalId);
+    }
     return Array.from(ids).sort().join(',');
-  }, [currentlyEntries, planningEntries]);
+  }, [planningEntries]);
 
   useEffect(() => {
     if (!idsNeedingRemoteCheck) { setRemoteByExternalId({}); setCheckedIds(new Set()); return; }
@@ -138,26 +138,22 @@ export function usePendingLaunchers(currentlyEntries: StatusEntry[], planningEnt
 
     const idsStillChecking = new Set(idsNeedingRemoteCheck ? idsNeedingRemoteCheck.split(',') : []);
 
-    const groupEntries = (entries: StatusEntry[]) => {
-      for (const entry of entries) {
-        if (entry.kind !== 'catalog') continue;
-        const launcher = entry.launchGame?.launcher
-          ?? getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv)
-          ?? remoteByExternalId[entry.item.externalId];
-        if (launcher) {
-          if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
-          pendingByLauncher.get(launcher)!.push(entry);
-          pendingWithLauncherIds.add(entry.item.externalId);
-          continue;
-        }
-        if (idsStillChecking.has(entry.item.externalId) && !checkedIds.has(entry.item.externalId)) {
-          pendingResolutionIds.add(entry.item.externalId);
-        }
+    for (const entry of planningEntries) {
+      if (entry.kind !== 'catalog') continue;
+      const launcher = entry.launchGame?.launcher
+        ?? getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv)
+        ?? remoteByExternalId[entry.item.externalId];
+      if (launcher) {
+        if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
+        pendingByLauncher.get(launcher)!.push(entry);
+        pendingWithLauncherIds.add(entry.item.externalId);
+        continue;
       }
-    };
-    groupEntries(currentlyEntries);
-    groupEntries(planningEntries);
+      if (idsStillChecking.has(entry.item.externalId) && !checkedIds.has(entry.item.externalId)) {
+        pendingResolutionIds.add(entry.item.externalId);
+      }
+    }
 
     return { pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds };
-  }, [currentlyEntries, planningEntries, remoteByExternalId, checkedIds, idsNeedingRemoteCheck]);
+  }, [planningEntries, remoteByExternalId, checkedIds, idsNeedingRemoteCheck]);
 }

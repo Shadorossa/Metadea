@@ -28,14 +28,12 @@ interface VideojuegosGridProps {
   onClearRoute:  () => void;
   onRefreshScan: () => void;
   isMounted:     boolean;
-  // currentlyEntries/planningEntries already mix in catalog-tracked
-  // "pendiente" entries (see LocalLibrary's buildCatalogStatusEntries) —
-  // pausedGames/droppedGames don't, since those statuses have no such
-  // cross-check today, so they arrive as plain LocalGame[] instead.
+  // currentlyEntries/planningEntries mix in catalog-tracked "pendiente"
+  // entries too (see LocalLibrary's buildCatalogStatusEntries) — there's no
+  // Pausado/Abandonado equivalent: an installed game with that status stays
+  // in its own platform section instead (see statusBuckets), badge and all.
   currentlyEntries: StatusEntry[];
   planningEntries:  StatusEntry[];
-  pausedGames:      LocalGame[];
-  droppedGames:     LocalGame[];
   coverCache:      CoverCache;
   coverCacheHits:  Record<string, string>;
   onSelectGame:    (g: LocalGame | null) => void;
@@ -81,7 +79,7 @@ interface VideojuegosGridProps {
 // callbacks.
 export function VideojuegosGrid({
   gridRef, gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
-  currentlyEntries, planningEntries, pausedGames, droppedGames, coverCache, coverCacheHits,
+  currentlyEntries, planningEntries, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
   pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds, gameStatusMatch, catalogMapById, onRemoveGame,
 }: VideojuegosGridProps) {
@@ -106,12 +104,14 @@ export function VideojuegosGrid({
     setDeleteMenu(null);
   };
 
-  // Filter out catalog entries that have a launcher — they go ONLY to their
-  // launcher section — and ones still being checked for one, so a game that
-  // WILL end up in Nintendo/Steam never renders here first and jumps later.
-  const hideFromStatus = (e: StatusEntry) => e.kind === 'catalog' && (pendingWithLauncherIds.has(e.item.externalId) || pendingResolutionIds.has(e.item.externalId));
-  const statusEntriesCurrently = currentlyEntries.filter(e => !hideFromStatus(e));
-  const statusEntriesPlanning = planningEntries.filter(e => !hideFromStatus(e));
+  // "En progreso" always stays one general list (see usePendingLaunchers'
+  // own comment) — only Planeando entries get filtered out here, for the
+  // ones that have a launcher (they go ONLY to their launcher section) or
+  // are still being checked for one, so a game that WILL end up in
+  // Nintendo/Steam never renders here first and jumps later.
+  const statusEntriesCurrently = currentlyEntries;
+  const statusEntriesPlanning = planningEntries.filter(e =>
+    !(e.kind === 'catalog' && (pendingWithLauncherIds.has(e.item.externalId) || pendingResolutionIds.has(e.item.externalId))));
 
   // The four status buckets share one section shell (title + grid, mixing
   // GameCard/LocalMediaCard by entry.kind) — same {title,entries}[] + one
@@ -120,8 +120,6 @@ export function VideojuegosGrid({
   const statusSections: StatusSection[] = [
     ...(statusEntriesCurrently.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: statusEntriesCurrently, sectionStatus: 'playing' }] : []),
     ...(statusEntriesPlanning.length > 0 ? [{ key: 'planning', title: t.profile.section_planning, entries: statusEntriesPlanning, sectionStatus: 'planning' }] : []),
-    ...(pausedGames.length > 0 ? [{ key: 'paused', title: 'Pausado', entries: pausedGames.map((game): StatusEntry => ({ kind: 'game', game })), sectionStatus: 'paused' }] : []),
-    ...(droppedGames.length > 0 ? [{ key: 'dropped', title: 'Abandonado', entries: droppedGames.map((game): StatusEntry => ({ kind: 'game', game })), sectionStatus: 'dropped' }] : []),
   ];
 
   return (
