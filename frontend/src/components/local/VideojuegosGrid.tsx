@@ -50,6 +50,12 @@ interface VideojuegosGridProps {
   // games (no scanned install at all) still lights up in both places.
   pendingByLauncher:      Map<string, StatusEntry[]>;
   pendingWithLauncherIds: Set<string>;
+  // Entries whose launcher can't be determined locally and whose live IGDB
+  // check hasn't resolved yet — held out of the status sections too (not
+  // just launcher ones), so a Nintendo/Steam-bound pendiente never flashes
+  // in "Pendientes" for a frame before jumping to its real section once the
+  // check finishes.
+  pendingResolutionIds: Set<string>;
   // Real library status (if any) for each installed game — groupedGames
   // itself only ever holds untracked-or-completed installs, but the badge
   // needs to tell those two apart (see getStatusBadge/GameCard).
@@ -77,7 +83,7 @@ export function VideojuegosGrid({
   gridRef, gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
   currentlyEntries, planningEntries, pausedGames, droppedGames, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
-  pendingByLauncher, pendingWithLauncherIds, gameStatusMatch, catalogMapById, onRemoveGame,
+  pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds, gameStatusMatch, catalogMapById, onRemoveGame,
 }: VideojuegosGridProps) {
   const t = getT();
   const displayNameFor = (g: LocalGame): string | undefined =>
@@ -100,9 +106,12 @@ export function VideojuegosGrid({
     setDeleteMenu(null);
   };
 
-  // Filter out catalog entries that have a launcher — they go ONLY to their launcher section
-  const statusEntriesCurrently = currentlyEntries.filter(e => !(e.kind === 'catalog' && pendingWithLauncherIds.has(e.item.externalId)));
-  const statusEntriesPlanning = planningEntries.filter(e => !(e.kind === 'catalog' && pendingWithLauncherIds.has(e.item.externalId)));
+  // Filter out catalog entries that have a launcher — they go ONLY to their
+  // launcher section — and ones still being checked for one, so a game that
+  // WILL end up in Nintendo/Steam never renders here first and jumps later.
+  const hideFromStatus = (e: StatusEntry) => e.kind === 'catalog' && (pendingWithLauncherIds.has(e.item.externalId) || pendingResolutionIds.has(e.item.externalId));
+  const statusEntriesCurrently = currentlyEntries.filter(e => !hideFromStatus(e));
+  const statusEntriesPlanning = planningEntries.filter(e => !hideFromStatus(e));
 
   // The four status buckets share one section shell (title + grid, mixing
   // GameCard/LocalMediaCard by entry.kind) — same {title,entries}[] + one

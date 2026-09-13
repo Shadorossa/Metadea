@@ -72,6 +72,11 @@ function launcherFromIgdbDetail(detail: Record<string, unknown> | null): string 
 // zero actually-installed games).
 export function usePendingLaunchers(currentlyEntries: StatusEntry[], planningEntries: StatusEntry[]) {
   const [remoteByExternalId, setRemoteByExternalId] = useState<Record<string, string | undefined>>({});
+  // Ids whose live IGDB check has actually finished (found a launcher or
+  // not) — separate from remoteByExternalId itself, which only records the
+  // ones that DID resolve to a launcher, so "no entry yet" can't be told
+  // apart from "checked, and it's genuinely not on any known platform".
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
 
   // Only entries that can't already be resolved from local data, and that
   // look like a real IGDB game id ("game:<n>", not "vnovel:<n>") — no point
@@ -93,8 +98,15 @@ export function usePendingLaunchers(currentlyEntries: StatusEntry[], planningEnt
   }, [currentlyEntries, planningEntries]);
 
   useEffect(() => {
-    if (!idsNeedingRemoteCheck) { setRemoteByExternalId({}); return; }
+    if (!idsNeedingRemoteCheck) { setRemoteByExternalId({}); setCheckedIds(new Set()); return; }
     const ids = idsNeedingRemoteCheck.split(',');
+    // Reset to "still checking" for this exact id set right away — without
+    // this, an id that was already checked+cleared under a PREVIOUS id set
+    // (e.g. it briefly left the pending list and came back) would render as
+    // "known, no launcher" for one frame before the fetch below redoes the
+    // check, which is exactly the Pendientes-then-Nintendo flash this hook
+    // exists to prevent.
+    setCheckedIds(new Set());
     let cancelled = false;
     Promise.all(ids.map(id => {
       const igdbId = Number(id.split(':')[1]);
@@ -109,6 +121,7 @@ export function usePendingLaunchers(currentlyEntries: StatusEntry[], planningEnt
         if (launcher) map[id] = launcher;
       }
       setRemoteByExternalId(map);
+      setCheckedIds(new Set(ids));
     });
     return () => { cancelled = true; };
   }, [idsNeedingRemoteCheck]);
@@ -116,6 +129,14 @@ export function usePendingLaunchers(currentlyEntries: StatusEntry[], planningEnt
   return useMemo(() => {
     const pendingByLauncher = new Map<string, StatusEntry[]>();
     const pendingWithLauncherIds = new Set<string>();
+    // Entries whose launcher genuinely can't be determined locally AND
+    // whose live check hasn't finished yet — kept out of the general status
+    // sections too (not just out of a launcher one) so a Nintendo/Steam-
+    // bound game never has a moment where it visibly sits in "Pendientes"
+    // before jumping to its real section once the check resolves.
+    const pendingResolutionIds = new Set<string>();
+
+    const idsStillChecking = new Set(idsNeedingRemoteCheck ? idsNeedingRemoteCheck.split(',') : []);
 
     const groupEntries = (entries: StatusEntry[]) => {
       for (const entry of entries) {
@@ -123,15 +144,20 @@ export function usePendingLaunchers(currentlyEntries: StatusEntry[], planningEnt
         const launcher = entry.launchGame?.launcher
           ?? getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv)
           ?? remoteByExternalId[entry.item.externalId];
-        if (!launcher) continue;
-        if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
-        pendingByLauncher.get(launcher)!.push(entry);
-        pendingWithLauncherIds.add(entry.item.externalId);
+        if (launcher) {
+          if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
+          pendingByLauncher.get(launcher)!.push(entry);
+          pendingWithLauncherIds.add(entry.item.externalId);
+          continue;
+        }
+        if (idsStillChecking.has(entry.item.externalId) && !checkedIds.has(entry.item.externalId)) {
+          pendingResolutionIds.add(entry.item.externalId);
+        }
       }
     };
     groupEntries(currentlyEntries);
     groupEntries(planningEntries);
 
-    return { pendingByLauncher, pendingWithLauncherIds };
-  }, [currentlyEntries, planningEntries, remoteByExternalId]);
+    return { pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds };
+  }, [currentlyEntries, planningEntries, remoteByExternalId, checkedIds, idsNeedingRemoteCheck]);
 }

@@ -409,7 +409,7 @@ export default function LocalLibrary() {
   // sections — shared with availablePlatforms below so a platform's sidebar
   // icon lights up even with zero scanned installs (e.g. Nintendo with only
   // a Bayonetta 3 pendiente).
-  const { pendingByLauncher, pendingWithLauncherIds } = usePendingLaunchers(
+  const { pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds } = usePendingLaunchers(
     sectionsReady ? currentlyEntries : [],
     sectionsReady ? planningEntries : [],
   );
@@ -558,6 +558,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 sectionRefs={sectionRefs}
                 pendingByLauncher={pendingByLauncher}
                 pendingWithLauncherIds={pendingWithLauncherIds}
+                pendingResolutionIds={pendingResolutionIds}
                 gameStatusMatch={gameStatusMatch}
                 catalogMapById={catalogMapById}
                 onRemoveGame={removeGame}
