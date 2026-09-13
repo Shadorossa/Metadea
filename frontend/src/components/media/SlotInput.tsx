@@ -20,13 +20,18 @@ export interface SlotInputProps {
   allowedSuggestions?: string[];
   /** Force the input to select only from allowed suggestions */
   restrictToSuggestions?: boolean;
+  /** Rewrites what the user actually typed before it's added as a new slot
+   *  — e.g. shop links auto-prefix a pasted bare URL with its detected
+   *  "platform|" so the user only ever has to paste the link itself. Not
+   *  applied to a restrictToSuggestions pick (already a known-good value). */
+  transformNewItem?: (raw: string) => string;
 }
 
 /** A comma-separated tag/pill editor — type, press Enter or comma to add,
  *  Backspace on an empty input to pop the last tag, click × to remove one. */
 export function SlotInput({
   label, value, onChange, placeholder, preview, fullWidth,
-  allowedSuggestions, restrictToSuggestions
+  allowedSuggestions, restrictToSuggestions, transformNewItem,
 }: SlotInputProps) {
   const items = parseCSV(value);
   const [inputVal, setInputVal] = useState('');
@@ -63,8 +68,9 @@ export function SlotInput({
         onChange([...items, match].join(','));
       }
     } else {
-      if (!items.includes(trimmed)) {
-        onChange([...items, trimmed].join(','));
+      const item = transformNewItem ? transformNewItem(trimmed) : trimmed;
+      if (!items.includes(item)) {
+        onChange([...items, item].join(','));
       }
     }
     setInputVal('');

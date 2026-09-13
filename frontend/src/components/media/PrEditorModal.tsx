@@ -803,15 +803,33 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
   const slotField = (field: keyof MediaCatalogEntry, label: string, opts?: {
     allowed?: string[]; restrict?: boolean; preview?: boolean; fullWidth?: boolean; dotClass?: string;
+    transformNewItem?: (raw: string) => string;
   }) => (
     <div style={{ position: 'relative' }} className={isLocalOnly(field) ? 'pr-editor-field--dim' : undefined}>
       <SlotInput label={label} value={entry[field] as string | undefined} onChange={v => handleChange(field, v)}
         allowedSuggestions={opts?.allowed} restrictToSuggestions={opts?.restrict}
-        preview={opts?.preview} fullWidth={opts?.fullWidth} />
+        preview={opts?.preview} fullWidth={opts?.fullWidth} transformNewItem={opts?.transformNewItem} />
       <ChangedDot show={isFieldChanged(field)}
         className={`pr-editor-changed-dot ${opts?.dotClass ?? 'pr-editor-changed-dot--slot'}`} />
     </div>
   );
+
+  // Same domain-sniffing build_store_links (igdb.rs) already uses for a live
+  // IGDB fetch's own store_links — mirrored here so a pasted bare URL
+  // auto-gets its "platform|" prefix instead of the user having to type it.
+  // Left as-is (no prefix added) when nothing matches, or when the user
+  // already typed "platform|url" themselves.
+  const detectShopLinkPlatform = (raw: string): string => {
+    if (raw.includes('|')) return raw;
+    const url = raw.toLowerCase();
+    const platform = url.includes('store.steampowered.com') ? 'steam'
+      : url.includes('gog.com') ? 'gog'
+      : url.includes('epicgames.com') ? 'epic'
+      : (url.includes('xbox.com') || url.includes('microsoft.com/store')) ? 'xbox'
+      : url.includes('playstation.com') ? 'playstation'
+      : null;
+    return platform ? `${platform}|${raw}` : raw;
+  };
 
   const sectionTitle = (title: string, fields: Array<keyof MediaCatalogEntry>) => (
     <span className="pr-editor-section-title">
@@ -931,7 +949,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                       /media on, see that hook's own comment) can get them
                       added here manually instead of only ever being backfilled
                       by a live IGDB fetch. */}
-                  {slotField('shop_links_csv', 'platform|url pairs', { fullWidth: true })}
+                  {slotField('shop_links_csv', 'platform|url pairs', { fullWidth: true, transformNewItem: detectShopLinkPlatform })}
                 </div>
               </div>
 
