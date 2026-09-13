@@ -7,7 +7,8 @@
     "source": "igdb",
     "created_at": "",
     "updated_at": "",
-    "blocked_at": null
+    "blocked_at": null,
+    "shop_links_csv": "gog|https://www.gog.com/en/game/rance_vi_5d"
   },
   "media_relations": [
     {
@@ -28,5 +29,7 @@
     }
   ],
   "characters": [],
-  "media_authors": []
+  "media_authors": [],
+  "saga_name": "Rance: Hikari wo Motomete",
+  "story_arcs": []
 }
