@@ -577,6 +577,41 @@
   background: transparent;
 }
 
+/* Per-launcher-section sort control (Alfabético/Última vez jugado/Tiempo
+   jugado) — sits just left of the resync button, same 28px row height and
+   bordered-box look as the toolbar's own .local-refresh-btn. */
+.local-sort-select {
+  height: 28px;
+  padding: 0 1.5rem 0 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--anim-base) var(--anim-ease);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+}
+
+.local-sort-select:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.local-sort-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.local-sort-select option {
+  background: var(--bg-primary, #0c0820);
+  color: var(--text-main);
+}
+
 /* ── State placeholder ───────────────────────────────────────────────────────── */
 
 .local-state-placeholder {

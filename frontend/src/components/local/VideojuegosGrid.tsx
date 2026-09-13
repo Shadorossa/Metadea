@@ -19,6 +19,50 @@ import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
 // status bucket (see LocalLibrary's statusBuckets/buildCatalogStatusEntries).
 interface StatusSection { key: string; title: string; entries: StatusEntry[]; sectionStatus: string }
 
+// How a launcher section's mixed installed+pendiente entries are ordered —
+// "biblioteca de Steam" (kind:'game', installed) and "perfil de usuario"
+// (kind:'catalog', a library-tracked pendiente) are just two different
+// SOURCES of the same kind of thing, so they're always merged into one list
+// and sorted together instead of installed games trailing every pendiente
+// (or vice versa) regardless of what the user actually asked to sort by.
+type SortMode = 'alpha' | 'lastPlayed' | 'playtime';
+
+function entryDisplayName(entry: StatusEntry, displayNameFor: (g: LocalGame) => string | undefined): string {
+  return entry.kind === 'game' ? (displayNameFor(entry.game) ?? entry.game.name) : entry.item.title;
+}
+
+// last_played (installed) is a unix-seconds timestamp; a catalog-only
+// pendiente has no such field (it's never actually been launched through
+// here), so its library entry's own updated_at — bumped whenever its
+// progress/status changes — is the closest available proxy.
+function entryLastPlayedMs(entry: StatusEntry): number {
+  if (entry.kind === 'game') return (entry.game.last_played ?? 0) * 1000;
+  return Date.parse(entry.item.libraryEntry.updated_at ?? '') || 0;
+}
+
+// playtime_minutes (installed) and the library entry's minutes_spent
+// (pendiente) are already the same unit, so these compare directly.
+function entryPlaytimeMinutes(entry: StatusEntry): number {
+  if (entry.kind === 'game') return entry.game.playtime_minutes ?? 0;
+  return entry.item.libraryEntry.minutes_spent ?? 0;
+}
+
+function sortEntries(entries: StatusEntry[], mode: SortMode, displayNameFor: (g: LocalGame) => string | undefined): StatusEntry[] {
+  const sorted = [...entries];
+  if (mode === 'alpha') {
+    sorted.sort((a, b) => entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor)));
+  } else if (mode === 'lastPlayed') {
+    sorted.sort((a, b) => entryLastPlayedMs(b) - entryLastPlayedMs(a));
+  } else {
+    sorted.sort((a, b) => entryPlaytimeMinutes(b) - entryPlaytimeMinutes(a));
+  }
+  return sorted;
+}
+
+function entryKey(entry: StatusEntry, i: number): string {
+  return entry.kind === 'game' ? `g-${entry.game.app_id ?? entry.game.install_path ?? entry.game.name}` : `c-${entry.item.externalId}-${i}`;
+}
+
 interface VideojuegosGridProps {
   gridRef:       React.RefObject<HTMLDivElement>;
   gamesState:    GamesState;
@@ -86,6 +130,12 @@ export function VideojuegosGrid({
   const t = getT();
   const displayNameFor = (g: LocalGame): string | undefined =>
     g.external_id ? catalogMapById.get(g.external_id)?.title_main ?? undefined : undefined;
+
+  // One shared sort preference across every launcher section (Steam,
+  // Nintendo, ...) rather than a separate one per platform — simpler to
+  // reason about, and there's no real case for browsing one platform
+  // alphabetically while another stays sorted by playtime.
+  const [sortMode, setSortMode] = useState<SortMode>('alpha');
 
   // Right-click "Eliminar de la lista" on a cover-less game card (see
   // GameCard's own onRequestDelete — a real install just re-scans back, so
@@ -199,7 +249,16 @@ export function VideojuegosGrid({
           .map((launcher, idx) => {
           const list = groupedGames.get(launcher) || [];
           const pendingForLauncher = pendingByLauncher.get(launcher) || [];
-          const totalCount = list.length + pendingForLauncher.length;
+          // Installed ("biblioteca de Steam") and pendiente ("perfil de
+          // usuario") entries are just two sources of the same thing — merged
+          // into one list and sorted together instead of one group always
+          // trailing the other regardless of the chosen sort.
+          const merged: StatusEntry[] = [
+            ...list.map((g): StatusEntry => ({ kind: 'game', game: g })),
+            ...pendingForLauncher,
+          ];
+          const sortedEntries = sortEntries(merged, sortMode, displayNameFor);
+          const totalCount = merged.length;
           return (
             <section
               key={launcher}
@@ -217,39 +276,41 @@ export function VideojuegosGrid({
                   {PLATFORM_LABEL[launcher]}
                   <span className="local-launcher-count">{totalCount} juego{totalCount !== 1 ? 's' : ''}</span>
                 </div>
-                {idx === 0 && (
-                  <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan} disabled={gamesState === 'loading'}>
-                    <IconRefresh />
-                  </button>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <select
+                    className="local-sort-select"
+                    value={sortMode}
+                    onChange={e => setSortMode(e.target.value as SortMode)}
+                    title="Ordenar"
+                  >
+                    <option value="alpha">Alfabético</option>
+                    <option value="lastPlayed">Última vez jugado</option>
+                    <option value="playtime">Tiempo jugado</option>
+                  </select>
+                  {idx === 0 && (
+                    <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan} disabled={gamesState === 'loading'}>
+                      <IconRefresh />
+                    </button>
+                  )}
+                </div>
               </h2>
               <div className="local-games-grid">
-                {pendingForLauncher.map((entry, i) => entry.kind === 'game' ? (
+                {sortedEntries.map((entry, i) => entry.kind === 'game' ? (
                   <GameCard
-                    key={`pending-${i}`}
+                    key={entryKey(entry, i)}
                     game={entry.game}
                     coverCache={coverCache}
                     onClick={onSelectGame}
+                    status={gameStatusMatch.get(entry.game)}
                     onRequestDelete={(g, x, y) => setDeleteMenu({ game: g, x, y })}
                     displayName={displayNameFor(entry.game)}
                   />
                 ) : (
                   <LocalMediaCard
-                    key={`pending-catalog-${entry.item.externalId}`}
+                    key={entryKey(entry, i)}
                     item={entry.item}
                     cachedPath={coverCacheHits[entry.item.externalId]}
                     onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
-                  />
-                ))}
-                {list.map((g, i) => (
-                  <GameCard
-                    key={i}
-                    game={g}
-                    coverCache={coverCache}
-                    onClick={onSelectGame}
-                    status={gameStatusMatch.get(g)}
-                    onRequestDelete={(gg, x, y) => setDeleteMenu({ game: gg, x, y })}
-                    displayName={displayNameFor(g)}
                   />
                 ))}
               </div>
