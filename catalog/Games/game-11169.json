@@ -11,22 +11,20 @@
   },
   "media_relations": [
     {
-      "media_external_id": "game:11169",
       "related_media_external_id": "game:144037",
       "relation_type": "DLC",
       "type_label": "DLC",
       "title": "Final Fantasy VII Remake: Episode Intermission",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9kc.jpg",
-      "format": null
+      "media_external_id": "game:11169"
     },
     {
-      "media_external_id": "game:11169",
       "related_media_external_id": "game:427",
-      "relation_type": "PARENT",
-      "type_label": "Source",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
       "title": "Final Fantasy VII",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2kx2.jpg",
-      "format": null
+      "media_external_id": "game:11169"
     },
     {
       "media_external_id": "game:11169",
@@ -43,9 +41,18 @@
       "type_label": "Sequel",
       "title": "Crisis Core: Final Fantasy VII",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1trb.jpg"
+    },
+    {
+      "related_media_external_id": "game:144024",
+      "relation_type": "EXPANDED_GAME",
+      "type_label": "Expanded Edition",
+      "title": "Final Fantasy VII Remake Intergrade",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9hh.jpg",
+      "media_external_id": "game:11169"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Final Fantasy VII (Compilation)"
+  "saga_name": "Final Fantasy VII: Advent Children",
+  "story_arcs": []
 }
