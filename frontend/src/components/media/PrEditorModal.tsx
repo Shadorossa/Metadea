@@ -920,6 +920,19 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                     </div>
                   </div>
                 </div>
+
+                <div className="pr-editor-section">
+                  {sectionTitle('Shop Links', ['shop_links_csv'])}
+                  {/* One slot per "platform|url" pair (steam|https://...,
+                      gog|https://...) — the exact format
+                      usePendingLaunchers/build_store_links already parse
+                      this CSV into, so a game missing its own storefront
+                      links (a common gap for anything the user never opened
+                      /media on, see that hook's own comment) can get them
+                      added here manually instead of only ever being backfilled
+                      by a live IGDB fetch. */}
+                  {slotField('shop_links_csv', 'platform|url pairs', { fullWidth: true })}
+                </div>
               </div>
 
               <div className="pr-editor-col pr-editor-col--right">
