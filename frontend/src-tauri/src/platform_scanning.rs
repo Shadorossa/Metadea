@@ -316,11 +316,12 @@ fn scan_gog_games() -> Vec<LocalGame> {
                             .map(|s| s.trim().to_string())
                             .unwrap_or_default();
                         if !name.is_empty() && !registry_names.contains(&name) {
+                            let install_path = game_dir.to_string_lossy().to_string();
                             games.push(LocalGame::installed(
                                 name,
                                 "gog",
-                                None,
-                                Some(game_dir.to_string_lossy().to_string()),
+                                Some(synthetic_app_id("gog", &install_path)),
+                                Some(install_path),
                             ));
                         }
                     }
