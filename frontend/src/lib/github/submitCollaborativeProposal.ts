@@ -318,16 +318,27 @@ export async function submitCollaborativeProposal(
     const jsonContent = await buildOutgoingContent(fileEntry, primaryExternalId, token);
     const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
 
-    let fileSha: string | undefined;
-    const fileCheckRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}?ref=${branchName}`, {
-      headers: { 'Authorization': `token ${token}` },
-    });
-    if (fileCheckRes.ok) {
-      const fileCheckData = await fileCheckRes.json();
-      fileSha = fileCheckData.sha;
-    }
+    // Re-using an EXISTING branch (the "Reference already exists" case
+    // above — a retry, or a second file touched by the same proposal) means
+    // this file may already have a committed version on it, whose current
+    // sha GitHub requires on the update to prove we're not blindly
+    // clobbering it. That lookup can occasionally race the branch having
+    // just been created/committed to (read-after-write lag), returning 404
+    // for a file that genuinely exists — sending no sha then reads to
+    // GitHub as "create new" and gets rejected with a 409 naming the sha it
+    // actually wanted. One retry with a fresh lookup clears that up instead
+    // of failing the whole proposal on what's really a transient race.
+    const fetchFileSha = async (): Promise<string | undefined> => {
+      const res = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}?ref=${branchName}`, {
+        headers: { 'Authorization': `token ${token}` },
+      });
+      if (!res.ok) return undefined;
+      const data = await res.json();
+      return data.sha;
+    };
 
-    const commitRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}`, {
+    let fileSha = await fetchFileSha();
+    let commitRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}`, {
       method: 'PUT',
       headers: {
         'Authorization': `token ${token}`,
@@ -340,6 +351,24 @@ export async function submitCollaborativeProposal(
         sha: fileSha,
       }),
     });
+
+    if (commitRes.status === 409) {
+      fileSha = await fetchFileSha();
+      commitRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: `Update catalog entry for ${entryTitle(fileEntry)}`,
+          content: base64Content,
+          branch: branchName,
+          sha: fileSha,
+        }),
+      });
+    }
+
     if (!commitRes.ok) {
       const errData = await commitRes.json().catch(() => null);
       throw new Error(`Failed to commit JSON file for ${externalId} to GitHub: ${errData?.message || commitRes.statusText}`);
