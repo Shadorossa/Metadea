@@ -30,17 +30,49 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
 // place. Positions are still tracked underneath either way, so the first
 // reflow after a suppressed stretch measures from an accurate "before"
 // instead of animating a big stale jump once it resumes.
+// getBoundingClientRect() is VIEWPORT-relative — fine for a one-off
+// measurement, but this hook compares one measurement against a LATER one,
+// and the viewport itself moves every time the user scrolls. Any unrelated
+// state update elsewhere in LocalLibrary that re-renders during a scroll
+// (useActivePlatform's IntersectionObserver flipping the sidebar's active
+// icon as a new section crosses into view, for instance) reran this hook's
+// per-render effect below mid-scroll, measured every card's now-different
+// viewport position, and "flipped" the entire visible grid back and forth
+// as if it had all genuinely moved — which is exactly the janky transition
+// this was producing while scrolling toward the bottom of a long list.
+// Adding the current scroll offset converts the measurement to a
+// document-relative position, which pure scrolling — nothing on the page
+// actually moved relative to its neighbors — never changes.
+function measure(el: HTMLElement): { left: number; top: number } {
+  const rect = el.getBoundingClientRect();
+  return { left: rect.left + window.scrollX, top: rect.top + window.scrollY };
+}
+
+// Pending "restore the card's real transition" timeout per element — a
+// second flip() call on the same card (the ResizeObserver below can fire
+// many times while the panel's own width transition is still running)
+// used to leave the FIRST call's timeout armed too. Whichever one fired
+// last just blindly reset `transition` to '', which could land mid-flight
+// through a NEWER transform and cut it off — the card visibly snapping/
+// jumping instead of easing in, compounding into the "breaks the view"
+// jank on every subsequent tick. Clearing the old one before scheduling a
+// new one means only the most recent flip's timeout ever actually fires.
+const pendingRestore = new WeakMap<HTMLElement, ReturnType<typeof window.setTimeout>>();
+
 // One measure-invert-play pass: nudges every item that moved back to its
 // last known position via `transform`, then releases it into a real
 // transition so it eases into wherever it actually ended up.
-function flip(items: HTMLElement[], prevRects: Map<Element, DOMRect>): void {
+function flip(items: HTMLElement[], prevRects: Map<Element, { left: number; top: number }>): void {
   for (const el of items) {
     const before = prevRects.get(el);
     if (!before) continue;
-    const after = el.getBoundingClientRect();
+    const after = measure(el);
     const dx = before.left - after.left;
     const dy = before.top - after.top;
     if (!dx && !dy) continue;
+
+    const pending = pendingRestore.get(el);
+    if (pending) window.clearTimeout(pending);
 
     el.style.transition = 'none';
     el.style.transform = `translate(${dx}px, ${dy}px)`;
@@ -55,12 +87,15 @@ function flip(items: HTMLElement[], prevRects: Map<Element, DOMRect>): void {
     // Restores the card's real transition (its own :hover scale) once
     // this one's done, instead of leaving a 0.3s duration set inline
     // indefinitely.
-    window.setTimeout(() => { el.style.transition = ''; }, 300);
+    pendingRestore.set(el, window.setTimeout(() => {
+      el.style.transition = '';
+      pendingRestore.delete(el);
+    }, 300));
   }
 }
 
 export function useGridFlip(containerRef: RefObject<HTMLElement | null>, itemSelector: string, panelOpen = false): void {
-  const prevRects = useRef<Map<Element, DOMRect>>(new Map());
+  const prevRects = useRef<Map<Element, { left: number; top: number }>>(new Map());
   const prevPanelOpenRef = useRef(panelOpen);
 
   useLayoutEffect(() => {
@@ -71,7 +106,7 @@ export function useGridFlip(containerRef: RefObject<HTMLElement | null>, itemSel
     prevPanelOpenRef.current = panelOpen;
 
     if (!suppress) flip(items, prevRects.current);
-    prevRects.current = new Map(items.map(el => [el, el.getBoundingClientRect()]));
+    prevRects.current = new Map(items.map(el => [el, measure(el)]));
 
     // The panel's own open/close animates via `transform` (no layout impact
     // on its own), but its sibling (.local-main-content) claims/releases
@@ -88,10 +123,26 @@ export function useGridFlip(containerRef: RefObject<HTMLElement | null>, itemSel
     // between grid columns as the available width crosses each threshold.
     // Re-running the same invert-play correction on every resize tick keeps
     // covering for it until the ancestor's own transition settles.
-    const ro = new ResizeObserver(() => {
+    //
+    // ResizeObserver fires on ANY border-box change, not just the width
+    // change above — `container` is the WHOLE grid (every platform
+    // section), so it also grows taller as the user scrolls and more cards'
+    // covers lazy-load in, or as an IntersectionObserver elsewhere flips a
+    // section into view. That's an ordinary content-height change with
+    // nothing to do with the panel's width transition, but it used to
+    // trigger this exact same "measure everything and flip" pass anyway —
+    // read as a stray card position drift and animated, which is the janky
+    // unrelated-transition-while-scrolling bug this guard exists to kill.
+    // Only a genuine WIDTH change (the thing this hook actually exists to
+    // smooth) still runs it.
+    let lastWidth = container.getBoundingClientRect().width;
+    const ro = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width ?? container.getBoundingClientRect().width;
+      if (width === lastWidth) return;
+      lastWidth = width;
       const current = Array.from(container.querySelectorAll<HTMLElement>(itemSelector));
       flip(current, prevRects.current);
-      prevRects.current = new Map(current.map(el => [el, el.getBoundingClientRect()]));
+      prevRects.current = new Map(current.map(el => [el, measure(el)]));
     });
     ro.observe(container);
     return () => ro.disconnect();
