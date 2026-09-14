@@ -59,6 +59,39 @@ function measure(el: HTMLElement): { left: number; top: number } {
 // new one means only the most recent flip's timeout ever actually fires.
 const pendingRestore = new WeakMap<HTMLElement, ReturnType<typeof window.setTimeout>>();
 
+// Sub-pixel deltas (fractions of a px from float rounding between a
+// getBoundingClientRect() reading and the scrollX/scrollY added to it)
+// aren't visible either way, but treating them as "moved" still ran the
+// full transition dance below — `transition: none` then back, forcing a
+// synchronous layout read (el.offsetWidth) — for every on-screen card on
+// every single re-render that happened to land mid-scroll. That's the
+// "some cards still move for no reason"/stutter left over after the
+// viewport-vs-document fix above: individually invisible, but forcing that
+// many synchronous reflows back-to-back is exactly what reads as the grid
+// stuttering while scrolling. A real reposition (a column changing) is
+// always many whole pixels, so this threshold never masks one.
+const FLIP_THRESHOLD_PX = 0.5;
+
+// A width change (panel opening/closing) can reshuffle EVERY card in the
+// grid at once — going from N columns to N+2 moves nearly every card to a
+// different row. Animating all of that simultaneously, including hundreds
+// of cards nowhere near the screen, is what made a close-then-scroll read
+// as "cards flying up from below in a broken way": off-screen cards were
+// mid-flight (still easing toward their new spot over their own 0.3s) at
+// the exact moment the user's scroll brought them into view, so what
+// should've been a settled grid was instead caught mid-animation. A card
+// that was never visible during the reflow doesn't need to be seen
+// smoothly arriving at its new spot — it can just already be there,
+// same as if the page had loaded fresh in that scroll position. Generous
+// viewport margin so a card just past the fold still gets the smoothing
+// once it's actually reachable by scrolling during the transition.
+const VIEWPORT_MARGIN_PX = 600;
+
+function isNearViewport(el: HTMLElement): boolean {
+  const rect = el.getBoundingClientRect();
+  return rect.bottom > -VIEWPORT_MARGIN_PX && rect.top < window.innerHeight + VIEWPORT_MARGIN_PX;
+}
+
 // One measure-invert-play pass: nudges every item that moved back to its
 // last known position via `transform`, then releases it into a real
 // transition so it eases into wherever it actually ended up.
@@ -66,10 +99,11 @@ function flip(items: HTMLElement[], prevRects: Map<Element, { left: number; top:
   for (const el of items) {
     const before = prevRects.get(el);
     if (!before) continue;
+    if (!isNearViewport(el)) continue;
     const after = measure(el);
     const dx = before.left - after.left;
     const dy = before.top - after.top;
-    if (!dx && !dy) continue;
+    if (Math.abs(dx) < FLIP_THRESHOLD_PX && Math.abs(dy) < FLIP_THRESHOLD_PX) continue;
 
     const pending = pendingRestore.get(el);
     if (pending) window.clearTimeout(pending);
