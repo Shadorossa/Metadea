@@ -1,0 +1,40 @@
+{
+  "media_catalog": {
+    "id": "9c54d03f542379cf9c54d03f542379cf",
+    "external_id": "game:318557",
+    "type": "game",
+    "title_main": "Final Fantasy XVI: Complete",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:31551",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Final Fantasy XVI",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobd9i.jpg",
+      "media_external_id": "game:318557"
+    },
+    {
+      "related_media_external_id": "game:279657",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Final Fantasy XVI: Echoes of the Fallen",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7hhs.jpg",
+      "media_external_id": "game:318557"
+    },
+    {
+      "related_media_external_id": "game:279658",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Final Fantasy XVI: The Rising Tide",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7h8t.jpg",
+      "media_external_id": "game:318557"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
