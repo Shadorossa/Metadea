@@ -1,0 +1,36 @@
+{
+  "media_catalog": {
+    "id": "56f080e85dad358b56f080e85dad358b",
+    "external_id": "game:279657",
+    "type": "game",
+    "title_main": "Final Fantasy XVI: Echoes of the Fallen",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:279657",
+      "related_media_external_id": "game:31551",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "Final Fantasy XVI",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobd9i.jpg",
+      "format": null,
+      "release_day": 22,
+      "release_month": 6,
+      "release_year": 2023
+    },
+    {
+      "related_media_external_id": "game:318557",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "Final Fantasy XVI: Complete",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8vyf.jpg",
+      "media_external_id": "game:279657"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
