@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, type LocalGame } from '../../lib/tauri';
+import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { IconGame, IconVNovel, IconAnime, IconManga, IconNovel, IconBook, IconComic, IconSeries, IconMovie } from '../local/ui/icons';
 
@@ -106,7 +106,7 @@ export default function LocalLibrary() {
   // selectedPendingItem (needed for its disabled flag) are resolved.
   const videojuegosGridRef = useRef<HTMLDivElement>(null);
 
-  const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame } = useLocalGames();
+  const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame, relinkGame } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
   const { routes, folderFiles, folderLoading, setRoute, clearRoute, refetchFolder } = useCategoryRoutes(activeCategory);
   const { activePlatform, sectionRefs, scrollTo }                             = useActivePlatform(games, activeCategory, gamesState);
@@ -234,10 +234,28 @@ export default function LocalLibrary() {
     [vnovelExternalIds, pathCache],
   );
 
-  const catalogMapById = React.useMemo(
-    () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
-    [mediaRaw],
-  );
+  // Names picked via "editar metadatos" (IgdbPickerModal) before there's
+  // ever a real media_catalog row for that external_id — saveGameLink only
+  // persists the LINK, and a freshly-picked IGDB game's catalog row only
+  // gets created by visiting its own /media page (persistToCatalog), so
+  // without this a card's displayName lookup below would keep resolving to
+  // nothing and fall back to the raw scanned name until that happens.
+  const [pickedNames, setPickedNames] = React.useState<Map<string, string>>(new Map());
+  const onGameRelinked = React.useCallback((game: LocalGame, externalId: string, name: string) => {
+    const linkKey = game.app_id ?? game.install_path ?? game.name;
+    relinkGame(game.launcher, linkKey, externalId);
+    setPickedNames(prev => new Map(prev).set(externalId, name));
+  }, [relinkGame]);
+
+  const catalogMapById = React.useMemo(() => {
+    const map = new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c]));
+    for (const [externalId, name] of pickedNames) {
+      if (!map.has(externalId)) {
+        map.set(externalId, { id: externalId, external_id: externalId, type: 'game', created_at: '', updated_at: '', title_main: name } as MediaCatalogEntry);
+      }
+    }
+    return map;
+  }, [mediaRaw, pickedNames]);
 
   // Matches every Steam-scanned game to its real library entry — by actual
   // identity (external_id from local_game_links, or the igdb_id
@@ -610,6 +628,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                   launchOverride={panelSelectedGame ? undefined : panelSelectedPendingLaunchGame}
                   onCloseClick={handleClose}
                   onMetaRefresh={refreshMeta}
+                  onGameRelinked={onGameRelinked}
                 />
               )}
             </DetailPanelShell>

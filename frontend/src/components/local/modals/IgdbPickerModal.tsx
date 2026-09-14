@@ -7,7 +7,14 @@ import { useDebouncedCallback } from '../../../lib/shared/useDebouncedCallback';
 interface IgdbPickerModalProps {
   game:     LocalGame;
   onClose:  () => void;
-  onPicked: () => void;
+  // Carries the pick back up (not just "something changed") so callers can
+  // optimistically reflect the new name/external_id everywhere this game
+  // shows up (grid cards, sections, ...) immediately — saveGameLink only
+  // ever touches local_game_links, and a freshly-picked IGDB game usually
+  // has no media_catalog row yet at all (that only gets created by visiting
+  // its own /media page), so there's nothing a plain "refetch the catalog"
+  // would actually find.
+  onPicked: (result: { externalId: string; name: string }) => void;
 }
 
 export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProps) {
@@ -55,8 +62,9 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
       // linkKey must match scan_all_games' own derivation exactly (see
       // platform_scanning.rs): app_id ?? install_path ?? name.
       const linkKey = game.app_id ?? game.install_path ?? game.name;
-      await saveGameLink(game.launcher, linkKey, `game:${candidate.id}`).catch(console.error);
-      onPicked();
+      const externalId = `game:${candidate.id}`;
+      await saveGameLink(game.launcher, linkKey, externalId).catch(console.error);
+      onPicked({ externalId, name: candidate.name });
       onClose();
     } catch (e) {
       console.error('igdb force error', e);

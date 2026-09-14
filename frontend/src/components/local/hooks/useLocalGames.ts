@@ -63,5 +63,19 @@ export function useLocalGames() {
     window.scrollTo(0, scrollY);
   }, []);
 
-  return { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame };
+  // Optimistic client-side update for "editar metadatos" (IgdbPickerModal,
+  // via GameDetailPanel's onGameRelinked) — saveGameLink only ever persists
+  // to local_game_links, so without this the in-memory `games` array (and
+  // everything derived from it: gameStatusMatch, groupedGames, a card's own
+  // displayName lookup) would keep showing this game as unlinked until the
+  // next full loadGames() rescan re-applies it from the DB. Same
+  // (launcher, app_id ?? install_path ?? name) identity as removeGame above.
+  const relinkGame = useCallback((launcher: string, linkKey: string, externalId: string) => {
+    setGames(prev => prev.map(g =>
+      g.launcher === launcher && (g.app_id ?? g.install_path ?? g.name) === linkKey
+        ? { ...g, external_id: externalId }
+        : g));
+  }, []);
+
+  return { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame, relinkGame };
 }

@@ -28,6 +28,11 @@ interface GameDetailPanelProps {
   // animation and only unmounts this component once it's actually finished.
   onCloseClick:   () => void;
   onMetaRefresh?: () => void;
+  // Fired after "editar metadatos" links this install to a different IGDB
+  // game — lets the caller update every OTHER place this same game shows up
+  // (grid cards, launcher sections, ...) immediately, not just this panel's
+  // own header (which already updates on its own via gameInfo.name below).
+  onGameRelinked?: (game: LocalGame, externalId: string, name: string) => void;
   // Set when this panel is opened for a catalog-tracked "Pendiente" entry
   // that isn't actually a scanned Steam/Epic/... install (no app_id to
   // resolve an igdb_id from) — the real external_id is already known from
@@ -46,7 +51,7 @@ interface GameDetailPanelProps {
   launchOverride?: LocalGame;
 }
 
-export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh, knownExternalId, fallbackCover, launchOverride }: GameDetailPanelProps) {
+export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh, onGameRelinked, knownExternalId, fallbackCover, launchOverride }: GameDetailPanelProps) {
   const t = getT();
   const launchTarget = launchOverride ?? game;
   // Identifies which selection this render is actually showing — used only
@@ -315,7 +320,10 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         <IgdbPickerModal
           game={launchTarget}
           onClose={() => setShowPicker(false)}
-          onPicked={() => onMetaRefresh?.()}
+          onPicked={result => {
+            onMetaRefresh?.();
+            onGameRelinked?.(launchTarget, result.externalId, result.name);
+          }}
         />
       )}
 
