@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGridFlip } from './hooks/useGridFlip';
 import { getT } from '../../i18n/client';
-import type { LocalGame } from '../../lib/tauri';
+import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { useCoverCacheBatch } from './hooks/useCoverCacheBatch';
 import { isInProgressStatus } from '../../lib/constants/media';
@@ -90,15 +90,23 @@ interface LocalMediaSectionProps {
   onSetCatalogSelection: (id: string | null) => void;
   onSetGameSelection: (g: LocalGame | null) => void;
   onOpenPendingSelection: (item: LocalMediaItem, launchGame?: LocalGame) => void;
+  // Same lookup VideojuegosGrid uses for its own GameCards — once a Steam
+  // VN has been linked to a catalog entry (a Steam-ID guess, or a manual
+  // "editar metadatos" pick), its card shows that entry's own title_main
+  // instead of the raw scanned Steam name.
+  catalogMapById?: Map<string, MediaCatalogEntry>;
 }
 
 // Shows the library entries (watching/reading/playing + planning) for a
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, selection, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, selection, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
+
+  const displayNameFor = (g: LocalGame): string | undefined =>
+    g.external_id ? catalogMapById?.get(g.external_id)?.title_main ?? undefined : undefined;
 
   const t = getT();
   const p = t.profile;
@@ -192,9 +200,14 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // entry could actually turn out to already be, so this is a no-op there
   // (steamGames is undefined, buildLibraryStatusEntries never matches).
   const isGameLike = !!steamGames;
-  const catalogMapById = useMemo(
-    () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
-    [mediaRaw],
+  // Falls back to a plain derivation from mediaRaw when the caller doesn't
+  // pass one (kept optional above so this stays a non-breaking addition) —
+  // LocalLibrary's own copy additionally overlays pickedNames (a game just
+  // re-linked via "editar metadatos", before its real media_catalog row —
+  // see IgdbPickerModal — has actually round-tripped back through here).
+  const resolvedCatalogMapById = useMemo(
+    () => catalogMapById ?? new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
+    [catalogMapById, mediaRaw],
   );
   type SectionEntry = { kind: 'catalog'; item: LocalMediaItem; launchGame?: LocalGame } | { kind: 'steam'; game: LocalGame };
   // A library-only VN entry gets one more chance to resolve to a real (but
@@ -203,7 +216,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // catalogGameLinking.ts) — instead of unconditionally staying a passive
   // catalog card just because steamGameMatch (identity-only) missed it.
   const toEntries = (catalogItems: LocalMediaItem[], games: LocalGame[]): SectionEntry[] => {
-    const linked = buildLibraryStatusEntries(catalogItems, steamGames ?? [], catalogMapById);
+    const linked = buildLibraryStatusEntries(catalogItems, steamGames ?? [], resolvedCatalogMapById);
     return [
       ...linked.map((e): SectionEntry => e.kind === 'game' ? { kind: 'steam', game: e.game } : { kind: 'catalog', item: e.item, launchGame: e.launchGame }),
       ...games.map(game => ({ kind: 'steam' as const, game })),
@@ -243,7 +256,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
       ...platformSections,
     ].filter(s => s.entries.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, catalogMapById]);
+  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, resolvedCatalogMapById]);
 
   // One bulk exists-check for every catalog card this grid is about to
   // render, instead of each LocalMediaCard racing its own get_cached_cover
@@ -298,7 +311,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         onClick={i => isGameLike ? onOpenPendingSelection(i, entry.launchGame) : onSetCatalogSelection(i.externalId)}
                       />
                     ) : (
-                      <GameCard key={entry.game.app_id ?? entry.game.name} game={entry.game} coverCache={coverCache ?? {}} onClick={onSetGameSelection} />
+                      <GameCard key={entry.game.app_id ?? entry.game.name} game={entry.game} coverCache={coverCache ?? {}} onClick={onSetGameSelection} displayName={displayNameFor(entry.game)} />
                     ))}
                   </div>
                 </div>

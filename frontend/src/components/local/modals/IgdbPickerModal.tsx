@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbSearchCandidates, igdbForceByIgdbId, saveGameLink, type LocalGame, type IgdbCandidate } from '../../../lib/tauri';
+import {
+  igdbSearchCandidates, igdbForceByIgdbId, saveGameLink, getCatalogEntry, saveCatalogEntry,
+  type LocalGame, type IgdbCandidate, type MediaCatalogEntry,
+} from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import { useDebouncedCallback } from '../../../lib/shared/useDebouncedCallback';
 
@@ -64,6 +67,26 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
       const linkKey = game.app_id ?? game.install_path ?? game.name;
       const externalId = `game:${candidate.id}`;
       await saveGameLink(game.launcher, linkKey, externalId).catch(console.error);
+      // Without this, the corrected name only ever lived in memory
+      // (LocalLibrary's own pickedNames override) — a real reload re-read
+      // media_catalog from scratch, found no row for this external_id (one
+      // only ever gets created by visiting the game's own /media page), and
+      // every card fell straight back to the raw scanned name (a ROM's own
+      // messy filename, most visibly). Fetches whatever's already on file
+      // for this id first and overlays just the identity fields this pick
+      // actually determines — a blind save here would otherwise blow away
+      // synposis/genres/etc. an existing row already has (save_catalog_entry
+      // does a full row REPLACE, not a merge).
+      const existing = await getCatalogEntry(externalId).catch(() => null);
+      const catalogEntry: MediaCatalogEntry = existing
+        ? { ...existing, title_main: candidate.name, cover_url: candidate.cover_url || existing.cover_url }
+        : {
+            id: '', external_id: externalId, type: 'game',
+            title_main: candidate.name, cover_url: candidate.cover_url || null,
+            release_year: candidate.year > 0 ? candidate.year : null,
+            created_at: '', updated_at: '',
+          };
+      await saveCatalogEntry(catalogEntry).catch(console.error);
       onPicked({ externalId, name: candidate.name });
       onClose();
     } catch (e) {
