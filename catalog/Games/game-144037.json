@@ -1,0 +1,36 @@
+{
+  "media_catalog": {
+    "id": "58327eddfa9c602358327eddfa9c6023",
+    "external_id": "game:144037",
+    "type": "game",
+    "title_main": "Final Fantasy VII Remake: Episode Intermission",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:144037",
+      "related_media_external_id": "game:11169",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "Final Fantasy VII Remake",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobcwt.jpg",
+      "format": null,
+      "release_day": 10,
+      "release_month": 4,
+      "release_year": 2020
+    },
+    {
+      "related_media_external_id": "game:144024",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "Final Fantasy VII Remake Intergrade",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9hh.jpg",
+      "media_external_id": "game:144037"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}

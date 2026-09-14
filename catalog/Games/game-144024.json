@@ -1,0 +1,33 @@
+{
+  "media_catalog": {
+    "id": "1ffd1300824148431ffd130082414843",
+    "external_id": "game:144024",
+    "type": "game",
+    "title_main": "Final Fantasy VII Remake Intergrade",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:11169",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Final Fantasy VII Remake",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobcwt.jpg",
+      "media_external_id": "game:144024"
+    },
+    {
+      "related_media_external_id": "game:144037",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Final Fantasy VII Remake: Episode Intermission",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9kc.jpg",
+      "media_external_id": "game:144024"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
