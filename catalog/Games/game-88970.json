@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "720b8866f19859df720b8866f19859df",
+    "external_id": "game:88970",
+    "type": "game",
+    "title_main": "Final Fantasy IX",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-14T10:46:41.444Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:421",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "Final Fantasy IX",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2unc.jpg",
+      "media_external_id": "game:88970"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
