@@ -170,15 +170,39 @@ export function useGridFlip(containerRef: RefObject<HTMLElement | null>, itemSel
     // Only a genuine WIDTH change (the thing this hook actually exists to
     // smooth) still runs it.
     let lastWidth = container.getBoundingClientRect().width;
+    // ResizeObserver can call back more than once for the same visual frame
+    // (browsers batch differently, and this same render can ALSO have just
+    // run the measure-and-flip pass above from an unrelated state update —
+    // useActivePlatform's IntersectionObserver re-rendering LocalLibrary as
+    // sections cross its threshold mid-transition, notably, which fires
+    // more often the more of the grid is genuinely reflowing at once, i.e.
+    // scrolled deep into a long list). Two independent measure-and-flip
+    // passes landing back-to-back for what's really the same underlying
+    // reflow raced each other's prevRects updates instead of chaining
+    // cleanly, which is what made selecting a game near the bottom (lots of
+    // sections reflowing, lots of IntersectionObserver churn) look chaotic
+    // while the same click up top (barely anything crossing the threshold)
+    // didn't. Coalescing every notification within one animation frame into
+    // a single pass — last one before paint wins — keeps this to at most
+    // one measure-and-flip per frame no matter how many separate triggers
+    // fired into it.
+    let rafId: number | null = null;
     const ro = new ResizeObserver(entries => {
       const width = entries[0]?.contentRect.width ?? container.getBoundingClientRect().width;
       if (width === lastWidth) return;
       lastWidth = width;
-      const current = Array.from(container.querySelectorAll<HTMLElement>(itemSelector));
-      flip(current, prevRects.current);
-      prevRects.current = new Map(current.map(el => [el, measure(el)]));
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const current = Array.from(container.querySelectorAll<HTMLElement>(itemSelector));
+        flip(current, prevRects.current);
+        prevRects.current = new Map(current.map(el => [el, measure(el)]));
+      });
     });
     ro.observe(container);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   });
 }
