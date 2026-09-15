@@ -1733,7 +1733,12 @@
      instead of every field popping in individually as its own async fetch
      resolves. */
   animation: fade-in 0.2s var(--anim-ease);
+  /* Still scrolls (see overflow-y above) — just without a visible
+     scrollbar, same treatment .local-platform-sidebar already gets. */
+  scrollbar-width: none;
 }
+
+.local-game-detail-content::-webkit-scrollbar { display: none; }
 
 .local-game-detail-title {
   font-size: 1.1rem;

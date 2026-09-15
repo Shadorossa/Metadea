@@ -335,6 +335,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         cachedPath={coverCacheHits[entry.item.externalId]}
                         onClick={i => isGameLike ? onOpenPendingSelection(i, entry.launchGame) : onSetCatalogSelection(i.externalId)}
                         onRequestDelete={isGameLike ? (item, x, y) => setDeleteMenu({ kind: 'library', item, x, y }) : undefined}
+                        launchGame={entry.launchGame}
                       />
                     ) : (
                       <GameCard

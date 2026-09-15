@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { IconFolder } from '../ui/icons';
-import { getCachedCover, wrapAssetUrl } from '../../../lib/tauri';
+import { getCachedCover, wrapAssetUrl, type LocalGame } from '../../../lib/tauri';
 import { toMediumCover } from '../../../lib/shared/small-cover';
 import { isReadingType } from '../../../lib/constants/media';
 import { MediaCardShell } from './MediaCardShell';
@@ -20,9 +20,20 @@ interface LocalMediaCardProps {
   // the underlying library entry itself (see deleteLibraryEntry), unlike
   // GameCard's own onRequestDelete which hides a scanned install instead.
   onRequestDelete?: (item: LocalMediaItem, x: number, y: number) => void;
+  // Set only for a season/update/episode-style catalog entry matched to a
+  // real install (see buildLibraryStatusEntries/sourceCatalogOf) — no
+  // launcher tracks a season's playtime separately from its base game, so
+  // item.progress for one of these just sits at whatever was last logged
+  // by hand (usually 0, nothing ever auto-tracks against it). The hours
+  // badge below reads this instead when present, mirroring
+  // GameDetailPanel's own stats row for that exact same season
+  // (launchTarget.playtime_minutes there resolves through this same
+  // matched game) — showing the real, live played time instead of a
+  // stuck-at-zero number that silently disagreed with the panel/editor.
+  launchGame?: LocalGame;
 }
 
-export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete }: LocalMediaCardProps) {
+export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete, launchGame }: LocalMediaCardProps) {
   // Visual novels AND games both log progress as hours played (see
   // getProgressConfig in MediaEditorModal), not a discrete episode/chapter
   // count, so the badge needs its own unit here instead of falling into
@@ -31,9 +42,10 @@ export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete }: L
   // just the Visual Novel tab.
   const isHourBased = item.libraryEntry.type === 'vnovel' || item.libraryEntry.type === 'game';
   const unitLabel = isReadingType(item.libraryEntry.type) ? 'Cap.' : 'Ep.';
+  const effectiveHours = launchGame?.playtime_minutes ? Math.round(launchGame.playtime_minutes / 6) / 10 : item.progress;
   const badgeLabel = item.status === 'planning'
     ? 'Pendiente'
-    : isHourBased ? `${item.progress}h` : `${unitLabel} ${item.progress}`;
+    : isHourBased ? `${effectiveHours}h` : `${unitLabel} ${item.progress}`;
 
   // Catalog covers (AniList/TMDB/IGDB/Open Library) used to be re-fetched
   // straight from their remote CDN on every single load — this caches each

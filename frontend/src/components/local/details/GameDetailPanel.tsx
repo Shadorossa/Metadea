@@ -290,6 +290,13 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     ? (STORE_LABELS[effectiveStoreLink.platform]
       ?? t.local.view_on_store.replace('{platform}', effectiveStoreLink.platform.charAt(0).toUpperCase() + effectiveStoreLink.platform.slice(1)))
     : undefined;
+  // The catalog's own (IGDB-sourced) title, same precedence the header
+  // below already uses — game.name alone is a raw scanned name, which for
+  // a ROM is whatever its dump file happens to be called (region tags,
+  // language codes, release-group junk and all), not the real title. Used
+  // for Discord Rich Presence too, so "Playing X" always shows the actual
+  // work's name instead of that filename.
+  const displayTitle = catalogEntry?.title_main || gameInfo?.name || game.name;
   // A "Pendiente" entry with no real Steam/Epic/... install has nothing to
   // launch — the button still shows (same layout every other game gets)
   // but disabled, instead of silently failing a launchGame call with no
@@ -404,19 +411,21 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           )}
         </div>
         <div className="local-game-detail-backdrop" />
-        {/* Every real install now carries an app_id (synthetic for
-            Xbox/EA/local-folder/ROM, real for Steam/Epic/GOG), so this is
-            no longer launcher-gated — just excludes a "biblioteca del
-            usuario" Pendiente shown here with no actual install behind it
-            (knownExternalId set, game.app_id always undefined for those). */}
-        {!knownExternalId && launchTarget.app_id && (
-          <button className="local-game-detail-edit" onClick={() => setShowPicker(true)} title={t.local.change_igdb_game}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
-        )}
+        {/* Unconditional now — used to require launchTarget.app_id (a real
+            scanned install), which hid this for a plain "Pendiente" with
+            nothing installed at all (a bad auto-match with no way to fix
+            it, e.g. a wrongly-guessed catalog link for a game you don't
+            even have installed) and for install-matched Pendientes alike.
+            IgdbPickerModal's own save path already falls back to
+            game.name as its link key with no app_id present (see its own
+            comment), so there's nothing left this button actually needs a
+            real install for. */}
+        <button className="local-game-detail-edit" onClick={() => setShowPicker(true)} title={t.local.change_igdb_game}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
       </div>
 
       {showPicker && (
@@ -434,7 +443,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         <div className="local-game-detail-sticky-bar">
         <div className="local-game-detail-title-block">
           <div className="local-media-detail-top-row">
-            <p className="local-game-detail-title">{catalogEntry?.title_main || gameInfo?.name || game.name}</p>
+            <p className="local-game-detail-title">{displayTitle}</p>
           </div>
         </div>
 
@@ -463,7 +472,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                       : (banner && banner.startsWith('http'))
                       ? toSmallCover(banner)
                       : undefined;
-                    updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
+                    updateDiscordPresence(`Playing ${displayTitle}`, "", startTime, undefined, coverUrl, displayTitle, "metadea", "Metadea").catch(() => {});
                     // Auto-logs hours on exit (see LocalLibrary's
                     // game-session-ended listener) — keyed by launchTarget's
                     // OWN identity (the source game for a season, never the

@@ -80,6 +80,32 @@ pub async fn save_library_entry(
 ) -> Result<LibraryEntry, String> {
     let conn = state.conn.lock().str_err()?;
 
+    // A bundle (e.g. "Final Fantasy VII Remake Intergrade") is never a real,
+    // separately-playable work of its own — it's just a display grouping
+    // over its actual contents (see the frontend's library-grouping.ts,
+    // which already renders it that way whenever its contents are ALSO
+    // logged individually). Logging the bundle itself directly used to
+    // still silently succeed through this same command regardless — from
+    // the media page's own quick status/rating widget, not just the
+    // editor (which already redirects a bundle's own "editar log" to its
+    // contents' tabs instead of letting the bundle be logged) — leaving a
+    // redundant, phantom "completed" entry alongside the real entries for
+    // its actual contents. Refused here instead, at the one place every
+    // save path funnels through, so no caller (present or future) can
+    // recreate it.
+    let format: Option<String> = conn
+        .query_row(
+            "SELECT format FROM media_catalog WHERE external_id = ?1",
+            [&entry.external_id],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()
+        .str_err()?
+        .flatten();
+    if format.as_deref() == Some("BUNDLE") {
+        return Err(format!("Cannot log a bundle directly: {}", entry.external_id));
+    }
+
     let existing: Option<(String, Option<String>)> = conn
         .query_row(
             "SELECT id, added_at FROM user_library WHERE external_id = ?1",

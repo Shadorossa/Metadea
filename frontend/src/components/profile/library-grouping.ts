@@ -220,14 +220,29 @@ export function groupBundles<T extends { external_id: string; started_at: string
 
     const matchedRootIndices = new Set([...matchedChildIds].map(id => rootIndexOf.get(id)!));
 
+    // The container itself can ALSO be tracked as its own separate library
+    // entry — e.g. "Final Fantasy VII Remake Intergrade" logged directly,
+    // on top of its two actual contents ("Remake" and "Episode
+    // Intermission") each logged on their own — which used to render as
+    // TWO cards: this aggregate (built from the matched children below)
+    // AND that entry's own untouched standalone card, both showing the
+    // same title. Folding it in here as the representative (so this card's
+    // underlying entry is the container's own real tracking, not an
+    // arbitrary child's) and consuming its index too removes the duplicate
+    // — it doesn't join `merged` itself (that's the "+N" flyout's contents,
+    // and the bundle isn't one of its own contents).
+    const containerIdx = rootIndexOf.get(containerId);
+    const containerOwnGroup = containerIdx !== undefined && !consumed.has(containerIdx) ? groups[containerIdx] : undefined;
+
     let merged: T[] = [];
-    let representative: T | null = null;
+    let representative: T | null = containerOwnGroup?.item ?? null;
     for (const idx of matchedRootIndices) {
       const g = groups[idx];
       if (!representative) representative = g.item;
       merged.push(g.item, ...g.grouped);
       consumed.add(idx);
     }
+    if (containerOwnGroup) consumed.add(containerIdx!);
     // Earliest started_at first — same reasoning as groupEditions: `groups`
     // arrives in the page's own "ordenar por" order, unrelated to the
     // sequence the user actually went through these in.

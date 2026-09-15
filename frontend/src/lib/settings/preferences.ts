@@ -13,8 +13,14 @@ export function setAdultContentEnabled(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.showAdultContent, enabled.toString());
 }
 
+// Defaults to ON (grouped) when never touched — a bundle a user has logged
+// directly (e.g. "Final Fantasy VII Remake Intergrade") alongside its own
+// separately-logged contents (Remake, Episode Intermission) is otherwise
+// redundant with them: the same playthrough counted a third time as its
+// own library card. Explicitly turning it off (stored 'false') still wins,
+// for anyone who genuinely wants every piece shown ungrouped.
 export function isLibraryGroupByBundleEnabled(): boolean {
-  return localStorage.getItem(STORAGE_KEYS.libraryGroupByBundle) === 'true';
+  return localStorage.getItem(STORAGE_KEYS.libraryGroupByBundle) !== 'false';
 }
 
 export function setLibraryGroupByBundleEnabled(enabled: boolean): void {

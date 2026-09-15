@@ -582,7 +582,26 @@ export function LibrarySection({
                     p={p}
                     readOnly={readOnly}
                     ratingSlot={dualRatingEnabled ? ratingSlot : 'rating'}
-                    key={bundleMeta?.external_id ?? item.external_id}
+                    // Prefixed for a bundle card specifically (not just
+                    // bundleMeta.external_id bare) — a bundle container can
+                    // ALSO be tracked as its own standalone library entry at
+                    // the same time (e.g. Final Fantasy VII Remake
+                    // Intergrade logged directly, while its children Remake
+                    // + Episode Intermission also form their own aggregate
+                    // bundle card using Intergrade's own catalog id as
+                    // bundleMeta) — the bare id collided with that
+                    // standalone card's own key, and two siblings sharing a
+                    // key is exactly what made React's reconciliation leave
+                    // stale duplicate DOM nodes behind across re-renders
+                    // (worse each time "Agrupar por bundle" was toggled,
+                    // since that's exactly when this list changes shape).
+                    // Still keyed by bundleMeta over `item` for a bundle
+                    // card (not item.external_id, which can itself change
+                    // representative when "Agrupar por edición" toggles) so
+                    // the card's identity — and any hover/flyout state —
+                    // stays stable across that specific toggle instead of
+                    // remounting.
+                    key={bundleMeta ? `bundle:${bundleMeta.external_id}` : item.external_id}
                   />
                 ))}
               </div>

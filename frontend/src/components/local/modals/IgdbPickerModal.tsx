@@ -53,10 +53,18 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
   };
 
   const handlePick = async (candidate: IgdbCandidate) => {
-    if (!game.app_id) return;
     setApplying(candidate.id);
     try {
-      await igdbForceByIgdbId(game.app_id, game.name, candidate.id);
+      // Only meaningful for an actual install — re-downloads/caches the
+      // local info.json this game's OWN readGameInfo(app_id) reads. A
+      // "Pendiente" with nothing installed (no app_id at all — this modal
+      // used to just refuse to pick anything at all for one, via an early
+      // `if (!game.app_id) return`) has no such cache to refresh; the
+      // linking below already falls back to game.name as its key for
+      // exactly this case.
+      if (game.app_id) {
+        await igdbForceByIgdbId(game.app_id, game.name, candidate.id);
+      }
       // Persists the pick as the permanent match for this game — without
       // this, igdbForceByIgdbId only re-downloads the cached cover/banner;
       // the catalog link itself (external_id, used by "Ver en catálogo" and

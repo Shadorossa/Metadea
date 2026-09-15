@@ -238,6 +238,7 @@ export function VideojuegosGrid({
                 cachedPath={coverCacheHits[entry.item.externalId]}
                 onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
                 onRequestDelete={(item, x, y) => setDeleteMenu({ kind: 'library', item, x, y })}
+                launchGame={entry.launchGame}
               />
             ))}
           </div>
@@ -365,6 +366,7 @@ export function VideojuegosGrid({
                     cachedPath={coverCacheHits[entry.item.externalId]}
                     onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
                     onRequestDelete={(item, x, y) => setDeleteMenu({ kind: 'library', item, x, y })}
+                    launchGame={entry.launchGame}
                   />
                 ))}
               </div>
