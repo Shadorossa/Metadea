@@ -8,7 +8,8 @@
     "created_at": "",
     "updated_at": "",
     "blocked_at": null,
-    "format": "VISUAL_NOVEL"
+    "format": "VISUAL_NOVEL",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/sc8ij1.webp"
   },
   "media_relations": [
     {
@@ -22,7 +23,7 @@
     {
       "related_media_external_id": "game:166485",
       "relation_type": "EXPANSION",
-      "type_label": "Content Expansion",
+      "type_label": "Expansion",
       "title": "Soukou Akki Muramasa: Shokuzai-hen",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ssw.jpg",
       "media_external_id": "vnovel:132817"
@@ -30,5 +31,5 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {}
+  "story_arcs": []
 }
