@@ -131,44 +131,55 @@ function flip(items: HTMLElement[], prevRects: Map<Element, { left: number; top:
 export function useGridFlip(containerRef: RefObject<HTMLElement | null>, itemSelector: string, panelOpen = false): void {
   const prevRects = useRef<Map<Element, { left: number; top: number }>>(new Map());
   const prevPanelOpenRef = useRef(panelOpen);
+  // Armed for a short window right after the panel closes — see below.
+  const suppressUntilRef = useRef(0);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const items = Array.from(container.querySelectorAll<HTMLElement>(itemSelector));
-    const suppress = panelOpen && prevPanelOpenRef.current;
+    const panelJustClosed = prevPanelOpenRef.current && !panelOpen;
+    // usePendingLaunchers' own live IGDB lookups can resolve a moment after
+    // the panel closes and move a card from "Planeando" into its launcher
+    // section — a real, legitimate position change, but one the user never
+    // asked for and isn't looking at happen, so animating it right on the
+    // heels of the close transition reads as the SAME cards that just
+    // settled suddenly jumping and re-settling again — 'ya están colocados
+    // donde van' and then an unprompted aggressive flip anyway. This is what
+    // made it specifically show up scrolled deep into the list: more
+    // sections visible near the viewport means more chances one of them has
+    // a pending resolution land in this window. The close transition's OWN
+    // flip (panelJustClosed) still always plays — only renders that follow
+    // it within the grace window get suppressed; prevRects keeps tracking
+    // positions underneath regardless, so once the window lapses the next
+    // real comparison is against accurate data, not a stale pre-window one.
+    const suppress = (panelOpen && prevPanelOpenRef.current)
+      || (!panelJustClosed && Date.now() < suppressUntilRef.current);
     prevPanelOpenRef.current = panelOpen;
 
     if (!suppress) flip(items, prevRects.current);
     prevRects.current = new Map(items.map(el => [el, measure(el)]));
+    if (panelJustClosed) suppressUntilRef.current = Date.now() + 300;
 
-    // The panel's own open/close animates via `transform` (no layout impact
-    // on its own), but its sibling (.local-main-content) claims/releases
-    // that width through an actual `transition: width` so the grid visually
-    // keeps pace with the slide instead of snapping the instant the panel
-    // mounts/unmounts (see that rule's own comment). That means the resize
-    // this hook exists to smooth doesn't happen in the one render captured
-    // above — it happens continuously, frame by frame, over the following
-    // ~300ms of that CSS transition, entirely outside of React. Querying
-    // geometry synchronously right after the class/DOM change above only
-    // ever sees the pre-transition value (the transition's own clock hasn't
-    // ticked yet), so without this, every one of those native reflow frames
-    // would go through completely unsmoothed — cards visibly snapping
-    // between grid columns as the available width crosses each threshold.
-    // Re-running the same invert-play correction on every resize tick keeps
-    // covering for it until the ancestor's own transition settles.
+    // .local-main-content's own width change on panel open/close is
+    // deliberately INSTANT, not CSS-transitioned (see that rule's own
+    // comment) — this hook's flip() above is what plays the 0.3s motion
+    // itself, from one synchronous before/after snapshot, so there's no
+    // multi-frame native transition left for a ResizeObserver to catch up
+    // with mid-flight. What it's still for: a resize this hook's own
+    // render-triggered effect never sees at all — the OS window itself
+    // being resized, which changes layout without any React render firing.
     //
-    // ResizeObserver fires on ANY border-box change, not just the width
-    // change above — `container` is the WHOLE grid (every platform
-    // section), so it also grows taller as the user scrolls and more cards'
-    // covers lazy-load in, or as an IntersectionObserver elsewhere flips a
-    // section into view. That's an ordinary content-height change with
-    // nothing to do with the panel's width transition, but it used to
-    // trigger this exact same "measure everything and flip" pass anyway —
-    // read as a stray card position drift and animated, which is the janky
-    // unrelated-transition-while-scrolling bug this guard exists to kill.
-    // Only a genuine WIDTH change (the thing this hook actually exists to
-    // smooth) still runs it.
+    // ResizeObserver fires on ANY border-box change, though, not just
+    // width — `container` is the WHOLE grid (every platform section), so it
+    // also grows taller as the user scrolls and more cards' covers lazy-
+    // load in, or as an IntersectionObserver elsewhere flips a section into
+    // view. That's an ordinary content-height change with nothing to do
+    // with a real resize, but it used to trigger this exact same "measure
+    // everything and flip" pass anyway — read as a stray card position
+    // drift and animated, which is the janky unrelated-transition-while-
+    // scrolling bug this guard exists to kill. Only a genuine WIDTH change
+    // still runs it.
     let lastWidth = container.getBoundingClientRect().width;
     // ResizeObserver can call back more than once for the same visual frame
     // (browsers batch differently, and this same render can ALSO have just
