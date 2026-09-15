@@ -19,6 +19,7 @@ import {
   createDefaultLog, entryInit, libraryEntryToLog, entryReducer, uiReducer, createEmptyVersionEntry,
 } from '../../lib/media/log-state';
 import { IGDB_TYPES } from '../../lib/constants/media';
+import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { MODAL_CLOSE_TRANSITION_MS } from '../../lib/shared/useClosingTransition';
 import { getRatingName2, getRating2System, getRating2Min, getRating2Max, type RatingSlot } from '../../lib/settings/preferences';
 
@@ -613,15 +614,28 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   }, [data.type, data.parentGame, data.relations]);
 
   const allAvailableEditions = useMemo(() => {
-    const list: { externalId: string; label: string; cover?: string; relationType?: string }[] = [];
+    const list: { externalId: string; label: string; cover?: string; relationType?: string; isBundleChild?: boolean }[] = [];
     for (const rel of (data.relations || [])) {
       if (rel.relationType && ['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK', 'PORT'].includes(rel.relationType)) {
-        const relExternalId = extractExternalIdFromRelationUrl(rel.url);
+        const relExternalId = rel.relatedExternalId ?? extractExternalIdFromRelationUrl(rel.url);
         if (relExternalId && relExternalId !== baseId && !list.some(item => item.externalId === relExternalId)) {
           list.push({ externalId: relExternalId, label: rel.title, cover: rel.cover, relationType: rel.relationType });
         }
       }
     }
+    // A bundle's own "editar" should let the user track each contained work
+    // separately — Final Fantasy VII Remake Intergrade's base game AND its
+    // INTERmission DLC — instead of only the bundle as one lump. Labeled by
+    // its own real title, same as every other edition tab above (the
+    // generic Juego/DLC/Part-N shorthand belongs to NeighborsRow's compact
+    // thumbnail row instead — see bundleLabels.ts).
+    const bundleRels = (data.relations || []).filter(rel => rel.relationType && CONTAINS_RELATION_TYPES.includes(rel.relationType));
+    bundleRels.forEach(rel => {
+      const relExternalId = rel.relatedExternalId ?? extractExternalIdFromRelationUrl(rel.url);
+      if (relExternalId && relExternalId !== baseId && !list.some(item => item.externalId === relExternalId)) {
+        list.push({ externalId: relExternalId, label: rel.title, cover: rel.cover, relationType: rel.relationType, isBundleChild: true });
+      }
+    });
     // Viewing a version's own page: IGDB relations aren't symmetric, so this
     // version rarely lists its own siblings back — add its own tab explicitly
     // so the log switcher looks the same as it does from the base's page.
@@ -630,6 +644,31 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     }
     return list;
   }, [baseId, data.parentGame, externalId, data.titleMain, data.cover, data.relations]);
+
+  // A bundle (Final Fantasy VII Remake Intergrade) is never itself
+  // trackable — there's no meaningful "progress" on the bundle as a lump,
+  // only on what it actually contains — so its own "Original" tab never
+  // renders (see the tab bar below) and, if this editor was opened directly
+  // on one and hasn't already been steered to a specific content tab, this
+  // jumps straight to the first one instead of leaving the user stuck on a
+  // tab that doesn't exist. Only fires while activeLogId is still sitting on
+  // baseId/externalId — a user who already switched tabs (or a reopen that
+  // remembers a previous selection) is left alone.
+  const isBundle = allAvailableEditions.some(ed => ed.isBundleChild);
+  useEffect(() => {
+    if (!isBundle) return;
+    if (entry.activeLogId !== baseId && entry.activeLogId !== externalId) return;
+    const firstChild = allAvailableEditions.find(ed => ed.isBundleChild);
+    if (!firstChild) return;
+    if (!entry.logs[firstChild.externalId]) {
+      dispatchEntry({ type: 'LOAD_LOG', id: firstChild.externalId, entry: createEmptyVersionEntry(firstChild.externalId) });
+    }
+    dispatchEntry({ type: 'SWITCH_LOG', id: firstChild.externalId });
+    // entry.activeLogId/entry.logs intentionally excluded — re-read fresh
+    // above on every run this WOULD fire on, and including them would refire
+    // this every time the user's own tab switch changes activeLogId.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBundle, allAvailableEditions, baseId, externalId]);
 
   // Every id that represents "this same game" for monthly-history purposes —
   // the base game, whichever edition's page is currently open, and every
@@ -852,15 +891,22 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
         {(data.parentGame || allAvailableEditions.length > 0) && (
           <div className="me-versions-tabs">
-            <button
-              type="button"
-              className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
-              onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
-            >
-              {te.original}
-            </button>
+            {/* A bundle is never itself trackable (see isBundle's own
+                comment above) — no "Original" tab for it, only its contents. */}
+            {!isBundle && (
+              <button
+                type="button"
+                className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
+                onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
+              >
+                {te.original}
+              </button>
+            )}
             {allAvailableEditions.map(ed => {
               const isActive = entry.activeLogId === ed.externalId;
+              // ed.label is already each edition's (bundle child included)
+              // own real title — editionTabLabel just shortens it to
+              // whatever follows a colon, same treatment for all of them.
               let tabLabel = editionTabLabel(ed.label, te.edition_default);
 
               // If it's a REMAKE with the same suffix as the original, label it "Remake"
@@ -884,13 +930,22 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   className={`me-version-tab-btn${isActive ? ' active' : ''}`}
                   title={ed.label}
                   onClick={() => {
-                    const baseLogVal = entry.logs[baseId] || createDefaultLog();
-                    const currentVersions = baseLogVal.selectedVersion
-                      ? baseLogVal.selectedVersion.split(',')
-                      : [];
-                    if (!currentVersions.includes(ed.externalId)) {
-                      const nextVersions = [...currentVersions, ed.externalId].join(',');
-                      dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
+                    // Linking to baseId's own selectedVersion only makes
+                    // sense for a real trackable base (editions) — doing it
+                    // for a bundle child would mark the bundle's own
+                    // (permanently untouched, never rendered) log as
+                    // non-empty via hasLink, and handleSave would then
+                    // create a library entry for the bundle itself, which
+                    // is exactly what it's never supposed to have.
+                    if (!ed.isBundleChild) {
+                      const baseLogVal = entry.logs[baseId] || createDefaultLog();
+                      const currentVersions = baseLogVal.selectedVersion
+                        ? baseLogVal.selectedVersion.split(',')
+                        : [];
+                      if (!currentVersions.includes(ed.externalId)) {
+                        const nextVersions = [...currentVersions, ed.externalId].join(',');
+                        dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
+                      }
                     }
                     if (!entry.logs[ed.externalId]) {
                       dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId) });

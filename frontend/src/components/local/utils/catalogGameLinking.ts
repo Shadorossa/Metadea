@@ -83,8 +83,17 @@ export function buildLibraryStatusEntries(
   items: LocalMediaItem[],
   games: LocalGame[],
   catalogMapById: Map<string, MediaCatalogEntry>,
+  pathCache: Record<string, MetaEntry> = {},
 ): StatusEntry[] {
   const gamesByNormalizedName = new Map(games.map(g => [normalizeForMatch(g.name), g]));
+  // A season/update's parent might already be LINKED (via app_id auto-match
+  // or a manual "editar metadatos" pick — see IgdbPickerModal) to its own
+  // installed game under a name IGDB itself doesn't share (Overwatch 2's own
+  // Steam listing is named "Overwatch 2", but IGDB's base game — the one
+  // every season's parent_id actually points to — is titled plain
+  // "Overwatch") — an exact/prefix title match against the PARENT's name
+  // would miss that entirely. Checked first, before any name-based guessing.
+  const gamesByExternalId = new Map(games.flatMap(g => candidateExternalIdsForGame(g, pathCache).map(id => [id, g] as const)));
   const matchTitles = (titles: string[]): LocalGame | undefined =>
     titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
     ?? titles.map(tt => findEditionPrefixMatch(tt, games)).find(Boolean);
@@ -97,11 +106,13 @@ export function buildLibraryStatusEntries(
       const dedupeKey = source.external_id;
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
-      // Exact match first, checked against every title variant (title/
-      // romaji/native) — the safe, unambiguous case — then the strict
-      // prefix+edition-wording fallback, on the source's own title only.
+      // ID match first (see gamesByExternalId above) — falls back to an
+      // exact title match against every variant (title/romaji/native), the
+      // safe, unambiguous case — then the strict prefix+edition-wording
+      // fallback, on the source's own title only.
       const sourceTitles = [source.title_main, source.title_romaji, source.title_native].filter((s): s is string => !!s);
-      const launchGame = sourceTitles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
+      const launchGame = gamesByExternalId.get(source.external_id)
+        ?? sourceTitles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
         ?? (source.title_main ? findEditionPrefixMatch(source.title_main, games) : undefined);
       entries.push({ kind: 'catalog', item, launchGame });
       continue;

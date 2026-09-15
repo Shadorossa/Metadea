@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
-import { removeLocalGame } from '../../lib/tauri';
+import { removeLocalGame, deleteLibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
@@ -110,9 +110,14 @@ interface VideojuegosGridProps {
   catalogMapById: Map<string, MediaCatalogEntry>;
   // Drops a game from useLocalGames' own state immediately (see its own
   // doc comment) — used instead of onRefreshScan for "Eliminar de la
-  // lista" so removing one cover-less card doesn't re-run the whole scan
-  // and flash the scanning placeholder over the entire grid.
+  // lista" so removing one card doesn't re-run the whole scan and flash
+  // the scanning placeholder over the entire grid.
   onRemoveGame: (launcher: string, linkKey: string) => void;
+  // Same "Eliminar de la lista" for a catalog-tracked ("pendiente"/"en
+  // progreso") entry — these aren't scanned installs at all, so there's no
+  // local_hidden_games row to hide; deleting means dropping the underlying
+  // library entry itself (see deleteLibraryEntry).
+  onDeleteLibraryItem: (externalId: string) => void;
 }
 
 // The Videojuegos-only grid — status-grouped sections (En progreso/
@@ -126,6 +131,7 @@ export function VideojuegosGrid({
   currentlyEntries, planningEntries, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
   pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds, gameStatusMatch, catalogMapById, onRemoveGame,
+  onDeleteLibraryItem,
 }: VideojuegosGridProps) {
   const t = getT();
   const displayNameFor = (g: LocalGame): string | undefined =>
@@ -137,10 +143,13 @@ export function VideojuegosGrid({
   // alphabetically while another stays sorted by playtime.
   const [sortMode, setSortMode] = useState<SortMode>('alpha');
 
-  // Right-click "Eliminar de la lista" on a cover-less game card (see
-  // GameCard's own onRequestDelete — a real install just re-scans back, so
-  // this is really only durable for ghost/stale entries and bad matches).
-  const [deleteMenu, setDeleteMenu] = useState<{ x: number; y: number; game: LocalGame } | null>(null);
+  // Right-click "Eliminar de la lista" on any card, game or catalog-tracked
+  // pendiente alike (see GameCard/LocalMediaCard's own onRequestDelete) —
+  // one shared menu, branching on which kind was right-clicked since each
+  // deletes through a completely different path (hide a scanned install vs.
+  // drop a library entry).
+  type DeleteMenu = { x: number; y: number } & ({ kind: 'game'; game: LocalGame } | { kind: 'library'; item: LocalMediaItem });
+  const [deleteMenu, setDeleteMenu] = useState<DeleteMenu | null>(null);
   useEffect(() => {
     if (!deleteMenu) return;
     const close = () => setDeleteMenu(null);
@@ -151,6 +160,10 @@ export function VideojuegosGrid({
     const linkKey = game.app_id ?? game.install_path ?? game.name;
     onRemoveGame(game.launcher, linkKey);
     removeLocalGame(game.launcher, linkKey).catch(console.error);
+    setDeleteMenu(null);
+  };
+  const handleDeleteLibraryItem = (item: LocalMediaItem) => {
+    onDeleteLibraryItem(item.externalId);
     setDeleteMenu(null);
   };
 

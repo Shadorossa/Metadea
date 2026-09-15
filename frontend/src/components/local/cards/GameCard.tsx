@@ -15,10 +15,12 @@ interface GameCardProps {
   // sitting in its own status section or mixed into a launcher section
   // (Steam/Nintendo/...) alongside untracked and pending games.
   status?:    string | null;
-  // Right-click "Eliminar de la lista" — only offered when this card has no
-  // cover (a real install always re-scans back anyway; this is meant for
-  // ghost/stale entries and bad matches, which is exactly what shows up
-  // cover-less — see remove_local_game's own doc comment for why).
+  // Right-click "Eliminar de la lista" — offered on any card, installed or
+  // not, cover or no cover, regardless of launcher. A real install just
+  // re-scans back on the next scan (see remove_local_game's own doc
+  // comment), but the delete option itself shouldn't be limited to
+  // ghost/stale/cover-less entries — the user should be able to remove any
+  // game they see here.
   onRequestDelete?: (game: LocalGame, x: number, y: number) => void;
   // The linked catalog entry's own title, when there is one — takes over
   // from game.name (the raw scanned name, which for a ROM is often a messy
@@ -42,7 +44,7 @@ export function GameCard({ game, coverCache, onClick, status, onRequestDelete, d
         </span>
       )}
       onClick={() => onClick(game)}
-      onContextMenu={!cover && onRequestDelete ? e => {
+      onContextMenu={onRequestDelete ? e => {
         e.preventDefault();
         onRequestDelete(game, e.pageX, e.pageY);
       } : undefined}

@@ -163,6 +163,30 @@ pub async fn remove_local_game(
     Ok(())
 }
 
+#[derive(serde::Serialize)]
+pub struct HiddenGameKey {
+    pub launcher: String,
+    pub link_key: String,
+}
+
+// Exposes local_hidden_games to the frontend — needed because Steam's
+// owned-games API result (steamGetOwnedGames) gets merged into the game list
+// entirely on the frontend, AFTER scan_all_games has already returned and
+// applied this same filter server-side (see steam-merge.ts's `uninstalled`
+// list) — that merge step had no way to know which of those owned-but-
+// uninstalled games the user had already removed via remove_local_game, so
+// they kept reappearing on every rescan/reload despite being hidden.
+#[tauri::command]
+pub async fn get_hidden_local_games(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<HiddenGameKey>, String> {
+    let conn = state.conn.lock().str_err()?;
+    Ok(lookup_hidden_games(&conn)
+        .into_iter()
+        .map(|(launcher, link_key)| HiddenGameKey { launcher, link_key })
+        .collect())
+}
+
 pub fn lookup_hidden_games(conn: &rusqlite::Connection) -> std::collections::HashSet<(String, String)> {
     let mut set = std::collections::HashSet::new();
     if let Ok(mut stmt) = conn.prepare("SELECT launcher, link_key FROM local_hidden_games") {

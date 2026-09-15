@@ -73,3 +73,17 @@ export async function removeLocalGame(launcher: string, linkKey: string): Promis
   return tauriRun('remove_local_game', { launcher, linkKey });
 }
 
+export interface HiddenGameKey {
+  launcher:  string;
+  link_key:  string;
+}
+
+// scan_all_games already filters its own output against this (see
+// remove_local_game's doc comment) — this is only needed by anything that
+// merges MORE games in client-side, after that filtering has already run
+// (see steam-merge.ts's owned-but-uninstalled Steam games), so a removal
+// made there doesn't silently come back on the next scan.
+export async function getHiddenLocalGames(): Promise<HiddenGameKey[]> {
+  return tauriCmd<HiddenGameKey[]>('get_hidden_local_games', []);
+}
+

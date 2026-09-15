@@ -14,9 +14,15 @@ interface LocalMediaCardProps {
   // knows its cover is cached and skips both the IntersectionObserver wait
   // and its own getCachedCover round trip entirely.
   cachedPath?: string;
+  // Right-click "Eliminar de la lista" — only wired by callers that track
+  // library items this way (Videojuegos' Pendientes/En progreso, Visual
+  // Novel), never by e.g. anime/manga grids reusing this same card. Deletes
+  // the underlying library entry itself (see deleteLibraryEntry), unlike
+  // GameCard's own onRequestDelete which hides a scanned install instead.
+  onRequestDelete?: (item: LocalMediaItem, x: number, y: number) => void;
 }
 
-export function LocalMediaCard({ item, onClick, cachedPath }: LocalMediaCardProps) {
+export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete }: LocalMediaCardProps) {
   // Visual novels AND games both log progress as hours played (see
   // getProgressConfig in MediaEditorModal), not a discrete episode/chapter
   // count, so the badge needs its own unit here instead of falling into
@@ -78,6 +84,10 @@ export function LocalMediaCard({ item, onClick, cachedPath }: LocalMediaCardProp
         </span>
       }
       onClick={() => onClick(item)}
+      onContextMenu={onRequestDelete ? e => {
+        e.preventDefault();
+        onRequestDelete(item, e.pageX, e.pageY);
+      } : undefined}
     />
   );
 }

@@ -403,8 +403,8 @@ export default function LocalLibrary() {
     });
     const q = filterName.trim().toLowerCase();
     const filtered = q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
-    return buildLibraryStatusEntries(filtered, Array.isArray(games) ? games : [], catalogMapById);
-  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, games, catalogMapById]);
+    return buildLibraryStatusEntries(filtered, Array.isArray(games) ? games : [], catalogMapById, pathCache);
+  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, games, catalogMapById, pathCache]);
   // Both halves can independently resolve to the SAME installed game — an
   // ID-matched one already sits in statusBuckets.currently, and a catalog
   // Pendiente row with no external_id of its own can separately NAME-match

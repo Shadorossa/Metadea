@@ -1,30 +1,7 @@
 import React from 'react';
 import { IconFolder } from '../ui/icons';
 import type { NeighborInfo } from '../hooks/useMediaNeighbors';
-
-// Bundle children (e.g. The Great Ace Attorney Chronicles' two episodes)
-// label as "Part I"/"Part II" instead of their own full title — a bundle's
-// own cover/title already names it, so re-printing e.g. "The Great Ace
-// Attorney 2: Resolve" in full under a 64px thumbnail just wraps into an
-// unreadable mess.
-const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-function toRoman(n: number): string {
-  return ROMAN_NUMERALS[n - 1] ?? String(n);
-}
-
-// "Part I"/"Part II" only reads right for an actually-episodic bundle —
-// once one of the children is an add-on (Final Fantasy VII Remake
-// Intergrade bundling the base game with its INTERmission DLC), the same
-// numbering just reads as an arbitrary order instead of naming what each
-// piece actually is. Falls back to the Part-numbering scheme unless at
-// least one child's own format says it's an add-on, so a real episodic
-// bundle (no such format present) is untouched.
-const EXPANSION_FORMATS: Record<string, string> = { DLC: 'DLC', EXPANSION: 'Expansión' };
-
-function bundleChildLabel(child: NeighborInfo, index: number, hasExpansion: boolean): string {
-  if (!hasExpansion) return `Part ${toRoman(index + 1)}`;
-  return (child.format && EXPANSION_FORMATS[child.format]) || 'Juego';
-}
+import { bundleChildLabel, hasBundleAddon } from '../../../lib/media/bundleLabels';
 
 function NeighborButton({ neighbor, label, onOpen }: { neighbor: NeighborInfo; label: string; onOpen: (externalId: string) => void }) {
   return (
@@ -53,7 +30,11 @@ interface NeighborsRowProps {
 // class (see each panel's local-media-info-row).
 export function NeighborsRow({ prequel, sequel, bundleChildren, onOpen }: NeighborsRowProps) {
   if (bundleChildren && bundleChildren.length > 0) {
-    const hasExpansion = bundleChildren.some(c => c.format && EXPANSION_FORMATS[c.format]);
+    // Generic "Juego"/"DLC"/"Expansión"-or-Part-N category here — the
+    // media editor's version-tab strip (MediaEditorModal) is where each
+    // child's own real name belongs instead, since that's the menu the
+    // user actually picks a specific work to track from.
+    const hasExpansion = hasBundleAddon(bundleChildren);
     return (
       <div className="local-media-neighbors-row">
         <div className="local-media-neighbors-grid">

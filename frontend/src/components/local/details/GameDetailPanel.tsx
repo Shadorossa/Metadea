@@ -17,6 +17,7 @@ import { parseCSV } from '../../../lib/shared/string-utils';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
 import { openMediaEditor } from '../../../lib/media/openMediaEditor';
+import { resolvePortRedirect } from '../../../lib/media/portRedirect';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
@@ -192,6 +193,21 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const relationsExternalId = catalogEntry?.external_id ?? knownExternalId ?? (gameInfo?.igdb_id ? gameExternalId(gameInfo.igdb_id, false) : undefined);
   const { prequel: prequelInfo, sequel: sequelInfo, bundleChildren } = useMediaNeighbors(relationsExternalId, game.name);
 
+  // "editar"/"ver en catálogo" only — a PORT (Final Fantasy IX's Steam
+  // listing, cataloged as a port of its Remaster) isn't worth tracking on
+  // its own, so both redirect to whatever it's a port of instead (see
+  // resolvePortRedirect's own comment for the blocked_at-skipping walk).
+  // relationsExternalId itself stays untouched — the neighbor row above
+  // still reflects the port's own (already base-aware, single-hop)
+  // prequel/sequel resolution, a separate concern from this one.
+  const [editTargetId, setEditTargetId] = useState<string | undefined>(relationsExternalId);
+  useEffect(() => {
+    if (!relationsExternalId) { setEditTargetId(undefined); return; }
+    let cancelled = false;
+    resolvePortRedirect(relationsExternalId).then(id => { if (!cancelled) setEditTargetId(id); });
+    return () => { cancelled = true; };
+  }, [relationsExternalId]);
+
   // Identity (banner/cover, metadata) always stays `game`'s own — a season
   // shows ITS OWN art/summary/genres ("estás jugando la season de X"), not
   // its source's. Only the actually-playable bits (launch, achievements,
@@ -259,12 +275,50 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const hasDevelopers = !!developers && developers.length > 0;
 
   const handleEdit = () => {
-    if (!relationsExternalId) return;
-    const externalId = relationsExternalId;
+    if (!editTargetId) return;
+    const externalId = editTargetId;
+    // catalogEntry is the PORT's own data — only a valid hint for the editor
+    // when no redirect actually happened; passing it mismatched against a
+    // redirected externalId would flash the wrong title/cover until the
+    // editor's own fetch (keyed correctly off externalId) corrects it.
+    const hintCatalogEntry = externalId === relationsExternalId ? catalogEntry : undefined;
     getLibraryEntry(externalId)
       .then(libraryEntry => {
+        // First time logging this game — seed the editor with what Steam
+        // already knows (playtime, 100%-achievements -> Platino, which in
+        // turn implies Completado) instead of handing the user a blank
+        // form to re-type numbers Metadea already has. Always runs, even
+        // with 0h/no platinum (still worth seeding type/defaults), and
+        // nothing here actually writes to disk until the user clicks
+        // Guardar inside the editor (MediaEditorModal's own handleSave) —
+        // this only seeds the form fields.
+        const hours = launchTarget.playtime_minutes ? Math.round(launchTarget.playtime_minutes / 6) / 10 : 0;
+        const isPlatinum = !!achievements && achievements.total > 0 && achievements.unlocked === achievements.total;
+        let seededEntry = libraryEntry ?? undefined;
+        if (!libraryEntry) {
+          seededEntry = {
+            id: '', user_id: 'local', external_id: externalId,
+            type: hintCatalogEntry?.type ?? 'game',
+            status: isPlatinum ? 'completed' : null,
+            rating: null, rating_2: null,
+            progress: hours, progress_2: 0,
+            minutes_spent: Math.round(hours * 60),
+            is_favorite: 0, is_platinum: isPlatinum ? 1 : 0,
+            tags: null, notes: null, added_at: null, updated_at: null,
+            selected_platform: null, selected_version: null,
+            started_at: null, finished_at: null,
+          };
+        } else if (hours > 0) {
+          // Steam is the ground truth for hours played, even for an entry
+          // logged earlier — a season (Overwatch Season 4) never accrues its
+          // own separate Steam playtime, so its saved log stays stuck at 0h
+          // forever unless the base game's real hours (launchTarget, via
+          // launchOverride) get reapplied here every time. Status/rating/
+          // notes are left as the user's own already-made call.
+          seededEntry = { ...libraryEntry, progress: hours, minutes_spent: Math.round(hours * 60) };
+        }
         window.dispatchEvent(new CustomEvent('open-profile-editor', {
-          detail: { externalId, libraryEntry: libraryEntry ?? undefined, catalogEntry: catalogEntry ?? undefined },
+          detail: { externalId, libraryEntry: seededEntry, catalogEntry: hintCatalogEntry ?? undefined },
         }));
       })
       .catch(console.error);
@@ -425,7 +479,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
                     <IconPencil />
                   </button>
-                  <CatalogLinkIcon externalId={relationsExternalId} />
+                  <CatalogLinkIcon externalId={editTargetId ?? relationsExternalId} />
                 </div>
               )}
             </div>

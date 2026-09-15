@@ -216,7 +216,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // catalogGameLinking.ts) — instead of unconditionally staying a passive
   // catalog card just because steamGameMatch (identity-only) missed it.
   const toEntries = (catalogItems: LocalMediaItem[], games: LocalGame[]): SectionEntry[] => {
-    const linked = buildLibraryStatusEntries(catalogItems, steamGames ?? [], resolvedCatalogMapById);
+    const linked = buildLibraryStatusEntries(catalogItems, steamGames ?? [], resolvedCatalogMapById, pathCache ?? {});
     return [
       ...linked.map((e): SectionEntry => e.kind === 'game' ? { kind: 'steam', game: e.game } : { kind: 'catalog', item: e.item, launchGame: e.launchGame }),
       ...games.map(game => ({ kind: 'steam' as const, game })),

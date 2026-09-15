@@ -1173,6 +1173,15 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           onClose={() => setSearchPopupMode(null)}
           excludeIds={sagaOrder}
           closeOnSelect={false}
+          // A saga legitimately needs to reference an edition-type entry
+          // (Final Fantasy VII's Expanded Edition node, say) as a member in
+          // its own right, not just as a Relaciones/Bundled target — without
+          // this, the regular search's own EXCLUDED_LOCAL_FORMATS/igdb_search
+          // filtering (which hides these everywhere else on purpose, so a
+          // plain "Persona 5" search doesn't get buried in its own editions)
+          // made it impossible to find and add one here at all.
+          includeIgdbExpandedEditions
+          igdbRelationMediaType={igdbRelationMediaType}
         />
       )}
 

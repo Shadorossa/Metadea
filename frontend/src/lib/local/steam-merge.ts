@@ -1,4 +1,4 @@
-import { scanAllGames, steamGetOwnedGames, readEnvConfig } from '../tauri';
+import { scanAllGames, steamGetOwnedGames, readEnvConfig, getHiddenLocalGames } from '../tauri';
 import type { LocalGame, SteamOwnedGame } from '../tauri';
 
 /**
@@ -18,6 +18,17 @@ export async function scanGamesWithSteam(): Promise<LocalGame[]> {
 
   const steamData = await steamGetOwnedGames();
   if (!steamData?.games) return localGames;
+
+  // scanAllGames() above already filters its own output against
+  // local_hidden_games (see remove_local_game) — but the "uninstalled"
+  // Steam games appended below never go through scan_all_games at all,
+  // they're built straight from this Web API response. Without checking
+  // them against the same hidden set here, "Eliminar de la lista" on any
+  // owned-but-uninstalled Steam game silently came right back on the very
+  // next scan/reload.
+  const hidden = await getHiddenLocalGames().catch(() => []);
+  const hiddenKeys = new Set(hidden.map(h => `${h.launcher}:${h.link_key}`));
+  const isHidden = (g: LocalGame) => hiddenKeys.has(`${g.launcher}:${g.app_id ?? g.install_path ?? g.name}`);
 
   const steamGames: SteamOwnedGame[] = steamData.games;
 
@@ -61,7 +72,8 @@ export async function scanGamesWithSteam(): Promise<LocalGame[]> {
       playtime_minutes: s.playtime_forever,
       last_played: s.rtime_last_played ?? undefined,
       installed: false,
-    }));
+    }))
+    .filter(g => !isHidden(g));
 
   return [...enriched, ...uninstalled];
 }

@@ -101,6 +101,7 @@ pub fn run() {
             folders::open_env_folder,
             game_links::save_game_link,
             game_links::remove_local_game,
+            game_links::get_hidden_local_games,
             folders::launch_game,
             folders::start_playtime_session,
             folders::open_external_url,

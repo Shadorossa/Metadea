@@ -3,6 +3,7 @@
 use chrono::Utc;
 use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
+use rusqlite::OptionalExtension;
 use crate::db::ToStringErr;
 use crate::media_catalog::{existing_catalog_ids, reciprocal_relation, format_to_edition_relation, infer_type_from_id, infer_source_from_id};
 
@@ -122,20 +123,38 @@ pub async fn save_media_relations(
         };
 
         if let Some((recip_type, recip_label)) = reciprocal {
-            // REPLACE, not IGNORE: a curator flipping an existing SOURCE<->
-            // ADAPTATION (or PREQUEL<->SEQUEL/EPISODE<->PART_OF/UPDATE<->
-            // PART_OF) pair in the editor must also flip the OTHER side's
-            // already-existing row, not just skip it because a (now-stale,
-            // contradictory) row is already there. IGNORE only ever helped
-            // the very first time a pair was created, when the reciprocal
-            // side genuinely didn't exist yet — from then on it silently
-            // froze that side at whatever it was first written as.
-            tx.execute(
-                "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
-                 VALUES (?1, ?2, ?3, ?4)",
-                rusqlite::params![&rel.related_media_external_id, &media_external_id, recip_type, recip_label],
-            )
-            .str_err()?;
+            // The OTHER side's own tombstone, not media_external_id's (just
+            // checked/rewritten above for ITS OWN direction only) — a
+            // curator can deliberately remove JUST the reciprocal edge (game
+            // 11169's own "Relaciones" no longer lists 427 as its
+            // BASE_EDITION) while this side (427's REMAKE -> 11169) stays,
+            // e.g. because IGDB's own live data still reports it. Blindly
+            // REPLACE-ing here undid that removal every time this side's
+            // relations got re-saved (a live /media?id=427 visit, most
+            // visibly) — exactly the "I removed it and it keeps coming
+            // back" bug this guard exists to close.
+            let recip_deleted: bool = tx.query_row(
+                "SELECT 1 FROM deleted_relations WHERE media_external_id = ?1 AND related_media_external_id = ?2",
+                rusqlite::params![&rel.related_media_external_id, &media_external_id],
+                |_| Ok(true),
+            ).optional().str_err()?.unwrap_or(false);
+
+            if !recip_deleted {
+                // REPLACE, not IGNORE: a curator flipping an existing SOURCE<->
+                // ADAPTATION (or PREQUEL<->SEQUEL/EPISODE<->PART_OF/UPDATE<->
+                // PART_OF) pair in the editor must also flip the OTHER side's
+                // already-existing row, not just skip it because a (now-stale,
+                // contradictory) row is already there. IGNORE only ever helped
+                // the very first time a pair was created, when the reciprocal
+                // side genuinely didn't exist yet — from then on it silently
+                // froze that side at whatever it was first written as.
+                tx.execute(
+                    "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+                     VALUES (?1, ?2, ?3, ?4)",
+                    rusqlite::params![&rel.related_media_external_id, &media_external_id, recip_type, recip_label],
+                )
+                .str_err()?;
+            }
         }
 
         if !existing_ids.contains(&rel.related_media_external_id) {
