@@ -3,7 +3,18 @@ import { getMediaRelationsForEditor } from '../../../lib/tauri';
 import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { normalizeForMatch } from '../utils/folderMatch';
 
-export interface NeighborInfo { externalId: string; title: string; cover: string | null }
+export interface NeighborInfo {
+  externalId: string;
+  title:      string;
+  cover:      string | null;
+  // Bundle children only — the related media's own format (DbMediaRelation.
+  // format), e.g. 'DLC'/'EXPANSION' vs the base 'GAME' — lets NeighborsRow
+  // label a Game+Expansion bundle (Final Fantasy VII Remake Intergrade) as
+  // "Juego"/"Expansión" instead of the generic "Part I"/"Part II" that only
+  // makes sense for an actually-episodic bundle (The Great Ace Attorney
+  // Chronicles' two episodes).
+  format?:    string | null;
+}
 
 export interface MediaNeighbors {
   prequel:        NeighborInfo | null;
@@ -34,7 +45,7 @@ export function useMediaNeighbors(relationsExternalId: string | undefined, selfT
       if (cancelled) return;
       const children = relations.filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
       if (children.length > 0) {
-        setBundleChildren(children.map(c => ({ externalId: c.related_media_external_id, title: c.title, cover: c.cover ?? null })));
+        setBundleChildren(children.map(c => ({ externalId: c.related_media_external_id, title: c.title, cover: c.cover ?? null, format: c.format ?? null })));
         return;
       }
       let prequelRel = relations.find(r => r.relation_type === 'PREQUEL');
