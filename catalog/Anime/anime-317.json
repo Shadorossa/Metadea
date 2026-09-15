@@ -16,10 +16,19 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Final Fantasy VII Remake",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobcwt.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobcwt.jpg"
+    },
+    {
+      "media_external_id": "anime:317",
+      "related_media_external_id": "game:427",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Final Fantasy VII",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2kx2.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Final Fantasy VII (Compilation)"
+  "saga_name": "Final Fantasy VII",
+  "story_arcs": []
 }
