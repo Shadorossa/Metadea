@@ -312,15 +312,24 @@ export function VideojuegosGrid({
                     .library-section-title uses in the newspaper-dark theme,
                     generalized here to every theme so the sort/refresh
                     controls always land at the right end of one continuous
-                    line instead of risking a second row. `layout="size"` on
-                    the rule (only its WIDTH ever changes, its left edge
-                    stays glued to the label) and `layout="position"` on the
-                    controls (their own size never changes, only where they
-                    sit) — see LAUNCHER_LINE_TRANSITION above — so both ease
-                    smoothly to the left together instead of snapping
-                    instantly when the detail panel opens/closes. */}
+                    line instead of risking a second row. Only the rule gets
+                    `layout="size"` (see LAUNCHER_LINE_TRANSITION above) —
+                    ONLY its width, never its position, since "size" mode
+                    ignores position entirely. The controls block stays a
+                    plain div deliberately: an earlier version gave it
+                    `layout="position"` too (so it'd slide left in step with
+                    the rule shrinking), but that tracks BOTH axes — when an
+                    earlier section on the page gains/loses rows (a plain
+                    document-flow consequence of the panel narrowing the
+                    grid, nothing to do with this row itself) and pushes
+                    this whole row up or down, Motion animated THAT
+                    incidental vertical drift too, which read as every
+                    section's controls doing an unrelated little bob. Left
+                    unanimated, they just snap straight to wherever the row
+                    actually ends up — the rule's own width still eases
+                    smoothly either way. */}
                 <motion.div className="local-launcher-title-rule" layout="size" transition={LAUNCHER_LINE_TRANSITION} />
-                <motion.div className="local-launcher-title-controls" layout="position" transition={LAUNCHER_LINE_TRANSITION}>
+                <div className="local-launcher-title-controls">
                   <select
                     className="local-sort-select"
                     value={sortMode}
@@ -336,7 +345,7 @@ export function VideojuegosGrid({
                       <IconRefresh />
                     </button>
                   )}
-                </motion.div>
+                </div>
               </h2>
               <div className="local-games-grid">
                 {sortedEntries.map(entry => entry.kind === 'game' ? (

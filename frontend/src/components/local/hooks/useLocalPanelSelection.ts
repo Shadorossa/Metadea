@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { CategoryId } from '../utils/constants';
 import type { LocalGame } from '../../../lib/tauri';
 import { readLocalUrlState, writeLocalUrlState } from '../utils/urlState';
@@ -108,7 +109,30 @@ export function useLocalPanelSelection(category: CategoryId) {
   }
 
   function setSelection(sel: LocalPanelSelection) {
-    setSelectionRaw(sel);
+    // Opening/closing the detail panel narrows/widens .local-main-content,
+    // which can change the games grid's own column count and therefore how
+    // many ROWS it needs to hold the same cards. When that reflow happens
+    // above (or overlapping) the current scroll position, the page grows or
+    // shrinks there and everything below — including whatever the user was
+    // actually looking at — shifts by that amount, with no accompanying
+    // scroll adjustment: reads as the whole list jumping to a different
+    // spot the instant the panel opens. Same "measure a stable reference
+    // point before the synchronous DOM update, restore its screen position
+    // after" pattern useLocalGames' own removeGame already uses for the
+    // same reason. The reference point is a quarter of the way across the
+    // viewport (not dead center) specifically so it lands on the grid even
+    // once the panel itself is occupying the right half of the screen —
+    // picking a plain center point would sometimes measure the PANEL'S own
+    // content instead, which doesn't move just because the grid beside it
+    // reflowed. A plain switch between two already-open selections never
+    // actually changes the grid's width at all, so this is a no-op there.
+    const anchor = document.elementFromPoint(window.innerWidth * 0.25, window.innerHeight / 2);
+    const beforeTop = anchor?.getBoundingClientRect().top;
+    flushSync(() => setSelectionRaw(sel));
+    if (anchor && beforeTop !== undefined) {
+      const afterTop = anchor.getBoundingClientRect().top;
+      if (afterTop !== beforeTop) window.scrollBy(0, afterTop - beforeTop);
+    }
     writeLocalUrlState(category, encodeSelection(sel));
   }
   function setCatalogSelection(id: string | null) {
