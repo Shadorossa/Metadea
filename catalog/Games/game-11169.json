@@ -11,28 +11,12 @@
   },
   "media_relations": [
     {
-      "media_external_id": "game:11169",
       "related_media_external_id": "game:144037",
       "relation_type": "DLC",
       "type_label": "DLC",
       "title": "Final Fantasy VII Remake: Episode Intermission",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9kc.jpg",
-      "format": null,
-      "release_day": null,
-      "release_month": null,
-      "release_year": null
-    },
-    {
-      "media_external_id": "game:11169",
-      "related_media_external_id": "game:427",
-      "relation_type": "BASE_EDITION",
-      "type_label": "Base Edition",
-      "title": "Final Fantasy VII",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2kx2.jpg",
-      "format": null,
-      "release_day": 7,
-      "release_month": 9,
-      "release_year": 1997
+      "media_external_id": "game:11169"
     },
     {
       "media_external_id": "game:11169",
@@ -40,11 +24,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Final Fantasy VII: Advent Children",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b317-ay0Rw7kxgLVD.jpg",
-      "format": null,
-      "release_day": 14,
-      "release_month": 9,
-      "release_year": 2005
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b317-ay0Rw7kxgLVD.jpg"
     },
     {
       "media_external_id": "game:11169",
@@ -52,11 +32,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Crisis Core: Final Fantasy VII",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1trb.jpg",
-      "format": null,
-      "release_day": 13,
-      "release_month": 9,
-      "release_year": 2007
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1trb.jpg"
     },
     {
       "related_media_external_id": "game:144024",
@@ -69,5 +45,6 @@
   ],
   "characters": [],
   "media_authors": [],
+  "saga_name": "Final Fantasy VII",
   "story_arcs": []
 }

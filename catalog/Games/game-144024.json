@@ -15,7 +15,7 @@
       "relation_type": "EPISODE",
       "type_label": "Episode",
       "title": "Final Fantasy VII Remake",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobcwt.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobcwt.jpg",
       "media_external_id": "game:144024"
     },
     {
@@ -29,5 +29,6 @@
   ],
   "characters": [],
   "media_authors": [],
+  "saga_name": "Final Fantasy VII",
   "story_arcs": []
 }
