@@ -26,6 +26,13 @@ interface MediaCardShellProps {
 // diverging only in how each resolves its own cover and whether a status
 // badge is shown. This is the one shared version; cover resolution and
 // click/selection behavior still live entirely in each caller.
+//
+// Deliberately a plain div, no reflow animation — a Motion `layout="position"`
+// version of this was tried (to smooth cards repositioning when the detail
+// panel resizes the grid) and kept reading as broken (cards overlapping/
+// popping) no matter how it was tuned, so cards now just snap straight to
+// wherever the grid puts them, same as before any of that. Hover scale is
+// plain CSS (.local-game-card:hover) for the same reason.
 export const MediaCardShell = React.forwardRef<HTMLDivElement, MediaCardShellProps>(
   function MediaCardShell({ title, cover, placeholderIcon, badge, onClick, onContextMenu, lazyImage }, ref) {
     return (

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useGridFlip } from './hooks/useGridFlip';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { getT } from '../../i18n/client';
-import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
+import { removeLocalGame, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { useCoverCacheBatch } from './hooks/useCoverCacheBatch';
 import { isInProgressStatus } from '../../lib/constants/media';
@@ -14,7 +14,6 @@ import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus } from './ui/icons';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
-import { type LocalPanelSelection } from './hooks/useLocalPanelSelection';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -77,16 +76,12 @@ interface LocalMediaSectionProps {
   // "vnovel:<id>"/"game:<id>" identity "Ver en catálogo" links to) instead
   // of guessing from the title.
   pathCache?:   Record<string, MetaEntry>;
-  // Single source of truth for "what's open" — owned by LocalLibrary (see
-  // useLocalPanelSelection), which also owns rendering the actual detail
-  // panel (DetailPanelShell) now, outside this component entirely, so it
-  // survives switching away to Videojuegos instead of unmounting/remounting
-  // along with this component's own grid. This component only needs to
-  // know WHETHER something is selected (for the grid's own with-detail
-  // layout and FLIP suppression) and to report clicks upward through the
-  // setters — it doesn't resolve `selection` into an actual item/game or
-  // render anything panel-shaped itself anymore.
-  selection: LocalPanelSelection;
+  // The actual detail panel (DetailPanelShell) is owned and rendered by
+  // LocalLibrary now, outside this component entirely, so it survives
+  // switching away to Videojuegos instead of unmounting/remounting along
+  // with this component's own grid — this only needs to report clicks
+  // upward through the setters, it doesn't resolve a selection into an
+  // actual item/game or render anything panel-shaped itself.
   onSetCatalogSelection: (id: string | null) => void;
   onSetGameSelection: (g: LocalGame | null) => void;
   onOpenPendingSelection: (item: LocalMediaItem, launchGame?: LocalGame) => void;
@@ -95,13 +90,20 @@ interface LocalMediaSectionProps {
   // "editar metadatos" pick), its card shows that entry's own title_main
   // instead of the raw scanned Steam name.
   catalogMapById?: Map<string, MediaCatalogEntry>;
+  // "Eliminar de la lista" — only ever passed (and only ever rendered, see
+  // isGameLike below) for Visual Novel, the one non-Videojuegos category
+  // with its own scanned-install ("steam" kind) and catalog-tracked
+  // ("catalog" kind) entries alike, same as VideojuegosGrid's own pair.
+  // Every other category (anime/manga/...) never gets a delete option here.
+  onRemoveGame?: (launcher: string, linkKey: string) => void;
+  onDeleteLibraryItem?: (externalId: string) => void;
 }
 
 // Shows the library entries (watching/reading/playing + planning) for a
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, selection, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -200,6 +202,31 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // entry could actually turn out to already be, so this is a no-op there
   // (steamGames is undefined, buildLibraryStatusEntries never matches).
   const isGameLike = !!steamGames;
+
+  // "Eliminar de la lista" — same shared game/library-entry menu
+  // VideojuegosGrid uses, only ever wired below when isGameLike (see
+  // onRemoveGame/onDeleteLibraryItem's own doc comments above): anime/manga/
+  // etc. never render a "steam" kind entry at all, and their "catalog" kind
+  // LocalMediaCards never get onRequestDelete passed in the first place.
+  type DeleteMenu = { x: number; y: number } & ({ kind: 'game'; game: LocalGame } | { kind: 'library'; item: LocalMediaItem });
+  const [deleteMenu, setDeleteMenu] = useState<DeleteMenu | null>(null);
+  useEffect(() => {
+    if (!deleteMenu) return;
+    const close = () => setDeleteMenu(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [deleteMenu]);
+  const handleDeleteGame = (game: LocalGame) => {
+    const linkKey = game.app_id ?? game.install_path ?? game.name;
+    onRemoveGame?.(game.launcher, linkKey);
+    removeLocalGame(game.launcher, linkKey).catch(console.error);
+    setDeleteMenu(null);
+  };
+  const handleDeleteLibraryItem = (item: LocalMediaItem) => {
+    onDeleteLibraryItem?.(item.externalId);
+    setDeleteMenu(null);
+  };
+
   // Falls back to a plain derivation from mediaRaw when the caller doesn't
   // pass one (kept optional above so this stays a non-breaking addition) —
   // LocalLibrary's own copy additionally overlays pickedNames (a game just
@@ -264,8 +291,6 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   const coverCacheHits = useCoverCacheBatch(useMemo(() => items.map(i => i.externalId), [items]));
 
   const isEmpty = sections.length === 0;
-  const gridContainerRef = useRef<HTMLDivElement>(null);
-  useGridFlip(gridContainerRef, '.local-game-card', !!selection);
 
   // Just the grid itself now — LocalLibrary owns the surrounding
   // .local-games-container/.local-main-content layout and the single
@@ -273,7 +298,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // Videojuegos (which renders a structurally separate grid, not this
   // component) doesn't unmount/remount the panel along with this grid.
   return (
-        <div className="local-content" ref={gridContainerRef}>
+        <div className="local-content">
           <div className="local-content-header">
             <span className="local-content-count">
               {!loading ? (items.length !== 1 ? (isMounted ? t.local.media_count_plural : '{count} obras en tu biblioteca').replace('{count}', String(items.length)) : (isMounted ? t.local.media_count_singular : '{count} obra en tu biblioteca').replace('{count}', String(items.length))) : ''}
@@ -309,9 +334,17 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         item={entry.item}
                         cachedPath={coverCacheHits[entry.item.externalId]}
                         onClick={i => isGameLike ? onOpenPendingSelection(i, entry.launchGame) : onSetCatalogSelection(i.externalId)}
+                        onRequestDelete={isGameLike ? (item, x, y) => setDeleteMenu({ kind: 'library', item, x, y }) : undefined}
                       />
                     ) : (
-                      <GameCard key={entry.game.app_id ?? entry.game.name} game={entry.game} coverCache={coverCache ?? {}} onClick={onSetGameSelection} displayName={displayNameFor(entry.game)} />
+                      <GameCard
+                        key={entry.game.app_id ?? entry.game.name}
+                        game={entry.game}
+                        coverCache={coverCache ?? {}}
+                        onClick={onSetGameSelection}
+                        displayName={displayNameFor(entry.game)}
+                        onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
+                      />
                     ))}
                   </div>
                 </div>
@@ -331,6 +364,23 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                 <IconPlus /> {isMounted ? t.local.add_route : 'Añadir ruta'}
               </button>
             </div>
+          )}
+
+          {deleteMenu && createPortal(
+            <div className="local-context-menu" style={{ top: deleteMenu.y, left: deleteMenu.x }} onClick={e => e.stopPropagation()}>
+              <button
+                type="button"
+                className="local-context-menu-item delete"
+                onClick={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                Eliminar de la lista
+              </button>
+            </div>,
+            document.body,
           )}
         </div>
   );

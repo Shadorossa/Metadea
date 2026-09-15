@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
+import { AnimatePresence } from 'motion/react';
+import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, deleteLibraryEntry, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { IconGame, IconVNovel, IconAnime, IconManga, IconNovel, IconBook, IconComic, IconSeries, IconMovie } from '../local/ui/icons';
 
@@ -19,6 +20,7 @@ import {
   useLocalPanelSelection, resolveCatalogSelection, resolveGameSelection,
   resolvePendingSelection, resolvePendingLaunchGame,
 } from './hooks/useLocalPanelSelection';
+import { useEvenPanelWidth } from './hooks/useEvenPanelWidth';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameDetailPanel }  from './details/GameDetailPanel';
@@ -28,7 +30,6 @@ import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
 import { VideojuegosGrid } from './VideojuegosGrid';
-import { useGridFlip } from './hooks/useGridFlip';
 
 export default function LocalLibrary() {
   const t = getT();
@@ -99,12 +100,6 @@ export default function LocalLibrary() {
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
   const cancelRef = useRef(false);
-  // Smooths the Videojuegos grid's own card repositioning when the detail
-  // panel resizes it — same fix as LocalMediaSection's own grid (see
-  // useGridFlip's own comment for why CSS Grid needs this at all). The
-  // actual useGridFlip call is further down, once selectedGame/
-  // selectedPendingItem (needed for its disabled flag) are resolved.
-  const videojuegosGridRef = useRef<HTMLDivElement>(null);
 
   const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame, relinkGame } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
@@ -146,6 +141,16 @@ export default function LocalLibrary() {
   useEffect(() => {
     window.addEventListener('refresh-profile-library', refetchMedia);
     return () => window.removeEventListener('refresh-profile-library', refetchMedia);
+  }, [refetchMedia]);
+
+  // "Eliminar de la lista" for a catalog-tracked pendiente/en progreso entry
+  // (VideojuegosGrid/LocalMediaSection's own LocalMediaCard) — unlike
+  // removeGame above (an optimistic, purely local removal from useLocalGames'
+  // own state, since a scanned install has no "row" to refetch), there's no
+  // cheap optimistic path here: mediaRaw is a plain snapshot, not something
+  // these grids can locally patch, so this awaits the delete and refetches.
+  const handleDeleteLibraryItem = useCallback((externalId: string) => {
+    deleteLibraryEntry(externalId).then(refetchMedia).catch(console.error);
   }, [refetchMedia]);
 
   // ── Fetch metadata ───────────────────────────────────────────────────────────
@@ -358,17 +363,11 @@ export default function LocalLibrary() {
   // metadata is actually fetched for them, so the identity-based match
   // above can still miss them.
   const pendingGameItems = useLocalMediaItemsByType('game', mediaRaw);
-  // Resolved fresh every render from `selection` — see useLocalPanelSelection.
-  const selectedGame = resolveGameSelection(selection, games);
-  const selectedPendingItem = resolvePendingSelection(selection, pendingGameItems);
-  useGridFlip(videojuegosGridRef, '.local-game-card', !!(selectedGame || selectedPendingItem));
 
-  // Resolved against whichever category is ACTUALLY active — unlike
-  // selectedGame/selectedPendingItem above (always resolved against
-  // Videojuegos' own games/pendingGameItems, correct only because that
-  // JSX below only ever renders while Videojuegos is active), this feeds
-  // the ONE shared DetailPanelShell every category renders through now, so
-  // it needs the right pool regardless of which one is on screen.
+  // Resolved against whichever category is ACTUALLY active (not just
+  // Videojuegos' own games/pendingGameItems) — this feeds the ONE shared
+  // DetailPanelShell every category renders through now, so it needs the
+  // right pool regardless of which one is on screen.
   // activeCategoryItems mirrors what LocalMediaSection computes internally
   // for its own grid (useLocalMediaItems(category, mediaRaw)) — safe to
   // recompute here too since a 'pending'-kind selection was, by definition,
@@ -382,6 +381,13 @@ export default function LocalLibrary() {
   const panelSelectedPendingItem = resolvePendingSelection(selection, activePendingPool);
   const panelSelectedPendingLaunchGame = resolvePendingLaunchGame(selection, activeSteamGamesPool);
   const panelOpen = !!(panelSelectedItem || panelSelectedGame || panelSelectedPendingItem);
+  // Widens the panel by whatever sliver of a column the games grid would
+  // otherwise be left holding empty at the end of each row — see the
+  // hook's own doc comment for why this couldn't just be a fixed panel
+  // width. Applied to BOTH the panel's own width AND .local-main-content's
+  // reserved margin below, synchronously on the same render panelOpen
+  // flips — see .local-main-content's own comment for why that matters.
+  const evenPanelWidth = useEvenPanelWidth(panelOpen);
   const ownedExternalIds = React.useMemo(() => {
     const ids = new Set<string>();
     for (const g of games) {
@@ -544,8 +550,24 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
           />
         )}
 
-        <div className={`local-games-container${panelOpen ? ' with-detail' : ''}`}>
-          <div className="local-main-content">
+        <div className="local-games-container">
+          {/* The panel itself is `position: fixed` now (see
+              .local-game-detail-panel), not a flex sibling here, so it
+              takes no layout space of its own — this reserves that space
+              instead, via a plain margin driven straight off panelOpen on
+              THIS render, in both directions. That's deliberate: the panel
+              used to BE that flex sibling, so closing it only actually
+              freed this space once its own 300ms exit slide finished and
+              AnimatePresence removed it from the tree — which never
+              triggered a re-render over here at all (a sibling's internal
+              state settling doesn't retrigger this component), so the
+              games grid's own reflow (see VideojuegosGrid's launcher-title
+              rule/controls) never got a chance to animate on close, only
+              on open. Reserving the space here instead ties it directly to
+              panelOpen, so both directions change on the exact same render
+              — the panel's own slide is now a purely visual animation
+              layered on top, decoupled from this. */}
+          <div className="local-main-content" style={panelOpen ? { marginRight: evenPanelWidth } : undefined}>
             {LOCAL_MEDIA_TYPE_BY_CATEGORY[activeCategory] ? (
               <LocalMediaSection
                 category={activeCategory}
@@ -559,17 +581,17 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 steamGames={activeCategory === 'visual-novel' ? vnSteamGames : undefined}
                 coverCache={activeCategory === 'visual-novel' ? coverCache : undefined}
                 pathCache={activeCategory === 'visual-novel' ? pathCache : undefined}
-                selection={selection}
                 onSetCatalogSelection={setCatalogSelection}
                 onSetGameSelection={setGameSelection}
                 onOpenPendingSelection={openPendingSelection}
                 catalogMapById={catalogMapById}
+                onRemoveGame={removeGame}
+                onDeleteLibraryItem={handleDeleteLibraryItem}
               />
             ) : (
               /* ── Games view (Videojuegos only — LOCAL_MEDIA_TYPE_BY_CATEGORY
                   covers every other category) ──────────────────────────── */
               <VideojuegosGrid
-                gridRef={videojuegosGridRef}
                 gamesState={gamesState}
                 gamesCount={games.length}
                 rootFolder={routes['videojuegos']}
@@ -594,6 +616,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 gameStatusMatch={gameStatusMatch}
                 catalogMapById={catalogMapById}
                 onRemoveGame={removeGame}
+                onDeleteLibraryItem={handleDeleteLibraryItem}
               />
             )}
           </div>
@@ -607,33 +630,39 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
               this is what actually lets switching to/from Videojuegos stop
               replaying the entrance animation, since previously Videojuegos
               rendered its own entirely separate GameDetailPanel+shell from
-              a structurally different branch of this same ternary. */}
-          {panelOpen && (
-            <DetailPanelShell onClose={clearSelection}>
-              {handleClose => panelSelectedItem ? (
-                <LocalMediaDetailPanel
-                  item={panelSelectedItem}
-                  rootFolder={routes[activeCategory]}
-                  rootEntries={folderFiles}
-                  rootLoading={folderLoading}
-                  onCloseClick={handleClose}
-                  onProgressSaved={refetchMedia}
-                  onRootRefresh={refetchFolder}
-                />
-              ) : (
-                <GameDetailPanel
-                  game={panelSelectedGame ?? { name: panelSelectedPendingItem!.title, launcher: 'local' }}
-                  coverCache={coverCache}
-                  knownExternalId={panelSelectedGame ? undefined : panelSelectedPendingItem!.externalId}
-                  fallbackCover={panelSelectedGame ? undefined : panelSelectedPendingItem!.cover}
-                  launchOverride={panelSelectedGame ? undefined : panelSelectedPendingLaunchGame}
-                  onCloseClick={handleClose}
-                  onMetaRefresh={refreshMeta}
-                  onGameRelinked={onGameRelinked}
-                />
-              )}
-            </DetailPanelShell>
-          )}
+              a structurally different branch of this same ternary.
+              AnimatePresence keeps the shell mounted for exactly as long as
+              its own exit animation takes once panelOpen goes false, instead
+              of DetailPanelShell managing that lifetime itself via a
+              setTimeout — see that component's own doc comment. */}
+          <AnimatePresence>
+            {panelOpen && (
+              <DetailPanelShell onClose={clearSelection} width={evenPanelWidth}>
+                {handleClose => panelSelectedItem ? (
+                  <LocalMediaDetailPanel
+                    item={panelSelectedItem}
+                    rootFolder={routes[activeCategory]}
+                    rootEntries={folderFiles}
+                    rootLoading={folderLoading}
+                    onCloseClick={handleClose}
+                    onProgressSaved={refetchMedia}
+                    onRootRefresh={refetchFolder}
+                  />
+                ) : (
+                  <GameDetailPanel
+                    game={panelSelectedGame ?? { name: panelSelectedPendingItem!.title, launcher: 'local' }}
+                    coverCache={coverCache}
+                    knownExternalId={panelSelectedGame ? undefined : panelSelectedPendingItem!.externalId}
+                    fallbackCover={panelSelectedGame ? undefined : panelSelectedPendingItem!.cover}
+                    launchOverride={panelSelectedGame ? undefined : panelSelectedPendingLaunchGame}
+                    onCloseClick={handleClose}
+                    onMetaRefresh={refreshMeta}
+                    onGameRelinked={onGameRelinked}
+                  />
+                )}
+              </DetailPanelShell>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </>

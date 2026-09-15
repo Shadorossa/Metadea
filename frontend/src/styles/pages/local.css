@@ -323,17 +323,9 @@
   flex: 1;
   min-width: 0;
   padding: 1.5rem 1.25rem;
-  /* No `transition: width` here on purpose — a CSS transition on a
-     layout-affecting property like this one forces the browser to
-     interpolate the actual box size (and therefore reflow every grid card
-     inside it) frame by frame, completely outside of React. useGridFlip
-     measures card positions synchronously the instant this element's width
-     actually changes, so keeping that change instantaneous (not animated
-     at the CSS level) is what lets it capture the true before/after delta
-     in one shot and play it back itself as a `transform`, matching the
-     detail panel's own 0.3s slide duration/easing exactly instead of
-     racing an independent, un-smoothable native reflow against it.
-     See useGridFlip.ts. */
+  /* No `transition: width` here — the games grid inside doesn't animate its
+     own reflow at all (see MediaCardShell.tsx), so this stays an instant
+     snap, same as before any of that was tried. */
 }
 
 /* ── Tab bar (rendered in navbar via portal) ─────────────────────────────────── */
@@ -705,7 +697,19 @@
 
 .local-games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  /* Fixed track size, not minmax(120px, 1fr) — the 1fr max meant every
+     column stretched to fill whatever row width was left over, so fewer
+     columns (the detail panel narrowing .local-main-content) made EVERY
+     remaining card visibly wider, not just relocated. Cards now stay
+     exactly 120px regardless of how many columns fit; the panel
+     opening/closing only ever changes how many fit per row, never their
+     own size. */
+  grid-template-columns: repeat(auto-fill, 120px);
+  /* Any leftover row width (fixed 120px cards essentially never divide the
+     available width evenly) is absorbed by widening the detail panel
+     instead — see useEvenPanelWidth — so cards themselves and the gap
+     between them (`gap` below) never need to stretch to compensate. */
+  justify-content: start;
   gap: 1rem;
 }
 
@@ -1395,12 +1399,23 @@
   display: flex;
   flex: 1;
   min-width: 0;
-  align-items: flex-start; /* required for sticky children */
 }
 
 .local-game-detail-panel {
-  position: sticky;
-  top: 48px;               /* sticks just below the navbar */
+  /* `fixed`, not `sticky`+a flex-sibling slot reserved for it — the panel
+     takes no layout space of its own now; LocalLibrary.tsx reserves that
+     space on .local-main-content directly (a plain margin driven straight
+     off panelOpen) instead of through this element's own presence in the
+     flex row. That's what makes opening and closing reciprocal: closing
+     used to only free the grid's space once THIS element's own 300ms exit
+     slide finished and got removed from the tree, which never re-rendered
+     the (sibling) games grid to notice — the grid's own reflow (see
+     VideojuegosGrid's launcher-title rule/controls) only ever animated on
+     open, snapping instantly on close. Fixed positioning needs no sticky
+     parent behavior to land in the right spot, just top/right below. */
+  position: fixed;
+  top: 48px;               /* sits just below the navbar */
+  right: 0;
   width: 60vw;
   max-width: 860px;
   min-width: 320px;
@@ -1415,13 +1430,14 @@
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  /* Was 1 — let the panel compress whenever the grid beside it needed the
-     room, meaning its own width could visibly shift between two selections
-     even at the same window size (whichever one rendered a wider grid
-     first). Width is already a deterministic vw/px formula that doesn't
-     need to yield space to its sibling at all. */
-  flex-shrink: 0;
-  animation: slide-in-right 0.3s var(--anim-ease);
+  /* Entrance/exit (was a CSS `animation: slide-in-right`/a `--closing`
+     modifier class playing its reverse) is now driven by DetailPanelShell's
+     own motion.div — see that component's doc comment for why: this panel
+     is a persistent instance reused across selections, and the old
+     setTimeout-based close had no way to notice a new selection arriving
+     mid-close, so it could force-close a panel the user had just reopened
+     on a different item. Motion's AnimatePresence ties the exit animation
+     to this element's own actual removal instead of an independent timer. */
   /* The panel itself no longer scrolls — see .local-game-detail-content,
      which owns overflow instead. Sharing one scroll container between the
      full-width header and the content below meant a scrollbar appearing
@@ -1430,16 +1446,9 @@
      aspect-ratio-locked header. Scoping overflow to just the content below
      the header keeps the header's width constant no matter what scrolls. */
   overflow: hidden;
-}
-
-/* Reverse of the entrance animation — see handleClose in
-   LocalMediaDetailPanel.tsx/GameDetailPanel.tsx, which sets this class and
-   only actually unmounts once the animation has had time to finish, instead
-   of onClose removing the panel from the DOM instantly with no visible
-   close. `forwards` keeps it translated off-screen for that final instant
-   rather than snapping back to translateX(0) the moment the animation ends. */
-.local-game-detail-panel--closing {
-  animation: slide-out-right 0.3s var(--anim-ease) forwards;
+  /* Above the games grid it now overlaps while sliding in/out (no longer
+     pushed beside it by flex) — below the navbar (z-index: 50). */
+  z-index: 5;
 }
 
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'motion/react';
 import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
-import { removeLocalGame, deleteLibraryEntry } from '../../lib/tauri';
+import { removeLocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
@@ -18,6 +19,17 @@ import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
 // hardcode per section since each one is built from an already-homogeneous
 // status bucket (see LocalLibrary's statusBuckets/buildCatalogStatusEntries).
 interface StatusSection { key: string; title: string; entries: StatusEntry[]; sectionStatus: string }
+
+// Same duration/easing as the detail panel's own slide — each launcher
+// title row's rule/controls (see the "Label left, rule fills the rest"
+// comment below) reflow along with .local-main-content narrowing/widening
+// on every open/close, so animating them at the SAME pace as the panel
+// itself is what actually reads as one coherent motion instead of two
+// unrelated things happening on screen at once. Unlike the games grid
+// (deliberately un-animated — see MediaCardShell.tsx), there's only ever a
+// handful of these rows on screen (one per launcher section), so there's no
+// large-list perf/viewport-culling concern to worry about here.
+const LAUNCHER_LINE_TRANSITION = { duration: 0.3, ease: [0.25, 0, 0.15, 1] as const };
 
 // How a launcher section's mixed installed+pendiente entries are ordered —
 // "biblioteca de Steam" (kind:'game', installed) and "perfil de usuario"
@@ -59,12 +71,18 @@ function sortEntries(entries: StatusEntry[], mode: SortMode, displayNameFor: (g:
   return sorted;
 }
 
-function entryKey(entry: StatusEntry, i: number): string {
-  return entry.kind === 'game' ? `g-${entry.game.app_id ?? entry.game.install_path ?? entry.game.name}` : `c-${entry.item.externalId}-${i}`;
+// No index baked into either branch — sortEntries below reorders this same
+// list every time the sort mode/search filter changes, and a key that
+// shifts when an item's INDEX does (instead of staying tied to the item
+// itself) makes React tear down and remount it as a brand new element
+// rather than recognizing it as the same one that just moved, losing
+// Motion's own layout-animation tracking for it (a hard, un-animated pop to
+// its new spot instead of easing there).
+function entryKey(entry: StatusEntry): string {
+  return entry.kind === 'game' ? `g-${entry.game.app_id ?? entry.game.install_path ?? entry.game.name}` : `c-${entry.item.externalId}`;
 }
 
 interface VideojuegosGridProps {
-  gridRef:       React.RefObject<HTMLDivElement>;
   gamesState:    GamesState;
   gamesCount:    number;
   rootFolder:    string | undefined;
@@ -127,7 +145,7 @@ interface VideojuegosGridProps {
 // state; this only needs the already-resolved data and a handful of
 // callbacks.
 export function VideojuegosGrid({
-  gridRef, gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
+  gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
   currentlyEntries, planningEntries, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
   pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds, gameStatusMatch, catalogMapById, onRemoveGame,
@@ -186,7 +204,7 @@ export function VideojuegosGrid({
   ];
 
   return (
-    <div className="local-content" ref={gridRef}>
+    <div className="local-content">
       <div className="local-content-header">
         <span className="local-content-count">
           {gamesState === 'done' ? (gamesCount !== 1 ? t.local.games_count.replace('{count}', String(gamesCount)) : t.local.game_count.replace('{count}', String(gamesCount))) : ''}
@@ -210,7 +228,7 @@ export function VideojuegosGrid({
                 coverCache={coverCache}
                 onClick={onSelectGame}
                 status={sec.sectionStatus}
-                onRequestDelete={(g, x, y) => setDeleteMenu({ game: g, x, y })}
+                onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
                 displayName={displayNameFor(entry.game)}
               />
             ) : (
@@ -219,6 +237,7 @@ export function VideojuegosGrid({
                 item={entry.item}
                 cachedPath={coverCacheHits[entry.item.externalId]}
                 onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
+                onRequestDelete={(item, x, y) => setDeleteMenu({ kind: 'library', item, x, y })}
               />
             ))}
           </div>
@@ -293,9 +312,15 @@ export function VideojuegosGrid({
                     .library-section-title uses in the newspaper-dark theme,
                     generalized here to every theme so the sort/refresh
                     controls always land at the right end of one continuous
-                    line instead of risking a second row. */}
-                <div className="local-launcher-title-rule" />
-                <div className="local-launcher-title-controls">
+                    line instead of risking a second row. `layout="size"` on
+                    the rule (only its WIDTH ever changes, its left edge
+                    stays glued to the label) and `layout="position"` on the
+                    controls (their own size never changes, only where they
+                    sit) — see LAUNCHER_LINE_TRANSITION above — so both ease
+                    smoothly to the left together instead of snapping
+                    instantly when the detail panel opens/closes. */}
+                <motion.div className="local-launcher-title-rule" layout="size" transition={LAUNCHER_LINE_TRANSITION} />
+                <motion.div className="local-launcher-title-controls" layout="position" transition={LAUNCHER_LINE_TRANSITION}>
                   <select
                     className="local-sort-select"
                     value={sortMode}
@@ -311,25 +336,26 @@ export function VideojuegosGrid({
                       <IconRefresh />
                     </button>
                   )}
-                </div>
+                </motion.div>
               </h2>
               <div className="local-games-grid">
-                {sortedEntries.map((entry, i) => entry.kind === 'game' ? (
+                {sortedEntries.map(entry => entry.kind === 'game' ? (
                   <GameCard
-                    key={entryKey(entry, i)}
+                    key={entryKey(entry)}
                     game={entry.game}
                     coverCache={coverCache}
                     onClick={onSelectGame}
                     status={gameStatusMatch.get(entry.game)}
-                    onRequestDelete={(g, x, y) => setDeleteMenu({ game: g, x, y })}
+                    onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
                     displayName={displayNameFor(entry.game)}
                   />
                 ) : (
                   <LocalMediaCard
-                    key={entryKey(entry, i)}
+                    key={entryKey(entry)}
                     item={entry.item}
                     cachedPath={coverCacheHits[entry.item.externalId]}
                     onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
+                    onRequestDelete={(item, x, y) => setDeleteMenu({ kind: 'library', item, x, y })}
                   />
                 ))}
               </div>
@@ -340,7 +366,11 @@ export function VideojuegosGrid({
 
       {deleteMenu && createPortal(
         <div className="local-context-menu" style={{ top: deleteMenu.y, left: deleteMenu.x }} onClick={e => e.stopPropagation()}>
-          <button type="button" className="local-context-menu-item delete" onClick={() => handleDeleteGame(deleteMenu.game)}>
+          <button
+            type="button"
+            className="local-context-menu-item delete"
+            onClick={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
               <polyline points="3 6 5 6 21 6" />
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
