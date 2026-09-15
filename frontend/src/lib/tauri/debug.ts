@@ -16,12 +16,16 @@ export async function launchGame(
   });
 }
 
-// Fire-and-forget: the Rust side polls for a process under installPath to
-// appear then disappear again, and reports back later via a
-// "game-session-ended" event (see listenGameSessionEnded) — no result here,
-// since a session can take anywhere from minutes to hours to actually end.
-export async function startPlaytimeSession(installPath: string, externalId: string): Promise<void> {
-  return tauriRun('start_playtime_session', { installPath, externalId });
+// Fire-and-forget: the Rust side polls for a process to appear then
+// disappear again, and reports back later via a "game-session-ended" event
+// (see listenGameSessionEnded) — no result here, since a session can take
+// anywhere from minutes to hours to actually end. romPlatform switches what
+// the Rust side actually watches for — installPath (a folder, for a real
+// Steam/Epic/GOG install) vs the platform's own configured emulator
+// executable (installPath is just the ROM file for those, not a folder
+// anything runs from) — see track_playtime_session's own comment.
+export async function startPlaytimeSession(installPath: string, externalId: string, romPlatform?: string | null): Promise<void> {
+  return tauriRun('start_playtime_session', { installPath, externalId, romPlatform: romPlatform ?? null });
 }
 
 export interface GameSessionEndedPayload {

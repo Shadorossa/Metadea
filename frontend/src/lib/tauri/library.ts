@@ -86,7 +86,14 @@ export async function getLibraryEntry(externalId: string): Promise<LibraryEntry 
 export async function addPlaytimeHours(externalId: string, hours: number): Promise<void> {
   const entry = await getLibraryEntry(externalId).catch(() => null);
   if (!entry) return;
-  await saveLibraryEntry({ ...entry, progress: Math.round((entry.progress + hours) * 100) / 100 });
+  const progress = Math.round((entry.progress + hours) * 100) / 100;
+  // Kept in step with progress — MediaEditorModal's own handleSave always
+  // recomputes minutes_spent FROM progress on a manual save, so leaving it
+  // untouched here (progress-only, like before) meant an auto-tracked
+  // session made progress correct but minutes_spent stale until the next
+  // manual save — visible anywhere minutes_spent itself gets read directly
+  // (VideojuegosGrid's own "ordenar por tiempo jugado", say).
+  await saveLibraryEntry({ ...entry, progress, minutes_spent: Math.round(progress * 60) });
 }
 
 export async function deleteLibraryEntry(externalId: string): Promise<void> {

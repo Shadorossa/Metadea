@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
-  type LocalGame, type GameInfo, type SteamAchievement,
+  type LocalGame, type GameInfo, type SteamAchievement, type LibraryEntry,
   updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
   igdbGetGameDetail, getMediaCompanies, readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
@@ -224,6 +224,32 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     resolvePortRedirect(relationsExternalId).then(id => { if (!cancelled) setEditTargetId(id); });
     return () => { cancelled = true; };
   }, [relationsExternalId]);
+
+  // A ROM has no independently-tracked "OS-reported" playtime the way a
+  // Steam/Epic/GOG install does — launchTarget.playtime_minutes stays
+  // undefined for it always (see scan_emulator_roms) — so its own library
+  // entry, the exact same data the media editor itself reads and writes,
+  // is the only real source for "how many hours have I played this." Read
+  // straight from it for ROMs instead (see the stats row below) so both
+  // places always show the identical number, kept fresh by re-reading on
+  // every 'refresh-profile-library' (fired after any library write,
+  // including the auto-track-on-session-end path below and a manual save
+  // from the editor). `progress`, not `minutes_spent` — MediaEditorModal's
+  // own handleSave always recomputes minutes_spent FROM progress, and
+  // addPlaytimeHours (auto-tracking) only ever touches progress too, so
+  // minutes_spent can go stale between saves — progress is what's actually
+  // authoritative.
+  const [romLibraryEntry, setRomLibraryEntry] = useState<LibraryEntry | null>(null);
+  const romTrackingId = editTargetId ?? relationsExternalId;
+  useEffect(() => {
+    setRomLibraryEntry(null);
+    if (!launchTarget.rom_platform || !romTrackingId) return;
+    let cancelled = false;
+    const load = () => { getLibraryEntry(romTrackingId).then(e => { if (!cancelled) setRomLibraryEntry(e); }).catch(() => {}); };
+    load();
+    window.addEventListener('refresh-profile-library', load);
+    return () => { cancelled = true; window.removeEventListener('refresh-profile-library', load); };
+  }, [launchTarget.rom_platform, romTrackingId]);
 
   // Identity (banner/cover, metadata) always stays `game`'s own — a season
   // shows ITS OWN art/summary/genres ("estás jugando la season de X"), not
@@ -455,7 +481,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                         return undefined;
                       };
                       resolveSourceExternalId().then(id => {
-                        if (id) startPlaytimeSession(launchTarget.install_path!, id).catch(() => {});
+                        if (id) startPlaytimeSession(launchTarget.install_path!, id, launchTarget.rom_platform).catch(() => {});
                       });
                     }
                   })
@@ -476,7 +502,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                   </svg>
-                  <span>{formatPlaytime(launchTarget.playtime_minutes)}</span>
+                  <span>{formatPlaytime(launchTarget.rom_platform ? Math.round((romLibraryEntry?.progress ?? 0) * 60) : launchTarget.playtime_minutes)}</span>
                   <span className="local-game-detail-stat-label">{t.local.stat_time}</span>
                 </div>
                 <div className="local-game-detail-stat">
