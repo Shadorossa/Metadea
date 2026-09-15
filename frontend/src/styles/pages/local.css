@@ -1711,7 +1711,16 @@
 
 .local-game-detail-content {
   flex: 1;
-  padding: 1.5rem;
+  /* No top padding — .local-game-detail-sticky-bar owns that space itself
+     now (its own padding-top, see below) instead of this padding being
+     cancelled out by a negative margin on that sticky child. That
+     negative-margin-into-the-parent's-own-padding trick is what left a
+     sliver of the scrollport's top edge sometimes uncovered by the sticky
+     bar's own background once actually stuck — revealing whatever else
+     was scrolling underneath through it while scrolling. Owning the
+     padding directly instead means the sticky bar's box always starts
+     flush at the scrollport's very top with nothing above it left to gap. */
+  padding: 0 1.5rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -1792,9 +1801,22 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  margin: -1.5rem -1.5rem 0;
-  padding: 0 1.5rem 0.25rem;
+  /* Left/right only — cancels .local-game-detail-content's own side
+     padding so this bar's background still spans the full width, same as
+     before. No top margin anymore: this bar owns its own top spacing as
+     padding-top instead (see the padding below and .local-game-detail-
+     content's own updated comment for why). */
+  margin: 0 -1.5rem;
+  padding: 1.5rem 1.5rem 0.25rem;
   background: var(--bg-primary);
+  /* Forces this onto its own compositor layer — without it, WebView2/
+     Chromium can repaint this sticky element's own opaque background a
+     frame late while actively scrolling, letting whatever's directly
+     behind it (the content scrolling underneath) show through as a
+     flickering gap right above the title/play button for that instant.
+     Same fix this app already uses for a related WebView2 repaint quirk
+     elsewhere (see .local-game-cover img's own comment). */
+  transform: translateZ(0);
 }
 
 .local-game-detail-title-block {
