@@ -14,6 +14,7 @@ import { useActivePlatform }    from './hooks/useActivePlatform';
 import { usePendingLaunchers }  from './hooks/usePendingLaunchers';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
+import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame, matchGameStatusByName, type StatusEntry } from './utils/catalogGameLinking';
 import { readLocalUrlState } from './utils/urlState';
 import {
@@ -290,10 +291,31 @@ export default function LocalLibrary() {
         return { titles, entry: e };
       })
       .filter(x => x.titles.length > 0);
+    // A BUNDLE catalog entry can never have a library row of its own
+    // anymore (see save_library_entry's own guard — it's just a display
+    // grouping over its real contents, never a separately-playable work),
+    // so a scanned install linked to one (e.g. a combined "Final Fantasy
+    // VII Remake Intergrade" purchase) always showed completely untracked
+    // here even once every one of its actual parts was finished on its
+    // own. Derived instead, only as a fallback (a real status always wins,
+    // though nothing can ever set one directly on a bundle id itself
+    // now): every CONTAINS/EPISODE child (see sagaTypes) completed makes
+    // the bundle itself read as completed too.
+    const bundleCompletionStatus = (bundleId: string): string | undefined => {
+      if (catalogMapById.get(bundleId)?.format !== 'BUNDLE') return undefined;
+      const childIds = mediaRaw.relations
+        .filter(r => r.media_external_id === bundleId && CONTAINS_RELATION_TYPES.includes(r.relation_type))
+        .map(r => r.related_media_external_id);
+      if (childIds.length === 0) return undefined;
+      return childIds.every(id => byExternalId.get(id)?.status === 'completed') ? 'completed' : undefined;
+    };
     for (const g of Array.isArray(games) ? games : []) {
       const candidateIds = candidateExternalIdsForGame(g, pathCache);
       const matched = candidateIds.map(id => byExternalId.get(id)).find(Boolean);
-      result.set(g, matched?.status ?? matchGameStatusByName(g, gameLibraryEntries));
+      const status = matched?.status
+        ?? matchGameStatusByName(g, gameLibraryEntries)
+        ?? candidateIds.map(bundleCompletionStatus).find(Boolean);
+      result.set(g, status);
     }
     return result;
   }, [games, mediaRaw, pathCache, catalogMapById]);
