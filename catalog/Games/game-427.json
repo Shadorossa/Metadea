@@ -36,14 +36,39 @@
     },
     {
       "media_external_id": "game:427",
-      "related_media_external_id": "anime:317",
+      "related_media_external_id": "game:133236",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Final Fantasy VII Rebirth",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cob9k6.jpg",
+      "format": null,
+      "release_day": 29,
+      "release_month": 2,
+      "release_year": 2024
+    },
+    {
+      "media_external_id": "game:427",
+      "related_media_external_id": "game:404721",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Final Fantasy VII Revelation",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cocbgb.jpg",
+      "format": null,
+      "release_day": 30,
+      "release_month": 6,
+      "release_year": 2027
+    },
+    {
+      "media_external_id": "game:427",
+      "related_media_external_id": "anime:2952",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
-      "title": "Final Fantasy VII: Advent Children",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b317-ay0Rw7kxgLVD.jpg"
+      "title": "Final Fantasy VII: Advent Children Complete",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx2952-9uRKqLWuET33.png"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Final Fantasy VII"
+  "saga_name": "Final Fantasy VII",
+  "story_arcs": []
 }
