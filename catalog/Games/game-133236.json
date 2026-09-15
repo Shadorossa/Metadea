@@ -11,12 +11,16 @@
   },
   "media_relations": [
     {
+      "media_external_id": "game:133236",
       "related_media_external_id": "game:427",
-      "relation_type": "PARENT",
-      "type_label": "Source",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
       "title": "Final Fantasy VII",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2kx2.jpg",
-      "media_external_id": "game:133236"
+      "format": null,
+      "release_day": 7,
+      "release_month": 9,
+      "release_year": 1997
     },
     {
       "media_external_id": "game:133236",
@@ -32,11 +36,11 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Final Fantasy VII Revelation",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cocbgb.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cocbgb.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Final Fantasy VII (Compilation)",
+  "saga_name": "Final Fantasy VII",
   "story_arcs": []
 }
