@@ -41,6 +41,14 @@
       "title": "Final Fantasy VII Remake Intergrade",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9hh.jpg",
       "media_external_id": "game:11169"
+    },
+    {
+      "media_external_id": "game:11169",
+      "related_media_external_id": "anime:2952",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Final Fantasy VII: Advent Children Complete",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx2952-9uRKqLWuET33.png"
     }
   ],
   "characters": [],
