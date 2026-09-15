@@ -678,6 +678,7 @@ export const it = {
     locate_manually: 'Individua manualmente',
     steam_backlog: 'Backlog di Steam',
     not_installed: 'Non installato',
+    no_emulator_configured: 'Nessun emulatore configurato',
     view_on_steam: 'Vedi su Steam',
     view_on_nintendo: 'Vedi su Nintendo',
     view_on_store: 'Vedi su {platform}',

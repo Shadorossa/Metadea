@@ -682,6 +682,7 @@ export const ca = {
     locate_manually: 'Localitza manualment',
     steam_backlog: 'Backlog de Steam',
     not_installed: 'No instal·lat',
+    no_emulator_configured: 'No s\'ha configurat cap emulador',
     view_on_steam: 'Veure a Steam',
     view_on_nintendo: 'Veure a Nintendo',
     view_on_store: 'Veure a {platform}',

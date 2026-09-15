@@ -704,6 +704,7 @@ export const ja = {
     locate_manually: '手動で特定',
     steam_backlog: 'Steamの積みゲー',
     not_installed: '未インストール',
+    no_emulator_configured: 'エミュレーターが設定されていません',
     view_on_steam: 'Steamで見る',
     view_on_nintendo: 'Nintendoで見る',
     view_on_store: '{platform}で見る',

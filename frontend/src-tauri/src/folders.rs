@@ -162,34 +162,50 @@ pub async fn open_external_url(app_handle: tauri::AppHandle, url: String) -> Res
 // the `{ROM}` placeholder (see EmulatorsTab.astro's own field, which shows
 // that exact token as its placeholder text) with the actual ROM path
 // wherever it appears; falls back to just appending the ROM path as the
-// final argument when the user never typed `{ROM}` at all. Quote-aware
-// (double quotes only) so a path with spaces can still be grouped into one
-// argument the same way a shell would.
+// final argument when the user never typed `{ROM}` at all.
+//
+// Tokenizes `launch_args` itself FIRST (quote-aware, so the user can still
+// group their OWN flags), then substitutes rom_path into whichever
+// token(s) contain `{ROM}` — never the other way around. An earlier
+// version built one combined string (`launch_args` with `{ROM}` already
+// replaced by the real path) and tokenized THAT by whitespace instead: a
+// real ROM's filename or folder almost always has spaces in it, and since
+// nothing quoted the substituted path, tokenizing after the fact silently
+// split it into multiple unrelated arguments — the emulator launched, but
+// with a garbled/truncated file argument instead of the real ROM, reading
+// as a generic "unsupported format" dialog rather than actually opening
+// anything. Splitting first means rom_path always lands as exactly one
+// argument (Command::args below doesn't need it quoted at all — each Vec
+// entry is already atomic), no matter how many spaces are in it or
+// whether the user's own template wrapped `{ROM}` in quotes or not.
 fn build_emulator_args(launch_args: &str, rom_path: &str) -> Vec<String> {
-    let substituted = if launch_args.contains("{ROM}") {
-        launch_args.replace("{ROM}", rom_path)
-    } else if launch_args.trim().is_empty() {
-        rom_path.to_string()
-    } else {
-        format!("{} \"{}\"", launch_args, rom_path)
-    };
+    let template = if launch_args.trim().is_empty() { "{ROM}" } else { launch_args };
 
-    let mut args = Vec::new();
+    let mut tokens = Vec::new();
     let mut current = String::new();
     let mut in_quotes = false;
-    for c in substituted.chars() {
+    for c in template.chars() {
         match c {
             '"' => in_quotes = !in_quotes,
             c if c.is_whitespace() && !in_quotes => {
                 if !current.is_empty() {
-                    args.push(std::mem::take(&mut current));
+                    tokens.push(std::mem::take(&mut current));
                 }
             }
             c => current.push(c),
         }
     }
     if !current.is_empty() {
-        args.push(current);
+        tokens.push(current);
+    }
+
+    let has_placeholder = tokens.iter().any(|t| t.contains("{ROM}"));
+    let mut args: Vec<String> = tokens
+        .into_iter()
+        .map(|tok| if tok.contains("{ROM}") { tok.replace("{ROM}", rom_path) } else { tok })
+        .collect();
+    if !has_placeholder {
+        args.push(rom_path.to_string());
     }
     args
 }

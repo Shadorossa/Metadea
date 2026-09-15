@@ -682,6 +682,7 @@ export const fr = {
     locate_manually: 'Localiser manuellement',
     steam_backlog: 'Backlog Steam',
     not_installed: 'Non installé',
+    no_emulator_configured: 'Aucun émulateur configuré',
     view_on_steam: 'Voir sur Steam',
     view_on_nintendo: 'Voir sur Nintendo',
     view_on_store: 'Voir sur {platform}',

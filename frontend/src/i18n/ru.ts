@@ -678,6 +678,7 @@ export const ru = {
     locate_manually: 'Найти вручную',
     steam_backlog: 'Бэклог Steam',
     not_installed: 'Не установлено',
+    no_emulator_configured: 'Эмулятор не настроен',
     view_on_steam: 'Смотреть в Steam',
     view_on_nintendo: 'Смотреть в Nintendo',
     view_on_store: 'Смотреть в {platform}',

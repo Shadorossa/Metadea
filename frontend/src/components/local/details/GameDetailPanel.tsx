@@ -3,7 +3,7 @@ import {
   readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
   type LocalGame, type GameInfo, type SteamAchievement,
   updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
-  igdbGetGameDetail, getMediaCompanies, type MediaCatalogEntry,
+  igdbGetGameDetail, getMediaCompanies, readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import { AchievementCell } from './AchievementCell';
@@ -66,6 +66,13 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
   const [showPicker,    setShowPicker]    = useState(false);
   const [hasLaunched,   setHasLaunched]   = useState(false);
+  // Whether the ROM's own platform (see rom_platform) has an emulator
+  // executable actually configured — a scanned ROM always has an
+  // install_path (see scan_emulator_roms), so canLaunch below is true for
+  // it regardless, and clicking "Jugar" used to just silently fail deep in
+  // launch_game (no emulator configured for X) with nothing shown for it.
+  // null until checked (or when this isn't a ROM at all, the common case).
+  const [emulatorConfigured, setEmulatorConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     return () => {
@@ -94,6 +101,16 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     steamGetPlayerAchievements(Number(launchTarget.app_id)).then(res => { if (!cancelled) setAchievements(res || null); }).catch(() => { if (!cancelled) setAchievements(null); });
     return () => { cancelled = true; };
   }, [launchTarget.app_id, launchTarget.launcher]);
+
+  useEffect(() => {
+    setEmulatorConfigured(null);
+    if (!launchTarget.rom_platform) return;
+    let cancelled = false;
+    readEmulatorsConfig()
+      .then(configs => { if (!cancelled) setEmulatorConfigured(!!configs[launchTarget.rom_platform!]?.executable_path); })
+      .catch(() => { if (!cancelled) setEmulatorConfigured(false); });
+    return () => { cancelled = true; };
+  }, [launchTarget.rom_platform]);
 
   // A "Pendiente" entry with no scanned install anywhere might still be
   // buyable/viewable on some storefront — IGDB's own external_games links
@@ -252,6 +269,12 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // but disabled, instead of silently failing a launchGame call with no
   // app_id/install_path.
   const canLaunch  = !!launchTarget.app_id || !!launchTarget.install_path;
+  // A ROM always has an install_path (canLaunch above is already true for
+  // it), but launching it still needs an actual emulator configured for
+  // its own platform — same "show it, but disabled with an explanation"
+  // treatment as canLaunch itself, instead of the button silently doing
+  // nothing (launch_game's own error was only ever logged to the console).
+  const emulatorMissing = !!launchTarget.rom_platform && emulatorConfigured === false;
   // Same "own identity, not the source's" reasoning as the banner above —
   // the catalog entry's own release date/genres/synopsis (this identity's
   // real data) win over gameInfo (which is actually launchTarget's cached
@@ -393,9 +416,10 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           <div className="local-media-left-col">
             <button
               className="local-game-detail-play"
-              disabled={!canLaunch && !effectiveStoreLink}
-              title={canLaunch || effectiveStoreLink ? undefined : t.local.not_installed}
+              disabled={emulatorMissing || (!canLaunch && !effectiveStoreLink)}
+              title={emulatorMissing ? t.local.no_emulator_configured : (canLaunch || effectiveStoreLink ? undefined : t.local.not_installed)}
               onClick={() => {
+                if (emulatorMissing) return;
                 if (!canLaunch) {
                   // Nothing to launch, but it IS buyable/viewable somewhere
                   // (a real store link, or the Nintendo eShop search
@@ -441,7 +465,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-              {canLaunch ? 'Jugar' : effectiveStoreLinkLabel ?? t.local.not_installed}
+              {emulatorMissing ? t.local.no_emulator_configured : (canLaunch ? 'Jugar' : effectiveStoreLinkLabel ?? t.local.not_installed)}
             </button>
 
             <div className="local-media-divider-line" />
