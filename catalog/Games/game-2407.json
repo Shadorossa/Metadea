@@ -16,7 +16,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Final Fantasy VII Remake",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobcwt.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobcwt.jpg"
     },
     {
       "media_external_id": "game:2407",
@@ -25,9 +25,22 @@
       "type_label": "Sequel",
       "title": "Final Fantasy VII Rebirth",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cob9k6.jpg"
+    },
+    {
+      "media_external_id": "game:2407",
+      "related_media_external_id": "game:205201",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "Crisis Core: Final Fantasy VII - Reunion",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobjb3.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Final Fantasy VII (Compilation)"
+  "saga_name": "Final Fantasy VII",
+  "story_arcs": []
 }

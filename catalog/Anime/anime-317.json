@@ -12,14 +12,31 @@
   "media_relations": [
     {
       "media_external_id": "anime:317",
-      "related_media_external_id": "game:11169",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Final Fantasy VII Remake",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobcwt.jpg"
+      "related_media_external_id": "anime:6152",
+      "relation_type": "SUMMARY",
+      "type_label": "Summary",
+      "title": "Final Fantasy VII: Advent Children - Venice Film Festival Footage",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/6152.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
+    },
+    {
+      "media_external_id": "anime:317",
+      "related_media_external_id": "anime:6151",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Final Fantasy VII: On the Way to a Smile - Episode: Denzel",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/6151.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Final Fantasy VII (Compilation)"
+  "saga_name": "Final Fantasy VII",
+  "story_arcs": []
 }
