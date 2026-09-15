@@ -298,13 +298,18 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     ],
   };
 
-  let emulatorsInitialized = false;
+  // Only the document-level listener REGISTRATION below needs to happen
+  // once — the listeners themselves stay attached across Astro's
+  // client-side navigation (astro:page-load fires again without a real
+  // page reload, and this script's own top-level state — this flag
+  // included — survives that, unlike a hard refresh). Re-fetching
+  // emulatorsData every time this runs is cheap and keeps it from showing
+  // whatever was saved on a PREVIOUS visit instead of what's actually in
+  // the database now.
+  let listenersAttached = false;
   let emulatorsData: Record<string, any> = {};
 
   const initEmulatorsTab = async () => {
-    if (emulatorsInitialized) return;
-    emulatorsInitialized = true;
-
     // Load emulators data from database
     try {
       const { readEmulatorsConfig } = await import('../../lib/tauri');
@@ -314,6 +319,9 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
       console.error('[Init] Failed to load emulators data:', error);
       emulatorsData = {};
     }
+
+    if (listenersAttached) return;
+    listenersAttached = true;
 
     const companySelectorData = {
       nintendo: {
@@ -353,14 +361,24 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
       },
     };
 
-    const platformsContainer = document.getElementById('platforms-selector-container');
-    const platformsSelector = document.getElementById('platforms-selector');
-    const platformsTitle = document.getElementById('platforms-selector-title');
-    const platformsEmpty = document.getElementById('platforms-empty');
-
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.company-tab-btn');
       if (!btn) return;
+
+      // Looked up fresh on every click, not once when this listener was
+      // first attached — this listener itself only ever gets attached once
+      // (see listenersAttached above) and correctly stays working across
+      // Astro's client-side navigation, but the markup it targets gets
+      // re-rendered every time this settings tab is revisited. Closing
+      // over the FIRST visit's nodes meant every visit after that quietly
+      // updated detached elements nobody could see — the click registered
+      // (this handler ran), but nothing changed on screen — until an F5
+      // forced the whole script to re-evaluate from scratch.
+      const platformsContainer = document.getElementById('platforms-selector-container');
+      const platformsSelector = document.getElementById('platforms-selector');
+      const platformsTitle = document.getElementById('platforms-selector-title');
+      const platformsEmpty = document.getElementById('platforms-empty');
+      if (!platformsContainer || !platformsSelector || !platformsTitle || !platformsEmpty) return;
 
       const company = btn.dataset.company;
       const data = companySelectorData[company];
