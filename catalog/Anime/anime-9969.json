@@ -1,0 +1,69 @@
+{
+  "media_catalog": {
+    "id": "47b2010e15b1003b47b2010e15b1003b",
+    "external_id": "anime:9969",
+    "type": "anime",
+    "title_main": "Gintama'",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:9969",
+      "related_media_external_id": "manga:30044",
+      "relation_type": "SOURCE",
+      "type_label": "Source Material",
+      "title": "Gintama",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx30044-vPmoz3vTPvZs.jpg",
+      "format": null,
+      "release_day": 8,
+      "release_month": 12,
+      "release_year": 2003
+    },
+    {
+      "media_external_id": "anime:9969",
+      "related_media_external_id": "anime:20760",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Gintama: Yorinuki Gintama-san on Theater 2D",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx20760-6JlxgXfJh92a.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
+    },
+    {
+      "media_external_id": "anime:9969",
+      "related_media_external_id": "anime:169000",
+      "relation_type": "SUMMARY",
+      "type_label": "Summary",
+      "title": "Gintama on Theater 2D: Baragaki-hen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx169000-LR5Cg0WPsZoj.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
+    },
+    {
+      "media_external_id": "anime:9969",
+      "related_media_external_id": "anime:918",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Gintama",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx918-iOaeBVUn4uK7.jpg"
+    },
+    {
+      "media_external_id": "anime:9969",
+      "related_media_external_id": "anime:15417",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Gintama': Enchousen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx15417-Uc2uNdWEixwi.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Gintama"
+}
