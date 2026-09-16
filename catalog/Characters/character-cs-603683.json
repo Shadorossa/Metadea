@@ -1,0 +1,26 @@
+{
+  "character": {
+    "external_id": "character:cs:603683"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:2059",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:11397",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:12595",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "person:a112627",
+      "role": "voice",
+      "language": "Japanese"
+    }
+  ]
+}
