@@ -9,6 +9,7 @@ import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating } from './library-grouping';
 import { toMediumCover } from '../../lib/shared/small-cover';
 import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
+import { isInProgressStatus } from '../../lib/constants/media';
 
 export const TYPE_ICON = typeIconMap(16);
 
@@ -82,7 +83,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
       setInProgressCover(null);
       return;
     }
-    const inProgressMembers = aggregateMembers.filter(m => m.status === 'in_progress');
+    const inProgressMembers = aggregateMembers.filter(m => isInProgressStatus(m.status) || m.status === 'in_progress');
     if (inProgressMembers.length === 0) {
       setInProgressCover(null);
       return;
