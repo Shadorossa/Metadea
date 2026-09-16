@@ -93,6 +93,7 @@ export async function fetchMediaThemes(rawId: string, force = false): Promise<Me
       artists:     t.artists,
       episodes:    t.episodes,
       video_url:   t.videoUrl,
+      versions:    t.versions ? JSON.stringify(t.versions) : null,
     };
   });
 

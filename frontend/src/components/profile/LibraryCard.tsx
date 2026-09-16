@@ -1,6 +1,6 @@
 // Split out of LibrarySection.tsx: a single library grid cell, plus its private emoji-tag helper.
 import { useEffect, useRef, useState, useMemo, memo } from 'react';
-import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
+import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
 import { getRating2System, getRating2Max, type RatingSlot } from '../../lib/settings/preferences';
@@ -59,11 +59,9 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   // trailing "2nd Season"/"The Final Season" from whichever season happened
   // to become the representative would misleadingly label the fused card.
   const title = hideGroupingUi ? stripSeasonSuffix(rawTitle) : rawTitle;
-  const cover = toMediumCover(bundleMeta?.cover_url ?? meta?.cover_url ?? '');
   const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
   const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
   const badges = tagBadges(item.tags);
-
   const orderedGrouped = useMemo(() =>
     [...grouped].sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? '')),
     [grouped]
@@ -77,6 +75,34 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     bundleMeta ? orderedGrouped : [item, ...orderedGrouped],
     [bundleMeta, orderedGrouped, item]
   );
+
+  const [inProgressCover, setInProgressCover] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hideGroupingUi) {
+      setInProgressCover(null);
+      return;
+    }
+    const inProgressMembers = aggregateMembers.filter(m => m.status === 'in_progress');
+    if (inProgressMembers.length === 0) {
+      setInProgressCover(null);
+      return;
+    }
+    const activeMember = inProgressMembers[inProgressMembers.length - 1];
+    const cachedCover = catalogMap.get(activeMember.external_id)?.cover_url;
+    if (cachedCover) {
+      setInProgressCover(cachedCover);
+      return;
+    }
+    let cancelled = false;
+    getCatalogEntry(activeMember.external_id).then(entry => {
+      if (!cancelled && entry?.cover_url) {
+        setInProgressCover(entry.cover_url);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [hideGroupingUi, aggregateMembers, catalogMap]);
+
+  const cover = toMediumCover(inProgressCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
 
   const customGeneralRating = useMemo(() => {
     if (!hideGroupingUi) return null;

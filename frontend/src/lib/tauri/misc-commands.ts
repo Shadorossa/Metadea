@@ -116,6 +116,7 @@ export interface MediaTheme {
   episodes:    string | null;
   video_url:   string | null;
   preview_url?: string | null;
+  versions?:   string | null;
 }
 
 export async function getMediaThemes(externalId: string): Promise<MediaTheme[]> {

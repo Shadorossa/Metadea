@@ -1173,6 +1173,10 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE story_arc_items ADD COLUMN group_id TEXT", []);
         mark_migration(conn, 61)?;
     }
+    if v < 62 {
+        let _ = conn.execute("ALTER TABLE media_theme ADD COLUMN versions TEXT", []);
+        mark_migration(conn, 62)?;
+    }
 
     Ok(())
 }

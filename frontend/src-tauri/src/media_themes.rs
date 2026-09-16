@@ -19,6 +19,8 @@ pub struct MediaTheme {
     pub episodes:    Option<String>,
     pub video_url:   Option<String>,
     pub preview_url: Option<String>,
+    #[serde(default)]
+    pub versions:    Option<String>,
 }
 
 #[tauri::command]
@@ -31,7 +33,7 @@ pub async fn get_media_themes(
     // alphabetically ('ED' < 'OP'), undoing the fetch-time ordering
     // (animethemes.ts's own sort) the moment this is read back from cache.
     let mut stmt = conn.prepare(
-        "SELECT external_id, slug, theme_type, sequence, song_title, artists, episodes, video_url, preview_url
+        "SELECT external_id, slug, theme_type, sequence, song_title, artists, episodes, video_url, preview_url, versions
          FROM media_theme
          WHERE external_id = ?1
          ORDER BY CASE theme_type WHEN 'OP' THEN 0 ELSE 1 END, sequence ASC, slug ASC"
@@ -47,6 +49,7 @@ pub async fn get_media_themes(
             episodes:    r.get(6)?,
             video_url:   r.get(7)?,
             preview_url: r.get(8)?,
+            versions:    r.get(9)?,
         })
     }).str_err()?;
     Ok(rows.filter_map(|r| r.ok()).collect())
@@ -80,12 +83,12 @@ pub async fn save_media_themes(
     for theme in &themes {
         let preview = theme.preview_url.clone().or_else(|| existing_previews.get(&theme.slug).cloned());
         tx.execute(
-            "INSERT OR REPLACE INTO media_theme (external_id, slug, theme_type, sequence, song_title, artists, episodes, video_url, preview_url)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT OR REPLACE INTO media_theme (external_id, slug, theme_type, sequence, song_title, artists, episodes, video_url, preview_url, versions)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             rusqlite::params![
                 external_id, theme.slug, theme.theme_type, theme.sequence,
                 theme.song_title, theme.artists, theme.episodes, theme.video_url,
-                preview,
+                preview, theme.versions,
             ],
         ).str_err()?;
     }

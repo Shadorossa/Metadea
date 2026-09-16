@@ -210,6 +210,24 @@ function NumberField({ label, value, max, step, disabled, onChange }: {
   );
 }
 
+function formatSeasonTabLabel(title: string, baseTitle?: string): string {
+  if (!title) return '';
+  const colonIdx = title.indexOf(':');
+  if (colonIdx !== -1) {
+    const after = title.slice(colonIdx + 1).trim();
+    if (after.length > 0) return after;
+  }
+  if (baseTitle && baseTitle.trim().length > 2) {
+    const normBase = baseTitle.trim().toLowerCase();
+    const normTitle = title.trim().toLowerCase();
+    if (normTitle.startsWith(normBase)) {
+      const remainder = title.trim().slice(baseTitle.trim().length).replace(/^[\s:\-–—]+/, '').trim();
+      if (remainder.length > 0) return remainder;
+    }
+  }
+  return title;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onDeleted, initialEntry, initialActiveLogId, activeRatingSlot = 'rating' }: Props) {
@@ -1069,9 +1087,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                 >
                   {generalBaseTitle}
                 </button>
+                <span className="me-version-tab-separator">|</span>
                 {animeSeasonChain.map(seasonEntry => {
                   const isActive = entry.activeLogId === seasonEntry.externalId;
                   const sTitle = seasonMetaMap[seasonEntry.externalId]?.title || seasonEntry.title;
+                  const label = formatSeasonTabLabel(sTitle, generalBaseTitle);
                   return (
                     <button
                       key={seasonEntry.externalId}
@@ -1085,7 +1105,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         dispatchEntry({ type: 'SWITCH_LOG', id: seasonEntry.externalId });
                       }}
                     >
-                      {sTitle}
+                      {label}
                     </button>
                   );
                 })}

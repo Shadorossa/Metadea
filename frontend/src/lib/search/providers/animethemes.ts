@@ -17,6 +17,7 @@ interface AnimeThemesVideo {
 }
 
 interface AnimeThemesEntry {
+  version?: number | null; // e.g. 1, 2...
   episodes?: string | null; // e.g. "1-24"
   videos?: AnimeThemesVideo[];
 }
@@ -38,6 +39,12 @@ interface AnimeThemesResponse {
   anime?: AnimeThemesAnime[];
 }
 
+export interface AnimeThemeVersion {
+  version: number;
+  episodes: string | null;
+  videoUrl: string | null;
+}
+
 export interface AnimeThemeSummary {
   slug: string;
   themeType: 'OP' | 'ED';
@@ -46,6 +53,7 @@ export interface AnimeThemeSummary {
   artists: string | null;
   episodes: string | null;
   videoUrl: string | null;
+  versions?: AnimeThemeVersion[];
 }
 
 // Prefers the no-credits Blu-ray release at the highest resolution — the
@@ -72,6 +80,15 @@ export async function fetchAnimeThemes(anilistId: number): Promise<AnimeThemeSum
   return anime.animethemes
     .filter((t): t is AnimeThemesTheme & { type: 'OP' | 'ED' } => t.type === 'OP' || t.type === 'ED')
     .map(theme => {
+      const versions: AnimeThemeVersion[] = (theme.animethemeentries || []).map((e, idx) => {
+        const vid = pickBestVideo(e.videos);
+        return {
+          version: typeof e.version === 'number' && e.version > 0 ? e.version : idx + 1,
+          episodes: e.episodes || null,
+          videoUrl: vid?.link || null,
+        };
+      }).filter(v => !!v.videoUrl);
+
       const entry = theme.animethemeentries?.[0];
       const video = pickBestVideo(entry?.videos);
       const seqMatch = theme.slug.match(/^(?:OP|ED)(\d+)/i);
@@ -86,6 +103,7 @@ export async function fetchAnimeThemes(anilistId: number): Promise<AnimeThemeSum
         artists: theme.song?.artists?.map(a => a.name).filter(Boolean).join(', ') || null,
         episodes: entry?.episodes || null,
         videoUrl: video?.link || null,
+        versions: versions.length > 0 ? versions : undefined,
       };
     })
     .sort((a, b) => (a.themeType === b.themeType ? a.sequence - b.sequence : a.themeType === 'OP' ? -1 : 1));

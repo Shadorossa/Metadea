@@ -377,8 +377,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   // need this state at all: their season list is already sitting on
   // data.seasons (tmdb-mapper.ts), no extra fetch involved.
   const [animeSeasonChain,   setAnimeSeasonChain]   = useState<SagaEntry[]>([]);
-  const [playingTheme,       setPlayingTheme]       = useState<MediaTheme | null>(null);
-  const [playingVideoSrc,    setPlayingVideoSrc]    = useState<string | null>(null);
+  const [playingTheme,          setPlayingTheme]          = useState<MediaTheme | null>(null);
+  const [selectedThemeVersion,  setSelectedThemeVersion]  = useState<number>(1);
+  const [playingVideoSrc,       setPlayingVideoSrc]       = useState<string | null>(null);
   const [playerLoading,      setPlayerLoading]      = useState(false);
   const [playerError,        setPlayerError]        = useState(false);
   const [playerRetryKey,     setPlayerRetryKey]     = useState(0);
@@ -460,6 +461,12 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
       fetchMediaThemes(currentId).then(th => {
         if (!cancelled && th.length > 0) setThemes(th);
       }).catch(() => {});
+      return;
+    }
+
+    if (currentId !== animeSeasonChain[0].externalId) {
+      setEpisodes([]);
+      setThemes([]);
       return;
     }
 
@@ -923,34 +930,55 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
     let cancelled = false;
 
-    getThemeVideoPath(playingTheme.external_id, playingTheme.slug)
-      .then(path => {
-        if (cancelled) return;
-        if (path) {
-          setPlayingVideoSrc(wrapAssetUrl(path));
-        } else if (playingTheme.video_url) {
-          setPlayingVideoSrc(playingTheme.video_url);
-        } else {
-          setPlayingVideoSrc(null);
-          setPlayerLoading(false);
-          setPlayerError(true);
+    let targetVideoUrl = playingTheme.video_url;
+    if (playingTheme.versions) {
+      try {
+        const parsed = JSON.parse(playingTheme.versions);
+        if (Array.isArray(parsed)) {
+          const vObj = parsed.find((v: any) => v.version === selectedThemeVersion) || parsed[0];
+          if (vObj?.videoUrl) targetVideoUrl = vObj.videoUrl;
         }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        if (playingTheme.video_url) {
-          setPlayingVideoSrc(playingTheme.video_url);
-        } else {
-          setPlayingVideoSrc(null);
-          setPlayerLoading(false);
-          setPlayerError(true);
-        }
-      });
+      } catch {}
+    }
+
+    if (selectedThemeVersion === 1) {
+      getThemeVideoPath(playingTheme.external_id, playingTheme.slug)
+        .then(path => {
+          if (cancelled) return;
+          if (path) {
+            setPlayingVideoSrc(wrapAssetUrl(path));
+          } else if (targetVideoUrl) {
+            setPlayingVideoSrc(targetVideoUrl);
+          } else {
+            setPlayingVideoSrc(null);
+            setPlayerLoading(false);
+            setPlayerError(true);
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (targetVideoUrl) {
+            setPlayingVideoSrc(targetVideoUrl);
+          } else {
+            setPlayingVideoSrc(null);
+            setPlayerLoading(false);
+            setPlayerError(true);
+          }
+        });
+    } else {
+      if (targetVideoUrl) {
+        setPlayingVideoSrc(targetVideoUrl);
+      } else {
+        setPlayingVideoSrc(null);
+        setPlayerLoading(false);
+        setPlayerError(true);
+      }
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [playingTheme, playerRetryKey]);
+  }, [playingTheme, playerRetryKey, selectedThemeVersion]);
 
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
   useEffect(() => {
@@ -1203,13 +1231,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   // with it off (or for every other media type), Relacionados is untouched,
   // exactly as it's always been.
   const showsSeasonsTab = data.type === 'anime' && isUnifySeasonsEnabled();
+  const isFirstSeasonInChain = !showsSeasonsTab || animeSeasonChain.length <= 1 || currentId === animeSeasonChain[0].externalId;
   const relatedRelations = showsSeasonsTab
     ? relatedRelationsRaw.filter(r => r.relationType !== 'PREQUEL' && r.relationType !== 'SEQUEL')
     : relatedRelationsRaw;
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
-  const hasEpisodes             = episodes.length > 0;
-  const hasThemes               = themes.length > 0;
+  const hasEpisodes             = isFirstSeasonInChain && episodes.length > 0;
+  const hasThemes               = isFirstSeasonInChain && themes.length > 0;
   const tmdbSeasons             = data.type === 'series' ? (data.seasons ?? []) : [];
   const hasSeasonsTab            = showsSeasonsTab ? animeSeasonChain.length > 1 : tmdbSeasons.length > 0;
   const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasSeasonsTab || hasThemes;
@@ -1277,7 +1306,49 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         const currentThemeIdx = themes.findIndex(t => t.slug === playingTheme.slug);
         const prevTheme = currentThemeIdx > 0 ? themes[currentThemeIdx - 1] : null;
         const nextTheme = currentThemeIdx !== -1 && currentThemeIdx < themes.length - 1 ? themes[currentThemeIdx + 1] : null;
-        const formattedEps = formatThemeEpisodes(playingTheme.episodes, episodeOffset);
+        
+        const themeVersions: Array<{ version: number; episodes: string | null; videoUrl: string | null }> = (() => {
+          if (playingTheme.versions) {
+            try {
+              const parsed = JSON.parse(playingTheme.versions);
+              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            } catch {}
+          }
+          return [{ version: 1, episodes: playingTheme.episodes, videoUrl: playingTheme.video_url }];
+        })();
+
+        const currentVersionObj = themeVersions.find(v => v.version === selectedThemeVersion) || themeVersions[0];
+        const targetId = playingTheme.external_id || currentId;
+
+        const rawEps = (() => {
+          if (currentVersionObj?.episodes) return currentVersionObj.episodes;
+          if (playingTheme.episodes) return playingTheme.episodes;
+          if (playingTheme.theme_type === 'OP') {
+            const seasonEps = episodes.filter(e => (e.external_id || currentId) === targetId && e.episode_number > 0);
+            if (seasonEps.length > 0) {
+              const minEp = seasonEps[0].episode_number;
+              const maxEp = seasonEps[seasonEps.length - 1].episode_number;
+              return minEp === maxEp ? String(minEp) : `${minEp}-${maxEp}`;
+            }
+          }
+          return null;
+        })();
+
+        const formattedEps = formatThemeEpisodes(rawEps, episodeOffset);
+        const themeSeason = (() => {
+          if (animeSeasonChain.length > 0) {
+            const idx = animeSeasonChain.findIndex(s => s.externalId === targetId);
+            if (idx !== -1) {
+              return {
+                seasonIndex: idx + 1,
+                title: animeSeasonChain[idx].title,
+                cover: animeSeasonChain[idx].cover,
+                externalId: animeSeasonChain[idx].externalId,
+              };
+            }
+          }
+          return null;
+        })();
 
         const handleNavigateToThemeEpisodes = (formatted: string) => {
           const match = formatted.match(/\b\d+\b/);
@@ -1378,6 +1449,39 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                     <span className="theme-player-title">{playingTheme.song_title ?? `${playingTheme.theme_type}${playingTheme.sequence}`}</span>
                     {playingTheme.artists && <span className="theme-player-artist">{playingTheme.artists}</span>}
                   </div>
+                  {themeVersions.length > 1 && (
+                    <div className="theme-player-version-tabs">
+                      {themeVersions.map(v => (
+                        <button
+                          key={v.version}
+                          type="button"
+                          className={`theme-player-version-tab${currentVersionObj.version === v.version ? ' active' : ''}`}
+                          onClick={() => {
+                            setSelectedThemeVersion(v.version);
+                            if (v.videoUrl) setPlayingVideoSrc(v.videoUrl);
+                          }}
+                        >
+                          {`v${v.version}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {animeSeasonChain.length > 1 && themeSeason && (
+                    <a
+                      href={`/media?id=${encodeURIComponent(themeSeason.externalId)}`}
+                      className="theme-player-season-card"
+                      title={themeSeason.title}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <div className="theme-player-season-thumb">
+                        {themeSeason.cover && <img src={themeSeason.cover} alt={themeSeason.title} />}
+                      </div>
+                      <div className="theme-player-season-info">
+                        <span className="theme-player-season-badge">{`T${themeSeason.seasonIndex}`}</span>
+                        <span className="theme-player-season-title">{splitTitleAfterColon(themeSeason.title)}</span>
+                      </div>
+                    </a>
+                  )}
                   {formattedEps && (
                     <button
                       type="button"
