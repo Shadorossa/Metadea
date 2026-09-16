@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Translations } from '../../i18n/index';
 import { listOpenProposalPulls, mergePull, closePull, type GitHubPull } from '../../lib/github/api';
 import { openUrlInBrowser } from '../../lib/github/submitCollaborativeProposal';
+import { externalIdFromFilename } from '../../lib/github/catalogPaths';
 import { PrPreviewModal } from './PrPreviewModal';
 import { IconEye, IconExternalLink, IconCheck, IconX } from '../local/ui/icons';
 
@@ -11,15 +12,18 @@ interface Props {
 }
 
 // branch name convention set by submitCollaborativeProposal.ts:
-// `proposal-${externalId.replace(/:/g,'-')}-${username}`
-function externalIdFromBranch(ref: string): string | null {
-  const charMatch = ref.match(/^proposal-character-([a-z0-9]+)-(.+?)-[^-]+$/i);
-  if (charMatch) {
-    return `character:${charMatch[1]}:${charMatch[2]}`;
-  }
-  const match = ref.match(/^proposal-([a-z]+)-(.+?)-[^-]+$/);
-  if (!match) return null;
-  return `${match[1]}:${match[2]}`;
+// `proposal-${externalId.replace(/:/g,'-')}-${username}`. Stripping the
+// *exact known* username (from pr.user.login) instead of guessing where the
+// id ends via regex — a username containing its own hyphens (e.g.
+// "ToniGB-8") made the old lazy-match regex swallow part of the username
+// into the reconstructed id (e.g. "949704-ToniGB" instead of "949704"),
+// which then 404'd looking up a catalog file that never existed.
+function externalIdFromBranch(ref: string, username: string | null | undefined): string | null {
+  if (!username || !ref.startsWith('proposal-')) return null;
+  const suffix = `-${username}`;
+  if (!ref.endsWith(suffix)) return null;
+  const stem = ref.slice('proposal-'.length, ref.length - suffix.length);
+  return stem ? externalIdFromFilename(`${stem}.json`) : null;
 }
 
 import { getT } from '../../i18n/client';
@@ -42,7 +46,7 @@ export function PullRequestList({ token, i18n }: Props) {
     return () => { cancelled = true; };
   }, [token]);
 
-  const previewExternalId = previewPr ? externalIdFromBranch(previewPr.head.ref) : null;
+  const previewExternalId = previewPr ? externalIdFromBranch(previewPr.head.ref, previewPr.user?.login) : null;
 
   const handleAccept = async (pr: GitHubPull) => {
     if (!window.confirm(t.accept_confirm)) return;
@@ -91,7 +95,7 @@ export function PullRequestList({ token, i18n }: Props) {
                 </span>
               </div>
               <div className="pr-list-item-actions">
-                {externalIdFromBranch(pr.head.ref) && (
+                {externalIdFromBranch(pr.head.ref, pr.user?.login) && (
                   <button type="button" className="pr-list-icon-btn" onClick={() => setPreviewPr(pr)} aria-label={t.preview_button} title={t.preview_button}>
                     <IconEye size={16} />
                   </button>

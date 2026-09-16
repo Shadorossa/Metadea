@@ -5,7 +5,12 @@ export interface GitHubPull {
   number: number;
   html_url: string;
   title: string;
-  head: { ref: string };
+  // A contributor without push access to the base repo gets forked+PR'd
+  // instead (see submitCollaborativeProposal.ts's targetRepoOwner) — head.ref
+  // then names a branch that only exists in head.repo (their fork), not in
+  // REPO_OWNER/REPO_NAME. Reading the PR's own proposed content (PrPreviewModal)
+  // must fetch from head.repo.full_name, not assume the base repo.
+  head: { ref: string; repo: { full_name: string } | null };
   user: { login: string } | null;
   created_at: string;
 }
@@ -36,10 +41,13 @@ export async function listOpenProposalPulls(token: string): Promise<GitHubPull[]
   return pulls.filter(pr => pr.head.ref.startsWith('proposal-'));
 }
 
-export async function fetchFileAtRef(token: string, path: string, ref: string): Promise<string> {
+// repoFullName defaults to the base repo — pass a PR's own head.repo.full_name
+// when reading its proposed content (see GitHubPull.head's own doc comment),
+// since a fork-submitted PR's branch only exists there, not in REPO_OWNER/REPO_NAME.
+export async function fetchFileAtRef(token: string, path: string, ref: string, repoFullName = `${REPO_OWNER}/${REPO_NAME}`): Promise<string> {
   const data = await githubFetch<{ content: string }>(
     token,
-    `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}?ref=${encodeURIComponent(ref)}`,
+    `/repos/${repoFullName}/contents/${path}?ref=${encodeURIComponent(ref)}`,
   );
   return decodeURIComponent(escape(atob(data.content)));
 }
