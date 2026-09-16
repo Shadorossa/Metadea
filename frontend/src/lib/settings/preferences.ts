@@ -103,3 +103,20 @@ export function getActiveRatingSlot(): RatingSlot {
 export function setActiveRatingSlot(slot: RatingSlot): void {
   localStorage.setItem(STORAGE_KEYS.libraryActiveRatingSlot, slot);
 }
+
+// ── Unificar temporadas de AniList (Settings > Preferencias) ────────────────
+// Off by default — the untouched state must stay exactly what every AniList
+// season already looks like today (its own library card, its own row in
+// Relacionados via PREQUEL/SEQUEL). Turning this on is what switches an
+// anime's chain of seasons over to the TMDB-style single-entity view: one
+// fused library card (see library-grouping.ts's refineSagaGroups), a
+// "Temporadas" tab on the media page instead of PREQUEL/SEQUEL rows under
+// Relacionados, and hides (never deletes) the SagaViewerModal entry point,
+// which the new tab supersedes while this is on.
+export function isUnifySeasonsEnabled(): boolean {
+  return localStorage.getItem(STORAGE_KEYS.unifySeasonsEnabled) === 'true';
+}
+
+export function setUnifySeasonsEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.unifySeasonsEnabled, enabled.toString());
+}

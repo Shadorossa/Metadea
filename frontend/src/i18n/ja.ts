@@ -629,6 +629,8 @@ export const ja = {
     activity_section: "アクティビティ",
     activity_batch_episodes: "話数を日ごとにまとめる",
     activity_batch_episodes_hint: "同じ日に視聴したエピソードを1つのアクティビティにまとめて表示します。",
+    unify_seasons_enabled: "アニメのシーズンを統合する",
+    unify_seasons_hint: "シーズンで繋がったアニメ(AniList)をライブラリ内で1つの作品としてまとめ、作品ページに「シーズン」タブを表示します。",
     activity_adult_content: "+18コンテンツを表示",
     activity_adult_content_hint: "AniListでのアダルトコンテンツ(アニメ・マンガ)の検索を有効にします。",
     clear_notes_btn: "評価を削除",

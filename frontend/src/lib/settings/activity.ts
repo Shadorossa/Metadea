@@ -1,4 +1,4 @@
-import { isAdultContentEnabled, setAdultContentEnabled } from './preferences';
+import { isAdultContentEnabled, setAdultContentEnabled, isUnifySeasonsEnabled, setUnifySeasonsEnabled } from './preferences';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { byId } from '../shared/dom';
 import { clearAllRatings } from '../tauri/library';
@@ -10,6 +10,15 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
     batchEpisodesCheckbox.checked = localStorage.getItem(STORAGE_KEYS.activityBatchEpisodes) === 'true';
     batchEpisodesCheckbox.addEventListener('change', () => {
       localStorage.setItem(STORAGE_KEYS.activityBatchEpisodes, batchEpisodesCheckbox.checked.toString());
+      showToast();
+    });
+  }
+
+  const unifySeasonsCheckbox = byId<HTMLInputElement>('unify-seasons-enabled');
+  if (unifySeasonsCheckbox) {
+    unifySeasonsCheckbox.checked = isUnifySeasonsEnabled();
+    unifySeasonsCheckbox.addEventListener('change', () => {
+      setUnifySeasonsEnabled(unifySeasonsCheckbox.checked);
       showToast();
     });
   }

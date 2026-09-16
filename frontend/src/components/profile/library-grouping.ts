@@ -454,3 +454,102 @@ export function averageRating(entries: LibraryEntry[], slot: 'rating' | 'rating_
   if (rated.length === 0) return null;
   return rated.reduce((a, b) => a + b, 0) / rated.length;
 }
+
+// "Unificar temporadas" (Settings > Preferencias) — a separate, anime-only
+// pass, not a variant of refineSagaGroups above. That one runs PER STATUS
+// SECTION, after the library's already been split into Viendo/Completado/
+// Planeando/... buckets — fine for editions (a remaster usually shares its
+// original's status), but wrong for seasons: season 1 finished and season 3
+// still airing/unwatched is the normal case, and the two would never even
+// reach the same call to refineSagaGroups since they're filtered into
+// different sections before it runs. This runs once on the WHOLE owned list
+// before that split happens, so a chain spanning several statuses still
+// becomes exactly one card, placed by whichever member is furthest along.
+const SEASON_STATUS_PRIORITY: Record<string, number> = {
+  watching: 0, reading: 0, playing: 0, // "viendo" — an in-progress season always wins
+  planning: 1,
+  paused: 2,
+  dropped: 3,
+  completed: 4, // only wins when every other season is also completed
+};
+
+export interface UnifiedSeasonGroup<T> {
+  item: T;             // earliest release — the card's cover/title/click target
+  grouped: T[];         // every other season
+  titleOverride?: string;
+  // The specific member whose status won — LibrarySection places the card
+  // using THIS one's status/progress (not necessarily `item`'s, since the
+  // earliest season is very often already completed while a later one is
+  // what's actually in progress).
+  statusSourceItem: T;
+}
+
+export function unifyAnimeSeasons<T extends { external_id: string; status: string | null }>(
+  ownedItems: T[],
+  catalogMap: Map<string, MediaCatalogEntry>,
+  relations: DbMediaRelation[],
+  sagaNames: Record<string, string>,
+): { consumedIds: Set<string>; groups: Array<UnifiedSeasonGroup<T>> } {
+  const parent = new Map<string, string>();
+  const find = (id: string): string => {
+    let cur = id;
+    while (parent.get(cur) !== cur) cur = parent.get(cur)!;
+    return cur;
+  };
+  const union = (a: string, b: string) => {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+
+  // Anime-only on both sides — deliberately narrower than refineSagaGroups'
+  // own SAGA_GROUPABLE_TYPES (games/movies/series too), since those already
+  // have their own, separately-toggled grouping story; this setting is
+  // specifically about AniList's per-season entries.
+  for (const rel of relations) {
+    const isSequel  = rel.relation_type === 'SEQUEL'  || rel.relation_type === 'SECUELA';
+    const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
+    if (!isSequel && !isPrequel) continue;
+    if (!rel.media_external_id) continue;
+    const a = rel.media_external_id, b = rel.related_media_external_id;
+    if (catalogMap.get(a)?.type !== 'anime' || catalogMap.get(b)?.type !== 'anime') continue;
+    union(a, b);
+  }
+
+  const byComponent = new Map<string, T[]>();
+  for (const item of ownedItems) {
+    if (catalogMap.get(item.external_id)?.type !== 'anime') continue;
+    if (!parent.has(item.external_id)) continue; // not part of any chain
+    const comp = find(item.external_id);
+    const list = byComponent.get(comp) ?? [];
+    list.push(item);
+    byComponent.set(comp, list);
+  }
+
+  const consumedIds = new Set<string>();
+  const groups: Array<UnifiedSeasonGroup<T>> = [];
+  for (const members of byComponent.values()) {
+    if (members.length < 2) continue; // nothing to merge — leave the lone owned season as-is
+
+    // Earliest release first, same as refineSagaGroups — the card sits over
+    // its first work, and "primera y más básica" is what a click opens.
+    const sorted = [...members].sort((a, b) =>
+      compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
+    );
+    const [rep, ...rest] = sorted;
+
+    let statusSourceItem = sorted[0];
+    let bestPriority = SEASON_STATUS_PRIORITY[statusSourceItem.status ?? ''] ?? 5;
+    for (const m of sorted) {
+      const priority = SEASON_STATUS_PRIORITY[m.status ?? ''] ?? 5;
+      if (priority < bestPriority) { bestPriority = priority; statusSourceItem = m; }
+    }
+
+    const sagaName = sorted.map(m => sagaNames[m.external_id]).find(Boolean);
+    for (const m of sorted) consumedIds.add(m.external_id);
+    groups.push({ item: rep, grouped: rest, titleOverride: sagaName, statusSourceItem });
+  }
+
+  return { consumedIds, groups };
+}

@@ -219,3 +219,19 @@ export function mapExternalFormatToType(type: string | null | undefined, format:
   return 'manga';
 }
 
+// Trailing "1st Season" / "Season 2" / "The Final Season" / "... Part 2"
+// wording, with whatever separator precedes it (": ", " - ", or just a
+// space). AniList titles each season as its own fully independent entry
+// (see anilist-mapper.ts), so this text is the ONLY thing that actually says
+// "this is season N" on a season's own title — useful on its own, but
+// redundant once "Unificar temporadas" (preferences.ts) already shows a "T2"
+// badge right next to it (MediaPage.tsx's Temporadas tab, LibraryCard.tsx's
+// fused card). Purely a display tweak: never touches title_main itself, so
+// nothing saved/synced ever sees a stripped title.
+const SEASON_SUFFIX_RE = /[\s:\-–—]+(the\s+)?(final\s+season(\s*[-–—:]?\s*part\s*\d+)?|\d+(st|nd|rd|th)\s+season|season\s+\d+|part\s+\d+)\s*$/i;
+
+export function stripSeasonSuffix(title: string): string {
+  const stripped = title.replace(SEASON_SUFFIX_RE, '').trim();
+  return stripped || title; // never collapse to an empty string
+}
+

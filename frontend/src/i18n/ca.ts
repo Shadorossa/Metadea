@@ -629,6 +629,8 @@ export const ca = {
     activity_section: "Activitat",
     activity_batch_episodes: "Agrupar episodis per dia",
     activity_batch_episodes_hint: "Agrupa els episodis vistos el mateix dia en una única entrada d'activitat.",
+    unify_seasons_enabled: "Unificar temporades d'anime",
+    unify_seasons_hint: "Mostra cada anime encadenat per temporades (AniList) com una sola obra a la teva biblioteca, amb una pestanya de Temporades a la seva pàgina.",
     activity_adult_content: "Mostrar contingut +18",
     activity_adult_content_hint: "Activa la cerca de contingut per a adults a AniList (anime i manga).",
     clear_notes_btn: "Elimina qualificacions",

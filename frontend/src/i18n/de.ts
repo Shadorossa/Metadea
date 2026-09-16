@@ -629,6 +629,8 @@ export const de = {
     activity_section: "Aktivität",
     activity_batch_episodes: "Episoden nach Tag gruppieren",
     activity_batch_episodes_hint: "Fasst am selben Tag gesehene Episoden zu einem einzigen Aktivitätseintrag zusammen.",
+    unify_seasons_enabled: "Anime-Staffeln vereinheitlichen",
+    unify_seasons_hint: "Zeigt jeden per Staffel verketteten Anime (AniList) als ein einziges Werk in deiner Bibliothek, mit einem Staffeln-Tab auf seiner Seite.",
     activity_adult_content: "+18-Inhalte anzeigen",
     activity_adult_content_hint: "Aktiviert die Suche nach Erwachseneninhalten auf AniList (Anime und Manga).",
     clear_notes_btn: "Bewertungen löschen",

@@ -8,6 +8,7 @@ import { typeIconMap, CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating } from './library-grouping';
 import { toMediumCover } from '../../lib/shared/small-cover';
+import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
 
 export const TYPE_ICON = typeIconMap(16);
 
@@ -26,7 +27,7 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, catalogMap, p, readOnly, ratingSlot = 'rating' }: {
+export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, catalogMap, p, readOnly, ratingSlot = 'rating' }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
@@ -34,6 +35,11 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   titleOverride?: string;
   /** Saga-chain merge (see refineSagaGroups) — aggregate stats without swapping the cover. */
   aggregateStats?: boolean;
+  /** "Unificar temporadas" cards (unifyAnimeSeasons) — the card is still an
+   *  aggregate (averaged rating, unified status) but should read as one
+   *  clean card, not as an N-items stack: no "+N" badge, no stacked-shadow
+   *  look, no hover flyout revealing the merged seasons underneath. */
+  hideGroupingUi?: boolean;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: ReturnType<typeof getT>['profile'];
   /** Someone else's profile (LibrarySection, fed via UserProfileView) — `item` is a synthesized
@@ -47,7 +53,12 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   ratingSlot?: RatingSlot;
 }) => {
   const meta = catalogMap.get(item.external_id);
-  const title = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
+  const rawTitle = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
+  // hideGroupingUi only ever comes from unifyAnimeSeasons (see
+  // LibrarySection.tsx) — this card represents the whole chain, so a
+  // trailing "2nd Season"/"The Final Season" from whichever season happened
+  // to become the representative would misleadingly label the fused card.
+  const title = hideGroupingUi ? stripSeasonSuffix(rawTitle) : rawTitle;
   const cover = toMediumCover(bundleMeta?.cover_url ?? meta?.cover_url ?? '');
   const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
   const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
@@ -112,7 +123,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   useEffect(() => () => clearTimeout(closingTimeoutRef.current), []);
 
   const handleMouseLeave = () => {
-    if (grouped.length === 0) return;
+    if (grouped.length === 0 || hideGroupingUi) return;
     setIsClosing(true);
     clearTimeout(closingTimeoutRef.current);
     closingTimeoutRef.current = setTimeout(() => setIsClosing(false), 350);
@@ -136,10 +147,15 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     }));
   };
 
+  // hideGroupingUi (unifyAnimeSeasons cards) still uses `grouped` for the
+  // rating average/date range above (aggregateMembers/ratingHtml/dateStr),
+  // just not for anything that visually reveals "this is N stacked items."
+  const showGroupUi = grouped.length > 0 && !hideGroupingUi;
+
   return (
     <div
       ref={cellRef}
-      className={`library-card-cell${grouped.length > 0 ? ' library-card-cell--stacked' : ''}${flyoutOnLeft ? ' library-card-cell--flyout-left' : ''}${isClosing ? ' library-card-cell--closing' : ''}`}
+      className={`library-card-cell${showGroupUi ? ' library-card-cell--stacked' : ''}${flyoutOnLeft ? ' library-card-cell--flyout-left' : ''}${isClosing ? ' library-card-cell--closing' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -147,7 +163,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
           overflow:hidden permanently (clips its blurred bg), so the flyout escapes via the wrapper instead. */}
       <div className="library-card" data-id={item.external_id} onClick={openEditor}>
         {cover && <div className="library-card-bg"><img className="library-card-bg-img" src={cover} alt="" /></div>}
-        {grouped.length > 0 && (
+        {showGroupUi && (
           <span className="library-card-group-badge" title={`${p.library_group_editions_hint}: ${groupedTitles.join(', ')}`}>
             <span className="library-card-group-badge-count">+{grouped.length}</span>
             <span className="library-card-group-badge-arrow">›</span>
@@ -174,7 +190,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
           </div>
         </div>
       </div>
-      {grouped.length > 0 && (
+      {showGroupUi && (
         // Hidden until hover (.library-card--stacked:hover in profile.css) — a peek at the "+N" badge's contents.
         <div className="library-card-stack-extra" ref={flyoutRef}>
           {orderedGrouped.map(g => {

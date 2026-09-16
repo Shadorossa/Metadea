@@ -1,6 +1,6 @@
 import type { TmdbMovieDetail, TmdbTvDetail } from '../search/providers/tmdb';
-import { parseDateParts } from '../search/providers/tmdb';
-import type { MediaPageData, MediaStat, MediaCharacter, MediaRelation, MediaAuthor, MediaCompany } from './types';
+import { parseDateParts, buildPosterUrl } from '../search/providers/tmdb';
+import type { MediaPageData, MediaStat, MediaCharacter, MediaRelation, MediaAuthor, MediaCompany, MediaSeasonInfo } from './types';
 import { unifyGenres } from './genre-unifier';
 import { getT } from '../../i18n/client';
 import { API_ENDPOINTS } from '../api/endpoints';
@@ -41,6 +41,24 @@ function movieFormat(runtimeMinutes: number | undefined, coreGenres: string[]): 
   if (runtimeMinutes != null && runtimeMinutes > 0 && runtimeMinutes < 40) return 'SHORT_FILM';
   if (coreGenres.includes('TV Movie')) return 'TV_MOVIE';
   return 'MOVIE';
+}
+
+// season_number 0 is specials (same convention as fetchTmdbEpisodes/
+// episode-list.ts) — left out here since the Temporadas tab is for actual
+// seasons, not a "Season 0" card. Sorted ascending so season 1 always
+// renders first, matching how the tab reads left-to-right.
+function mapTmdbSeasons(seasons: TmdbTvDetail['seasons']): MediaSeasonInfo[] | undefined {
+  if (!seasons || seasons.length === 0) return undefined;
+  return seasons
+    .filter(s => s.season_number > 0)
+    .sort((a, b) => a.season_number - b.season_number)
+    .map(s => ({
+      seasonNumber: s.season_number,
+      name: s.name,
+      episodeCount: s.episode_count,
+      coverUrl: buildPosterUrl(s.poster_path ?? null),
+      airDate: s.air_date,
+    }));
 }
 
 export function mapTmdbToMedia(
@@ -279,6 +297,7 @@ export function mapTmdbToMedia(
     status: canonicalStatus,
     totalCount: isTv ? raw.number_of_episodes ?? undefined : 1,
     totalCount_2: isTv ? raw.number_of_seasons ?? undefined : undefined,
+    seasons: isTv ? mapTmdbSeasons(raw.seasons) : undefined,
     countryOfOrigin: originCountry ?? undefined,
     companies,
     format,

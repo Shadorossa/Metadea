@@ -631,6 +631,8 @@ export const ru = {
     activity_section: "Активность",
     activity_batch_episodes: "Группировать серии по дням",
     activity_batch_episodes_hint: "Объединяет серии, просмотренные в один день, в одну запись активности.",
+    unify_seasons_enabled: "Объединять сезоны аниме",
+    unify_seasons_hint: "Показывает каждое аниме, связанное сезонами (AniList), как одно произведение в вашей библиотеке, с вкладкой «Сезоны» на его странице.",
     activity_adult_content: "Показывать контент 18+",
     activity_adult_content_hint: "Включает поиск контента для взрослых в AniList (аниме и манга).",
     clear_notes_btn: "Удалить оценки",

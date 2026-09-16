@@ -21,7 +21,9 @@ import {
 import { IGDB_TYPES } from '../../lib/constants/media';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { motion } from 'motion/react';
-import { getRatingName2, getRating2System, getRating2Min, getRating2Max, type RatingSlot } from '../../lib/settings/preferences';
+import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnifySeasonsEnabled, type RatingSlot } from '../../lib/settings/preferences';
+import { loadSagaChain } from '../../lib/media/sagaData';
+import type { SagaEntry } from '../../lib/anilist/saga';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -267,6 +269,25 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   const baseId = data.parentGame?.externalId || externalId;
   const baseSelectedVersion = entry.logs[baseId]?.selectedVersion || '';
+
+  // "Unificar temporadas" (Settings > Preferencias) — every other season in
+  // the chain gets its own tab here too, same as the edition/version tabs
+  // below, so a status/rating/progress can be logged per season without
+  // closing this editor and reopening it on each season's own page. Reuses
+  // loadSagaChain (sagaData.ts), same source MediaPage.tsx's own Temporadas
+  // tab reads, so this is normally an instant cache hit.
+  const [animeSeasonChain, setAnimeSeasonChain] = useState<SagaEntry[]>([]);
+  useEffect(() => {
+    if (data.type !== 'anime' || !isUnifySeasonsEnabled()) {
+      setAnimeSeasonChain([]);
+      return;
+    }
+    let cancelled = false;
+    loadSagaChain(externalId).then(chain => {
+      if (!cancelled) setAnimeSeasonChain(chain.ok && chain.entries.length > 1 ? chain.entries : []);
+    }).catch(() => { if (!cancelled) setAnimeSeasonChain([]); });
+    return () => { cancelled = true; };
+  }, [data.type, externalId]);
 
   // Load base game and edition logs
   useEffect(() => {
@@ -613,7 +634,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   }, [data.type, data.parentGame, data.relations]);
 
   const allAvailableEditions = useMemo(() => {
-    const list: { externalId: string; label: string; cover?: string; relationType?: string; isBundleChild?: boolean }[] = [];
+    const list: { externalId: string; label: string; cover?: string; relationType?: string; isBundleChild?: boolean; isSeasonTab?: boolean }[] = [];
     for (const rel of (data.relations || [])) {
       if (rel.relationType && ['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK', 'PORT'].includes(rel.relationType)) {
         const relExternalId = rel.relatedExternalId ?? extractExternalIdFromRelationUrl(rel.url);
@@ -641,8 +662,19 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     if (data.parentGame && !list.some(item => item.externalId === externalId)) {
       list.push({ externalId, label: data.titleMain, cover: data.cover });
     }
+    // Every OTHER season in the chain — "T{n}" (not the season's own title:
+    // it's usually just "Título 2nd Season", already redundant once labeled
+    // by position, see stripSeasonSuffix) matching Temporadas' own badges,
+    // numbered by real chain position so it still reads correctly regardless
+    // of which season this editor happens to be open on. The one this editor
+    // IS already open on is the "Original" tab (baseId === externalId here,
+    // since anime has no parentGame), so it's excluded from this list.
+    animeSeasonChain.forEach((seasonEntry, i) => {
+      if (seasonEntry.externalId === baseId || seasonEntry.externalId === externalId) return;
+      list.push({ externalId: seasonEntry.externalId, label: `T${i + 1}`, cover: seasonEntry.cover ?? undefined, isSeasonTab: true });
+    });
     return list;
-  }, [baseId, data.parentGame, externalId, data.titleMain, data.cover, data.relations]);
+  }, [baseId, data.parentGame, externalId, data.titleMain, data.cover, data.relations, animeSeasonChain]);
 
   // A bundle (Final Fantasy VII Remake Intergrade) is never itself
   // trackable — there's no meaningful "progress" on the bundle as a lump,
@@ -949,8 +981,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     // (permanently untouched, never rendered) log as
                     // non-empty via hasLink, and handleSave would then
                     // create a library entry for the bundle itself, which
-                    // is exactly what it's never supposed to have.
-                    if (!ed.isBundleChild) {
+                    // is exactly what it's never supposed to have. Season
+                    // tabs (isSeasonTab) are their own independent AniList
+                    // entries, not editions of baseId, so they must never
+                    // enter baseId's selected_version link list either.
+                    if (!ed.isBundleChild && !ed.isSeasonTab) {
                       const baseLogVal = entry.logs[baseId] || createDefaultLog();
                       const currentVersions = baseLogVal.selectedVersion
                         ? baseLogVal.selectedVersion.split(',')
@@ -961,7 +996,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       }
                     }
                     if (!entry.logs[ed.externalId]) {
-                      dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId) });
+                      dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId, ed.isSeasonTab ? 'anime' : 'game') });
                     }
                     dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
                   }}

@@ -10,12 +10,13 @@ import {
   isLibraryGroupByBundleEnabled, setLibraryGroupByBundleEnabled,
   isDualRatingEnabled, getRatingName1, getRatingName2,
   getActiveRatingSlot, setActiveRatingSlot, type RatingSlot,
+  isUnifySeasonsEnabled,
 } from '../../lib/settings/preferences';
 import { getTypeLabel, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/constants/media';
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
-import { groupEditions, groupBundles, refineSagaGroups, averageRating } from './library-grouping';
+import { groupEditions, groupBundles, refineSagaGroups, averageRating, unifyAnimeSeasons } from './library-grouping';
 import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { LibraryCard, TYPE_ICON } from './LibraryCard';
@@ -272,6 +273,18 @@ export function LibrarySection({
 
     if (filtered.length === 0) return [];
 
+    // "Unificar temporadas" runs on the WHOLE owned list, before the status
+    // split below — see unifyAnimeSeasons's own doc comment for why (a
+    // season-1-completed/season-3-watching chain must resolve to exactly one
+    // card in ONE section, not race to appear in two once each is filtered
+    // into a different status bucket first).
+    const { consumedIds: seasonConsumedIds, groups: seasonGroups } = isUnifySeasonsEnabled()
+      ? unifyAnimeSeasons(filtered, catalogMap, sagaRelations, sagaNames)
+      : { consumedIds: new Set<string>(), groups: [] };
+    const unmergedFiltered = seasonConsumedIds.size > 0
+      ? filtered.filter(i => !seasonConsumedIds.has(i.external_id))
+      : filtered;
+
     const releaseTimestamp = (i: Items[number]): number => catalogReleaseTimestampMs(catalogMap.get(i.external_id)) ?? 0;
 
     const unknownDateLast = (dateA: number, dateB: number): number | null => {
@@ -312,12 +325,12 @@ export function LibrarySection({
     const caughtUp = (i: Items[number]) => isCaughtUpOnReleasing(i.status, i.progress, catalogMap.get(i.external_id));
 
     const sectionsData = [
-      { title: p.section_caught_up, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && caughtUp(i)), true), isCompletedSection: false },
-      { title: p.section_in_progress, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && !caughtUp(i)), true), isCompletedSection: false },
-      { title: p.section_completed, items: sortItems(filtered.filter(i => i.status === 'completed')), isCompletedSection: true },
-      { title: p.section_planning, items: sortItems(filtered.filter(i => i.status === 'planning')), isCompletedSection: false },
-      { title: p.section_paused, items: sortItems(filtered.filter(i => i.status === 'paused')), isCompletedSection: false },
-      { title: p.section_dropped, items: sortItems(filtered.filter(i => i.status === 'dropped')), isCompletedSection: false },
+      { title: p.section_caught_up, items: sortItems(unmergedFiltered.filter(i => isInProgressStatus(i.status) && caughtUp(i)), true), isCompletedSection: false },
+      { title: p.section_in_progress, items: sortItems(unmergedFiltered.filter(i => isInProgressStatus(i.status) && !caughtUp(i)), true), isCompletedSection: false },
+      { title: p.section_completed, items: sortItems(unmergedFiltered.filter(i => i.status === 'completed')), isCompletedSection: true },
+      { title: p.section_planning, items: sortItems(unmergedFiltered.filter(i => i.status === 'planning')), isCompletedSection: false },
+      { title: p.section_paused, items: sortItems(unmergedFiltered.filter(i => i.status === 'paused')), isCompletedSection: false },
+      { title: p.section_dropped, items: sortItems(unmergedFiltered.filter(i => i.status === 'dropped')), isCompletedSection: false },
     ];
 
     // Every completed work's own id — regardless of the current name/type/
@@ -330,18 +343,44 @@ export function LibrarySection({
     // already represents that saga/bundle's own real anchor point.
     const completedIds = new Set((items ?? []).filter(i => i.status === 'completed').map(i => i.external_id));
 
+    // Places each unified season card in the same section its winning
+    // member's own status would normally land in — same rules sectionsData
+    // itself just used, applied to statusSourceItem instead of every raw item.
+    const seasonCardsByTitle = new Map<string, typeof seasonGroups>();
+    for (const group of seasonGroups) {
+      const src = group.statusSourceItem;
+      const title = isInProgressStatus(src.status) && caughtUp(src) ? p.section_caught_up
+        : isInProgressStatus(src.status) ? p.section_in_progress
+        : src.status === 'completed' ? p.section_completed
+        : src.status === 'planning' ? p.section_planning
+        : src.status === 'paused' ? p.section_paused
+        : src.status === 'dropped' ? p.section_dropped
+        : null;
+      if (!title) continue;
+      const list = seasonCardsByTitle.get(title) ?? [];
+      list.push(group);
+      seasonCardsByTitle.set(title, list);
+    }
+
     return sectionsData
-      .filter(sec => sec.items.length > 0)
+      .filter(sec => sec.items.length > 0 || (seasonCardsByTitle.get(sec.title)?.length ?? 0) > 0)
       // Edition/saga-chain grouping is gated behind "Agrupar por entrega"; bundle grouping has its own toggle.
       .map(sec => {
         const suppressIds = sec.isCompletedSection ? undefined : completedIds;
         const editionGroups = groupEditions(sec.items, catalogMap, groupByEdition);
-        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> = editionGroups;
+        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean; hideGroupBadge?: boolean }> = editionGroups;
         if (groupByBundle) {
           cards = groupBundles(cards, catalogMap, sagaRelations, suppressIds);
         }
         if (groupByEdition) {
           cards = refineSagaGroups(cards, catalogMap, sagaRelations, sagaNames, suppressIds);
+        }
+        // Unified season cards for this section — already fully formed
+        // (earliest-release representative, aggregate stats, unified
+        // status), so they skip groupEditions/groupBundles/refineSagaGroups
+        // entirely instead of being reprocessed by them.
+        for (const group of seasonCardsByTitle.get(sec.title) ?? []) {
+          cards.push({ item: group.item, grouped: group.grouped, titleOverride: group.titleOverride, aggregateStats: true, hideGroupBadge: true });
         }
 
         // groupBundles/refineSagaGroups append merged cards regardless of date/rating — re-sort using the group's aggregate.
@@ -591,13 +630,14 @@ export function LibrarySection({
                 // card's identity — and any hover/flyout state — stays
                 // stable across that specific toggle instead of remounting.
                 getKey={({ item, bundleMeta }) => bundleMeta ? `bundle:${bundleMeta.external_id}` : item.external_id}
-                renderItem={({ item, grouped, bundleMeta, titleOverride, aggregateStats }) => (
+                renderItem={({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupBadge }) => (
                   <LibraryCard
                     item={item}
                     grouped={grouped}
                     bundleMeta={bundleMeta}
                     titleOverride={titleOverride}
                     aggregateStats={aggregateStats}
+                    hideGroupingUi={hideGroupBadge}
                     catalogMap={catalogMap}
                     p={p}
                     readOnly={readOnly}

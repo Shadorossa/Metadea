@@ -10,6 +10,7 @@ import { reconstructSagaOrder } from './sagaGrouping';
 import { getCachedSaga, saveCachedSaga, getSagaName, getMediaRelations } from '../tauri';
 import { getCatalogEntry, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
 import { getStoryArcsForMediaBatch, type StoryArc } from '../tauri/story-arcs';
+import { fetchMediaData } from './mediaService';
 
 export interface SagaChainResult {
   entries: SagaEntry[];
@@ -117,6 +118,18 @@ async function fetchSagaChain(externalId: string): Promise<SagaChainResult> {
     const result = await fetchAniListSaga(numericId);
     if (result.length > 0) {
       saveCachedSaga(result).catch(err => console.warn('[Saga] Failed to save to cache:', err));
+      // This branch only ever runs when reconstructFromRelations found
+      // nothing locally — i.e. media_relations has no real PREQUEL/SEQUEL
+      // rows for this chain yet, just AniList's own live relations (which
+      // fetchAniListSaga read directly from AniList, not from our DB). The
+      // saveCachedSaga above only warms the sagas/saga_relations *display*
+      // cache — refineSagaGroups and everything else that walks the
+      // canonical chain still reads media_relations, not that cache. So
+      // this fetches+persists each member's own relations through the same
+      // trusted merge pipeline fetchMediaData already uses on every page
+      // visit, staggered to be gentle on AniList's rate limit, instead of
+      // waiting for someone to eventually open each season's own page.
+      persistChainRelationsInBackground(result);
       const sagaTitle = await loadSagaTitle(externalId);
       return { entries: result, sagaTitle, ok: true };
     }
@@ -125,6 +138,24 @@ async function fetchSagaChain(externalId: string): Promise<SagaChainResult> {
   }
 
   return { entries: [], sagaTitle: '', ok: false };
+}
+
+// Fire-and-forget — never awaited by a caller, since the chain itself
+// (already fetched live from AniList above) is already good enough to show
+// immediately. This just backfills media_relations for next time, plus for
+// anyone reading the local relation graph in the meantime (the library
+// grid's saga grouping, useMediaNeighbors, seasonResolve.ts's file
+// matching, ...).
+const CHAIN_PERSIST_STAGGER_MS = 400;
+
+function persistChainRelationsInBackground(entries: SagaEntry[]): void {
+  (async () => {
+    for (const entry of entries) {
+      await fetchMediaData(entry.externalId).catch(err =>
+        console.warn(`[Saga] Failed to persist relations for ${entry.externalId}:`, err));
+      await new Promise(resolve => setTimeout(resolve, CHAIN_PERSIST_STAGGER_MS));
+    }
+  })();
 }
 
 export function loadSagaChain(externalId: string): Promise<SagaChainResult> {

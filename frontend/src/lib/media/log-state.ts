@@ -181,9 +181,11 @@ export function uiReducer(state: UiState, action: UiAction): UiState {
 
 // Placeholder LibraryEntry for a version the user has linked but never
 // actually logged (no save has happened for that version's external_id yet).
-export function createEmptyVersionEntry(versionId: string): LibraryEntry {
+// type defaults to 'game' (every other caller is the games/editions tab
+// system) — MediaEditorModal's own anime season tabs pass 'anime' instead.
+export function createEmptyVersionEntry(versionId: string, type = 'game'): LibraryEntry {
   return {
-    id: '', user_id: 'local', external_id: versionId, type: 'game',
+    id: '', user_id: 'local', external_id: versionId, type,
     status: '', rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
     is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
     selected_platform: null, selected_version: null, started_at: null, finished_at: null,

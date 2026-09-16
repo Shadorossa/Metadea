@@ -149,6 +149,9 @@ export interface TmdbSeasonSummary {
   episode_count?: number;
   air_date?: string | null;
   name?: string;
+  // Already present on TMDB's own raw response (no extra request needed) —
+  // just wasn't declared here before, since nothing read it yet.
+  poster_path?: string | null;
 }
 
 export function buildPosterUrl(posterPath: string | null): string | null {

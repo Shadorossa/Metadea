@@ -10,7 +10,9 @@ import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
 import { AnimatePresence } from 'motion/react';
 import { ThemePreviewCardVideo, pauseThemeCaptureQueue, resumeThemeCaptureQueue } from './ThemePreviewCardVideo';
-import { prefetchSagaData } from '../../lib/media/sagaData';
+import { prefetchSagaData, loadSagaChain } from '../../lib/media/sagaData';
+import type { SagaEntry } from '../../lib/anilist/saga';
+import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
 import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5, getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
@@ -28,7 +30,7 @@ import { getAnimePrequelEpisodeOffset } from '../../lib/media/anime-tmdb-match';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
-import { mergePlatformVersions } from '../../lib/media/mapper-utils';
+import { mergePlatformVersions, stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { sanitizeHtml } from '../../lib/shared/sanitize-html';
 import { ANILIST_TYPES } from '../../lib/constants/media';
 
@@ -367,9 +369,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [showSaga,           setShowSaga]           = useState(false);
   const [showPrEditor,       setShowPrEditor]       = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
-  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes' | 'themes'>('related');
+  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes' | 'seasons' | 'themes'>('related');
   const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
   const [themes,             setThemes]             = useState<MediaTheme[]>([]);
+  // Anime's own season list — the live/cached PREQUEL/SEQUEL chain from
+  // sagaData.ts, same source SagaViewerModal already uses. TMDB series don't
+  // need this state at all: their season list is already sitting on
+  // data.seasons (tmdb-mapper.ts), no extra fetch involved.
+  const [animeSeasonChain,   setAnimeSeasonChain]   = useState<SagaEntry[]>([]);
   const [playingTheme,       setPlayingTheme]       = useState<MediaTheme | null>(null);
   const [playingVideoSrc,    setPlayingVideoSrc]    = useState<string | null>(null);
   const [playerLoading,      setPlayerLoading]      = useState(false);
@@ -407,9 +414,72 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   // as soon as the page is known to have a saga, instead of only starting
   // that fetch once the user clicks the Saga button — by then it's typically
   // already resolved, so opening the modal reads a cached result instantly.
+  //
+  // Also fires for every anime/manga even when data.hasSaga is false —
+  // hasSaga only reflects PREQUEL/SEQUEL rows already saved locally, which a
+  // freshly-added work (never visited/resynced before) won't have yet.
+  // loadSagaChain's own fallback (sagaData.ts) checks a live AniList query
+  // in that case instead of just giving up, and persists whatever it finds
+  // back to media_relations — so this is what actually discovers a season
+  // chain the first time, not just re-reads an already-known one.
   useEffect(() => {
-    if (!previewMode && data?.hasSaga && currentId) prefetchSagaData(currentId);
-  }, [previewMode, data?.hasSaga, currentId]);
+    if (previewMode || !currentId) return;
+    if (data?.hasSaga || data?.type === 'anime' || data?.type === 'manga') prefetchSagaData(currentId);
+  }, [previewMode, data?.hasSaga, data?.type, currentId]);
+
+  // Anime's "Temporadas" tab — only when the Settings > Preferencias toggle
+  // is on (see preferences.ts's own doc comment for why: TMDB's own tab
+  // stays on unconditionally, but AniList's per-season entries are still the
+  // default/classic view unless the user opts into this). Reads the same
+  // loadSagaChain the effect above already warmed, so this is normally an
+  // instant cache hit, not a second fetch.
+  useEffect(() => {
+    if (previewMode || !currentId || data?.type !== 'anime' || !isUnifySeasonsEnabled()) {
+      setAnimeSeasonChain([]);
+      return;
+    }
+    let cancelled = false;
+    loadSagaChain(currentId).then(chain => {
+      if (cancelled) return;
+      setAnimeSeasonChain(chain.ok && chain.entries.length > 1 ? chain.entries : []);
+    }).catch(() => { if (!cancelled) setAnimeSeasonChain([]); });
+    return () => { cancelled = true; };
+  }, [previewMode, currentId, data?.type]);
+
+  // With the same toggle on, Episodios/Temas show every season's own
+  // episodes/themes concatenated in chain order, not just this page's own —
+  // fetchMediaEpisodes/fetchMediaThemes already number each season counting
+  // from the END of every earlier season in the chain
+  // (getAnimePrequelEpisodeOffset/getAnimePrequelThemeOffsets in
+  // episode-list.ts/theme-list.ts, which the single-season view already
+  // relied on to keep numbering continuous), so fetching every chain member
+  // independently and sorting the results by number is enough to interleave
+  // them correctly — no extra offset math needed here. Runs after (and
+  // overwrites) the single-season fetch above once the chain itself
+  // resolves, so this page still shows ITS OWN episodes immediately instead
+  // of waiting on every sibling season's fetch first.
+  useEffect(() => {
+    if (previewMode || animeSeasonChain.length <= 1) return;
+    let cancelled = false;
+
+    Promise.all(animeSeasonChain.map(entry => fetchMediaEpisodes(entry.externalId, false).catch(() => [] as MediaEpisode[])))
+      .then(results => {
+        if (cancelled) return;
+        const merged = results.flat().sort((a, b) => a.episode_number - b.episode_number);
+        if (merged.length > 0) setEpisodes(merged);
+      });
+
+    Promise.all(animeSeasonChain.map(entry => fetchMediaThemes(entry.externalId).catch(() => [] as MediaTheme[])))
+      .then(results => {
+        if (cancelled) return;
+        const merged = results.flat().sort((a, b) =>
+          a.theme_type !== b.theme_type ? (a.theme_type === 'OP' ? -1 : 1) : a.sequence - b.sequence
+        );
+        if (merged.length > 0) setThemes(merged);
+      });
+
+    return () => { cancelled = true; };
+  }, [previewMode, animeSeasonChain]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1089,15 +1159,25 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const editionsLabel = isComicOrHasIssues ? tm.relations.ISSUE : tm.relations.EDITIONS;
   const editionsRelationType = isComicOrHasIssues ? 'ISSUE' : 'EDITIONS';
   const {
-    related: relatedRelations,
+    related: relatedRelationsRaw,
     recommended: recommendedRelations,
     editions: editionRelations,
   } = bucketRelations(data.relations, data.format, editionsRelationType);
+  // With the "Unificar temporadas" setting on, an anime's own PREQUEL/SEQUEL
+  // rows move to the Temporadas tab instead of sitting in Relacionados —
+  // with it off (or for every other media type), Relacionados is untouched,
+  // exactly as it's always been.
+  const showsSeasonsTab = data.type === 'anime' && isUnifySeasonsEnabled();
+  const relatedRelations = showsSeasonsTab
+    ? relatedRelationsRaw.filter(r => r.relationType !== 'PREQUEL' && r.relationType !== 'SEQUEL')
+    : relatedRelationsRaw;
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
   const hasEpisodes             = episodes.length > 0;
   const hasThemes               = themes.length > 0;
-  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasThemes;
+  const tmdbSeasons             = data.type === 'series' ? (data.seasons ?? []) : [];
+  const hasSeasonsTab            = showsSeasonsTab ? animeSeasonChain.length > 1 : tmdbSeasons.length > 0;
+  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasSeasonsTab || hasThemes;
   const visibleRelations = relationsTab === 'recommended'
     ? recommendedRelations
     : relationsTab === 'editions'
@@ -1371,7 +1451,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
           {/* Centro: cover + widget de biblioteca */}
           <div className="media-cover-column">
-            {!previewMode && data.hasSaga && (
+            {/* Hidden (not removed) once the Temporadas tab takes over this
+                same job for anime — SagaViewerModal itself is untouched and
+                still opens normally for every other media type. */}
+            {!previewMode && data.hasSaga && !showsSeasonsTab && (
               <button type="button" className="media-saga-btn" onClick={() => setShowSaga(true)}>
                 <IconLayers size={14} />
                 {tm.saga_button}
@@ -1531,6 +1614,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 { key: 'related', label: tm.section_related, active: relationsTab === 'related', onClick: () => { setRelationsTab('related'); setRelationPage(1); } },
                 ...(hasEditionRelations ? [{ key: 'editions', label: editionsLabel, active: relationsTab === 'editions', onClick: () => { setRelationsTab('editions'); setRelationPage(1); } }] : []),
                 ...(hasRecommendedRelations ? [{ key: 'recommended', label: tm.relations.RECOMMENDATION, active: relationsTab === 'recommended', onClick: () => { setRelationsTab('recommended'); setRelationPage(1); } }] : []),
+                ...(hasSeasonsTab ? [{ key: 'seasons', label: tm.stat_seasons, active: relationsTab === 'seasons', onClick: () => { setRelationsTab('seasons'); setRelationPage(1); } }] : []),
                 ...(hasEpisodes ? [{ key: 'episodes', label: tm.stat_episodes, active: relationsTab === 'episodes', onClick: () => { setRelationsTab('episodes'); setRelationPage(1); } }] : []),
                 ...(hasThemes ? [{ key: 'themes', label: tm.section_themes, active: relationsTab === 'themes', onClick: () => { setRelationsTab('themes'); setRelationPage(1); } }] : []),
               ] : []}
@@ -1562,6 +1646,42 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                   />
                 )}
               </>
+            )
+          ) : relationsTab === 'seasons' ? (
+            // Reuses RelationCard (cover + title + a small top label) for both
+            // sources — an anime's own chain member gets "T{n}" (or "Estás
+            // aquí" on whichever one is the page currently open, same label
+            // SagaViewerModal already uses), a TMDB season gets its own
+            // TMDB-provided poster instead of the series' main cover.
+            (showsSeasonsTab ? animeSeasonChain.length > 0 : tmdbSeasons.length > 0) && (
+              <div className="media-relations-grid">
+                {showsSeasonsTab
+                  ? animeSeasonChain.map((entry, i) => (
+                      <RelationCard
+                        key={entry.externalId}
+                        relation={{
+                          url: `/media?id=${encodeURIComponent(entry.externalId)}`,
+                          cover: entry.cover,
+                          typeLabel: entry.externalId === currentId ? tm.saga_current : `T${i + 1}`,
+                          // The "T{n}" badge above already says which season
+                          // this is — stripSeasonSuffix hides "2nd Season"/
+                          // "The Final Season" wording from the title itself
+                          // instead of showing it twice.
+                          title: stripSeasonSuffix(entry.title),
+                        }}
+                      />
+                    ))
+                  : tmdbSeasons.map(season => (
+                      <RelationCard
+                        key={season.seasonNumber}
+                        relation={{
+                          cover: season.coverUrl,
+                          typeLabel: `T${season.seasonNumber}`,
+                          title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
+                        }}
+                      />
+                    ))}
+              </div>
             )
           ) : relationsTab === 'episodes' ? (
             episodes.length > 0 && (() => {

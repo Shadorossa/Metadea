@@ -23,6 +23,20 @@ export interface MediaCharacter {
   role?: string;
 }
 
+/** One entry in the media page's "Temporadas" tab — TMDB's own per-season
+ *  summary (already on the detail response, see tmdb.ts's TmdbSeasonSummary)
+ *  mapped straight through. Anime's own version of this tab doesn't use this
+ *  type at all — it reads the AniList PREQUEL/SEQUEL chain live instead
+ *  (see sagaData.ts's SagaEntry), since AniList has no season concept of
+ *  its own to summarize here. */
+export interface MediaSeasonInfo {
+  seasonNumber: number;
+  name?: string;
+  episodeCount?: number;
+  coverUrl: string | null;
+  airDate?: string | null;
+}
+
 /** Real-world crew (director, writer, composer, ...) — same card shape as
  *  MediaCharacter but a semantically distinct list, persisted to its own
  *  `media_staff`/`staff_appearances` tables rather than `characters`. */
@@ -140,6 +154,7 @@ export interface MediaPageData {
   status?: string;
   totalCount?: number;
   totalCount_2?: number;
+  seasons?: MediaSeasonInfo[];  // TMDB series only — powers the media page's "Temporadas" tab
   countryOfOrigin?: string;    // ISO-ish country code (AniList/TMDB) — persisted to media_catalog.country_code so the catalog-only fast path can show "País de origen" without a live fetch
   authors?: MediaAuthor[];     // author objects (books, anime creators) — persisted to media_author table
   // Developer/publisher (games), studio (anime), production company (movies/

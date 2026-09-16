@@ -632,6 +632,8 @@ export const en = {
     activity_section: "Activity",
     activity_batch_episodes: "Batch episodes by day",
     activity_batch_episodes_hint: "Groups episodes watched on the same day into a single activity entry.",
+    unify_seasons_enabled: "Unify anime seasons",
+    unify_seasons_hint: "Shows each AniList anime chained by seasons as a single work in your library, with a Seasons tab on its page.",
     activity_adult_content: "Show +18 content",
     activity_adult_content_hint: "Enables adult content search on AniList (anime and manga).",
     clear_notes_btn: "Delete ratings",
