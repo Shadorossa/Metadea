@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "ffac0763d8eced3bffac0763d8eced3b",
+    "external_id": "movie:911916",
+    "type": "movie",
+    "title_main": "Spider-Man: Beyond the Spider-Verse",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "movie:911916",
+      "related_media_external_id": "movie:569094",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Spider-Man: Across the Spider-Verse",
+      "cover": "https://image.tmdb.org/t/p/w780/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Spider-Verse"
+}

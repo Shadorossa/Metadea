@@ -1,0 +1,407 @@
+{
+  "media_catalog": {
+    "id": "279ca490a0e036b3279ca490a0e036b3",
+    "external_id": "movie:569094",
+    "type": "movie",
+    "title_main": "Spider-Man: Across the Spider-Verse",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "movie:558",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Spider-Man 2",
+      "cover": "https://image.tmdb.org/t/p/w300/aGuvNAaaZuWXYQQ6N2v7DeuP6mB.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:102382",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Amazing Spider-Man 2",
+      "cover": "https://image.tmdb.org/t/p/w300/bU7nTmvmy0h3VUP01v1T2imgH6N.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:634649",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Spider-Man: No Way Home",
+      "cover": "https://image.tmdb.org/t/p/w300/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:1930",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Amazing Spider-Man",
+      "cover": "https://image.tmdb.org/t/p/w300/jexoNYnPd6vVrmygwF6QZmWPFdu.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:225925",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Spider-Man Strikes Back",
+      "cover": "https://image.tmdb.org/t/p/w300/mwRss4cA5m4fH6izoTwwPfF3ZOU.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:324857",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Spider-Man: Into the Spider-Verse",
+      "cover": "https://image.tmdb.org/t/p/w300/iiZZdoQBEYBv6id8su7ImL0oCbD.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:1506560",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Clash of the Thundermans",
+      "cover": "https://image.tmdb.org/t/p/w300/16oqRrWVzQm6qdGfBxvziZ2UiMT.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:559",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Spider-Man 3",
+      "cover": "https://image.tmdb.org/t/p/w300/qFmwhVUoUSXjkKRmca5yGDEXBIj.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:913205",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Teen Titans Go! & DC Super Hero Girls: Mayhem in the Multiverse",
+      "cover": "https://image.tmdb.org/t/p/w300/sCOt6rm6bcppXeYIHalAXJGIZZE.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:557",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Spider-Man",
+      "cover": "https://image.tmdb.org/t/p/w300/or6XJBVpcEbIkma0V9zshnbEtx4.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:71689",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Phineas and Ferb the Movie: Across the 2nd Dimension",
+      "cover": "https://image.tmdb.org/t/p/w300/updMFSOZwEftfkJRpozwBlRlYI2.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:556901",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Teen Titans Go! vs. Teen Titans",
+      "cover": "https://image.tmdb.org/t/p/w300/GWJEdzVC9aOBSOMF9NHodYxSsE.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:14613",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Next Avengers: Heroes of Tomorrow",
+      "cover": "https://image.tmdb.org/t/p/w300/1y4J9HZJoTIMdt77wCq80uXaQJ.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:1724",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Incredible Hulk",
+      "cover": "https://image.tmdb.org/t/p/w300/gKzYx79y0AQTL4UAk1cBQJ3nvrm.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:791155",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Secret Headquarters",
+      "cover": "https://image.tmdb.org/t/p/w300/v6mvk0YC4o0PUdq82IbNRjIEEv3.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:1209290",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Justice League: Crisis on Infinite Earths Part Three",
+      "cover": "https://image.tmdb.org/t/p/w300/a3q8NkM8uTh9E23VsbUOdDSbBeN.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:299534",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Avengers: Endgame",
+      "cover": "https://image.tmdb.org/t/p/w300/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:1497",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Teenage Mutant Ninja Turtles II: The Secret of the Ooze",
+      "cover": "https://image.tmdb.org/t/p/w300/Hyvvz9Z3le1is8a0EeFJQm0aSC.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:315635",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Spider-Man: Homecoming",
+      "cover": "https://image.tmdb.org/t/p/w300/c24sv2weTHPsmDa7jEMN0m2P3RT.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "related_media_external_id": "movie:323027",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Justice League: Gods and Monsters",
+      "cover": "https://image.tmdb.org/t/p/w300/9EoqQuEZKmQIYjexoUbkxMcMCVr.jpg",
+      "media_external_id": "movie:569094"
+    },
+    {
+      "media_external_id": "movie:569094",
+      "related_media_external_id": "movie:324857",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Spider-Man: Into the Spider-Verse",
+      "cover": "https://image.tmdb.org/t/p/w300/iiZZdoQBEYBv6id8su7ImL0oCbD.jpg"
+    },
+    {
+      "media_external_id": "movie:569094",
+      "related_media_external_id": "movie:911916",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Spider-Man: Beyond the Spider-Verse",
+      "cover": "https://image.tmdb.org/t/p/w300/9KAe39xqyZnv9J4W3DRGdQqX82h.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:ms:6489a4f8e375c000e251ab48",
+      "name": "Miles Morales",
+      "image_url": "https://image.tmdb.org/t/p/w185/ovUKfVOwJ7CadEHaG3NDsfA5xRq.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a502d2b209010c1b8eda",
+      "name": "Gwen Stacy",
+      "image_url": "https://image.tmdb.org/t/p/w185/qDInsG0cxWNxS1X4t59TBZ5S6x5.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6271f53b89d97f005085abd7",
+      "name": "Jeff Morales",
+      "image_url": "https://image.tmdb.org/t/p/w185/2MsJh0bpyzwvOUnXOltHp3j85Pb.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a50dbf31f2505708a397",
+      "name": "Rio Morales",
+      "image_url": "https://image.tmdb.org/t/p/w185/98BvmTJCZHx0jPv0oNcv04Jkmfb.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a51ae375c0011c8201e0",
+      "name": "Peter B. Parker",
+      "image_url": "https://image.tmdb.org/t/p/w185/3UNfW2qZgRkW81neNVfQvaRC92K.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a527e2726001287c06d5",
+      "name": "Miguel O'Hara",
+      "image_url": "https://image.tmdb.org/t/p/w185/dW5U5yrIIPmMjRThR9KT2xH6nTz.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a530e2726000e8c320c7",
+      "name": "Spot",
+      "image_url": "https://image.tmdb.org/t/p/w185/gCjMdmW1DiPAClHVl4zHEIffIsE.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a538e375c000c52a3cae",
+      "name": "Jessica Drew",
+      "image_url": "https://image.tmdb.org/t/p/w185/uFjimuDgBv8kckApr19t8DykxPH.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a53f99259c00accf0de2",
+      "name": "Hobie Brown",
+      "image_url": "https://image.tmdb.org/t/p/w185/jj2kZqJobjom36wlhlYhc38nTwN.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a549e2726000c932c67d",
+      "name": "Pavitr Prabhakar",
+      "image_url": "https://image.tmdb.org/t/p/w185/t3eNrzRKy3wTVCUiEp002UXbjxX.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6489a55b6f8d95011f2435e3",
+      "name": "George Stacy",
+      "image_url": "https://image.tmdb.org/t/p/w185/d3caK3l4UfbnzOxv95wLoFLZzMO.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:63695b7d1684f7007a9bf5d7",
+      "name": "LYLA",
+      "image_url": "https://image.tmdb.org/t/p/w185/6SydTis4XUcovlwIGskT59JowLX.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6478805ee323f30148154bb4",
+      "name": "Uncle Aaron",
+      "image_url": "https://image.tmdb.org/t/p/w185/9ZmSejm5lnUVY5IJ1iNx2QEjnHb.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:64756ba16743fa00df865ea0",
+      "name": "Margo Kess: Spider-Byte",
+      "image_url": "https://image.tmdb.org/t/p/w185/dGqTcwLVoVOqU6Ckp8igV3wD0CW.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:647a40e8e375c000c1a6aac4",
+      "name": "Miles G. Morales",
+      "image_url": "https://image.tmdb.org/t/p/w185/zH840Fv86TixTLVZKzPZJJacphd.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:644afc50fba62502fbd5626d",
+      "name": "Ben Reilly",
+      "image_url": "https://image.tmdb.org/t/p/w185/jMXU5oG3i93SH1yhkpbBGskFiJl.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:64779d8fcf4b8b0122742009",
+      "name": "Peter Parker",
+      "image_url": "https://image.tmdb.org/t/p/w185/320qW5yEbxpmyxQ3evmClJbtKag.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6271f59aa313b8006527fbbe",
+      "name": "Ms. Weber",
+      "image_url": "https://image.tmdb.org/t/p/w185/j8vNwap7BM69dRz5zXVWvIn4lJ7.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:647994ece323f3014815cc4e",
+      "name": "Lenny",
+      "image_url": "https://image.tmdb.org/t/p/w185/9WZVDvWi6P8sg5hQ6JUf017d2SQ.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:62a735a565e0a200ab233adf",
+      "name": "Adriano Tumino / '67",
+      "image_url": "https://image.tmdb.org/t/p/w185/x7x4NvDauuQ7HA6psLZYZ6m3zTd.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:64794809caef2d01362a1503",
+      "name": "J. Jonah Jameson",
+      "image_url": "https://image.tmdb.org/t/p/w185/ScmKoJ9eiSUOthAt1PDNLi8Fkw.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:64787bdf93828e0116231395",
+      "name": "Aaron Davis",
+      "image_url": "https://image.tmdb.org/t/p/w185/jqVkQfeeEmdga1G0jpBwwXXwwSK.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:647995370e29a200a65f86d2",
+      "name": "May / Quippy Spider-Person",
+      "image_url": "https://image.tmdb.org/t/p/w185/t9Cfx8R8hxB1Od46s9CXJMwwNTA.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:647a417717497300c131d600",
+      "name": "Doc Ock",
+      "image_url": "https://image.tmdb.org/t/p/w185/9sVllAKfEls3SJD3GoPm2JEZoa5.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:647994e093828e0116239872",
+      "name": "Glory",
+      "image_url": "https://image.tmdb.org/t/p/w185/wrqYWaAmVPM2yueEEQUtMo6kCp2.jpg",
+      "relation_type": null,
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:t1046497",
+      "name": "Justin K. Thompson",
+      "image": "https://image.tmdb.org/t/p/w185/mRMi8Q2fmlfbDYkE7A63gzFtGsZ.jpg",
+      "role": "Director",
+      "url": null,
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    },
+    {
+      "external_id": "person:t2451598",
+      "name": "Kemp Powers",
+      "image": "https://image.tmdb.org/t/p/w185/oE4TcENMQw25t4UTAjrnl0m4JyH.jpg",
+      "role": "Director",
+      "url": null,
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    },
+    {
+      "external_id": "person:t89596",
+      "name": "Joaquim Dos Santos",
+      "image": "https://image.tmdb.org/t/p/w185/w45GPb3cW6TqPw4FxB5Hc6zzAwx.jpg",
+      "role": "Director",
+      "url": null,
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "saga_name": "Spider-Verse",
+  "story_arcs": []
+}
