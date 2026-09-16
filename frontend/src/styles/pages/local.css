@@ -713,6 +713,16 @@
   gap: 1rem;
 }
 
+/* VirtualCardGrid's virtualized variant (see useVirtualCardGrid.ts) —
+   CARD_WIDTH/CARD_GAP there must keep matching the 120px/1rem above. Row
+   positioning is done by hand via inline transforms instead of CSS grid, so
+   this only needs to stop being a grid and become the positioned ancestor
+   those absolute children measure their offsets against. */
+.local-games-grid.local-games-grid--virtual {
+  display: block;
+  position: relative;
+}
+
 /* Watching/Planning/Sin estrenar sections reuse profile's own
    .library-section(-title) classes for visual consistency — but Local
    tends to have more, shorter sections stacked closer together than

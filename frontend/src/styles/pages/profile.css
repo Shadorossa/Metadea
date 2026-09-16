@@ -379,6 +379,15 @@
   gap: 0.85rem;
 }
 
+/* VirtualLibraryGrid's virtualized variant (see useVirtualLibraryGrid.ts) —
+   row/column math is done by hand there instead of by this grid, so this
+   only needs to become the positioned ancestor its absolutely-placed rows
+   measure their offsets against. */
+.library-grid.library-grid--virtual {
+  display: block;
+  position: relative;
+}
+
 /* Grid item / positioning host for a card + its (optional) saga/edition
    flyout. Kept separate from .library-card itself so the card can have
    overflow:hidden *permanently* (it clips its own blurred cover background,

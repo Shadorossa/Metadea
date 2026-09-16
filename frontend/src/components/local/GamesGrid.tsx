@@ -13,6 +13,7 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
+import { VirtualCardGrid } from './ui/VirtualCardGrid';
 
 // sectionStatus is the badge shown on any kind:'game' entry in this section
 // (kind:'catalog' entries carry their own item.status instead) — safe to
@@ -215,10 +216,11 @@ export function GamesGrid({
       {statusSections.map(sec => (
         <div key={sec.key} className="library-section" style={{ marginBottom: '1.5rem' }}>
           <h3 className="library-section-title">{sec.title}</h3>
-          <div className="local-games-grid">
-            {sec.entries.map((entry, i) => entry.kind === 'game' ? (
+          <VirtualCardGrid
+            entries={sec.entries}
+            getKey={entryKey}
+            renderItem={entry => entry.kind === 'game' ? (
               <GameCard
-                key={entry.game.app_id ?? `g${i}`}
                 game={entry.game}
                 coverCache={coverCache}
                 onClick={onSelectGame}
@@ -228,15 +230,14 @@ export function GamesGrid({
               />
             ) : (
               <LocalMediaCard
-                key={entry.item.externalId}
                 item={entry.item}
                 cachedPath={coverCacheHits[entry.item.externalId]}
                 onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
                 onRequestDelete={(item, x, y) => setDeleteMenu({ kind: 'library', item, x, y })}
                 launchGame={entry.launchGame}
               />
-            ))}
-          </div>
+            )}
+          />
         </div>
       ))}
 
@@ -343,10 +344,11 @@ export function GamesGrid({
                   )}
                 </div>
               </h2>
-              <div className="local-games-grid">
-                {sortedEntries.map(entry => entry.kind === 'game' ? (
+              <VirtualCardGrid
+                entries={sortedEntries}
+                getKey={entryKey}
+                renderItem={entry => entry.kind === 'game' ? (
                   <GameCard
-                    key={entryKey(entry)}
                     game={entry.game}
                     coverCache={coverCache}
                     onClick={onSelectGame}
@@ -356,15 +358,14 @@ export function GamesGrid({
                   />
                 ) : (
                   <LocalMediaCard
-                    key={entryKey(entry)}
                     item={entry.item}
                     cachedPath={coverCacheHits[entry.item.externalId]}
                     onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
                     onRequestDelete={(item, x, y) => setDeleteMenu({ kind: 'library', item, x, y })}
                     launchGame={entry.launchGame}
                   />
-                ))}
-              </div>
+                )}
+              />
             </section>
           );
         })

@@ -12,6 +12,7 @@ import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
+import { VirtualCardGrid } from './ui/VirtualCardGrid';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 
@@ -321,10 +322,11 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                     )}
                     {sec.title}
                   </h3>
-                  <div className="local-games-grid">
-                    {sec.entries.map(entry => entry.kind === 'catalog' ? (
+                  <VirtualCardGrid
+                    entries={sec.entries}
+                    getKey={entry => entry.kind === 'catalog' ? entry.item.externalId : `${entry.game.app_id ?? entry.game.name}`}
+                    renderItem={entry => entry.kind === 'catalog' ? (
                       <LocalMediaCard
-                        key={entry.item.externalId}
                         item={entry.item}
                         cachedPath={coverCacheHits[entry.item.externalId]}
                         onClick={i => isGameLike ? onOpenPendingSelection(i, entry.launchGame) : onSetCatalogSelection(i.externalId)}
@@ -333,15 +335,14 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                       />
                     ) : (
                       <GameCard
-                        key={entry.game.app_id ?? entry.game.name}
                         game={entry.game}
                         coverCache={coverCache ?? {}}
                         onClick={onSetGameSelection}
                         displayName={displayNameFor(entry.game)}
                         onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
                       />
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               ))}
             </div>
