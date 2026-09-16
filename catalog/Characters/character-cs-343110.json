@@ -1,0 +1,40 @@
+{
+  "character": {
+    "external_id": "character:cs:343110",
+    "aliases_csv": "Hero of Yokohama,Mr. Unemployed,Prisoner 1119,The Hope of Kamurocho"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:36550",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:217624",
+      "relation_type": "BACKGROUND"
+    },
+    {
+      "media_external_id": "game:217623",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:317317",
+      "relation_type": "CAMEO"
+    },
+    {
+      "media_external_id": "game:319033",
+      "relation_type": "MAIN"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "person:a112627",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a103491",
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
