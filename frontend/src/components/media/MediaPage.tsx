@@ -1320,21 +1320,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         const currentVersionObj = themeVersions.find(v => v.version === selectedThemeVersion) || themeVersions[0];
         const targetId = playingTheme.external_id || currentId;
 
-        const rawEps = (() => {
-          if (currentVersionObj?.episodes) return currentVersionObj.episodes;
-          if (playingTheme.episodes) return playingTheme.episodes;
-          if (playingTheme.theme_type === 'OP') {
-            const seasonEps = episodes.filter(e => (e.external_id || currentId) === targetId && e.episode_number > 0);
-            if (seasonEps.length > 0) {
-              const minEp = seasonEps[0].episode_number;
-              const maxEp = seasonEps[seasonEps.length - 1].episode_number;
-              return minEp === maxEp ? String(minEp) : `${minEp}-${maxEp}`;
-            }
-          }
-          return null;
-        })();
-
-        const formattedEps = formatThemeEpisodes(rawEps, episodeOffset);
         const themeSeason = (() => {
           if (animeSeasonChain.length > 0) {
             const idx = animeSeasonChain.findIndex(s => s.externalId === targetId);
@@ -1349,6 +1334,33 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           }
           return null;
         })();
+
+        const seasonOffset = (() => {
+          if (!themeSeason || animeSeasonChain.length <= 1) return episodeOffset;
+          const sIdx = themeSeason.seasonIndex - 1;
+          if (sIdx <= 0) return episodeOffset;
+          let offset = 0;
+          for (let i = 0; i < sIdx; i++) {
+            const sId = animeSeasonChain[i].externalId;
+            const sEps = episodes.filter(e => (e.external_id || currentId) === sId && e.episode_number > 0);
+            offset += sEps.length;
+          }
+          return offset > 0 ? offset : episodeOffset;
+        })();
+
+        const rawEps = (() => {
+          if (currentVersionObj?.episodes) return currentVersionObj.episodes;
+          if (playingTheme.episodes) return playingTheme.episodes;
+          const seasonEps = episodes.filter(e => (e.external_id || currentId) === targetId && e.episode_number > 0);
+          if (seasonEps.length > 0) {
+            const minEp = seasonEps[0].episode_number;
+            const maxEp = seasonEps[seasonEps.length - 1].episode_number;
+            return minEp === maxEp ? String(minEp) : `${minEp}-${maxEp}`;
+          }
+          return null;
+        })();
+
+        const formattedEps = formatThemeEpisodes(rawEps, seasonOffset);
 
         const handleNavigateToThemeEpisodes = (formatted: string) => {
           const match = formatted.match(/\b\d+\b/);
@@ -1473,13 +1485,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                       title={themeSeason.title}
                       onClick={e => e.stopPropagation()}
                     >
-                      <div className="theme-player-season-thumb">
-                        {themeSeason.cover && <img src={themeSeason.cover} alt={themeSeason.title} />}
-                      </div>
-                      <div className="theme-player-season-info">
-                        <span className="theme-player-season-badge">{`T${themeSeason.seasonIndex}`}</span>
-                        <span className="theme-player-season-title">{splitTitleAfterColon(themeSeason.title)}</span>
-                      </div>
+                      {themeSeason.cover && (
+                        <div className="theme-player-season-bg">
+                          <img src={themeSeason.cover} alt="" />
+                        </div>
+                      )}
+                      <div className="theme-player-season-overlay" />
+                      <span className="theme-player-season-title">{splitTitleAfterColon(themeSeason.title)}</span>
                     </a>
                   )}
                   {formattedEps && (
