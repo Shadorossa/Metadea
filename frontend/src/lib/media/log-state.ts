@@ -43,6 +43,11 @@ export type EntryAction =
   | { type: 'LOAD_LOG';     id: string; entry: LibraryEntry }
   | { type: 'SWITCH_LOG';   id: string }
   | { type: 'UPDATE_LOG';   updates: Partial<LogState> }
+  // Applies its own updates per id, not one shared patch — a "mark whole
+  // unified anime as completed" cascade (MediaEditorModal's general tab)
+  // needs each season's progress set to ITS OWN episode total, not a single
+  // shared number, so UPDATE_LOG's activeLogId-only write can't do this.
+  | { type: 'UPDATE_LOGS_BULK'; updatesById: Record<string, Partial<LogState>> }
   | { type: 'SET_VERSION';  value: string; baseId: string }
   | { type: 'LOAD_HISTORY'; history: Record<string, string[]>; foundKey: string | null }
   | { type: 'SET_MONTH';    ids: string[]; primaryId: string; key: string | null; year: number }
@@ -129,6 +134,14 @@ export function entryReducer(state: EntryState, action: EntryAction): EntryState
       const id = state.activeLogId;
       const current = state.logs[id] || createDefaultLog();
       return { ...state, logs: { ...state.logs, [id]: { ...current, ...action.updates } } };
+    }
+    case 'UPDATE_LOGS_BULK': {
+      const nextLogs = { ...state.logs };
+      for (const [id, updates] of Object.entries(action.updatesById)) {
+        const current = nextLogs[id] || createDefaultLog();
+        nextLogs[id] = { ...current, ...updates };
+      }
+      return { ...state, logs: nextLogs };
     }
     case 'SET_VERSION': {
       // Only updates the base's own link list — SWITCH_LOG (always dispatched

@@ -6,9 +6,9 @@
 // promise, already warm by the time the modal opens.
 import { fetchAniListSaga, type SagaEntry } from '../anilist/saga';
 import { compareByReleaseDate } from './mapper-utils';
-import { reconstructSagaOrder } from './sagaGrouping';
+import { reconstructSagaOrder, filterToSequelChain } from './sagaGrouping';
 import { getCachedSaga, saveCachedSaga, getSagaName, getMediaRelations } from '../tauri';
-import { getCatalogEntry, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
+import { getCatalogEntry, getBlockedExternalIds, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
 import { getStoryArcsForMediaBatch, type StoryArc } from '../tauri/story-arcs';
 import { fetchMediaData } from './mediaService';
 
@@ -50,7 +50,17 @@ async function reconstructFromRelations(externalId: string): Promise<SagaEntry[]
   );
   const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
 
-  return orderedIds.map(id => {
+  // get_transitive_relation_ids' closure includes ALTERNATIVE-linked entries
+  // (uncut/TV cuts, alternate edits) too — real for PrEditorModal's own
+  // Concept Group clustering, but not a real season for Temporadas/
+  // unifyAnimeSeasons, which must only ever show true PREQUEL/SEQUEL chain
+  // members. Filtered here (after ordering, not before) so it doesn't
+  // interfere with reconstructSagaOrder's own ALTERNATIVE-aware tie-break.
+  const chainIds = new Set(filterToSequelChain(dateOrderedIds, relsByIndex, externalId));
+  const finalIds = orderedIds.filter(id => chainIds.has(id));
+  if (finalIds.length <= 1) return null;
+
+  return finalIds.map(id => {
     const entry = byId.get(id)!;
     return {
       externalId: id,
@@ -67,6 +77,22 @@ async function reconstructFromRelations(externalId: string): Promise<SagaEntry[]
 
 const sameOrder = (a: SagaEntry[], b: SagaEntry[]) =>
   a.length === b.length && a.every((e, i) => e.externalId === b[i].externalId);
+
+// blocked_at (PrEditorModal's "bloquear" action) already documents "saga
+// chains" as one of the places a blocked entry must stay hidden from — this
+// is that filter, applied once here so every consumer (MediaPage's
+// Temporadas tab, SagaViewerModal, MediaEditorModal's season tabs) gets it
+// for free instead of re-filtering independently. Display-only: doesn't
+// touch the underlying media_relations edges, so reconstructFromRelations'
+// own graph walk (and the background reconciliation above) still sees the
+// real chain — a blocked entry just never reaches the caller.
+async function filterBlockedSagaEntries(entries: SagaEntry[]): Promise<SagaEntry[]> {
+  if (entries.length === 0) return entries;
+  const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+  if (blockedIds.length === 0) return entries;
+  const blocked = new Set(blockedIds);
+  return entries.filter(e => !blocked.has(e.externalId));
+}
 
 async function loadSagaTitle(externalId: string): Promise<string> {
   try {
@@ -96,7 +122,7 @@ async function fetchSagaChain(externalId: string): Promise<SagaChainResult> {
       if (!fresh || sameOrder(fresh, cached!)) return;
       saveCachedSaga(fresh).catch(() => {});
     }).catch(err => console.warn('[Saga] Background reconcile failed:', err));
-    return { entries: cached, sagaTitle, ok: true };
+    return { entries: await filterBlockedSagaEntries(cached), sagaTitle, ok: true };
   }
 
   try {
@@ -104,7 +130,7 @@ async function fetchSagaChain(externalId: string): Promise<SagaChainResult> {
     if (sagaList) {
       saveCachedSaga(sagaList).catch(err => console.warn('[Saga] Failed to save to cache:', err));
       const sagaTitle = await loadSagaTitle(externalId);
-      return { entries: sagaList, sagaTitle, ok: true };
+      return { entries: await filterBlockedSagaEntries(sagaList), sagaTitle, ok: true };
     }
   } catch (err) {
     console.warn('[Saga] Failed to load transitive relations:', err);
@@ -131,7 +157,7 @@ async function fetchSagaChain(externalId: string): Promise<SagaChainResult> {
       // waiting for someone to eventually open each season's own page.
       persistChainRelationsInBackground(result);
       const sagaTitle = await loadSagaTitle(externalId);
-      return { entries: result, sagaTitle, ok: true };
+      return { entries: await filterBlockedSagaEntries(result), sagaTitle, ok: true };
     }
   } catch {
     // falls through to ok: false below

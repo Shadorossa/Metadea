@@ -2285,13 +2285,18 @@
   flex: 1;
 }
 
-.me-header-cover {
+.me-header-cover-slot {
   width: 32px;
   height: 44px;
-  object-fit: cover;
-  border-radius: 4px;
   flex-shrink: 0;
   margin-top: 0.1rem;
+}
+
+.me-header-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
   display: block;
 }
 
@@ -2348,6 +2353,15 @@
   color: var(--text-muted);
   font-weight: 600;
   order: 2;
+  /* Reserves room for up to 4 digits so a season with a much bigger/smaller
+     total than the one you switched from doesn't nudge whatever sits after
+     this field (rating, dates) left or right. */
+  min-width: 1.75rem;
+  display: inline-block;
+}
+
+.me-header-field-max--hidden {
+  visibility: hidden;
 }
 
 .me-header-field-label {
@@ -2508,6 +2522,18 @@
   border-color: var(--accent, #7c6af7);
   background: color-mix(in srgb, var(--accent, #7c6af7) 14%, transparent);
   color: var(--accent, #7c6af7);
+}
+
+/* General tab: every status button but "completed" only ever reflects the
+   auto-derived aggregate (see generalStatus in MediaEditorModal.tsx) —
+   dimmed and inert since clicking them has nothing real to write. */
+.me-header-status-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.me-header-status-icon:disabled:hover {
+  border-color: color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
 }
 
 .me-header-status-icon svg {
@@ -2804,6 +2830,10 @@
   color: #ef4444;
   border-color: rgba(239, 68, 68, 0.55);
   background: rgba(239, 68, 68, 0.08);
+}
+
+.me-btn--hidden {
+  visibility: hidden;
 }
 
 .me-btn--share {

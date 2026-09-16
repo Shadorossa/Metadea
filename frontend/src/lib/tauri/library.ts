@@ -1,6 +1,7 @@
 import { tauriCmd, tauriRun, invoke, isTauri, readStoredJson, writeStoredJson } from './core';
 import { getMediaRelations, getCatalogEntry } from './catalog';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { isSeriesSeasonSyntheticId } from '../media/mapper-utils';
 
 export interface LibraryEntry {
   id: string;
@@ -106,7 +107,14 @@ export async function deleteLibraryEntry(externalId: string): Promise<void> {
 }
 
 export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
-  return tauriCmd<LibraryEntry[]>('get_all_library_entries', []);
+  const entries = await tauriCmd<LibraryEntry[]>('get_all_library_entries', []);
+  // A series' per-season synthetic entries (MediaEditorModal's "Unificar
+  // temporadas" season tabs) exist purely so that tab's own status/rating/
+  // progress can round-trip through this same table — they have no matching
+  // media_catalog row, so every consumer of "your whole library" (the grid,
+  // stats, public profile sync, the calendar, AniList import matching) must
+  // never see them as if they were real, separately-owned works.
+  return entries.filter(e => !isSeriesSeasonSyntheticId(e.external_id));
 }
 
 export async function clearAllRatings(): Promise<void> {

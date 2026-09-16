@@ -1813,10 +1813,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         relation={{
                           url: `/media?id=${encodeURIComponent(entry.externalId)}`,
                           cover: entry.cover,
-                          typeLabel: entry.externalId === currentId ? tm.saga_current : `T${i + 1}`,
-                          // The "T{n}" badge above already says which season
-                          // this is — stripSeasonSuffix hides "2nd Season"/
-                          // "The Final Season" wording from the title itself
+                          typeLabel: `${tm.stat_season} ${i + 1}`,
+                          // The badge above already says which season this
+                          // is — stripSeasonSuffix hides "2nd Season"/"The
+                          // Final Season" wording from the title itself
                           // instead of showing it twice.
                           title: stripSeasonSuffix(entry.title),
                         }}
@@ -1827,7 +1827,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         key={season.seasonNumber}
                         relation={{
                           cover: season.coverUrl,
-                          typeLabel: `T${season.seasonNumber}`,
+                          typeLabel: `${tm.stat_season} ${season.seasonNumber}`,
                           title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
                         }}
                       />

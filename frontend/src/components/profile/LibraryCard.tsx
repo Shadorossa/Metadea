@@ -105,6 +105,19 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
 
   const cover = toMediumCover(inProgressCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
 
+  // Same "which season is actually active" pick as inProgressCover above —
+  // the card's own `item` is always the earliest-release season (see
+  // unifyAnimeSeasons), so without this, clicking a fused card that's
+  // visually showing (via inProgressCover) a later season you're mid-way
+  // through would still open the editor on season 1 instead of the one the
+  // card is actually representing right now.
+  const activeSeasonId = useMemo(() => {
+    if (!hideGroupingUi) return null;
+    const inProgressMembers = aggregateMembers.filter(m => isInProgressStatus(m.status) || m.status === 'in_progress');
+    if (inProgressMembers.length === 0) return null;
+    return inProgressMembers[inProgressMembers.length - 1].external_id;
+  }, [hideGroupingUi, aggregateMembers]);
+
   const customGeneralRating = useMemo(() => {
     if (!hideGroupingUi) return null;
     const val = localStorage.getItem(`general_rating:${item.external_id}`);
@@ -178,7 +191,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
       return;
     }
     window.dispatchEvent(new CustomEvent('open-profile-editor', {
-      detail: { externalId: item.external_id, libraryEntry: item, catalogEntry: meta, ratingSlot },
+      detail: { externalId: item.external_id, libraryEntry: item, catalogEntry: meta, ratingSlot, initialActiveLogId: activeSeasonId ?? undefined },
     }));
   };
 

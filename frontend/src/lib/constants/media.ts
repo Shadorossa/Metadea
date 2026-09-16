@@ -102,6 +102,33 @@ export function isReadingType(type: string | null | undefined): boolean {
   return type != null && READING_TYPES.has(type);
 }
 
+// Priority order for picking one "representative" status out of several
+// seasons of the same unified anime chain — an in-progress season always
+// wins (you're actively watching the work as a whole), completed only wins
+// when every single season is also completed. Shared by the library grid's
+// fused card (unifyAnimeSeasons in library-grouping.ts) and the media
+// editor's "general" tab (MediaEditorModal.tsx) so both read the exact same
+// rule instead of drifting apart.
+export const SEASON_STATUS_PRIORITY: Record<string, number> = {
+  watching: 0, reading: 0, playing: 0,
+  planning: 1,
+  paused: 2,
+  dropped: 3,
+  completed: 4,
+};
+
+export function pickAggregateStatus(statuses: (string | null | undefined)[]): string {
+  const real = statuses.filter((s): s is string => !!s);
+  if (real.length === 0) return '';
+  let best = real[0];
+  let bestPriority = SEASON_STATUS_PRIORITY[best] ?? 5;
+  for (const s of real) {
+    const priority = SEASON_STATUS_PRIORITY[s] ?? 5;
+    if (priority < bestPriority) { bestPriority = priority; best = s; }
+  }
+  return best;
+}
+
 // A season/update/issue/episode-tagged catalog entry (a Steam "season pass"
 // or similar bundle child) isn't a separately-countable/launchable work of
 // its own — it shows as itself but rolls up into whatever it's part of.

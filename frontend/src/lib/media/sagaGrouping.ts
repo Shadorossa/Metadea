@@ -76,6 +76,41 @@ export function classifySagaChain(
   return entries;
 }
 
+// Kahn's algorithm over an arbitrary "A must come before B" edge set — ties
+// (no edge constraint between two ready ids) break via the caller's own
+// tieBreak, so this serves both the local-relations reconstruction below
+// (release-date + manual in-group position) and fetchAniListSaga's live BFS
+// (release-date only, no group-position concept there). A cycle or other
+// inconsistency in the edges falls back to `ids` as given rather than
+// silently dropping whichever ones didn't make it into `result`.
+export function topoSortByPrecedes(
+  ids: string[],
+  precedes: Map<string, Set<string>>,
+  tieBreak: (a: string, b: string) => number,
+): string[] {
+  if (precedes.size === 0) return ids;
+
+  const inDegree = new Map(ids.map(id => [id, 0]));
+  for (const targets of precedes.values()) {
+    for (const t of targets) inDegree.set(t, (inDegree.get(t) ?? 0) + 1);
+  }
+
+  const ready = ids.filter(id => inDegree.get(id) === 0);
+  const result: string[] = [];
+  while (ready.length > 0) {
+    ready.sort(tieBreak);
+    const id = ready.shift()!;
+    result.push(id);
+    for (const next of precedes.get(id) ?? []) {
+      const remaining = (inDegree.get(next) ?? 0) - 1;
+      inDegree.set(next, remaining);
+      if (remaining === 0) ready.push(next);
+    }
+  }
+
+  return result.length === ids.length ? result : ids;
+}
+
 /** Reconstructs saga order from saved SEQUEL edges instead of trusting
  *  release dates alone — without this, reopening the editor after a manual
  *  drag-reorder silently reverted to release-date order every time, even
@@ -107,34 +142,48 @@ export function reconstructSagaOrder(dateOrderedIds: string[], relsByIndex: DbMe
       }
     }
   }
-  if (precedes.size === 0) return dateOrderedIds; // nothing saved yet
 
-  // Kahn's algorithm — ties (no edge constraint between two ready ids) break
-  // by release-date order so the result stays deterministic and sensible.
-  const inDegree = new Map(dateOrderedIds.map(id => [id, 0]));
-  for (const targets of precedes.values()) {
-    for (const t of targets) inDegree.set(t, (inDegree.get(t) ?? 0) + 1);
-  }
+  return topoSortByPrecedes(dateOrderedIds, precedes, (a, b) => {
+    const ga = groupPosition.get(a);
+    const gb = groupPosition.get(b);
+    if (ga !== undefined && gb !== undefined) return ga - gb;
+    return dateIndex.get(a)! - dateIndex.get(b)!;
+  });
+}
 
-  const ready = dateOrderedIds.filter(id => inDegree.get(id) === 0);
-  const result: string[] = [];
-  while (ready.length > 0) {
-    ready.sort((a, b) => {
-      const ga = groupPosition.get(a);
-      const gb = groupPosition.get(b);
-      if (ga !== undefined && gb !== undefined) return ga - gb;
-      return dateIndex.get(a)! - dateIndex.get(b)!;
-    });
-    const id = ready.shift()!;
-    result.push(id);
-    for (const next of precedes.get(id) ?? []) {
-      const remaining = (inDegree.get(next) ?? 0) - 1;
-      inDegree.set(next, remaining);
-      if (remaining === 0) ready.push(next);
+/** Restricts `ids` to only those reachable from `startId` by walking
+ *  PREQUEL/SEQUEL edges alone — get_transitive_relation_ids' own closure
+ *  (used by both this and PrEditorModal's Concept Group clustering) also
+ *  pulls in ALTERNATIVE-linked entries (uncut/TV-cut versions of the same
+ *  season, alternate edits) and other relation types, which are exactly what
+ *  PrEditorModal's own "Concept Group" editing needs them for — but a
+ *  Temporadas tab or unifyAnimeSeasons fusion must never show one of those
+ *  as if it were its own separate season, so sagaData.ts's chain-building
+ *  filters through this before returning entries, while PrEditorModal itself
+ *  keeps consuming the full unfiltered closure. */
+export function filterToSequelChain(ids: string[], relsByIndex: DbMediaRelation[][], startId: string): string[] {
+  const idSet = new Set(ids);
+  const adjacency = new Map<string, Set<string>>();
+  for (let i = 0; i < ids.length; i++) {
+    for (const r of relsByIndex[i] ?? []) {
+      if ((r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL') && idSet.has(r.related_media_external_id)) {
+        const a = ids[i], b = r.related_media_external_id;
+        if (!adjacency.has(a)) adjacency.set(a, new Set());
+        if (!adjacency.has(b)) adjacency.set(b, new Set());
+        adjacency.get(a)!.add(b);
+        adjacency.get(b)!.add(a);
+      }
     }
   }
 
-  // A cycle or other inconsistency in the saved edges — fall back rather
-  // than silently dropping whichever ids didn't make it into `result`.
-  return result.length === dateOrderedIds.length ? result : dateOrderedIds;
+  const reachable = new Set<string>([startId]);
+  const queue = [startId];
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    for (const next of adjacency.get(cur) ?? []) {
+      if (!reachable.has(next)) { reachable.add(next); queue.push(next); }
+    }
+  }
+
+  return ids.filter(id => reachable.has(id));
 }

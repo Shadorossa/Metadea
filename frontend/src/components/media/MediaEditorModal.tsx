@@ -18,13 +18,13 @@ import {
   type LogState,
   createDefaultLog, entryInit, libraryEntryToLog, entryReducer, uiReducer, createEmptyVersionEntry,
 } from '../../lib/media/log-state';
-import { IGDB_TYPES } from '../../lib/constants/media';
+import { IGDB_TYPES, pickAggregateStatus } from '../../lib/constants/media';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { motion } from 'motion/react';
 import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnifySeasonsEnabled, type RatingSlot } from '../../lib/settings/preferences';
 import { loadSagaChain } from '../../lib/media/sagaData';
 import type { SagaEntry } from '../../lib/anilist/saga';
-import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
+import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mapper-utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -183,7 +183,12 @@ function HoursField({ label, value, max, onChange }: {
           onBlur={commit}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
           placeholder="0:00" />
-        {max !== undefined && <span className="me-header-field-max">/ {formatHoursColon(max)}</span>}
+        {/* Always rendered (reserved min-width, hidden via CSS when there's
+            no max) — switching to a tab whose total isn't known yet must
+            never shift whatever sits after this field. */}
+        <span className={`me-header-field-max${max === undefined ? ' me-header-field-max--hidden' : ''}`}>
+          / {max !== undefined ? formatHoursColon(max) : ''}
+        </span>
       </div>
     </HeaderField>
   );
@@ -204,7 +209,10 @@ function NumberField({ label, value, max, step, disabled, onChange }: {
             onChange(v);
           }}
           placeholder="0" />
-        {max !== undefined && <span className="me-header-field-max">/ {max}</span>}
+        {/* Same always-rendered reserved slot as HoursField above. */}
+        <span className={`me-header-field-max${max === undefined ? ' me-header-field-max--hidden' : ''}`}>
+          / {max !== undefined ? max : ''}
+        </span>
       </div>
     </HeaderField>
   );
@@ -352,6 +360,35 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     });
     return () => { cancelled = true; };
   }, [animeSeasonChain]);
+
+  // Same "Unificar temporadas" toggle, for TMDB series — but unlike anime,
+  // a series' own base entry already covers "the whole show" exactly like
+  // it always has (its own real, independently-editable status/rating/
+  // progress — see the general-tab question this was built to answer), so
+  // there's no derived/aggregate general tab to build here. Season tabs are
+  // the only new thing: each gets its own synthetic per-season log
+  // (seriesSeasonExternalId) since a series has no per-season catalog row to
+  // key a real one off of. data.seasons is already fetched (TMDB's own
+  // detail response), so unlike anime this needs no extra chain lookup.
+  const isUnifiedSeries = data.type === 'series' && isUnifySeasonsEnabled() && (data.seasons?.length ?? 0) > 0;
+  const seriesSeasons = isUnifiedSeries ? data.seasons ?? [] : [];
+
+  useEffect(() => {
+    if (!isUnifiedSeries) return;
+    let cancelled = false;
+    Promise.all(seriesSeasons.map(async s => {
+      const id = seriesSeasonExternalId(externalId, s.seasonNumber);
+      const lib = await getLibraryEntry(id).catch(() => null);
+      return { id, lib };
+    })).then(results => {
+      if (cancelled) return;
+      results.forEach(r => {
+        dispatchEntry({ type: 'LOAD_LOG', id: r.id, entry: r.lib ?? createEmptyVersionEntry(r.id, 'series') });
+      });
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUnifiedSeries, externalId]);
 
   // Load base game and edition logs
   useEffect(() => {
@@ -570,7 +607,13 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       if (isAniListType(data.type)) {
         dispatchUi({ type: 'SET_ANILIST', status: 'syncing' });
         syncToAniList({
-          externalId, type: data.type,
+          // Must be the active tab's own id, not the modal's base externalId
+          // — a season tab (isSeasonTab) is its own independent AniList
+          // entry (e.g. Bleach TYBW vs. base Bleach 2004), and activeLog's
+          // values already belong to whichever tab is open, so syncing them
+          // against the wrong mediaId would silently write this season's
+          // progress onto the base work's AniList list entry instead.
+          externalId: entry.activeLogId || externalId, type: data.type,
           status:          activeLog.status,
           rating:          activeLog.rating,
           progress:        activeLog.progress,
@@ -806,6 +849,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   }, [sameGameIds, baseId, entry.selectedYear, selectedMonthKey]);
 
   const isGeneralTab = isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID;
+
+  // Which season (if any) the currently active tab is — undefined on the
+  // series' own general tab or when the season tabs aren't active at all.
+  const activeSeriesSeasonInfo = useMemo(() => {
+    if (!isUnifiedSeries) return undefined;
+    return seriesSeasons.find(s => seriesSeasonExternalId(externalId, s.seasonNumber) === entry.activeLogId);
+  }, [isUnifiedSeries, seriesSeasons, externalId, entry.activeLogId]);
+
   const generalBaseTitle = useMemo(() => {
     return stripSeasonSuffix(animeSeasonChain[0]?.title || data.titleMain);
   }, [animeSeasonChain, data.titleMain]);
@@ -820,13 +871,28 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return animeSeasonChain.reduce((sum, s) => sum + (entry.logs[s.externalId]?.progress ?? 0), 0);
   }, [isUnifiedAnime, animeSeasonChain, entry.logs, activeLog.progress]);
 
+  // The general tab's own "seasons watched" count — auto-derived from how
+  // many chain members are actually marked completed, same read-only
+  // aggregate treatment as generalProgress/generalStatus above. AniList
+  // gives no "this show has N seasons" field the way TMDB does for series
+  // (data.totalCount_2 stays empty for anime), so animeSeasonChain.length
+  // is the real total here instead.
+  const generalSeasonsCompleted = useMemo(() => {
+    if (!isUnifiedAnime) return 0;
+    return animeSeasonChain.filter(s => entry.logs[s.externalId]?.status === 'completed').length;
+  }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
+
   const activeTotalCount = useMemo(() => {
     if (isUnifiedAnime) {
       if (isGeneralTab) return (generalTotalCount ?? 0) > 0 ? generalTotalCount : null;
       return seasonMetaMap[entry.activeLogId]?.totalCount ?? null;
     }
+    // A series' general tab keeps using data.totalCount exactly as before
+    // (its own real total, not derived) — only a season tab needs its own
+    // episodeCount instead.
+    if (activeSeriesSeasonInfo) return activeSeriesSeasonInfo.episodeCount ?? null;
     return data.totalCount;
-  }, [isUnifiedAnime, isGeneralTab, generalTotalCount, seasonMetaMap, entry.activeLogId, data.totalCount]);
+  }, [isUnifiedAnime, isGeneralTab, generalTotalCount, seasonMetaMap, entry.activeLogId, data.totalCount, activeSeriesSeasonInfo]);
 
   const generalStartDate = useMemo(() => {
     if (!isUnifiedAnime) return '';
@@ -861,6 +927,18 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return ratings.reduce((a, b) => a + b, 0) / ratings.length;
   }, [animeSeasonChain, entry.logs]);
 
+  // Auto-derived, never persisted onto any single season's own row — a
+  // season's real status stays whatever the user actually set it to (you may
+  // have completed season 1 and dropped season 3, and that must survive
+  // toggling this view off again). Only exception: manually marking the
+  // general tab "completed" is a genuine bulk action (see the status button
+  // handler below), because "I finished the whole thing" really does mean
+  // every season is done.
+  const generalStatus = useMemo(() => {
+    if (!isUnifiedAnime) return '';
+    return pickAggregateStatus(animeSeasonChain.map(s => entry.logs[s.externalId]?.status));
+  }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
+
   // Header cover/title follow whichever log tab is active — the base game's
   // own title/cover, the current version's, or another linked edition's.
   const activeLogDisplay = useMemo(() => {
@@ -877,6 +955,12 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         cover: meta.cover || data.cover,
       };
     }
+    if (activeSeriesSeasonInfo) {
+      return {
+        title: activeSeriesSeasonInfo.name || `T${activeSeriesSeasonInfo.seasonNumber}`,
+        cover: activeSeriesSeasonInfo.coverUrl || data.cover,
+      };
+    }
     if (entry.activeLogId === baseId) {
       return {
         title: data.parentGame ? data.parentGame.title : data.titleMain,
@@ -887,7 +971,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return found
       ? { title: found.label, cover: found.cover }
       : { title: data.titleMain, cover: data.cover };
-  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, seasonMetaMap, entry.activeLogId, baseId, data.parentGame, data.titleMain, allAvailableEditions]);
+  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, seasonMetaMap, entry.activeLogId, baseId, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo]);
 
   const modal = (
     <motion.div
@@ -910,7 +994,12 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         {/* Header */}
         <div className="me-header">
           <div className="me-header-left">
-            {activeLogDisplay.cover && <img src={activeLogDisplay.cover} alt="" className="me-header-cover" />}
+            {/* Always reserves its slot (even with no cover yet for this
+                tab/season) — switching to a tab whose cover hasn't loaded
+                must never shift the title text sideways. */}
+            <div className="me-header-cover-slot">
+              {activeLogDisplay.cover && <img src={activeLogDisplay.cover} alt="" className="me-header-cover" />}
+            </div>
             <div className="me-header-col">
               <span className="me-header-title">{activeLogDisplay.title}</span>
               <div className="me-header-bottom-row">
@@ -919,8 +1008,28 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     <button
                       key={value}
                       type="button"
-                      className={`me-header-status-icon${activeLog.status === value ? ' active' : ''}`}
+                      className={`me-header-status-icon${(isGeneralTab ? generalStatus : activeLog.status) === value ? ' active' : ''}`}
+                      // The general tab's status is always the auto-derived
+                      // aggregate (see generalStatus) — every button except
+                      // "completed" is inert there, since only "I finished
+                      // the whole thing" is a real bulk action; the other
+                      // four states already come from whichever season
+                      // actually has them, so clicking them here would have
+                      // nothing real to write.
+                      disabled={isGeneralTab && value !== 'completed'}
                       onClick={() => {
+                        if (isGeneralTab) {
+                          if (value !== 'completed') return;
+                          const updatesById: Record<string, Partial<LogState>> = {};
+                          for (const s of animeSeasonChain) {
+                            const seasonTotal = seasonMetaMap[s.externalId]?.totalCount;
+                            const su: Partial<LogState> = { status: 'completed' };
+                            if (seasonTotal && seasonTotal > 0) su.progress = seasonTotal;
+                            updatesById[s.externalId] = su;
+                          }
+                          dispatchEntry({ type: 'UPDATE_LOGS_BULK', updatesById });
+                          return;
+                        }
                         const next = activeLog.status === value ? '' : value;
                         const updates: Partial<LogState> = { status: next };
                         if (value === 'completed' && next === 'completed') {
@@ -962,9 +1071,23 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
                       }} />
                     )}
-                    {label2 && data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0 && (
-                      <NumberField label={label2} value={activeLog.progressCount2} step={1}
-                        max={data.totalCount_2}
+                    {/* Anime's general tab shows the chain's own season
+                        count here instead of data.totalCount_2 (AniList has
+                        no such field), auto-equal to however many seasons
+                        are actually marked completed — same read-only
+                        aggregate treatment as episodes/status above. Never
+                        shown while rating one specific series season: "how
+                        many seasons" makes no sense from inside just one of
+                        them, only from the series' own general entry. */}
+                    {label2 && !activeSeriesSeasonInfo && (
+                      isGeneralTab
+                        ? animeSeasonChain.length > 0
+                        : (data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0)
+                    ) && (
+                      <NumberField label={label2}
+                        value={isGeneralTab ? generalSeasonsCompleted : activeLog.progressCount2}
+                        step={1}
+                        max={isGeneralTab ? animeSeasonChain.length : (data.totalCount_2 ?? undefined)}
                         disabled={isGeneralTab}
                         onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progressCount2: v } })} />
                     )}
@@ -1075,7 +1198,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           </div>
         </div>
 
-        {(isUnifiedAnime || data.parentGame || allAvailableEditions.length > 0) && (
+        {(isUnifiedAnime || isUnifiedSeries || data.parentGame || allAvailableEditions.length > 0) && (
           <div className="me-versions-tabs">
             {isUnifiedAnime ? (
               <>
@@ -1103,6 +1226,44 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                           dispatchEntry({ type: 'LOAD_LOG', id: seasonEntry.externalId, entry: createEmptyVersionEntry(seasonEntry.externalId, 'anime') });
                         }
                         dispatchEntry({ type: 'SWITCH_LOG', id: seasonEntry.externalId });
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </>
+            ) : isUnifiedSeries ? (
+              <>
+                {/* Unlike anime's general tab, this one is the series' own
+                    real entry — fully editable as it's always been, not a
+                    derived read-mostly aggregate — so it's just baseId/
+                    externalId under a friendlier label, same identity the
+                    plain (non-tabbed) form below already edits. */}
+                <button
+                  type="button"
+                  className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
+                  title={data.titleMain}
+                  onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
+                >
+                  {data.titleMain}
+                </button>
+                <span className="me-version-tab-separator">|</span>
+                {seriesSeasons.map(season => {
+                  const seasonId = seriesSeasonExternalId(externalId, season.seasonNumber);
+                  const isActive = entry.activeLogId === seasonId;
+                  const label = `T${season.seasonNumber}`;
+                  return (
+                    <button
+                      key={seasonId}
+                      type="button"
+                      className={`me-version-tab-btn${isActive ? ' active' : ''}`}
+                      title={season.name || label}
+                      onClick={() => {
+                        if (!entry.logs[seasonId]) {
+                          dispatchEntry({ type: 'LOAD_LOG', id: seasonId, entry: createEmptyVersionEntry(seasonId, 'series') });
+                        }
+                        dispatchEntry({ type: 'SWITCH_LOG', id: seasonId });
                       }}
                     >
                       {label}
@@ -1275,12 +1436,17 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   onClick={handleSave} disabled={ui.saving}>
                   {ui.saving ? te.saving : te.save}
                 </button>
-                {activeLog.existing && (
-                  <button type="button" className="me-btn me-btn--delete"
-                    onClick={handleDelete} title={te.delete}>
-                    <IconTrash size={15} strokeWidth={2.5} />
-                  </button>
-                )}
+                {/* Always rendered (reserved slot, hidden via CSS when this
+                    tab's log has never been saved) — switching between a
+                    logged and an unlogged season must never shift Share
+                    (and the AniList status line below it) up or down. */}
+                <button type="button"
+                  className={`me-btn me-btn--delete${!activeLog.existing ? ' me-btn--hidden' : ''}`}
+                  onClick={handleDelete} disabled={!activeLog.existing}
+                  tabIndex={activeLog.existing ? 0 : -1}
+                  title={te.delete}>
+                  <IconTrash size={15} strokeWidth={2.5} />
+                </button>
                 <button type="button" className="me-btn me-btn--share"
                   onClick={handleShare} disabled={activeLog.status !== 'completed' || sharing}
                   title={activeLog.status !== 'completed' ? 'Termínalo para poder compartirlo' : 'Compartir'}>

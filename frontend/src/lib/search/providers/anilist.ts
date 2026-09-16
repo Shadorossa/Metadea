@@ -1,6 +1,6 @@
 import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../index';
 import { SEASON_MONTHS } from '../index';
-import { isAdultContentEnabled } from '../../settings/preferences';
+import { isAdultContentEnabled, isUnifySeasonsEnabled } from '../../settings/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { graphqlPost, type GraphQLResult } from '../../api/client';
 import { AniListSearchError } from '../errors';
@@ -278,6 +278,10 @@ interface AniListMedia {
   startDate: { year: number | null; month: number | null; day: number | null } | null;
   averageScore: number | null;
   genres: string[] | null;
+  // Only present on the *_ANIME query variants below (see RELATIONS_FIELD) —
+  // used solely to detect "this result is a later season" for
+  // isUnifySeasonsEnabled(), never for manga/lnovel search.
+  relations?: { edges: Array<{ relationType: string; node: { id: number; type: string } }> };
 }
 
 interface AniListResponse {
@@ -303,6 +307,38 @@ const SEARCH_QUERY_WITH_FORMAT = `
       media(search: $searchQuery, type: $type, format: $format, isAdult: $isAdult, sort: SEARCH_MATCH) {
         id format title { romaji native } coverImage { large }
         startDate { year month day } averageScore genres
+      }
+    }
+  }
+`;
+
+// Anime-only variants adding each result's own relations — the sole purpose
+// is letting toSearchPage detect "this result has an ANIME PREQUEL, so it's
+// a later season" when isUnifySeasonsEnabled() is on (see hasAnimePrequel).
+// Never used for manga/lnovel search, which has no such concept.
+const RELATIONS_FIELD = 'relations { edges { relationType node { id type } } }';
+
+const SEARCH_QUERY_ANIME = `
+  query Search($searchQuery: String!, $type: MediaType!, $page: Int, $isAdult: Boolean) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
+      media(search: $searchQuery, type: $type, isAdult: $isAdult, sort: SEARCH_MATCH) {
+        id format title { romaji native } coverImage { large }
+        startDate { year month day } averageScore genres
+        ${RELATIONS_FIELD}
+      }
+    }
+  }
+`;
+
+const SEARCH_QUERY_WITH_FORMAT_ANIME = `
+  query Search($searchQuery: String!, $type: MediaType!, $page: Int, $format: MediaFormat!, $isAdult: Boolean) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
+      media(search: $searchQuery, type: $type, format: $format, isAdult: $isAdult, sort: SEARCH_MATCH) {
+        id format title { romaji native } coverImage { large }
+        startDate { year month day } averageScore genres
+        ${RELATIONS_FIELD}
       }
     }
   }
@@ -337,6 +373,34 @@ const TOP_RATED_QUERY_WITH_FORMAT = `
   }
 `;
 
+// Same relations-carrying idea as SEARCH_QUERY_ANIME above, for the no-query
+// "top rated" browse tab.
+const TOP_RATED_QUERY_ANIME = `
+  query TopRated($type: MediaType!, $page: Int, $isAdult: Boolean, $startDate_greater: FuzzyDateInt, $startDate_lesser: FuzzyDateInt, $genre_in: [String]) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
+      media(type: $type, isAdult: $isAdult, sort: SCORE_DESC, startDate_greater: $startDate_greater, startDate_lesser: $startDate_lesser, genre_in: $genre_in) {
+        id format title { romaji native } coverImage { large }
+        startDate { year month day } averageScore genres
+        ${RELATIONS_FIELD}
+      }
+    }
+  }
+`;
+
+const TOP_RATED_QUERY_WITH_FORMAT_ANIME = `
+  query TopRated($type: MediaType!, $page: Int, $format: MediaFormat!, $isAdult: Boolean, $startDate_greater: FuzzyDateInt, $startDate_lesser: FuzzyDateInt, $genre_in: [String]) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
+      media(type: $type, format: $format, isAdult: $isAdult, sort: SCORE_DESC, startDate_greater: $startDate_greater, startDate_lesser: $startDate_lesser, genre_in: $genre_in) {
+        id format title { romaji native } coverImage { large }
+        startDate { year month day } averageScore genres
+        ${RELATIONS_FIELD}
+      }
+    }
+  }
+`;
+
 function mapAniListMediaToResult(media: AniListMedia, mediaType: MediaType): SearchResult {
   return {
     externalId: `${mediaType}:${media.id}`,
@@ -353,6 +417,14 @@ function mapAniListMediaToResult(media: AniListMedia, mediaType: MediaType): Sea
     scoreGlobal: media.averageScore ? media.averageScore / 10 : null,
     genres: media.genres ?? [],
   };
+}
+
+// True for any result that's a direct sequel of another anime — i.e. not
+// the chain's own first/basic entry. Only ever meaningful on the *_ANIME
+// query variants (see RELATIONS_FIELD); manga/lnovel results never carry
+// `relations` at all, so this always reads false for them.
+function hasAnimePrequel(media: AniListMedia): boolean {
+  return !!media.relations?.edges.some(e => e.relationType === 'PREQUEL' && e.node.type === 'ANIME');
 }
 
 // Shared by searchAniList and topRatedAniList — both hit the same Page.media
@@ -387,8 +459,15 @@ function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']
   // (no format filter, so it can still find ONE_SHOT/DOUJIN/etc alongside
   // regular manga) never excluded NOVEL, so the same work turned up twice:
   // once correctly under "lnovel", once again mislabeled "manga:{id}".
+  // "Unificar temporadas" (Settings > Preferencias) wants search/browse to
+  // surface only a chain's basic/first entry, not every season as its own
+  // separate hit — so a later season (has its own PREQUEL back to an anime)
+  // is dropped here. Off by default, and never applied to manga/lnovel,
+  // which has no such per-season splitting to begin with.
   const media = mediaType === 'manga'
     ? (pageData.media ?? []).filter(m => m.format !== 'NOVEL')
+    : mediaType === 'anime' && isUnifySeasonsEnabled()
+    ? (pageData.media ?? []).filter(m => !hasAnimePrequel(m))
     : (pageData.media ?? []);
 
   return {
@@ -439,7 +518,10 @@ export async function searchAniList(
   // isAdult: false. When enabled, omit the filter entirely (null) so both
   // adult and non-adult results are returned.
   const isAdult = isAdultContentEnabled() ? null : false;
-  const query = format ? SEARCH_QUERY_WITH_FORMAT : SEARCH_QUERY;
+  const wantsRelations = anilistType === 'ANIME' && isUnifySeasonsEnabled();
+  const query = wantsRelations
+    ? (format ? SEARCH_QUERY_WITH_FORMAT_ANIME : SEARCH_QUERY_ANIME)
+    : (format ? SEARCH_QUERY_WITH_FORMAT : SEARCH_QUERY);
   const buildVariables = (subPage: number) => format
     ? { searchQuery, type: anilistType, page: subPage, format, isAdult }
     : { searchQuery, type: anilistType, page: subPage, isAdult };
@@ -457,7 +539,10 @@ export async function topRatedAniList(
   filters?: SearchFilters,
 ): Promise<SearchPage> {
   const isAdult = isAdultContentEnabled() ? null : false;
-  const query = format ? TOP_RATED_QUERY_WITH_FORMAT : TOP_RATED_QUERY;
+  const wantsRelations = anilistType === 'ANIME' && isUnifySeasonsEnabled();
+  const query = wantsRelations
+    ? (format ? TOP_RATED_QUERY_WITH_FORMAT_ANIME : TOP_RATED_QUERY_ANIME)
+    : (format ? TOP_RATED_QUERY_WITH_FORMAT : TOP_RATED_QUERY);
   const dateRange = dateRangeFromFilters(filters);
   const genre_in = filters?.genres?.length ? filters.genres : undefined;
   const buildVariables = (subPage: number) => format

@@ -14,7 +14,7 @@ import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { getMediaStaff } from '../tauri/misc-commands';
 import { getMediaCompanies, saveMediaCompanies } from '../tauri/misc-commands';
-import { parseExternalId, firstCsvUrl } from './mapper-utils';
+import { parseExternalId, firstCsvUrl, isRecompilationFilm } from './mapper-utils';
 import { getPublisherNames } from '../shared/string-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
@@ -236,8 +236,11 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       release_end_month: existing?.release_end_month ?? (data.releaseEndMonth || null),
       release_end_day: existing?.release_end_day ?? (data.releaseEndDay || null),
       time_length: data.timeLength || null,
-      // Only PrEditorModal's block toggle sets this — never cleared by a resync.
-      blocked_at: existing?.blocked_at ?? null,
+      // Normally only PrEditorModal's block toggle sets this — never cleared
+      // by a resync. The one exception: a recap/compilation movie is
+      // auto-blocked the first time it's fetched (see isRecompilationFilm),
+      // no curator review needed for a purely mechanical text match.
+      blocked_at: existing?.blocked_at ?? (data.source === 'anilist' && isRecompilationFilm(data.description) ? new Date().toISOString() : null),
       created_at: '',
       updated_at: '',
     };

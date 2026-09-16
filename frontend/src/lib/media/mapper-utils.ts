@@ -149,6 +149,23 @@ export function isVnovelExternalId(externalId: string): boolean {
   return externalId.startsWith('vnovel:');
 }
 
+// A TMDB series has no per-season catalog row the way an AniList anime does
+// (one media_catalog row covers the whole show) — so MediaEditorModal's
+// "Unificar temporadas" season tabs for series key their own status/rating/
+// progress under this synthetic id instead, purely so it can be saved and
+// reloaded through the normal library_entries table. It never has a
+// matching media_catalog row and must never be treated as a real media page
+// or surfaced anywhere that lists "your library" as if it were a real work
+// (see isSeriesSeasonSyntheticId's callers — getAllLibraryEntries filters it
+// out at the source).
+export function seriesSeasonExternalId(seriesExternalId: string, seasonNumber: number): string {
+  return `${seriesExternalId}:season:${seasonNumber}`;
+}
+
+export function isSeriesSeasonSyntheticId(externalId: string): boolean {
+  return /:season:\d+$/.test(externalId);
+}
+
 
 // Release date -> milliseconds since epoch, or null when there's no
 // release_year on file at all. Was independently reimplemented in Local
@@ -233,5 +250,18 @@ const SEASON_SUFFIX_RE = /[\s:\-–—]+(the\s+)?(final\s+season(\s*[-–—:]?\
 export function stripSeasonSuffix(title: string): string {
   const stripped = title.replace(SEASON_SUFFIX_RE, '').trim();
   return stripped || title; // never collapse to an empty string
+}
+
+// AniList tags most recap movies with this exact wording in their own
+// synopsis ("(Recompilation film)"/"Movie compilation") — these aren't a
+// real chain entry (an edited-together clip-show of episodes that already
+// aired, not new content), so mediaService.ts auto-blocks them the moment
+// they're first fetched (see persistToCatalog's blocked_at), keeping them out
+// of Temporadas/saga chains without a curator needing to notice and block
+// each one by hand via PrEditorModal.
+const RECOMPILATION_FILM_RE = /recompilation film|movie compilation/i;
+
+export function isRecompilationFilm(description: string | null | undefined): boolean {
+  return !!description && RECOMPILATION_FILM_RE.test(description);
 }
 

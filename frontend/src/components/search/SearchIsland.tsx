@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { search, topRated, type MediaType, type SearchResult, type SeasonId, type SearchFilters, MissingApiKeyError } from '../../lib/search/index';
 import { getCachedBrowsePage, setCachedBrowsePage } from '../../lib/search/browse-cache';
+import { filterValidAnimeCovers } from '../../lib/search/cover-filter';
 import { ANILIST_GENRES } from '../../lib/search/providers/anilist';
 import { IGDB_GENRES } from '../../lib/search/providers/igdb';
 import { TMDB_MOVIE_GENRE_NAMES, TMDB_TV_GENRE_NAMES } from '../../lib/search/providers/tmdb';
@@ -239,7 +240,20 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // was the main reason results took so long to appear). pageNum > 1 is a
   // "Load more" click: appends instead of replacing and uses isLoadingMore
   // instead of the full loading state so the existing grid doesn't flash.
-  const executeSearch = useCallback(async (searchQuery: string, type: MediaType, pageNum = 1, filters?: SearchFilters) => {
+  //
+  // autoChain is only ever set by this function calling itself (see the
+  // bottom of the try block) — a cover-filtered anime page (filterValidAnimeCovers)
+  // can come back much sparser than a normal one, so instead of leaving the
+  // grid looking broken until the user manually clicks "Load more" several
+  // times in a row, this keeps fetching subsequent pages behind the scenes
+  // until enough survive filtering. Costs no AniList requests beyond what
+  // those manual clicks would eventually spend anyway — just spends them
+  // upfront, automatically, capped so a genre with almost no valid covers
+  // can't spiral into fetching every page it has.
+  const executeSearch = useCallback(async (
+    searchQuery: string, type: MediaType, pageNum = 1, filters?: SearchFilters,
+    autoChain?: { count: number; accumulated: number },
+  ) => {
     // A completely empty box still shows something — the type's own top 100
     // by rating — instead of leaving the tab blank until you type (see
     // lib/search/index.ts's topRated; 'all'/'character'/book/comic have no
@@ -269,41 +283,48 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     // ever reused later.
     const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}:${JSON.stringify(filters ?? {})}`;
 
-    // Browse mode's top-rated list barely changes minute to minute — a
-    // cache hit skips the network (and the in-flight dedup below) entirely
-    // instead of re-fetching the same page from AniList/IGDB/TMDB every
-    // time this tab/page is revisited within the session.
-    const cached = isBrowseMode ? getCachedBrowsePage(key) : null;
-    if (cached) {
-      setResults(prev => pageNum === 1 ? cached.results : [...prev, ...cached.results]);
-      setHasMore(cached.hasMore);
-      setPage(pageNum);
-      setStatus(pageNum === 1 && cached.results.length === 0 ? 'idle' : 'done');
-      setIsLoadingMore(false);
-      return;
-    }
-
-    let promise = inFlightSearches.get(key);
-    if (!promise) {
-      if (pageNum === 1) abortControllerRef.current?.abort();
-      abortControllerRef.current = new AbortController();
-      promise = (isBrowseMode
-        ? topRated(type, abortControllerRef.current.signal, pageNum, filters)
-        : search(searchQuery, type, abortControllerRef.current.signal, pageNum)
-      ).finally(() => inFlightSearches.delete(key));
-      inFlightSearches.set(key, promise);
-    }
-
     try {
-      const { results: pageResults, hasMore: more } = await promise;
-      if (isBrowseMode) setCachedBrowsePage(key, { results: pageResults, hasMore: more });
-      setResults(prev => pageNum === 1 ? pageResults : [...prev, ...pageResults]);
+      let pageResults: SearchResult[];
+      let more: boolean;
+
+      // Browse mode's top-rated list barely changes minute to minute — a
+      // cache hit skips the network (and the in-flight dedup below) entirely
+      // instead of re-fetching the same page from AniList/IGDB/TMDB every
+      // time this tab/page is revisited within the session.
+      const cached = isBrowseMode ? getCachedBrowsePage(key) : null;
+      if (cached) {
+        pageResults = cached.results;
+        more = cached.hasMore;
+      } else {
+        let promise = inFlightSearches.get(key);
+        if (!promise) {
+          if (pageNum === 1) abortControllerRef.current?.abort();
+          abortControllerRef.current = new AbortController();
+          promise = (isBrowseMode
+            ? topRated(type, abortControllerRef.current.signal, pageNum, filters)
+            : search(searchQuery, type, abortControllerRef.current.signal, pageNum)
+          ).finally(() => inFlightSearches.delete(key));
+          inFlightSearches.set(key, promise);
+        }
+        const fetched = await promise;
+        pageResults = fetched.results;
+        more = fetched.hasMore;
+        if (isBrowseMode) setCachedBrowsePage(key, fetched);
+      }
+
+      // No cover, or a landscape ("horizontal") one — same idea as
+      // openlibrary.ts's book filter, just needing an actual image probe
+      // since AniList exposes no width/height field to check server-side.
+      const filteredResults = type === 'anime' ? await filterValidAnimeCovers(pageResults) : pageResults;
+      const totalSoFar = (autoChain?.accumulated ?? 0) + filteredResults.length;
+
+      setResults(prev => (!autoChain && pageNum === 1) ? filteredResults : [...prev, ...filteredResults]);
       setHasMore(more);
       setPage(pageNum);
       // Browse mode with nothing back (book/comic — no browse API for
       // those) falls back to idle instead of a misleading "no matches".
-      setStatus(isBrowseMode && pageNum === 1 && pageResults.length === 0 ? 'idle' : 'done');
-      if (pageNum === 1 && !isBrowseMode) {
+      setStatus(isBrowseMode && pageNum === 1 && totalSoFar === 0 ? 'idle' : 'done');
+      if (pageNum === 1 && !isBrowseMode && !autoChain) {
         const currentUrl = new URL(window.location.href);
         currentUrl.searchParams.set('type', type);
         currentUrl.searchParams.set('q', searchQuery);
@@ -311,6 +332,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         // instead of nulling it out — see profile.astro's switchTab() for
         // the full explanation of why a null state breaks browser Back.
         history.replaceState(history.state, '', currentUrl.toString());
+      }
+
+      const MIN_RESULTS_AFTER_COVER_FILTER = 30;
+      const MAX_AUTO_CHAINED_PAGES = 4;
+      const chainCount = autoChain?.count ?? 0;
+      if (type === 'anime' && more && totalSoFar < MIN_RESULTS_AFTER_COVER_FILTER && chainCount < MAX_AUTO_CHAINED_PAGES) {
+        executeSearch(searchQuery, type, pageNum + 1, filters, { count: chainCount + 1, accumulated: totalSoFar });
       }
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';

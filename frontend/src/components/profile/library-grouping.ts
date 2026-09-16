@@ -7,6 +7,7 @@ import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib
 import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
+import { SEASON_STATUS_PRIORITY } from '../../lib/constants/media';
 
 // Groups editions of the same work (remakes, remasters, ports) under one
 // grid slot. Gated behind "Agrupar por ediciones"; saga grouping is separate
@@ -465,13 +466,8 @@ export function averageRating(entries: LibraryEntry[], slot: 'rating' | 'rating_
 // different sections before it runs. This runs once on the WHOLE owned list
 // before that split happens, so a chain spanning several statuses still
 // becomes exactly one card, placed by whichever member is furthest along.
-const SEASON_STATUS_PRIORITY: Record<string, number> = {
-  watching: 0, reading: 0, playing: 0, // "viendo" — an in-progress season always wins
-  planning: 1,
-  paused: 2,
-  dropped: 3,
-  completed: 4, // only wins when every other season is also completed
-};
+// SEASON_STATUS_PRIORITY now lives in lib/constants/media.ts, shared with
+// MediaEditorModal.tsx's "general" tab (see its own doc comment there).
 
 export interface UnifiedSeasonGroup<T> {
   item: T;             // earliest release — the card's cover/title/click target

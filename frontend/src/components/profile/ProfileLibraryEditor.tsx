@@ -13,6 +13,11 @@ interface OpenEditorEvent extends Event {
     libraryEntry?: LibraryEntry;
     catalogEntry?: MediaCatalogEntry;
     ratingSlot?: RatingSlot;
+    // Which season tab to open directly on — LibraryCard's fused "Unificar
+    // temporadas" cards represent season 1 (externalId above) but may be
+    // visually showing a later season via inProgressCover, so the editor
+    // must open on THAT season's tab, not always season 1's.
+    initialActiveLogId?: string;
   };
 }
 
@@ -21,6 +26,7 @@ interface EditorState {
   mediaData: MediaPageData;
   libraryEntry: LibraryEntry | undefined;
   ratingSlot: RatingSlot;
+  initialActiveLogId?: string;
 }
 
 interface Props {
@@ -44,6 +50,7 @@ export function ProfileLibraryEditor({ i18n }: Props) {
       const catalogEntry = detail?.catalogEntry;
       const libraryEntry = detail?.libraryEntry;
       const ratingSlot   = detail?.ratingSlot ?? 'rating';
+      const initialActiveLogId = detail?.initialActiveLogId;
 
       if (!id) return;
       activeIdRef.current = id;
@@ -64,7 +71,7 @@ export function ProfileLibraryEditor({ i18n }: Props) {
             progressLabel: t.progress_in_progress,
           };
 
-      setState({ externalId: id, mediaData: basicData, libraryEntry, ratingSlot });
+      setState({ externalId: id, mediaData: basicData, libraryEntry, ratingSlot, initialActiveLogId });
 
       fetchMediaData(id)
         .then(data => {
@@ -96,6 +103,7 @@ export function ProfileLibraryEditor({ i18n }: Props) {
           data={state.mediaData}
           i18n={t}
           initialEntry={state.libraryEntry}
+          initialActiveLogId={state.initialActiveLogId}
           activeRatingSlot={state.ratingSlot}
           onClose={() => setState(null)}
           onSaved={() => {}}

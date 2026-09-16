@@ -4,10 +4,11 @@ import { searchMovies, searchSeries, topRatedMovies, topRatedSeries }  from './p
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
-import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry } from '../tauri/catalog';
+import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
 import { parseCSV } from '../shared/string-utils';
 import { searchCharactersDb, type CharacterEntry } from '../tauri/characters';
-import { getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../tauri';
+import { getCustomImagesMap, wrapAssetUrl, getMediaRelations, type FavoriteCustomImage } from '../tauri';
+import { isUnifySeasonsEnabled } from '../settings/preferences';
 
 export { MissingApiKeyError };
 export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
@@ -263,6 +264,15 @@ function titleHasEditionWord(title: string): boolean {
   return title.split(/[^a-zA-Z0-9]+/).some(tok => NON_GAME_NAME_WORDS.includes(tok.toLowerCase()));
 }
 
+// True when this local anime already has its own PREQUEL edge in
+// media_relations — same "later season" test toSearchPage's
+// hasAnimePrequel runs against a live AniList result, just reading the
+// local relation graph instead of a fetched `relations` field.
+async function hasLocalAnimePrequel(externalId: string): Promise<boolean> {
+  const rels = await getMediaRelations(externalId).catch(() => [] as DbMediaRelation[]);
+  return rels.some(r => r.relation_type === 'PREQUEL' && r.related_media_external_id.startsWith('anime:'));
+}
+
 // Local catalog entries the live API doesn't surface (IGDB's normal search
 // filters out titles missing a cover or with an unusual category — see
 // AdminAddSearch's unfiltered search, used precisely to find and add those)
@@ -272,7 +282,7 @@ function titleHasEditionWord(title: string): boolean {
 // result is generally fresher/richer).
 async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaType, 'all' | 'character' | 'staff'>): Promise<SearchResult[]> {
   const entries = await searchCatalog(searchQuery).catch(() => [] as MediaCatalogEntry[]);
-  return entries
+  const filtered = entries
     .filter(e => e.type === mediaType)
     // Guards against stray rows whose external_id doesn't actually start
     // with "{type}:" (e.g. saved with a malformed id by an older, since-
@@ -280,8 +290,18 @@ async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaT
     // id that can't resolve to anything when picked.
     .filter(e => e.external_id.startsWith(`${e.type}:`))
     .filter(e => !e.format || !EXCLUDED_LOCAL_FORMATS.has(e.format))
-    .filter(e => (mediaType !== 'game' && mediaType !== 'vnovel') || !titleHasEditionWord(e.title_main || ''))
-    .map(catalogEntryToSearchResult);
+    .filter(e => (mediaType !== 'game' && mediaType !== 'vnovel') || !titleHasEditionWord(e.title_main || ''));
+
+  // "Unificar temporadas" hides later seasons from the live AniList path
+  // (see toSearchPage's hasAnimePrequel) — without this, any season already
+  // saved to the local catalog (browsing it once persists it) would keep
+  // reappearing here, since this local-only path never went through that
+  // live-fetched `relations` field at all.
+  if (mediaType !== 'anime' || !isUnifySeasonsEnabled()) {
+    return filtered.map(catalogEntryToSearchResult);
+  }
+  const hasPrequelFlags = await Promise.all(filtered.map(e => hasLocalAnimePrequel(e.external_id)));
+  return filtered.filter((_, i) => !hasPrequelFlags[i]).map(catalogEntryToSearchResult);
 }
 
 async function searchOne(
