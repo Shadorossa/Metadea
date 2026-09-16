@@ -7,6 +7,7 @@ import { fetchAniListStreamingEpisodes } from '../search/providers/anilist';
 import { parseExternalId } from './mapper-utils';
 import { matchTmdbSeasonsForAnime, getAnimePrequelEpisodeOffset } from './anime-tmdb-match';
 import { getMediaEpisodes, saveMediaEpisodes, type MediaEpisode } from '../tauri';
+import { getCatalogEntry } from '../tauri/catalog';
 
 // AniList's streamingEpisodes titles read like "Episode 12 - The Title"
 // (sometimes just "Episode 12", occasionally missing the "Episode" word
@@ -43,9 +44,12 @@ async function fetchAnimeEpisodesFromTmdb(rawId: string, externalId: string, epi
   const episodes = await fetchTmdbEpisodesForSeasons(match.tmdbId, seasonNumbers);
   if (!episodes.length) return [];
 
-  const inMatchedRange = (ep: TmdbEpisodeSummary) => match.slices.some(s =>
-    s.season_number === ep.season_number && ep.episode_number >= s.episodeStart && ep.episode_number <= s.episodeEnd,
-  );
+  const inMatchedRange = (ep: TmdbEpisodeSummary) => match.slices.some(s => {
+    if (s.season_number !== ep.season_number) return false;
+    const epIdx = ep.season_episode_number ?? ep.episode_number;
+    return (epIdx >= s.episodeStart && epIdx <= s.episodeEnd)
+      || (ep.episode_number >= s.episodeStart && ep.episode_number <= s.episodeEnd);
+  });
 
   const filtered = episodes
     .filter(inMatchedRange)
@@ -137,15 +141,21 @@ export async function fetchMediaEpisodes(rawId: string, force = false, knownSeas
   if (!force) {
     const cached = await getMediaEpisodes(rawId).catch(() => []);
     if (cached.length > 0) {
-      if (episodeOffset > 0 && cached[0].episode_number < episodeOffset) {
-        const shifted = cached.map(ep => ({
-          ...ep,
-          episode_number: ep.episode_number + episodeOffset,
-        }));
-        saveMediaEpisodes(rawId, shifted).catch(err => console.error('Failed to update shifted episodes', err));
-        return shifted;
+      const catalogEntry = await getCatalogEntry(rawId).catch(() => null);
+      const expectedTotal = catalogEntry?.total_count ?? 0;
+      const isCacheIncomplete = expectedTotal > 0 && cached.length < expectedTotal;
+
+      if (!isCacheIncomplete) {
+        if (episodeOffset > 0 && cached[0].episode_number < episodeOffset) {
+          const shifted = cached.map(ep => ({
+            ...ep,
+            episode_number: ep.episode_number + episodeOffset,
+          }));
+          saveMediaEpisodes(rawId, shifted).catch(err => console.error('Failed to update shifted episodes', err));
+          return shifted;
+        }
+        return cached;
       }
-      return cached;
     }
   }
 

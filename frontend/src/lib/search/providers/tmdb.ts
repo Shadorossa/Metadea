@@ -410,10 +410,11 @@ interface TmdbSeasonResponse {
 }
 
 export interface TmdbEpisodeSummary {
-  season_number:  number;
-  episode_number: number;
-  name:           string | null;
-  cover_url:      string | null;
+  season_number:          number;
+  episode_number:         number;
+  season_episode_number?: number;
+  name:                   string | null;
+  cover_url:              string | null;
 }
 
 // One request per season (TMDB has no single "all episodes" endpoint) — runs
@@ -441,14 +442,16 @@ export async function fetchTmdbEpisodesForSeasons(tmdbId: number, seasonNumbers:
 
   const episodes: TmdbEpisodeSummary[] = [];
   for (const { seasonNumber, season } of seasons) {
-    for (const ep of season?.episodes ?? []) {
+    const list = season?.episodes ?? [];
+    list.forEach((ep, idx) => {
       episodes.push({
-        season_number:  seasonNumber,
-        episode_number: ep.episode_number,
-        name:           ep.name?.trim() || null,
-        cover_url:      buildPosterUrl(ep.still_path),
+        season_number:         seasonNumber,
+        episode_number:        ep.episode_number,
+        season_episode_number: idx + 1,
+        name:                  ep.name?.trim() || null,
+        cover_url:             buildPosterUrl(ep.still_path),
       });
-    }
+    });
   }
   return episodes;
 }
