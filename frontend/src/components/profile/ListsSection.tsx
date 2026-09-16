@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  useFloating, offset, flip, shift, useDismiss, useRole, useListNavigation, useInteractions,
+} from '@floating-ui/react';
+import {
   getUserInfo,
   getAllUserLists, getListItemsFull, createUserList, updateUserList,
   deleteUserList, addItemToList, removeItemFromList, reorderListItems,
@@ -11,7 +14,6 @@ import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { beginGlobalLoading } from '../../lib/shared/global-loading';
-import { useEscapeKey } from '../../lib/shared/useEscapeKey';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
 import { EpisodeSearchPopup, type EpisodeSearchResult } from '../media/EpisodeSearchPopup';
@@ -206,9 +208,9 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
     }
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const settingsMenuRef = useRef<HTMLDivElement>(null);
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
-  const typeMenuRef = useRef<HTMLDivElement>(null);
+  const [typeActiveIndex, setTypeActiveIndex] = useState<number | null>(null);
+  const typeItemsRef = useRef<Array<HTMLButtonElement | null>>([]);
 
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(list.name);
@@ -245,34 +247,44 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
   const isEpisodes = listType === 'episodes';
   const canChangeType = listItems.length === 0;
 
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
-        setSettingsOpen(false);
-        setTypeMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [settingsOpen]);
-
-  useEffect(() => {
-    if (!typeMenuOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (typeMenuRef.current && !typeMenuRef.current.contains(e.target as Node)) {
-        setTypeMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [typeMenuOpen]);
-
-  useEscapeKey(settingsOpen, () => {
-    setSettingsOpen(false);
-    setTypeMenuOpen(false);
+  // Settings dropdown — flip/shift keep it inside the viewport (it used to
+  // be a plain `top: calc(100% + 6px); right: 0`, with no collision
+  // handling), and useDismiss replaces the old global `mousedown` listener
+  // with proper outside-press + Escape handling.
+  const {
+    refs: settingsRefs, floatingStyles: settingsFloatingStyles, context: settingsContext,
+  } = useFloating({
+    open: settingsOpen,
+    onOpenChange: open => { setSettingsOpen(open); if (!open) setTypeMenuOpen(false); },
+    placement: 'bottom-end',
+    middleware: [offset(6), flip(), shift({ padding: 8 })],
   });
-  useEscapeKey(typeMenuOpen, () => setTypeMenuOpen(false));
+  const settingsDismiss = useDismiss(settingsContext);
+  const settingsRole = useRole(settingsContext, { role: 'menu' });
+  const { getReferenceProps: getSettingsReferenceProps, getFloatingProps: getSettingsFloatingProps } =
+    useInteractions([settingsDismiss, settingsRole]);
+
+  // Type sub-dropdown, nested inside the settings panel above — same
+  // flip/shift + dismiss treatment, plus arrow-key navigation across its
+  // three options (the one dropdown here with more than a single row).
+  const {
+    refs: typeRefs, floatingStyles: typeFloatingStyles, context: typeContext,
+  } = useFloating({
+    open: typeMenuOpen,
+    onOpenChange: setTypeMenuOpen,
+    placement: 'bottom-end',
+    middleware: [offset(4), flip(), shift({ padding: 8 })],
+  });
+  const typeDismiss = useDismiss(typeContext);
+  const typeRole = useRole(typeContext, { role: 'menu' });
+  const typeListNav = useListNavigation(typeContext, {
+    listRef: typeItemsRef,
+    activeIndex: typeActiveIndex,
+    onNavigate: setTypeActiveIndex,
+  });
+  const {
+    getReferenceProps: getTypeReferenceProps, getFloatingProps: getTypeFloatingProps, getItemProps: getTypeItemProps,
+  } = useInteractions([typeDismiss, typeRole, typeListNav]);
 
   const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
 
@@ -649,11 +661,12 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
           </div>
 
           {!readOnly && (
-            <div className="list-settings-menu-wrapper" ref={settingsMenuRef}>
+            <div className="list-settings-menu-wrapper">
               <button
+                ref={settingsRefs.setReference}
                 type="button"
                 className={`list-settings-btn${settingsOpen ? ' list-settings-btn--active' : ''}`}
-                onClick={() => setSettingsOpen(s => !s)}
+                {...getSettingsReferenceProps({ onClick: () => setSettingsOpen(s => !s) })}
                 title={p.lists_settings}
                 aria-label={p.lists_settings}
               >
@@ -664,15 +677,21 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
               </button>
 
               {settingsOpen && (
-                <div className="list-settings-dropdown">
+                <div
+                  ref={settingsRefs.setFloating}
+                  style={settingsFloatingStyles}
+                  className="list-settings-dropdown"
+                  {...getSettingsFloatingProps()}
+                >
                   <div className="list-settings-section">
                     <div className="list-settings-row">
                       <span className="list-settings-item-title">{p.lists_type}</span>
-                      <div className="list-settings-type-wrapper" ref={typeMenuRef}>
+                      <div className="list-settings-type-wrapper">
                         <button
+                          ref={typeRefs.setReference}
                           type="button"
                           className={`list-settings-type-btn${typeMenuOpen ? ' list-settings-type-btn--active' : ''}${!canChangeType ? ' list-settings-type-btn--disabled' : ''}`}
-                          onClick={() => { if (canChangeType) setTypeMenuOpen(o => !o); }}
+                          {...getTypeReferenceProps({ onClick: () => { if (canChangeType) setTypeMenuOpen(o => !o); } })}
                           disabled={!canChangeType}
                           title={!canChangeType ? p.lists_type_locked_hint : undefined}
                         >
@@ -688,20 +707,29 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
                           </svg>
                         </button>
                         {typeMenuOpen && (
-                          <div className="list-settings-type-dropdown">
+                          <div
+                            ref={typeRefs.setFloating}
+                            style={typeFloatingStyles}
+                            className="list-settings-type-dropdown"
+                            {...getTypeFloatingProps()}
+                          >
                             {[
                               { id: 'media', label: p.lists_type_media },
                               { id: 'characters', label: p.lists_type_characters },
                               { id: 'episodes', label: p.lists_type_episodes || 'Episodios' },
-                            ].map(opt => (
+                            ].map((opt, idx) => (
                               <button
                                 key={opt.id}
+                                ref={node => { typeItemsRef.current[idx] = node; }}
                                 type="button"
+                                tabIndex={typeActiveIndex === idx ? 0 : -1}
                                 className={`list-settings-type-option${listType === opt.id ? ' list-settings-type-option--active' : ''}`}
-                                onClick={() => {
-                                  handleSetListType(opt.id);
-                                  setTypeMenuOpen(false);
-                                }}
+                                {...getTypeItemProps({
+                                  onClick: () => {
+                                    handleSetListType(opt.id);
+                                    setTypeMenuOpen(false);
+                                  },
+                                })}
                               >
                                 <span className="list-settings-type-option-text">{opt.label}</span>
                                 {listType === opt.id && (

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { getT } from '../../i18n/client';
 import { removeLocalGame, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
@@ -12,6 +11,7 @@ import { type CoverCache } from './details/GameDetailPanel';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus } from './ui/icons';
+import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 
@@ -210,12 +210,6 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // LocalMediaCards never get onRequestDelete passed in the first place.
   type DeleteMenu = { x: number; y: number } & ({ kind: 'game'; game: LocalGame } | { kind: 'library'; item: LocalMediaItem });
   const [deleteMenu, setDeleteMenu] = useState<DeleteMenu | null>(null);
-  useEffect(() => {
-    if (!deleteMenu) return;
-    const close = () => setDeleteMenu(null);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [deleteMenu]);
   const handleDeleteGame = (game: LocalGame) => {
     const linkKey = game.app_id ?? game.install_path ?? game.name;
     onRemoveGame?.(game.launcher, linkKey);
@@ -367,21 +361,14 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
             </div>
           )}
 
-          {deleteMenu && createPortal(
-            <div className="local-context-menu" style={{ top: deleteMenu.y, left: deleteMenu.x }} onClick={e => e.stopPropagation()}>
-              <button
-                type="button"
-                className="local-context-menu-item delete"
-                onClick={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                Eliminar de la lista
-              </button>
-            </div>,
-            document.body,
+          {deleteMenu && (
+            <DeleteContextMenu
+              x={deleteMenu.x}
+              y={deleteMenu.y}
+              label="Eliminar de la lista"
+              onDelete={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
+              onClose={() => setDeleteMenu(null)}
+            />
           )}
         </div>
   );

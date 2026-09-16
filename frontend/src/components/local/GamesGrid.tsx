@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
 import { removeLocalGame } from '../../lib/tauri';
@@ -13,6 +12,7 @@ import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
+import { DeleteContextMenu } from './ui/DeleteContextMenu';
 
 // sectionStatus is the badge shown on any kind:'game' entry in this section
 // (kind:'catalog' entries carry their own item.status instead) — safe to
@@ -169,12 +169,6 @@ export function GamesGrid({
   // drop a library entry).
   type DeleteMenu = { x: number; y: number } & ({ kind: 'game'; game: LocalGame } | { kind: 'library'; item: LocalMediaItem });
   const [deleteMenu, setDeleteMenu] = useState<DeleteMenu | null>(null);
-  useEffect(() => {
-    if (!deleteMenu) return;
-    const close = () => setDeleteMenu(null);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [deleteMenu]);
   const handleDeleteGame = (game: LocalGame) => {
     const linkKey = game.app_id ?? game.install_path ?? game.name;
     onRemoveGame(game.launcher, linkKey);
@@ -376,21 +370,14 @@ export function GamesGrid({
         })
       )}
 
-      {deleteMenu && createPortal(
-        <div className="local-context-menu" style={{ top: deleteMenu.y, left: deleteMenu.x }} onClick={e => e.stopPropagation()}>
-          <button
-            type="button"
-            className="local-context-menu-item delete"
-            onClick={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
-            Eliminar de la lista
-          </button>
-        </div>,
-        document.body,
+      {deleteMenu && (
+        <DeleteContextMenu
+          x={deleteMenu.x}
+          y={deleteMenu.y}
+          label="Eliminar de la lista"
+          onDelete={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
+          onClose={() => setDeleteMenu(null)}
+        />
       )}
     </div>
   );

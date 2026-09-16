@@ -3575,9 +3575,6 @@
 }
 
 .list-settings-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
   z-index: 50;
   min-width: 220px;
   background: var(--bg-elevated);
@@ -3657,9 +3654,6 @@
 }
 
 .list-settings-type-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
   z-index: 60;
   min-width: 140px;
   background: var(--bg-elevated);
