@@ -3,6 +3,12 @@ import {
   useFloating, offset, flip, shift, useDismiss, useRole, useListNavigation, useInteractions,
 } from '@floating-ui/react';
 import {
+  DndContext, DragOverlay, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
+  type DragStartEvent, type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   getUserInfo,
   getAllUserLists, getListItemsFull, createUserList, updateUserList,
   deleteUserList, addItemToList, removeItemFromList, reorderListItems,
@@ -184,6 +190,125 @@ function ListsGrid({ customLists, catalogMap, charactersMap, customImagesMap, p,
 
 /* ── Detail view ────────────────────────────────────────────────────────── */
 
+interface ListItemDisplay { cover: string; isEpItem: boolean; url: string; epBadge: string | null; title: string }
+
+// Pure derivation from an item + the list's own type/custom-cover overrides
+// — used identically by the sortable grid card and its DragOverlay preview,
+// so a dragged card doesn't need its own separate "what does this look like"
+// logic.
+function resolveListItemDisplay(
+  item: ListItemFull, isCharacters: boolean, isEpisodes: boolean, customImagesMap?: Map<string, FavoriteCustomImage>,
+): ListItemDisplay {
+  const custom = customImagesMap?.get(item.external_id);
+  const cover = custom ? wrapAssetUrl(custom.image_url) : (item.cover_url ?? '');
+  const isCharItem = item.external_id.startsWith('character:') || isCharacters;
+  const isEpItem = item.external_id.startsWith('episode:') || isEpisodes;
+
+  let url = `/media?id=${encodeURIComponent(item.external_id)}`;
+  let epBadge: string | null = null;
+  const title = item.title_main ?? item.external_id;
+
+  if (isCharItem) {
+    url = `/character?id=${encodeURIComponent(item.external_id)}`;
+  } else if (isEpItem) {
+    const parts = item.external_id.split(':');
+    // episode:<type>:<numericId>:<season>:<episode>
+    if (parts.length >= 5) {
+      const parentId = `${parts[1]}:${parts[2]}`;
+      const sNum = parseInt(parts[3], 10);
+      const epNum = parts[4];
+      url = `/media?id=${encodeURIComponent(parentId)}`;
+      epBadge = sNum > 0 ? `T${sNum} E${epNum}` : `Ep. ${epNum}`;
+    }
+  }
+  return { cover, isEpItem, url, epBadge, title };
+}
+
+// Everything inside the card except the sortable wrapper div itself — shared
+// between the live grid card (wrapped by SortableListItemCard below, with
+// real drag listeners) and the DragOverlay clone (a plain floating visual,
+// no listeners of its own).
+function ListItemCardBody({ item, display, index, isRanked, readOnly, p, onRemove }: {
+  item: ListItemFull;
+  display: ListItemDisplay;
+  index: number;
+  isRanked: boolean;
+  readOnly?: boolean;
+  p: P;
+  onRemove: (id: string) => void;
+}) {
+  const { cover, url, epBadge, title } = display;
+  return (
+    <>
+      {/* Purely a visual hint now — the whole card is grabbable (see
+          SortableListItemCard), not just this handle. */}
+      {!readOnly && <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>}
+      <a className="list-item-cover-link" href={url} draggable={false}>
+        {epBadge && <span className="list-item-episode-badge">{epBadge}</span>}
+        {cover
+          ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" draggable={false} />
+          : <div className="list-item-cover list-item-cover--fallback" style={{ background: fallbackGradient(item.media_type) }}><span>{title.slice(0, 2).toUpperCase()}</span></div>}
+        <div className="list-item-info">
+          <span className="list-item-title">{title}</span>
+        </div>
+      </a>
+      {isRanked && (
+        <div className="list-item-rank-bar">
+          <span className={`list-item-rank-num${index < 3 ? ` list-item-rank-num--top${index + 1}` : ''}`}>
+            <span className="list-item-rank-prefix">#</span>
+            <span className="list-item-rank-val">{index + 1}</span>
+          </span>
+        </div>
+      )}
+      {!readOnly && (
+        <button className="list-item-remove" title={p.lists_remove} onClick={() => onRemove(item.external_id)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+        </button>
+      )}
+    </>
+  );
+}
+
+function SortableListItemCard({ item, display, index, isRanked, readOnly, p, onRemove }: {
+  item: ListItemFull;
+  display: ListItemDisplay;
+  index: number;
+  isRanked: boolean;
+  readOnly?: boolean;
+  p: P;
+  onRemove: (id: string) => void;
+}) {
+  // Grabbable from anywhere on the card (matching the old implementation),
+  // not just the ⠿ handle — the handle is a low-opacity, top-corner-only
+  // hint that's easy to miss/miss-click, so attributes/listeners go on the
+  // whole card instead. PointerSensor's activationConstraint (see
+  // ListDetail's dndSensors) is what actually distinguishes a click on the
+  // cover link/remove button from a drag start now, so this doesn't need
+  // its own click-vs-drag suppression the way the old manual implementation
+  // did (its didDrag flag + capture-phase click handler).
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.external_id,
+    disabled: readOnly,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`list-item-card${display.isEpItem ? ' list-item-card--episode' : ''}${isDragging ? ' list-item-card--ghost' : ''}`}
+      data-id={item.external_id}
+      style={{
+        transform: isDragging ? undefined : CSS.Transform.toString(transform),
+        transition,
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      <ListItemCardBody
+        item={item} display={display} index={index} isRanked={isRanked} readOnly={readOnly} p={p} onRemove={onRemove}
+      />
+    </div>
+  );
+}
+
 function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, onMetaSaved, onCountChanged, readOnly, fetchItems }: {
   list: ListInfo;
   catalogMap: Map<string, MediaCatalogEntry>;
@@ -286,205 +411,34 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
     getReferenceProps: getTypeReferenceProps, getFloatingProps: getTypeFloatingProps, getItemProps: getTypeItemProps,
   } = useInteractions([typeDismiss, typeRole, typeListNav]);
 
-  const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
+  // Drag-to-reorder — PointerSensor's own activation distance (8px) is what
+  // used to be the hand-rolled Math.hypot threshold check, and its own
+  // collision detection (closestCenter) is what used to be the "nearest
+  // slot" distance loop below it. KeyboardSensor + sortableKeyboardCoordinates
+  // is what makes this reorderable with arrow keys/Tab at all, which the old
+  // mousedown/mousemove implementation never supported (mouse-only, no touch
+  // either — touch-action:none on .list-item-card was already set up for
+  // this, just never actually wired to anything that used it).
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const activeDragItem = activeDragId ? listItems.find(i => i.external_id === activeDragId) ?? null : null;
 
-  useEffect(() => {
-    if (!gridEl || readOnly) return;
+  const handleDragStart = (e: DragStartEvent) => setActiveDragId(String(e.active.id));
 
-    let potentialCard: HTMLElement | null = null;
-    let draggingCard: HTMLElement | null = null;
-    let placeholder: HTMLElement | null = null;
-    let grabOffsetX = 0;
-    let grabOffsetY = 0;
-    let downX = 0;
-    let downY = 0;
-    let isDragging = false;
-    let didDrag = false;
-    let baseLeft = 0;
-    let baseTop = 0;
-    let allCards: HTMLElement[] = [];
-    let slotBoxes: { cx: number; cy: number }[] = [];
-    let dragIndex = -1;
-    let currentSlot = -1;
-    let pendingEvent: MouseEvent | null = null;
-    let rafId: number | null = null;
-
-    const onMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      const target = e.target as HTMLElement;
-      if (target.closest('.list-item-remove')) return;
-
-      const card = target.closest('.list-item-card') as HTMLElement | null;
-      if (!card || !gridEl.contains(card)) return;
-
-      potentialCard = card;
-      downX = e.clientX;
-      downY = e.clientY;
-      isDragging = false;
-
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
-      window.addEventListener('blur', onMouseUp);
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      pendingEvent = e;
-      if (rafId === null) rafId = requestAnimationFrame(processPendingMove);
-    };
-
-    const processPendingMove = () => {
-      rafId = null;
-      const e = pendingEvent;
-      if (!e || !potentialCard) return;
-
-      if (!isDragging) {
-        if (Math.hypot(e.clientX - downX, e.clientY - downY) < 5) return;
-        isDragging = true;
-        draggingCard = potentialCard;
-
-        const rect = draggingCard.getBoundingClientRect();
-        grabOffsetX = downX - rect.left;
-        grabOffsetY = downY - rect.top;
-
-        allCards = Array.from(gridEl.querySelectorAll('.list-item-card')) as HTMLElement[];
-        dragIndex = allCards.indexOf(draggingCard);
-        currentSlot = dragIndex;
-
-        slotBoxes = allCards.map(c => {
-          const r = c.getBoundingClientRect();
-          return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
-        });
-
-        placeholder = document.createElement('div');
-        const isEp = draggingCard.classList.contains('list-item-card--episode');
-        placeholder.className = `list-item-placeholder${isEp ? ' list-item-placeholder--episode' : ''}`;
-        placeholder.style.width = `${rect.width}px`;
-        placeholder.style.height = `${rect.height}px`;
-
-        gridEl.insertBefore(placeholder, draggingCard);
-
-        baseLeft = downX - grabOffsetX;
-        baseTop = downY - grabOffsetY;
-
-        draggingCard.classList.add('is-dragging-card');
-        draggingCard.style.position = 'fixed';
-        draggingCard.style.zIndex = '99999';
-        draggingCard.style.left = `${baseLeft}px`;
-        draggingCard.style.top = `${baseTop}px`;
-        draggingCard.style.width = `${rect.width}px`;
-        draggingCard.style.height = `${rect.height}px`;
-        draggingCard.style.pointerEvents = 'none';
-        draggingCard.style.willChange = 'transform';
-
-        document.body.style.userSelect = 'none';
-        document.body.style.cursor = 'grabbing';
-      }
-
-      if (!draggingCard || !placeholder) return;
-
-      const dx = (e.clientX - grabOffsetX) - baseLeft;
-      const dy = (e.clientY - grabOffsetY) - baseTop;
-      draggingCard.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-
-      let targetSlot = currentSlot;
-      let minDist = Infinity;
-      for (let i = 0; i < slotBoxes.length; i++) {
-        const dist = Math.hypot(e.clientX - slotBoxes[i].cx, e.clientY - slotBoxes[i].cy);
-        if (dist < minDist) {
-          minDist = dist;
-          targetSlot = i;
-        }
-      }
-
-      if (targetSlot !== currentSlot) {
-        currentSlot = targetSlot;
-        const remaining = allCards.filter(c => c !== draggingCard);
-        if (targetSlot >= remaining.length) {
-          gridEl.appendChild(placeholder);
-        } else {
-          gridEl.insertBefore(placeholder, remaining[targetSlot]);
-        }
-      }
-    };
-
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('blur', onMouseUp);
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      pendingEvent = null;
-
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
-
-      if (isDragging && draggingCard && placeholder) {
-        didDrag = true;
-        setTimeout(() => { didDrag = false; }, 150);
-
-        placeholder.remove();
-
-        draggingCard.classList.remove('is-dragging-card');
-        draggingCard.style.position = '';
-        draggingCard.style.zIndex = '';
-        draggingCard.style.left = '';
-        draggingCard.style.top = '';
-        draggingCard.style.width = '';
-        draggingCard.style.height = '';
-        draggingCard.style.pointerEvents = '';
-        draggingCard.style.transform = '';
-        draggingCard.style.willChange = '';
-
-        if (currentSlot !== -1 && currentSlot !== dragIndex) {
-          const nextItems = [...listItemsRef.current];
-          const [moved] = nextItems.splice(dragIndex, 1);
-          nextItems.splice(currentSlot, 0, moved);
-          const updated = nextItems.map((item, idx) => ({ ...item, position: idx }));
-          setListItems(updated);
-          const newOrder = updated.map(i => i.external_id);
-          reorderListItems(list.key, newOrder).catch(err => console.error('Failed to save list order:', err));
-        }
-      }
-
-      potentialCard = null;
-      draggingCard = null;
-      placeholder = null;
-      isDragging = false;
-      allCards = [];
-      slotBoxes = [];
-      dragIndex = -1;
-      currentSlot = -1;
-    };
-
-    const onDragStart = (e: DragEvent) => {
-      e.preventDefault();
-    };
-
-    const onClickCapture = (e: MouseEvent) => {
-      if (didDrag) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    gridEl.addEventListener('mousedown', onMouseDown);
-    gridEl.addEventListener('dragstart', onDragStart);
-    gridEl.addEventListener('click', onClickCapture, true);
-
-    return () => {
-      gridEl.removeEventListener('mousedown', onMouseDown);
-      gridEl.removeEventListener('dragstart', onDragStart);
-      gridEl.removeEventListener('click', onClickCapture, true);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('blur', onMouseUp);
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
-    };
-  }, [gridEl, list.key, readOnly]);
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIndex = listItemsRef.current.findIndex(i => i.external_id === active.id);
+    const newIndex = listItemsRef.current.findIndex(i => i.external_id === over.id);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+    const updated = arrayMove(listItemsRef.current, oldIndex, newIndex).map((item, idx) => ({ ...item, position: idx }));
+    setListItems(updated);
+    reorderListItems(list.key, updated.map(i => i.external_id)).catch(err => console.error('Failed to save list order:', err));
+  };
 
   const handleAddMediaFromSearch = async (result: ApiSearchResult) => {
     if (currentIds.has(result.externalId)) return;
@@ -826,64 +780,45 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
 
       <div className="list-detail-content">
         {listItems.length > 0 ? (
-          <div className="list-items-grid" ref={setGridEl}>
-            {listItems.map((item, index) => {
-              const custom = customImagesMap?.get(item.external_id);
-              const cover = custom ? wrapAssetUrl(custom.image_url) : (item.cover_url ?? '');
-              const isCharItem = item.external_id.startsWith('character:') || isCharacters;
-              const isEpItem = item.external_id.startsWith('episode:') || isEpisodes;
-
-              let url = `/media?id=${encodeURIComponent(item.external_id)}`;
-              let epBadge: string | null = null;
-              let title = item.title_main ?? item.external_id;
-
-              if (isCharItem) {
-                url = `/character?id=${encodeURIComponent(item.external_id)}`;
-              } else if (isEpItem) {
-                const parts = item.external_id.split(':');
-                // episode:<type>:<numericId>:<season>:<episode>
-                if (parts.length >= 5) {
-                  const parentId = `${parts[1]}:${parts[2]}`;
-                  const sNum = parseInt(parts[3], 10);
-                  const epNum = parts[4];
-                  url = `/media?id=${encodeURIComponent(parentId)}`;
-                  epBadge = sNum > 0 ? `T${sNum} E${epNum}` : `Ep. ${epNum}`;
-                }
-              }
-
-              return (
-                <div
-                  className={`list-item-card${isEpItem ? ' list-item-card--episode' : ''}`}
-                  data-id={item.external_id}
-                  key={item.external_id}
-                >
-                  {!readOnly && <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>}
-                  <a className="list-item-cover-link" href={url} draggable={false}>
-                    {epBadge && <span className="list-item-episode-badge">{epBadge}</span>}
-                    {cover
-                      ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" draggable={false} />
-                      : <div className="list-item-cover list-item-cover--fallback" style={{ background: fallbackGradient(item.media_type) }}><span>{title.slice(0, 2).toUpperCase()}</span></div>}
-                    <div className="list-item-info">
-                      <span className="list-item-title">{title}</span>
-                    </div>
-                  </a>
-                  {isRanked && (
-                    <div className="list-item-rank-bar">
-                      <span className={`list-item-rank-num${index < 3 ? ` list-item-rank-num--top${index + 1}` : ''}`}>
-                        <span className="list-item-rank-prefix">#</span>
-                        <span className="list-item-rank-val">{index + 1}</span>
-                      </span>
-                    </div>
-                  )}
-                  {!readOnly && (
-                    <button className="list-item-remove" title={p.lists_remove} onClick={() => handleRemove(item.external_id)}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    </button>
-                  )}
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveDragId(null)}
+          >
+            <SortableContext items={listItems.map(i => i.external_id)} strategy={rectSortingStrategy}>
+              <div className="list-items-grid">
+                {listItems.map((item, index) => (
+                  <SortableListItemCard
+                    key={item.external_id}
+                    item={item}
+                    display={resolveListItemDisplay(item, isCharacters, isEpisodes, customImagesMap)}
+                    index={index}
+                    isRanked={isRanked}
+                    readOnly={readOnly}
+                    p={p}
+                    onRemove={handleRemove}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+            <DragOverlay>
+              {activeDragItem && (
+                <div className={`list-item-card${resolveListItemDisplay(activeDragItem, isCharacters, isEpisodes, customImagesMap).isEpItem ? ' list-item-card--episode' : ''} is-dragging-card`}>
+                  <ListItemCardBody
+                    item={activeDragItem}
+                    display={resolveListItemDisplay(activeDragItem, isCharacters, isEpisodes, customImagesMap)}
+                    index={listItems.findIndex(i => i.external_id === activeDragItem.external_id)}
+                    isRanked={isRanked}
+                    readOnly={readOnly}
+                    p={p}
+                    onRemove={() => {}}
+                  />
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </DragOverlay>
+          </DndContext>
         ) : (
           <div className="lists-empty-state" style={{ padding: '2rem 0' }}>
             <p>

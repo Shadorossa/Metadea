@@ -2455,15 +2455,15 @@
 /* ── Drag & Drop Reordering ──────────────────────────────────────────────── */
 @keyframes fav-wiggle {
   0% {
-    transform: rotate(-1deg);
+    rotate: -1deg;
   }
 
   50% {
-    transform: rotate(1deg);
+    rotate: 1deg;
   }
 
   100% {
-    transform: rotate(-1deg);
+    rotate: -1deg;
   }
 }
 
@@ -2472,6 +2472,12 @@
   outline: 1px dashed var(--border-color);
   outline-offset: -1px;
   animation: fav-wiggle 1.6s ease-in-out infinite;
+  touch-action: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fav-card.reordering:hover {
+  transform: none;
 }
 
 .fav-card.reordering .fav-card-link {
@@ -2482,22 +2488,26 @@
   cursor: grabbing;
 }
 
-/* The card actively being dragged stays still — only its neighbors wiggle */
-.fav-card.drag-source {
-  animation: none;
-  opacity: 0.4;
-  border: 1px dashed var(--accent) !important;
-  box-shadow: none !important;
-  transition: none;
+.fav-grid.is-dragging .fav-card {
+  animation: none !important;
 }
 
-/* While an active drag is in progress, DOM nodes get shuffled under the
-   cursor via insertBefore, which fires spurious mouseenter/mouseleave and
-   makes the hover title overlay flicker in and out. Suppress it entirely
-   for the duration of the drag. */
-.fav-grid.is-dragging .fav-overlay {
-  opacity: 0 !important;
+.fav-card.drag-source {
+  animation: none !important;
+  border: 1px dashed var(--accent) !important;
+  background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent) !important;
+  box-shadow: none !important;
   transition: none !important;
+}
+
+.fav-card.drag-source > * {
+  visibility: hidden;
+}
+
+.fav-card.fav-card--overlay {
+  cursor: grabbing;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent);
+  pointer-events: none;
 }
 
 
@@ -2749,12 +2759,6 @@
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
-}
-
-/* ── Drag and Drop Live Reordering ───────────────────────────────────────── */
-.fav-card.drag-source {
-  opacity: 0.15 !important;
-  border: 1px dashed var(--accent) !important;
 }
 
 /* ── Favorites Crown Button ──────────────────────────────────────────────── */
@@ -4107,26 +4111,25 @@
   cursor: grabbing;
 }
 
-.list-item-placeholder {
+/* The item's own slot in the grid while @dnd-kit is dragging it — the
+   floating copy under the cursor is DragOverlay's own .is-dragging-card
+   clone (see below), so this one just reads as an empty placeholder
+   left behind, the same visual role .list-item-placeholder used to play
+   as a separate synthetic DOM node. */
+.list-item-card.list-item-card--ghost .list-item-cover-link {
   border: 2px dashed var(--accent, #6366f1) !important;
-  border-radius: var(--radius-sm, 4px) !important;
   background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent) !important;
-  aspect-ratio: 2 / 3 !important;
-  box-sizing: border-box !important;
-  min-width: 0 !important;
 }
 
-.list-item-placeholder--episode {
-  aspect-ratio: 16 / 9 !important;
+.list-item-card.list-item-card--ghost .list-item-cover,
+.list-item-card.list-item-card--ghost .list-item-info,
+.list-item-card.list-item-card--ghost .list-item-episode-badge {
+  visibility: hidden;
 }
 
-.list-item-card.drag-source,
+/* DragOverlay's own floating clone, following the cursor. */
 .list-item-card.is-dragging-card {
-  opacity: 0.85 !important;
-  z-index: 99999 !important;
-  pointer-events: none !important;
   cursor: grabbing !important;
-  transition: none !important;
 }
 
 .list-item-card.is-dragging-card .list-item-cover-link {

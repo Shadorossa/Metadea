@@ -1,5 +1,10 @@
-import { useEffect, useMemo, useRef, useState, memo } from 'react';
-import { motion } from 'motion/react';
+import { useEffect, useMemo, useState, memo } from 'react';
+import {
+  DndContext, DragOverlay, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
+  type DragStartEvent, type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Crown, Star, Image as ImageIcon, Shuffle } from 'lucide-react';
 import { getAllLibraryEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
 import type { MediaCatalogEntry, FavoriteCustomImage, CharacterEntry } from '../../lib/tauri';
@@ -24,63 +29,43 @@ const TYPE_ICON = typeIconMap(16);
 
 interface FavItem { external_id: string; type: string; }
 
-interface FavCardProps {
-  item: FavItem;
-  idx: number;
-  catalogMap: Map<string, MediaCatalogEntry>;
-  characterMap: Map<string, CharacterEntry>;
-  customImageMap: Map<string, FavoriteCustomImage>;
-  reorderModeActive: boolean;
-  readOnly: boolean;
-  isCrowned: boolean;
-  isDragging?: boolean;
-  onToggleCrown: (id: string) => void;
-  onRemove: (id: string, type: string) => void;
-  onEditImage: (item: FavItem) => void;
-  onDragStart?: (e: React.DragEvent, idx: number) => void;
-  onDragOver?: (e: React.DragEvent, idx: number) => void;
-  onDragEnd?: () => void;
-}
+interface FavCardDisplay { title: string; rawCover: string; customImg?: FavoriteCustomImage; mediaUrl: string }
 
-const MemoizedFavCard = memo(function FavCard({
-  item,
-  idx,
-  catalogMap,
-  characterMap,
-  customImageMap,
-  reorderModeActive,
-  readOnly,
-  isCrowned,
-  isDragging,
-  onToggleCrown,
-  onRemove,
-  onEditImage,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
-}: FavCardProps) {
+// Pure derivation from an item + the viewer's own maps — shared between the
+// live sortable card and its DragOverlay preview, same reasoning as
+// ListsSection.tsx's resolveListItemDisplay.
+function resolveFavCardDisplay(
+  item: FavItem, catalogMap: Map<string, MediaCatalogEntry>, characterMap: Map<string, CharacterEntry>,
+  customImageMap: Map<string, FavoriteCustomImage>,
+): FavCardDisplay {
   const title = item.type === 'character'
     ? (characterMap.get(item.external_id)?.name ?? item.external_id)
     : (catalogMap.get(item.external_id)?.title_main ?? item.external_id);
   const rawCover = item.type === 'character'
     ? (characterMap.get(item.external_id)?.image_url ?? '')
     : (catalogMap.get(item.external_id)?.cover_url ?? '');
-  const customImg = customImageMap.get(item.external_id);
   const mediaUrl = item.type === 'character'
     ? `/character?id=${item.external_id.replace('character:', '')}`
     : `/media?id=${encodeURIComponent(item.external_id)}`;
+  return { title, rawCover, customImg: customImageMap.get(item.external_id), mediaUrl };
+}
 
+// Everything inside the card except the sortable wrapper div — shared
+// between the live grid card (real drag listeners) and the DragOverlay
+// clone (a plain floating visual, no listeners of its own).
+function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, onRemove, onEditImage }: {
+  item: FavItem;
+  idx: number;
+  display: FavCardDisplay;
+  isCrowned: boolean;
+  readOnly: boolean;
+  onToggleCrown: (id: string) => void;
+  onRemove: (id: string, type: string) => void;
+  onEditImage: (item: FavItem) => void;
+}) {
+  const { title, rawCover, customImg, mediaUrl } = display;
   return (
-    <motion.div
-      layout
-      transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-      className={`fav-card ${reorderModeActive ? 'reordering' : ''}${isDragging ? ' drag-source' : ''}`}
-      data-id={item.external_id}
-      draggable={reorderModeActive && !readOnly}
-      onDragStart={(e: any) => onDragStart?.(e, idx)}
-      onDragOver={(e: any) => onDragOver?.(e, idx)}
-      onDragEnd={() => onDragEnd?.()}
-    >
+    <>
       <a className="fav-card-link" href={mediaUrl} draggable={false} />
       <div className="fav-badge">#{idx + 1}</div>
 
@@ -134,7 +119,57 @@ const MemoizedFavCard = memo(function FavCard({
       <div className="fav-overlay">
         <span className="fav-title">{title}</span>
       </div>
-    </motion.div>
+    </>
+  );
+}
+
+interface FavCardProps {
+  item: FavItem;
+  idx: number;
+  catalogMap: Map<string, MediaCatalogEntry>;
+  characterMap: Map<string, CharacterEntry>;
+  customImageMap: Map<string, FavoriteCustomImage>;
+  reorderModeActive: boolean;
+  readOnly: boolean;
+  isCrowned: boolean;
+  onToggleCrown: (id: string) => void;
+  onRemove: (id: string, type: string) => void;
+  onEditImage: (item: FavItem) => void;
+}
+
+const MemoizedFavCard = memo(function FavCard({
+  item, idx, catalogMap, characterMap, customImageMap, reorderModeActive, readOnly, isCrowned,
+  onToggleCrown, onRemove, onEditImage,
+}: FavCardProps) {
+  // PointerSensor's own activation distance (see FavoritesSection's
+  // dndSensors) is what used to be the old native-DnD implementation's
+  // `target.closest('.fav-crown-btn, ...')` check in handleDragStart — a
+  // plain click on one of those buttons never crosses that distance, so it
+  // never starts a drag and the button's own onClick still fires normally,
+  // without needing to special-case those elements by hand.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.external_id,
+    disabled: !reorderModeActive || readOnly,
+  });
+  const display = resolveFavCardDisplay(item, catalogMap, characterMap, customImageMap);
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`fav-card ${reorderModeActive ? 'reordering' : ''}${isDragging ? ' drag-source' : ''}`}
+      data-id={item.external_id}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+      }}
+      {...attributes}
+      {...listeners}
+    >
+      <FavCardBody
+        item={item} idx={idx} display={display} isCrowned={isCrowned} readOnly={readOnly}
+        onToggleCrown={onToggleCrown} onRemove={onRemove} onEditImage={onEditImage}
+      />
+    </div>
   );
 });
 
@@ -167,12 +202,6 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
   const [favData, setFavData] = useState<FavData>(overrideFavData ?? {});
   const [activeCatKey, setActiveCatKey] = useState('multimedia');
   const [reorderModeActive, setReorderModeActive] = useState(false);
-
-  const gridRef = useRef<HTMLDivElement>(null);
-  const favDataRef = useRef(favData);
-  favDataRef.current = favData;
-  const activeCatKeyRef = useRef(activeCatKey);
-  activeCatKeyRef.current = activeCatKey;
 
   useEffect(() => {
     if (overrideItems) return;
@@ -303,54 +332,30 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
     });
   };
 
-  const dragIndexRef = useRef<number | null>(null);
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
-  const [isDraggingActive, setIsDraggingActive] = useState(false);
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-  const handleDragStart = (e: React.DragEvent, idx: number) => {
-    if (readOnly || !reorderModeActive) return;
-    const target = e.target as HTMLElement;
-    if (target.closest('.fav-crown-btn, .fav-remove-btn, .fav-edit-image-btn')) {
-      e.preventDefault();
-      return;
-    }
-    dragIndexRef.current = idx;
-    setDraggedIdx(idx);
-    setIsDraggingActive(true);
-    if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', String(idx));
-    }
-  };
+  const handleDragStart = (e: DragStartEvent) => setActiveDragId(String(e.active.id));
 
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    if (dragIndexRef.current === null || dragIndexRef.current === idx) return;
-    e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    const from = dragIndexRef.current;
-    const to = idx;
-    dragIndexRef.current = to;
-    setDraggedIdx(to);
-    setFavData(prev => {
-      const list = [...(prev[activeCatKey] || [])];
-      if (from < 0 || from >= list.length || to < 0 || to >= list.length) return prev;
-      const [moved] = list.splice(from, 1);
-      list.splice(to, 0, moved);
-      return { ...prev, [activeCatKey]: list };
-    });
-  };
-
-  const handleDragEnd = async () => {
-    dragIndexRef.current = null;
-    setDraggedIdx(null);
-    setIsDraggingActive(false);
-    await persistFavData(favDataRef.current);
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const list = [...(favData[activeCatKey] || [])];
+    const oldIndex = list.indexOf(String(active.id));
+    const newIndex = list.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+    persistFavData({ ...favData, [activeCatKey]: arrayMove(list, oldIndex, newIndex) });
   };
 
   if (items === null) return null;
 
   const cat = categories.find(c => c.key === activeCatKey) || categories[0];
   const catItems = getOrderedItems(activeCatKey);
+  const activeDragItem = activeDragId ? catItems.find(i => i.external_id === activeDragId) ?? null : null;
 
   return (
     <div className="fav-layout">
@@ -385,31 +390,53 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
       </div>
       <div className="fav-grid-container">
         {catItems.length > 0 ? (
-          <div className={`fav-grid${isDraggingActive ? ' is-dragging' : ''}`} ref={gridRef} key={activeCatKey}>
-            {catItems.map((item, idx) => {
-              const isCrowned = Boolean(favData.multimedia?.includes(item.external_id));
-              return (
-                <MemoizedFavCard
-                  key={item.external_id}
-                  item={item}
-                  idx={idx}
-                  catalogMap={catalogMap}
-                  characterMap={characterMap}
-                  customImageMap={customImageMap}
-                  reorderModeActive={reorderModeActive}
-                  readOnly={Boolean(readOnly)}
-                  isCrowned={isCrowned && activeCatKey !== 'multimedia'}
-                  isDragging={draggedIdx === idx}
-                  onToggleCrown={toggleCrown}
-                  onRemove={removeFavorite}
-                  onEditImage={editImage}
-                  onDragStart={handleDragStart}
-                  onDragOver={handleDragOver}
-                  onDragEnd={handleDragEnd}
-                />
-              );
-            })}
-          </div>
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveDragId(null)}
+          >
+            <SortableContext items={catItems.map(i => i.external_id)} strategy={rectSortingStrategy}>
+              <div className={`fav-grid${activeDragId ? ' is-dragging' : ''}`} key={activeCatKey}>
+                {catItems.map((item, idx) => {
+                  const isCrowned = Boolean(favData.multimedia?.includes(item.external_id));
+                  return (
+                    <MemoizedFavCard
+                      key={item.external_id}
+                      item={item}
+                      idx={idx}
+                      catalogMap={catalogMap}
+                      characterMap={characterMap}
+                      customImageMap={customImageMap}
+                      reorderModeActive={reorderModeActive}
+                      readOnly={Boolean(readOnly)}
+                      isCrowned={isCrowned && activeCatKey !== 'multimedia'}
+                      onToggleCrown={toggleCrown}
+                      onRemove={removeFavorite}
+                      onEditImage={editImage}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+            <DragOverlay>
+              {activeDragItem && (
+                <div className="fav-card fav-card--overlay">
+                  <FavCardBody
+                    item={activeDragItem}
+                    idx={catItems.findIndex(i => i.external_id === activeDragItem.external_id)}
+                    display={resolveFavCardDisplay(activeDragItem, catalogMap, characterMap, customImageMap)}
+                    isCrowned={Boolean(favData.multimedia?.includes(activeDragItem.external_id)) && activeCatKey !== 'multimedia'}
+                    readOnly={Boolean(readOnly)}
+                    onToggleCrown={toggleCrown}
+                    onRemove={removeFavorite}
+                    onEditImage={editImage}
+                  />
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
         ) : (
           <div className="fav-empty-state">
             <Star className="fav-empty-icon" size={48} strokeWidth={1.5} />
