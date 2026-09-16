@@ -1,12 +1,10 @@
 import { formatUnixTimestampShort, formatDateLong } from '../../../lib/shared/formatDate';
 
 export function formatPlaytime(minutes?: number): string {
-  if (!minutes || minutes === 0) return '—';
+  if (minutes === undefined || minutes === null || isNaN(minutes) || minutes < 0) return '—';
   const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  const m = Math.floor(minutes % 60);
+  return `${h}h ${String(m).padStart(2, '0')}m`;
 }
 
 export function formatLastPlayed(ts?: number): string {

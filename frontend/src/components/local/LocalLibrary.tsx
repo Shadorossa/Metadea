@@ -123,7 +123,9 @@ export default function LocalLibrary() {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     listenGameSessionEnded(({ external_id, hours }) => {
-      addPlaytimeHours(external_id, hours).then(refetchMedia).catch(console.error);
+      if (hours >= 15.0 / 3600.0) {
+        addPlaytimeHours(external_id, hours).then(refetchMedia).catch(console.error);
+      }
     }).then(fn => { unlisten = fn; });
     return () => unlisten?.();
   }, [refetchMedia]);

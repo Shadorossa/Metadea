@@ -43,6 +43,7 @@ export function toSmallCover(url: string | null | undefined): string {
 export function toMediumCover(url: string | null | undefined): string {
   if (!url) return '';
   if (ANILIST_COVER_SIZE_RE.test(url)) return url.replace(ANILIST_COVER_SIZE_RE, '/cover/medium/');
+  if (url.includes('images.igdb.com') && IGDB_SIZE_RE.test(url)) return url.replace(IGDB_SIZE_RE, '/t_cover_big/');
   if (TMDB_SIZE_RE.test(url)) return url.replace(TMDB_SIZE_RE, '/t/p/w342/');
   if (OPENLIBRARY_SIZE_RE.test(url)) return url.replace(OPENLIBRARY_SIZE_RE, '-M.jpg');
   return url;

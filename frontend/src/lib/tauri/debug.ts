@@ -9,10 +9,10 @@ export async function openEnvFolder(): Promise<void> {
 }
 
 export async function launchGame(
-  launcher: string, appId?: string | null, installPath?: string | null, romPlatform?: string | null,
+  launcher: string, appId?: string | null, installPath?: string | null, romPlatform?: string | null, externalId?: string | null,
 ): Promise<void> {
   return tauriRun('launch_game', {
-    launcher, appId: appId ?? null, installPath: installPath ?? null, romPlatform: romPlatform ?? null,
+    launcher, appId: appId ?? null, installPath: installPath ?? null, romPlatform: romPlatform ?? null, externalId: externalId ?? null,
   });
 }
 

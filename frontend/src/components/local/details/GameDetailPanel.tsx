@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
   type LocalGame, type GameInfo, type SteamAchievement, type LibraryEntry,
-  updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
+  getCatalogEntry, getLibraryEntry,
   igdbGetGameDetail, getMediaCompanies, readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
@@ -11,7 +11,8 @@ import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { IconMonitor, IconPencil } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatUnixDateLong } from '../utils/formatters';
-import { toSmallCover } from '../../../lib/shared/small-cover';
+import { toMediumCover } from '../../../lib/shared/small-cover';
+import { setGamePresence } from '../../../lib/discord/presence-manager';
 import { gameExternalId, firstCsvUrl, catalogReleaseTimestampMs } from '../../../lib/media/mapper-utils';
 import { parseCSV } from '../../../lib/shared/string-utils';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
@@ -73,14 +74,6 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // launch_game (no emulator configured for X) with nothing shown for it.
   // null until checked (or when this isn't a ROM at all, the common case).
   const [emulatorConfigured, setEmulatorConfigured] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (hasLaunched) {
-        resetDiscordPresence().catch(() => {});
-      }
-    };
-  }, [hasLaunched]);
 
   useEffect(() => {
     // Reset unconditionally first — without this, switching from a season
@@ -243,13 +236,13 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const romTrackingId = editTargetId ?? relationsExternalId;
   useEffect(() => {
     setRomLibraryEntry(null);
-    if (!launchTarget.rom_platform || !romTrackingId) return;
+    if (!romTrackingId) return;
     let cancelled = false;
     const load = () => { getLibraryEntry(romTrackingId).then(e => { if (!cancelled) setRomLibraryEntry(e); }).catch(() => {}); };
     load();
     window.addEventListener('refresh-profile-library', load);
     return () => { cancelled = true; window.removeEventListener('refresh-profile-library', load); };
-  }, [launchTarget.rom_platform, romTrackingId]);
+  }, [romTrackingId]);
 
   // Identity (banner/cover, metadata) always stays `game`'s own — a season
   // shows ITS OWN art/summary/genres ("estás jugando la season de X"), not
@@ -463,38 +456,48 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   if (effectiveStoreLink) openExternalUrl(effectiveStoreLink.url).catch(console.error);
                   return;
                 }
-                launchGame(launchTarget.launcher, launchTarget.app_id, launchTarget.install_path, launchTarget.rom_platform)
-                  .then(() => {
-                    setHasLaunched(true);
-                    const startTime = Math.floor(Date.now() / 1000);
-                    const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
-                      ? toSmallCover(catalogEntry.cover_url)
-                      : (banner && banner.startsWith('http'))
-                      ? toSmallCover(banner)
-                      : undefined;
-                    updateDiscordPresence(`Playing ${displayTitle}`, "", startTime, undefined, coverUrl, displayTitle, "metadea", "Metadea").catch(() => {});
-                    // Auto-logs hours on exit (see LocalLibrary's
-                    // game-session-ended listener) — keyed by launchTarget's
-                    // OWN identity (the source game for a season, never the
-                    // season's own display id) since that's whose library
-                    // entry actually tracks hours played. Tried against both
-                    // id prefixes since an IGDB game logged as a visual
-                    // novel is catalogued as "vnovel:<id>", not "game:<id>".
-                    if (launchTarget.install_path) {
-                      const resolveSourceExternalId = async (): Promise<string | undefined> => {
-                        if (launchTarget.external_id) return launchTarget.external_id;
-                        if (!gameInfo?.igdb_id) return undefined;
-                        for (const candidate of [gameExternalId(gameInfo.igdb_id, false), gameExternalId(gameInfo.igdb_id, true)]) {
-                          if (await getLibraryEntry(candidate).catch(() => null)) return candidate;
-                        }
-                        return undefined;
-                      };
-                      resolveSourceExternalId().then(id => {
-                        if (id) startPlaytimeSession(launchTarget.install_path!, id, launchTarget.rom_platform).catch(() => {});
+                const resolveSourceExternalId = async (): Promise<string | undefined> => {
+                  if (romTrackingId) return romTrackingId;
+                  if (knownExternalId) return knownExternalId;
+                  if (launchTarget.external_id) return launchTarget.external_id;
+                  if (!gameInfo?.igdb_id) return undefined;
+                  for (const candidate of [gameExternalId(gameInfo.igdb_id, false), gameExternalId(gameInfo.igdb_id, true)]) {
+                    if (await getLibraryEntry(candidate).catch(() => null)) return candidate;
+                  }
+                  return undefined;
+                };
+
+                resolveSourceExternalId().then(resolvedId => {
+                  const effectiveExternalId = resolvedId ?? romTrackingId ?? knownExternalId ?? launchTarget.external_id ?? launchTarget.app_id ?? launchTarget.name;
+
+                  launchGame(
+                    launchTarget.launcher,
+                    launchTarget.app_id,
+                    launchTarget.install_path,
+                    launchTarget.rom_platform,
+                    effectiveExternalId,
+                  )
+                    .then(() => {
+                      setHasLaunched(true);
+                      const startTime = Math.floor(Date.now() / 1000);
+                      const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
+                        ? toMediumCover(catalogEntry.cover_url)
+                        : (banner && banner.startsWith('http'))
+                        ? toMediumCover(banner)
+                        : undefined;
+                      setGamePresence({
+                        title: displayTitle,
+                        startTime,
+                        coverUrl,
+                        externalId: effectiveExternalId,
                       });
-                    }
-                  })
-                  .catch(console.error);
+
+                      if (launchTarget.install_path && !launchTarget.rom_platform) {
+                        startPlaytimeSession(launchTarget.install_path, effectiveExternalId, null).catch(() => {});
+                      }
+                    })
+                    .catch(console.error);
+                });
               }}
             >
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
@@ -511,7 +514,11 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                   </svg>
-                  <span>{formatPlaytime(launchTarget.rom_platform ? Math.round((romLibraryEntry?.progress ?? 0) * 60) : launchTarget.playtime_minutes)}</span>
+                  <span>{formatPlaytime(
+                    launchTarget.rom_platform || launchTarget.playtime_minutes === undefined || launchTarget.playtime_minutes === null
+                      ? (romLibraryEntry?.minutes_spent ?? (romLibraryEntry?.progress ? Math.round(romLibraryEntry.progress * 60) : undefined))
+                      : launchTarget.playtime_minutes
+                  )}</span>
                   <span className="local-game-detail-stat-label">{t.local.stat_time}</span>
                 </div>
                 <div className="local-game-detail-stat">

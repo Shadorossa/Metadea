@@ -338,15 +338,8 @@ const t = useTranslations(lang);
           }, 4000);
         }
 
-        // Si navegamos fuera de la ficha, aseguramos resetear presencia de Discord
         if (!window.location.pathname.startsWith('/media')) {
-          try {
-            if (window.__TAURI__?.core?.invoke) {
-              window.__TAURI__.core.invoke('reset_presence').catch(() => {});
-            }
-          } catch (e) {
-            // Ignorar fuera de Tauri
-          }
+          import('../lib/discord/presence-manager').then(m => m.requestDiscordIdle()).catch(() => {});
         }
       });
     </script>

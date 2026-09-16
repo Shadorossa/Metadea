@@ -217,15 +217,12 @@ pub async fn launch_game(
     app_id: Option<String>,
     install_path: Option<String>,
     rom_platform: Option<String>,
+    external_id: Option<String>,
 ) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
-    // A ROM scanned from a configured emulator's rom_folder (see
-    // platform_scanning::scan_emulator_roms) — `launcher` here is only ever
-    // the company-level grouping ("nintendo"/"playstation"/"xbox"), so the
-    // actual emulator to launch it with is looked up by rom_platform (the
-    // specific console, e.g. "3ds") instead of matching on launcher below.
     if let Some(platform_id) = rom_platform {
         use tauri::Manager;
+        use tauri::Emitter;
         let rom_path = install_path.ok_or("No ROM path for emulator game")?;
         let db = app_handle.state::<crate::db::MetadeaDb>();
         let (executable_path, launch_args) = {
@@ -241,11 +238,43 @@ pub async fn launch_game(
             return Err(format!("No emulator executable configured for {}", platform_id));
         }
         let args = build_emulator_args(&launch_args, &rom_path);
-        std::process::Command::new(&executable_path)
+        let mut child = std::process::Command::new(&executable_path)
             .args(&args)
             .spawn()
-            .map(|_| ())
             .map_err(|e| format!("Failed to launch emulator: {}", e))?;
+
+        let handle = app_handle.clone();
+        let ext_id = external_id.unwrap_or_default();
+        let exe_path_buf = PathBuf::from(&executable_path);
+        let root_filename = exe_path_buf.file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let start = std::time::Instant::now();
+
+        tokio::spawn(async move {
+            let _ = tokio::task::spawn_blocking(move || {
+                let _ = child.wait();
+            }).await;
+
+            if !root_filename.is_empty() {
+                use sysinfo::System;
+                let mut sys = System::new();
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    sys.refresh_all();
+                    let still_running = sys.processes().values().any(|p| {
+                        p.name().to_string_lossy().eq_ignore_ascii_case(&root_filename)
+                    });
+                    if !still_running {
+                        break;
+                    }
+                }
+            }
+
+            let hours = start.elapsed().as_secs_f64() / 3600.0;
+            let _ = handle.emit("game-session-ended", SessionEndedPayload { external_id: ext_id, hours });
+        });
+
         return Ok(());
     }
     match launcher.as_str() {
@@ -310,6 +339,12 @@ pub async fn start_playtime_session(
     Ok(())
 }
 
+fn normalize_path_for_compare(p: &std::path::Path) -> String {
+    let s = p.to_string_lossy();
+    let trimmed = s.strip_prefix(r"\\?\").unwrap_or(&s);
+    trimmed.replace('/', "\\").to_lowercase()
+}
+
 async fn track_playtime_session(
     app_handle: tauri::AppHandle,
     install_path: String,
@@ -320,15 +355,6 @@ async fn track_playtime_session(
     use sysinfo::System;
     use tauri::Emitter;
 
-    // Steam/GOG/Epic hand off to the game's OWN executable somewhere under
-    // its install folder (install_path is that folder) — watching for any
-    // process whose exe lives under it works there. An emulator-launched
-    // ROM is different: install_path here is the ROM FILE itself, and the
-    // actual running process is the CONFIGURED EMULATOR's own executable —
-    // a completely unrelated path matching against install_path would
-    // never see. Looked up fresh (not passed in from launch_game) since
-    // this can run for hours after launch, long after the user might have
-    // changed which emulator a platform uses.
     let watch_target: Option<PathBuf> = if let Some(platform_id) = &rom_platform {
         use tauri::Manager;
         let db = app_handle.state::<crate::db::MetadeaDb>();
@@ -346,12 +372,13 @@ async fn track_playtime_session(
     };
     let Some(root) = watch_target else { return };
     let is_rom = rom_platform.is_some();
+    let root_filename = root.file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let norm_root = normalize_path_for_compare(&root);
 
-    let poll_every = Duration::from_secs(5);
-    // The launcher itself (Steam/GOG/Epic — or the emulator, for a ROM) can
-    // take a while to actually start the real process after handing off —
-    // give up instead of polling forever if nothing ever shows up.
-    let start_timeout = Duration::from_secs(300);
+    let poll_every = Duration::from_secs(2);
+    let start_timeout = Duration::from_secs(60);
 
     let mut sys = System::new();
     let mut waited = Duration::ZERO;
@@ -361,31 +388,39 @@ async fn track_playtime_session(
         tokio::time::sleep(poll_every).await;
         sys.refresh_all();
         let running = sys.processes().values().any(|p| {
-            p.exe().map(|exe| {
-                if is_rom {
-                    // Exact-match (case-insensitive — Windows paths), not a
-                    // prefix: root here is the emulator's own executable,
-                    // not a folder something else could live under.
-                    exe.to_string_lossy().eq_ignore_ascii_case(&root.to_string_lossy())
-                } else {
-                    exe.starts_with(&root)
+            if is_rom {
+                if !root_filename.is_empty() && p.name().to_string_lossy().eq_ignore_ascii_case(&root_filename) {
+                    return true;
                 }
-            }).unwrap_or(false)
+                if let Some(exe) = p.exe() {
+                    let norm_exe = normalize_path_for_compare(exe);
+                    if norm_exe == norm_root || norm_exe.ends_with(&norm_root) || norm_root.ends_with(&norm_exe) {
+                        return true;
+                    }
+                }
+                false
+            } else {
+                if let Some(exe) = p.exe() {
+                    let norm_exe = normalize_path_for_compare(exe);
+                    norm_exe.starts_with(&norm_root)
+                } else {
+                    false
+                }
+            }
         });
 
         match (started_at, running) {
             (None, true) => started_at = Some(Instant::now()),
             (None, false) => {
                 waited += poll_every;
-                if waited >= start_timeout { return; }
+                if waited >= start_timeout {
+                    let _ = app_handle.emit("game-session-ended", SessionEndedPayload { external_id: external_id.clone(), hours: 0.0 });
+                    return;
+                }
             }
             (Some(start), false) => {
                 let hours = start.elapsed().as_secs_f64() / 3600.0;
-                // Ignores a process merely glimpsed for a few seconds while
-                // the launcher itself was starting up, or an instant crash.
-                if hours >= (1.0 / 60.0) {
-                    let _ = app_handle.emit("game-session-ended", SessionEndedPayload { external_id, hours });
-                }
+                let _ = app_handle.emit("game-session-ended", SessionEndedPayload { external_id, hours });
                 return;
             }
             (Some(_), true) => {}

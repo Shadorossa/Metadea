@@ -8,11 +8,12 @@
 // the same way any other imported module's state does under Astro's
 // ClientRouter, which swaps DOM without tearing down the JS module graph)
 // that keeps polling VLC and saving progress regardless of what's mounted.
-import { saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, updateDiscordPresence, resetDiscordPresence, type LibraryEntry } from '../tauri';
+import { saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, type LibraryEntry } from '../tauri';
 import { getResumePosition, saveResumePosition, clearResumePosition } from '../tauri/resume-position';
 import { playFileWithVlc, getVlcPlaybackStatus, sendVlcCommand, type VlcPlaybackStatus } from '../tauri/anime-local';
 import { syncToAniList, isAniListType } from '../media/anilist-sync';
-import { toSmallCover } from '../shared/small-cover';
+import { toMediumCover } from '../shared/small-cover';
+import { setPlaybackPresence, clearPlaybackPresence } from '../discord/presence-manager';
 import { createExternalStore } from '../shared/external-store';
 
 export interface PlaybackQueueItem {
@@ -255,25 +256,37 @@ function stopPolling() {
 
 function updateDiscordForTick(episodeNumber: number, statusState: PlaybackStatus, time: number, length: number) {
   if (!state) return;
-  const coverUrl = state.cover && state.cover.startsWith('http') ? toSmallCover(state.cover) : undefined;
+  const coverUrl = state.cover && state.cover.startsWith('http') ? toMediumCover(state.cover) : undefined;
   if (statusState === 'playing') {
     const nowSec = Math.floor(Date.now() / 1000);
     const computedStart = nowSec - time;
     const computedEnd = computedStart + length;
     if (lastPresenceStart === null || Math.abs(lastPresenceStart - computedStart) > 4) {
       lastPresenceStart = computedStart;
-      updateDiscordPresence(`Watching ${state.title} - Episode ${episodeNumber}`, "", computedStart, computedEnd, coverUrl, state.title, "metadea", "Metadea").catch(() => {});
+      setPlaybackPresence({
+        title: state.title,
+        episodeNumber,
+        status: 'playing',
+        startTime: computedStart,
+        endTime: computedEnd,
+        coverUrl,
+      });
     }
   } else if (lastPresenceStart !== null) {
     lastPresenceStart = null;
-    updateDiscordPresence(`Watching ${state.title} - Episode ${episodeNumber}`, "Paused", undefined, undefined, coverUrl, state.title, "metadea", "Metadea").catch(() => {});
+    setPlaybackPresence({
+      title: state.title,
+      episodeNumber,
+      status: 'paused',
+      coverUrl,
+    });
   }
 }
 
 function finishSession() {
   stopPolling();
   lastPresenceStart = null;
-  resetDiscordPresence().catch(() => {});
+  clearPlaybackPresence();
   setState(null);
 }
 

@@ -11,8 +11,6 @@ import {
   toggleComicBookmark,
   saveComicPageAsPng,
   wrapAssetUrl,
-  updateDiscordPresence,
-  resetDiscordPresence,
   type LibraryEntry,
 } from '../../lib/tauri';
 import { markChapterRead } from '../../lib/reader/reading-service';
@@ -21,7 +19,8 @@ if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 }
 import { useClosingTransition } from '../../lib/shared/useClosingTransition';
-import { toSmallCover } from '../../lib/shared/small-cover';
+import { toMediumCover } from '../../lib/shared/small-cover';
+import { setReadingPresence, clearReadingPresence } from '../../lib/discord/presence-manager';
 import { IconX } from '../local/ui/icons';
 import { getT } from '../../i18n/client';
 
@@ -426,15 +425,19 @@ export function ReaderModal({
 
   useEffect(() => {
     if (loadState !== 'ready') return;
-    const coverUrl = cover && cover.startsWith('http') ? toSmallCover(cover) : undefined;
+    const coverUrl = cover && cover.startsWith('http') ? toMediumCover(cover) : undefined;
     const timer = setTimeout(() => {
-      updateDiscordPresence(`Reading ${title}`, `Page ${pageLabel}`, undefined, undefined, coverUrl, title, 'metadea', 'Metadea').catch(() => {});
+      setReadingPresence({
+        title,
+        pageLabel,
+        coverUrl,
+      });
     }, 800);
     return () => clearTimeout(timer);
   }, [loadState, pageLabel, title, cover]);
 
   useEffect(() => {
-    return () => { resetDiscordPresence().catch(() => {}); };
+    return () => { clearReadingPresence(); };
   }, []);
 
   const handleStandBy = () => {

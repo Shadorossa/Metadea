@@ -1,10 +1,4 @@
-// "Actividad reciente" on Home — activity from people you follow, read from
-// the once-a-day cache (see lib/social/activity-feed.ts; this component never
-// hits the network itself, BaseLayout.astro's daily refresh already did).
-// Card format/CSS reused from the profile page's own "Actividad reciente"
-// (ActivitySection.tsx / .act-card in profile.css) — same layout, just with
-// a friend avatar badge and bolded username added since this feed spans
-// multiple people instead of just the local user.
+// Feed de actividad reciente en Home (amigos y general) con datos en cache.
 import { useEffect, useMemo, useState, memo } from 'react';
 import { getCachedActivityFeed, getCachedGeneralActivityFeed, type ActivityFeedEntry } from '../../lib/social/activity-feed';
 import { getCatalogEntry, type MediaCatalogEntry } from '../../lib/tauri';
@@ -34,12 +28,19 @@ interface FlatEvent {
   progressEnd?:   number;
 }
 
-export function ActivityFeedSection({ title }: { title: string }) {
-  const p = getT().profile;
+export function ActivityFeedSection({ title, i18n }: { title: string; i18n?: any }) {
+  const p = i18n ?? getT().profile;
   const [tab, setTab] = useState<FeedTab>('friends');
-  const [friendEntries] = useState<ActivityFeedEntry[]>(() => getCachedActivityFeed());
-  const [generalEntries] = useState<ActivityFeedEntry[]>(() => getCachedGeneralActivityFeed());
+  const [friendEntries, setFriendEntries] = useState<ActivityFeedEntry[]>([]);
+  const [generalEntries, setGeneralEntries] = useState<ActivityFeedEntry[]>([]);
   const [catalog, setCatalog] = useState<Record<string, MediaCatalogEntry>>({});
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setFriendEntries(getCachedActivityFeed());
+    setGeneralEntries(getCachedGeneralActivityFeed());
+    setMounted(true);
+  }, []);
 
   const entries = useMemo(
     () => tab === 'friends' ? friendEntries : generalEntries,
@@ -99,7 +100,7 @@ export function ActivityFeedSection({ title }: { title: string }) {
     </div>
   );
 
-  if (events.length === 0) {
+  if (!mounted || events.length === 0) {
     return (
       <>
         {header}

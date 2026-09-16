@@ -77,23 +77,27 @@ export async function getLibraryEntry(externalId: string): Promise<LibraryEntry 
   return tauriCmd<LibraryEntry | null>('get_library_entry', null, { externalId });
 }
 
-// Called when a "game-session-ended" event (see listenGameSessionEnded)
-// reports a finished play session — adds the elapsed hours to whatever's
-// already logged instead of overwriting it, so the log stays up to date
-// without the user having to touch it by hand. Deliberately never creates a
-// new entry: a work the user hasn't logged into their library at all yet
-// has no status this could sensibly attach to.
+// Añade horas y minutos jugados a una entrada de la biblioteca tras terminar una sesión.
 export async function addPlaytimeHours(externalId: string, hours: number): Promise<void> {
-  const entry = await getLibraryEntry(externalId).catch(() => null);
-  if (!entry) return;
-  const progress = Math.round((entry.progress + hours) * 100) / 100;
-  // Kept in step with progress — MediaEditorModal's own handleSave always
-  // recomputes minutes_spent FROM progress on a manual save, so leaving it
-  // untouched here (progress-only, like before) meant an auto-tracked
-  // session made progress correct but minutes_spent stale until the next
-  // manual save — visible anywhere minutes_spent itself gets read directly
-  // (GamesGrid's own "ordenar por tiempo jugado", say).
-  await saveLibraryEntry({ ...entry, progress, minutes_spent: Math.round(progress * 60) });
+  let entry = await getLibraryEntry(externalId).catch(() => null);
+  if (!entry) {
+    entry = {
+      id: '', user_id: 'local', external_id: externalId,
+      type: 'game', status: 'in_progress',
+      rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
+      is_favorite: 0, is_platinum: 0, tags: null, notes: null,
+      added_at: new Date().toISOString(), updated_at: null,
+      selected_platform: null, selected_version: null,
+      started_at: new Date().toISOString().slice(0, 10), finished_at: null,
+    };
+  }
+  const addMinutes = Math.round(hours * 60);
+  const effectiveAddMinutes = addMinutes > 0 ? addMinutes : (hours >= 15.0 / 3600.0 ? 1 : 0);
+  if (effectiveAddMinutes <= 0) return;
+  const currentMinutes = entry.minutes_spent || Math.round((entry.progress ?? 0) * 60);
+  const newMinutes = currentMinutes + effectiveAddMinutes;
+  const progress = Math.round((newMinutes / 60) * 100) / 100;
+  await saveLibraryEntry({ ...entry, progress, minutes_spent: newMinutes });
 }
 
 export async function deleteLibraryEntry(externalId: string): Promise<void> {
