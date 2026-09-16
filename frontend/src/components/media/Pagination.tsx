@@ -4,6 +4,7 @@ interface Props {
   currentPage: number;
   totalPages: number;
   onChange: (page: number) => void;
+  formatPage?: (page: number) => string;
 }
 
 // Builds the compact "1 ... 4 5 6 ... 25" page list — always keeps first,
@@ -22,7 +23,7 @@ function buildPageList(current: number, total: number): (number | 'gap')[] {
   return result;
 }
 
-export function Pagination({ currentPage, totalPages, onChange }: Props) {
+export function Pagination({ currentPage, totalPages, onChange, formatPage }: Props) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +91,7 @@ export function Pagination({ currentPage, totalPages, onChange }: Props) {
             onClick={() => (isCurrent ? startEditing() : onChange(p))}
             title={isCurrent ? 'Haz clic para escribir una página' : undefined}
           >
-            {p}
+            {formatPage ? formatPage(p) : p}
           </button>
         );
       })}

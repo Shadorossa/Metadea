@@ -9,7 +9,7 @@ import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
 import { AnimatePresence } from 'motion/react';
-import { ThemePreviewCardVideo } from './ThemePreviewCardVideo';
+import { ThemePreviewCardVideo, pauseThemeCaptureQueue, resumeThemeCaptureQueue } from './ThemePreviewCardVideo';
 import { prefetchSagaData } from '../../lib/media/sagaData';
 import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
@@ -372,6 +372,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [themes,             setThemes]             = useState<MediaTheme[]>([]);
   const [playingTheme,       setPlayingTheme]       = useState<MediaTheme | null>(null);
   const [playingVideoSrc,    setPlayingVideoSrc]    = useState<string | null>(null);
+  const [playerLoading,      setPlayerLoading]      = useState(false);
+  const [playerError,        setPlayerError]        = useState(false);
+  const [playerRetryKey,     setPlayerRetryKey]     = useState(0);
   const [episodeOffset,      setEpisodeOffset]      = useState(0);
   const [characterPage,      setCharacterPage]      = useState(1);
   const [charTab,            setCharTab]            = useState<'characters' | 'staff'>('characters');
@@ -802,29 +805,47 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
   useEffect(() => {
     if (!playingTheme) {
+      resumeThemeCaptureQueue();
       setPlayingVideoSrc(null);
+      setPlayerLoading(false);
+      setPlayerError(false);
       return;
     }
+
+    pauseThemeCaptureQueue();
+    setPlayerLoading(true);
+    setPlayerError(false);
+
     let cancelled = false;
-    setPlayingVideoSrc(playingTheme.video_url ?? null);
 
-    getThemeVideoPath(playingTheme.external_id, playingTheme.slug).then(path => {
-      if (cancelled) return;
-      if (path) {
-        setPlayingVideoSrc(wrapAssetUrl(path));
-      } else if (playingTheme.video_url) {
-        cacheThemeVideo(playingTheme.video_url, playingTheme.external_id, playingTheme.slug)
-          .then(cachedPath => {
-            if (!cancelled && cachedPath) {
-              setPlayingVideoSrc(wrapAssetUrl(cachedPath));
-            }
-          })
-          .catch(() => {});
-      }
-    }).catch(() => {});
+    getThemeVideoPath(playingTheme.external_id, playingTheme.slug)
+      .then(path => {
+        if (cancelled) return;
+        if (path) {
+          setPlayingVideoSrc(wrapAssetUrl(path));
+        } else if (playingTheme.video_url) {
+          setPlayingVideoSrc(playingTheme.video_url);
+        } else {
+          setPlayingVideoSrc(null);
+          setPlayerLoading(false);
+          setPlayerError(true);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (playingTheme.video_url) {
+          setPlayingVideoSrc(playingTheme.video_url);
+        } else {
+          setPlayingVideoSrc(null);
+          setPlayerLoading(false);
+          setPlayerError(true);
+        }
+      });
 
-    return () => { cancelled = true; };
-  }, [playingTheme]);
+    return () => {
+      cancelled = true;
+    };
+  }, [playingTheme, playerRetryKey]);
 
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
   useEffect(() => {
@@ -1147,9 +1168,25 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           const match = formatted.match(/\b\d+\b/);
           if (match) {
             const targetEpNum = parseInt(match[0], 10);
-            const targetIdx = episodes.findIndex(e => e.episode_number === targetEpNum);
-            if (targetIdx !== -1) {
-              setRelationPage(Math.floor(targetIdx / EPISODE_PAGE_SIZE) + 1);
+            const regularEps = episodes
+              .filter(e => e.episode_number > 0)
+              .sort((a, b) => a.episode_number - b.episode_number);
+            const specialEps = episodes
+              .filter(e => e.episode_number < 0)
+              .sort((a, b) => Math.abs(a.episode_number) - Math.abs(b.episode_number));
+
+            const regularPages = Math.ceil(regularEps.length / EPISODE_PAGE_SIZE);
+
+            if (targetEpNum > 0) {
+              const regIdx = regularEps.findIndex(e => e.episode_number === targetEpNum);
+              if (regIdx !== -1) {
+                setRelationPage(Math.floor(regIdx / EPISODE_PAGE_SIZE) + 1);
+              }
+            } else {
+              const spIdx = specialEps.findIndex(e => e.episode_number === targetEpNum);
+              if (spIdx !== -1) {
+                setRelationPage(regularPages + Math.floor(spIdx / EPISODE_PAGE_SIZE) + 1);
+              }
             }
           }
           setRelationsTab('episodes');
@@ -1178,14 +1215,46 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
               <div className="theme-player-modal">
                 <button type="button" className="theme-player-close" onClick={() => setPlayingTheme(null)} aria-label="Close">×</button>
-                <video
-                  key={playingTheme.slug}
-                  className="theme-player-video"
-                  src={playingVideoSrc ?? undefined}
-                  controls
-                  autoPlay
-                  preload="auto"
-                />
+                <div className="theme-player-video-wrap">
+                  {playingVideoSrc && (
+                    <video
+                      key={`${playingTheme.slug}-${playerRetryKey}`}
+                      className="theme-player-video"
+                      src={playingVideoSrc}
+                      controls
+                      autoPlay
+                      preload="auto"
+                      onLoadedData={() => setPlayerLoading(false)}
+                      onPlaying={() => setPlayerLoading(false)}
+                      onWaiting={() => setPlayerLoading(true)}
+                      onError={() => {
+                        setPlayerLoading(false);
+                        setPlayerError(true);
+                      }}
+                    />
+                  )}
+                  {playerLoading && !playerError && (
+                    <div className="theme-player-spinner-overlay">
+                      <div className="theme-player-spinner" />
+                    </div>
+                  )}
+                  {playerError && (
+                    <div className="theme-player-error-overlay">
+                      <p className="theme-player-error-text">No se pudo cargar el vídeo</p>
+                      <button
+                        type="button"
+                        className="theme-player-retry-btn"
+                        onClick={() => {
+                          setPlayerError(false);
+                          setPlayerLoading(true);
+                          setPlayerRetryKey(k => k + 1);
+                        }}
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="theme-player-info">
                   <span className={`media-theme-badge media-theme-badge--${playingTheme.theme_type.toLowerCase()}`}>
                     {playingTheme.theme_type}{playingTheme.sequence}
@@ -1495,24 +1564,49 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               </>
             )
           ) : relationsTab === 'episodes' ? (
-            episodes.length > 0 && (
-              <>
-                <div className="media-relations-grid">
-                  {episodes
-                    .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
-                    .map(ep => (
+            episodes.length > 0 && (() => {
+              const regularEps = episodes
+                .filter(e => e.episode_number > 0)
+                .sort((a, b) => a.episode_number - b.episode_number);
+              const specialEps = episodes
+                .filter(e => e.episode_number < 0)
+                .sort((a, b) => Math.abs(a.episode_number) - Math.abs(b.episode_number));
+
+              const regularPages = Math.ceil(regularEps.length / EPISODE_PAGE_SIZE);
+              const specialPages = Math.ceil(specialEps.length / EPISODE_PAGE_SIZE);
+              const totalEpPages = regularPages + specialPages;
+
+              let pageEpisodes: MediaEpisode[] = [];
+              if (relationPage <= regularPages) {
+                const start = (relationPage - 1) * EPISODE_PAGE_SIZE;
+                pageEpisodes = regularEps.slice(start, start + EPISODE_PAGE_SIZE);
+              } else {
+                const spPage = relationPage - regularPages;
+                const start = (spPage - 1) * EPISODE_PAGE_SIZE;
+                pageEpisodes = specialEps.slice(start, start + EPISODE_PAGE_SIZE);
+              }
+
+              return (
+                <>
+                  <div className="media-relations-grid">
+                    {pageEpisodes.map(ep => (
                       <EpisodeCard key={`${ep.season_number}-${ep.episode_number}`} ep={ep} />
                     ))}
-                </div>
-                {episodes.length > EPISODE_PAGE_SIZE && (
-                  <Pagination
-                    currentPage={relationPage}
-                    totalPages={Math.ceil(episodes.length / EPISODE_PAGE_SIZE)}
-                    onChange={setRelationPage}
-                  />
-                )}
-              </>
-            )
+                  </div>
+                  {totalEpPages > 1 && (
+                    <Pagination
+                      currentPage={relationPage}
+                      totalPages={totalEpPages}
+                      onChange={setRelationPage}
+                      formatPage={p => {
+                        if (p <= regularPages) return String(p);
+                        return `SP${p - regularPages}`;
+                      }}
+                    />
+                  )}
+                </>
+              );
+            })()
           ) : visibleRelations.length > 0 && (
             <>
               <div className="media-relations-grid">

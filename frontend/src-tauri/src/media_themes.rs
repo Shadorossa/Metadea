@@ -170,6 +170,7 @@ pub async fn cache_theme_video(
                 attempts += 1;
                 let resp = client
                     .get(&url)
+                    .timeout(std::time::Duration::from_secs(30))
                     .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                     .header("Referer", "https://animethemes.moe/")
                     .header("Range", "bytes=0-")

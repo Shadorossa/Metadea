@@ -50,7 +50,8 @@ pub async fn get_media_episodes(
         "SELECT external_id, season_number, episode_number, name, cover_url
          FROM media_episode
          WHERE external_id = ?1
-         ORDER BY season_number ASC, episode_number ASC"
+         ORDER BY CASE WHEN episode_number > 0 THEN 0 ELSE 1 END,
+                  CASE WHEN episode_number > 0 THEN episode_number ELSE -episode_number END ASC"
     ).str_err()?;
     let rows = stmt.query_map([&external_id], |r| {
         Ok(MediaEpisode {

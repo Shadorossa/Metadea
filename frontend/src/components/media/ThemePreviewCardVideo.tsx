@@ -25,6 +25,18 @@ type QueueItem = {
 const captureQueue: QueueItem[] = [];
 const queueListeners = new Map<string, (frameUrl: string, videoUrl?: string) => void>();
 let isQueueProcessing = false;
+let isCapturePaused = false;
+
+export function pauseThemeCaptureQueue() {
+  isCapturePaused = true;
+}
+
+export function resumeThemeCaptureQueue() {
+  if (isCapturePaused) {
+    isCapturePaused = false;
+    processNextQueueItem();
+  }
+}
 
 function subscribeToCapture(key: string, callback: (frameUrl: string, videoUrl?: string) => void) {
   queueListeners.set(key, callback);
@@ -41,7 +53,7 @@ function enqueueCapture(item: QueueItem) {
 }
 
 async function processNextQueueItem() {
-  if (isQueueProcessing || captureQueue.length === 0) return;
+  if (isCapturePaused || isQueueProcessing || captureQueue.length === 0) return;
   isQueueProcessing = true;
 
   const item = captureQueue.shift()!;
