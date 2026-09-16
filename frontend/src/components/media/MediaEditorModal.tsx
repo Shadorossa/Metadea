@@ -24,6 +24,7 @@ import { motion } from 'motion/react';
 import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnifySeasonsEnabled, type RatingSlot } from '../../lib/settings/preferences';
 import { loadSagaChain } from '../../lib/media/sagaData';
 import type { SagaEntry } from '../../lib/anilist/saga';
+import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -188,14 +189,14 @@ function HoursField({ label, value, max, onChange }: {
   );
 }
 
-function NumberField({ label, value, max, step, onChange }: {
-  label: string; value: number; max?: number; step: number; onChange: (v: number) => void;
+function NumberField({ label, value, max, step, disabled, onChange }: {
+  label: string; value: number; max?: number; step: number; disabled?: boolean; onChange: (v: number) => void;
 }) {
   return (
     <HeaderField label={label}>
       <div className="me-header-field-row">
         <input type="number" className="me-header-field-input me-header-field-input--number" min={0}
-          max={max} step={step}
+          max={max} step={step} disabled={disabled}
           value={value || ''}
           onChange={e => {
             let v = parseFloat(e.target.value) || 0;
@@ -277,6 +278,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // loadSagaChain (sagaData.ts), same source MediaPage.tsx's own Temporadas
   // tab reads, so this is normally an instant cache hit.
   const [animeSeasonChain, setAnimeSeasonChain] = useState<SagaEntry[]>([]);
+  const [seasonMetaMap, setSeasonMetaMap] = useState<Record<string, { title: string; cover?: string; totalCount?: number | null }>>({});
+
+  const isUnifiedAnime = data.type === 'anime' && isUnifySeasonsEnabled() && animeSeasonChain.length > 1;
+  const GENERAL_LOG_ID = isUnifiedAnime && animeSeasonChain[0] ? `general:${animeSeasonChain[0].externalId}` : '';
+
   useEffect(() => {
     if (data.type !== 'anime' || !isUnifySeasonsEnabled()) {
       setAnimeSeasonChain([]);
@@ -288,6 +294,46 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     }).catch(() => { if (!cancelled) setAnimeSeasonChain([]); });
     return () => { cancelled = true; };
   }, [data.type, externalId]);
+
+  useEffect(() => {
+    if (animeSeasonChain.length === 0) return;
+    let cancelled = false;
+    Promise.all(animeSeasonChain.map(async s => {
+      const [lib, cat] = await Promise.all([
+        getLibraryEntry(s.externalId).catch(() => null),
+        getCatalogEntry(s.externalId).catch(() => null),
+      ]);
+      return { id: s.externalId, lib, cat, s };
+    })).then(results => {
+      if (cancelled) return;
+      const meta: Record<string, { title: string; cover?: string; totalCount?: number | null }> = {};
+      results.forEach(r => {
+        meta[r.id] = {
+          title: r.cat?.title_main || r.s.title,
+          cover: r.cat?.cover_url || r.s.cover || undefined,
+          totalCount: r.cat?.total_count ?? null,
+        };
+        if (r.lib) {
+          dispatchEntry({ type: 'LOAD_LOG', id: r.id, entry: r.lib });
+        } else {
+          dispatchEntry({ type: 'LOAD_LOG', id: r.id, entry: createEmptyVersionEntry(r.id, 'anime') });
+        }
+      });
+      setSeasonMetaMap(meta);
+
+      if (animeSeasonChain[0]) {
+        const gId = `general:${animeSeasonChain[0].externalId}`;
+        const savedGenRating = localStorage.getItem(`general_rating:${animeSeasonChain[0].externalId}`);
+        const initialRating = savedGenRating ? parseFloat(savedGenRating) : 0;
+        const emptyGen = createEmptyVersionEntry(gId, 'anime');
+        if (initialRating > 0) {
+          emptyGen.rating = initialRating;
+        }
+        dispatchEntry({ type: 'LOAD_LOG', id: gId, entry: emptyGen });
+      }
+    });
+    return () => { cancelled = true; };
+  }, [animeSeasonChain]);
 
   // Load base game and edition logs
   useEffect(() => {
@@ -330,7 +376,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           }));
         }
         if (initialActiveLogId) {
-          dispatchEntry({ type: 'SET_ACTIVE_LOG', id: initialActiveLogId });
+          dispatchEntry({ type: 'SWITCH_LOG', id: initialActiveLogId });
         }
       } catch (err) {
         console.error('Failed to load base and versions', err);
@@ -417,6 +463,18 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       let primarySaved: LibraryEntry | null = null;
 
       for (const [logId, entryLog] of Object.entries(logsToSave)) {
+        if (logId.startsWith('general:')) {
+          const rootId = animeSeasonChain[0]?.externalId;
+          if (rootId) {
+            if (entryLog.rating > 0) {
+              localStorage.setItem(`general_rating:${rootId}`, String(entryLog.rating));
+            } else {
+              localStorage.removeItem(`general_rating:${rootId}`);
+            }
+          }
+          continue;
+        }
+
         const isBase = logId === baseId;
         const hasLink = isBase && !!entryLog.selectedVersion;
 
@@ -669,12 +727,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     // of which season this editor happens to be open on. The one this editor
     // IS already open on is the "Original" tab (baseId === externalId here,
     // since anime has no parentGame), so it's excluded from this list.
-    animeSeasonChain.forEach((seasonEntry, i) => {
-      if (seasonEntry.externalId === baseId || seasonEntry.externalId === externalId) return;
-      list.push({ externalId: seasonEntry.externalId, label: `T${i + 1}`, cover: seasonEntry.cover ?? undefined, isSeasonTab: true });
-    });
+    if (!isUnifiedAnime) {
+      animeSeasonChain.forEach((seasonEntry, i) => {
+        if (seasonEntry.externalId === baseId || seasonEntry.externalId === externalId) return;
+        list.push({ externalId: seasonEntry.externalId, label: `T${i + 1}`, cover: seasonEntry.cover ?? undefined, isSeasonTab: true });
+      });
+    }
     return list;
-  }, [baseId, data.parentGame, externalId, data.titleMain, data.cover, data.relations, animeSeasonChain]);
+  }, [baseId, data.parentGame, externalId, data.titleMain, data.cover, data.relations, animeSeasonChain, isUnifiedAnime]);
 
   // A bundle (Final Fantasy VII Remake Intergrade) is never itself
   // trackable — there's no meaningful "progress" on the bundle as a lump,
@@ -727,9 +787,78 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     dispatchEntry({ type: 'SET_MONTH', ids: [...sameGameIds], primaryId: baseId, key: newKey, year: entry.selectedYear });
   }, [sameGameIds, baseId, entry.selectedYear, selectedMonthKey]);
 
+  const isGeneralTab = isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID;
+  const generalBaseTitle = useMemo(() => {
+    return stripSeasonSuffix(animeSeasonChain[0]?.title || data.titleMain);
+  }, [animeSeasonChain, data.titleMain]);
+
+  const generalTotalCount = useMemo(() => {
+    if (!isUnifiedAnime) return data.totalCount;
+    return animeSeasonChain.reduce((sum, s) => sum + (seasonMetaMap[s.externalId]?.totalCount ?? 0), 0);
+  }, [isUnifiedAnime, animeSeasonChain, seasonMetaMap, data.totalCount]);
+
+  const generalProgress = useMemo(() => {
+    if (!isUnifiedAnime) return activeLog.progress;
+    return animeSeasonChain.reduce((sum, s) => sum + (entry.logs[s.externalId]?.progress ?? 0), 0);
+  }, [isUnifiedAnime, animeSeasonChain, entry.logs, activeLog.progress]);
+
+  const activeTotalCount = useMemo(() => {
+    if (isUnifiedAnime) {
+      if (isGeneralTab) return (generalTotalCount ?? 0) > 0 ? generalTotalCount : null;
+      return seasonMetaMap[entry.activeLogId]?.totalCount ?? null;
+    }
+    return data.totalCount;
+  }, [isUnifiedAnime, isGeneralTab, generalTotalCount, seasonMetaMap, entry.activeLogId, data.totalCount]);
+
+  const generalStartDate = useMemo(() => {
+    if (!isUnifiedAnime) return '';
+    const s1 = entry.logs[animeSeasonChain[0]?.externalId]?.startedAt;
+    if (s1) return s1;
+    const allStarted = animeSeasonChain.map(s => entry.logs[s.externalId]?.startedAt).filter(Boolean) as string[];
+    return allStarted.sort()[0] || '';
+  }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
+
+  const generalEndDate = useMemo(() => {
+    if (!isUnifiedAnime) return '';
+    const lastSeason = animeSeasonChain[animeSeasonChain.length - 1];
+    const sLast = entry.logs[lastSeason?.externalId]?.finishedAt;
+    if (sLast) return sLast;
+    const allFinished = animeSeasonChain.map(s => entry.logs[s.externalId]?.finishedAt).filter(Boolean) as string[];
+    return allFinished.sort().reverse()[0] || '';
+  }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
+
+  const generalAverageRating = useMemo(() => {
+    const ratings = animeSeasonChain
+      .map(s => entry.logs[s.externalId]?.rating)
+      .filter((r): r is number => typeof r === 'number' && r > 0);
+    if (ratings.length === 0) return 0;
+    return ratings.reduce((a, b) => a + b, 0) / ratings.length;
+  }, [animeSeasonChain, entry.logs]);
+
+  const generalAverageRating2 = useMemo(() => {
+    const ratings = animeSeasonChain
+      .map(s => entry.logs[s.externalId]?.rating2)
+      .filter((r): r is number => typeof r === 'number' && r > 0);
+    if (ratings.length === 0) return 0;
+    return ratings.reduce((a, b) => a + b, 0) / ratings.length;
+  }, [animeSeasonChain, entry.logs]);
+
   // Header cover/title follow whichever log tab is active — the base game's
   // own title/cover, the current version's, or another linked edition's.
   const activeLogDisplay = useMemo(() => {
+    if (isGeneralTab) {
+      return {
+        title: generalBaseTitle,
+        cover: animeSeasonChain[0]?.cover || data.cover,
+      };
+    }
+    if (isUnifiedAnime && seasonMetaMap[entry.activeLogId]) {
+      const meta = seasonMetaMap[entry.activeLogId];
+      return {
+        title: meta.title,
+        cover: meta.cover || data.cover,
+      };
+    }
     if (entry.activeLogId === baseId) {
       return {
         title: data.parentGame ? data.parentGame.title : data.titleMain,
@@ -740,7 +869,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return found
       ? { title: found.label, cover: found.cover }
       : { title: data.titleMain, cover: data.cover };
-  }, [entry.activeLogId, baseId, data.parentGame, data.titleMain, data.cover, allAvailableEditions]);
+  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, seasonMetaMap, entry.activeLogId, baseId, data.parentGame, data.titleMain, allAvailableEditions]);
 
   const modal = (
     <motion.div
@@ -777,7 +906,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         const next = activeLog.status === value ? '' : value;
                         const updates: Partial<LogState> = { status: next };
                         if (value === 'completed' && next === 'completed') {
-                          if (data.totalCount   && data.totalCount   > 0) updates.progress = data.totalCount;
+                          if (activeTotalCount && activeTotalCount > 0) updates.progress = activeTotalCount;
                           if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
@@ -795,24 +924,21 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   <div className="me-header-progress-pair">
                     {data.type === 'game' || data.type === 'vnovel' ? (
                       <HoursField label={progLabel} value={activeLog.progress}
-                        max={data.totalCount && data.totalCount > 0 ? data.totalCount : undefined}
+                        max={activeTotalCount && activeTotalCount > 0 ? activeTotalCount : undefined}
                         onChange={v => {
                           const updates: Partial<LogState> = { progress: v };
-                          if (data.totalCount && data.totalCount > 0 && v >= data.totalCount && activeLog.status !== 'completed') {
+                          if (activeTotalCount && activeTotalCount > 0 && v >= activeTotalCount && activeLog.status !== 'completed') {
                             updates.status = 'completed';
                           }
                           dispatchEntry({ type: 'UPDATE_LOG', updates });
                         }} />
                     ) : (
-                    <NumberField label={progLabel} value={activeLog.progress} step={progStep}
-                      max={data.totalCount && data.totalCount > 0 ? data.totalCount : undefined}
+                    <NumberField label={progLabel} value={isGeneralTab ? generalProgress : activeLog.progress} step={progStep}
+                      max={activeTotalCount && activeTotalCount > 0 ? activeTotalCount : undefined}
+                      disabled={isGeneralTab}
                       onChange={v => {
                         const updates: Partial<LogState> = { progress: v };
-                        // Reaching the known total auto-completes the entry,
-                        // the same way picking "Completed" already auto-fills
-                        // progress to the total (see the status buttons
-                        // above) — this just closes the loop the other way.
-                        if (data.totalCount && data.totalCount > 0 && v >= data.totalCount && activeLog.status !== 'completed') {
+                        if (activeTotalCount && activeTotalCount > 0 && v >= activeTotalCount && activeLog.status !== 'completed') {
                           updates.status = 'completed';
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
@@ -821,6 +947,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     {label2 && data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0 && (
                       <NumberField label={label2} value={activeLog.progressCount2} step={1}
                         max={data.totalCount_2}
+                        disabled={isGeneralTab}
                         onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progressCount2: v } })} />
                     )}
                   </div>
@@ -832,10 +959,10 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     primary rating. */}
                 <HeaderField label={ratingLabel}>
                   {isSecondaryRating ? (
-                    <RatingInput rating={activeLog.rating2} system={rating2System} min={rating2Min} max={rating2Max}
+                    <RatingInput rating={isGeneralTab ? (activeLog.rating2 > 0 ? activeLog.rating2 : generalAverageRating2) : activeLog.rating2} system={rating2System} min={rating2Min} max={rating2Max}
                       onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating2: v } })} />
                   ) : (
-                    <RatingInput rating={activeLog.rating}
+                    <RatingInput rating={isGeneralTab ? (activeLog.rating > 0 ? activeLog.rating : generalAverageRating) : activeLog.rating}
                       onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating: v } })} />
                   )}
                 </HeaderField>
@@ -851,15 +978,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         const updates: Partial<LogState> = { startedAt: val, finishedAt: val };
                         if (val) {
                           updates.status = 'completed';
-                          if (data.totalCount && data.totalCount > 0) updates.progress = data.totalCount;
+                          if (activeTotalCount && activeTotalCount > 0) updates.progress = activeTotalCount;
                           if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
                       }}
-                      // Clamped on blur, not on every keystroke — while the year
-                      // is still being typed digit by digit every partial value
-                      // reads as "less than 1950" and would otherwise get
-                      // force-corrected before the user finishes typing it.
                       onBlur={e => {
                         const val = clampDateMinYear(e.target.value);
                         if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: val, finishedAt: val } });
@@ -871,14 +994,13 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       <input type="date" className="me-header-field-input me-header-field-input--date"
                         min={`${MIN_DATE_YEAR}-01-01`}
                         max={activeLog.finishedAt || undefined}
-                        value={activeLog.startedAt}
+                        disabled={isGeneralTab}
+                        value={isGeneralTab ? generalStartDate : activeLog.startedAt}
                         onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })}
                         onBlur={e => {
                           const val = clampDateMinYear(e.target.value);
                           const updates: Partial<LogState> = {};
                           if (val !== e.target.value) updates.startedAt = val;
-                          // Pushing the start date past an already-set end date
-                          // would otherwise leave end < start.
                           if (activeLog.finishedAt && val > activeLog.finishedAt) updates.finishedAt = val;
                           if (Object.keys(updates).length > 0) dispatchEntry({ type: 'UPDATE_LOG', updates });
                         }} />
@@ -886,13 +1008,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     <HeaderField label={te.ended}>
                       <input type="date" className="me-header-field-input me-header-field-input--date"
                         min={activeLog.startedAt || `${MIN_DATE_YEAR}-01-01`}
-                        value={activeLog.finishedAt}
+                        disabled={isGeneralTab}
+                        value={isGeneralTab ? generalEndDate : activeLog.finishedAt}
                         onChange={e => {
                           const val = e.target.value;
                           const updates: Partial<LogState> = { finishedAt: val };
                           if (val) {
                             updates.status = 'completed';
-                            if (data.totalCount && data.totalCount > 0) updates.progress = data.totalCount;
+                            if (activeTotalCount && activeTotalCount > 0) updates.progress = activeTotalCount;
                             if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
                           }
                           dispatchEntry({ type: 'UPDATE_LOG', updates });
@@ -934,77 +1057,102 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           </div>
         </div>
 
-        {(data.parentGame || allAvailableEditions.length > 0) && (
+        {(isUnifiedAnime || data.parentGame || allAvailableEditions.length > 0) && (
           <div className="me-versions-tabs">
-            {/* A bundle is never itself trackable (see isBundle's own
-                comment above) — no "Original" tab for it, only its contents. */}
-            {!isBundle && (
-              <button
-                type="button"
-                className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
-                onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
-              >
-                {te.original}
-              </button>
-            )}
-            {allAvailableEditions.map(ed => {
-              const isActive = entry.activeLogId === ed.externalId;
-              // ed.label is already each edition's (bundle child included)
-              // own real title — editionTabLabel just shortens it to
-              // whatever follows a colon, same treatment for all of them.
-              let tabLabel = editionTabLabel(ed.label, te.edition_default);
-
-              // If it's a REMAKE with the same suffix as the original, label it "Remake"
-              if (ed.relationType === 'REMAKE') {
-                const getLastPart = (title: string) => {
-                  const idx = title.lastIndexOf(':');
-                  return idx === -1 ? '' : title.substring(idx);
-                };
-                const originalTitle = data.parentGame?.title || data.titleMain;
-                const originalLast = getLastPart(originalTitle);
-                const editionLast = getLastPart(ed.label);
-                if (originalLast && editionLast && originalLast === editionLast) {
-                  tabLabel = te.remake;
-                }
-              }
-
-              return (
+            {isUnifiedAnime ? (
+              <>
                 <button
-                  key={ed.externalId}
                   type="button"
-                  className={`me-version-tab-btn${isActive ? ' active' : ''}`}
-                  title={ed.label}
-                  onClick={() => {
-                    // Linking to baseId's own selectedVersion only makes
-                    // sense for a real trackable base (editions) — doing it
-                    // for a bundle child would mark the bundle's own
-                    // (permanently untouched, never rendered) log as
-                    // non-empty via hasLink, and handleSave would then
-                    // create a library entry for the bundle itself, which
-                    // is exactly what it's never supposed to have. Season
-                    // tabs (isSeasonTab) are their own independent AniList
-                    // entries, not editions of baseId, so they must never
-                    // enter baseId's selected_version link list either.
-                    if (!ed.isBundleChild && !ed.isSeasonTab) {
-                      const baseLogVal = entry.logs[baseId] || createDefaultLog();
-                      const currentVersions = baseLogVal.selectedVersion
-                        ? baseLogVal.selectedVersion.split(',')
-                        : [];
-                      if (!currentVersions.includes(ed.externalId)) {
-                        const nextVersions = [...currentVersions, ed.externalId].join(',');
-                        dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
-                      }
-                    }
-                    if (!entry.logs[ed.externalId]) {
-                      dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId, ed.isSeasonTab ? 'anime' : 'game') });
-                    }
-                    dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
-                  }}
+                  className={`me-version-tab-btn${entry.activeLogId === GENERAL_LOG_ID ? ' active' : ''}`}
+                  title={generalBaseTitle}
+                  onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: GENERAL_LOG_ID })}
                 >
-                  {tabLabel}
+                  {generalBaseTitle}
                 </button>
-              );
-            })}
+                {animeSeasonChain.map(seasonEntry => {
+                  const isActive = entry.activeLogId === seasonEntry.externalId;
+                  const sTitle = seasonMetaMap[seasonEntry.externalId]?.title || seasonEntry.title;
+                  return (
+                    <button
+                      key={seasonEntry.externalId}
+                      type="button"
+                      className={`me-version-tab-btn${isActive ? ' active' : ''}`}
+                      title={sTitle}
+                      onClick={() => {
+                        if (!entry.logs[seasonEntry.externalId]) {
+                          dispatchEntry({ type: 'LOAD_LOG', id: seasonEntry.externalId, entry: createEmptyVersionEntry(seasonEntry.externalId, 'anime') });
+                        }
+                        dispatchEntry({ type: 'SWITCH_LOG', id: seasonEntry.externalId });
+                      }}
+                    >
+                      {sTitle}
+                    </button>
+                  );
+                })}
+              </>
+            ) : (
+              <>
+                {/* A bundle is never itself trackable (see isBundle's own
+                    comment above) — no "Original" tab for it, only its contents. */}
+                {!isBundle && (
+                  <button
+                    type="button"
+                    className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
+                    onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
+                  >
+                    {te.original}
+                  </button>
+                )}
+                {allAvailableEditions.map(ed => {
+                  const isActive = entry.activeLogId === ed.externalId;
+                  // ed.label is already each edition's (bundle child included)
+                  // own real title — editionTabLabel just shortens it to
+                  // whatever follows a colon, same treatment for all of them.
+                  let tabLabel = editionTabLabel(ed.label, te.edition_default);
+
+                  // If it's a REMAKE with the same suffix as the original, label it "Remake"
+                  if (ed.relationType === 'REMAKE') {
+                    const getLastPart = (title: string) => {
+                      const idx = title.lastIndexOf(':');
+                      return idx === -1 ? '' : title.substring(idx);
+                    };
+                    const originalTitle = data.parentGame?.title || data.titleMain;
+                    const originalLast = getLastPart(originalTitle);
+                    const editionLast = getLastPart(ed.label);
+                    if (originalLast && editionLast && originalLast === editionLast) {
+                      tabLabel = te.remake;
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={ed.externalId}
+                      type="button"
+                      className={`me-version-tab-btn${isActive ? ' active' : ''}`}
+                      title={ed.label}
+                      onClick={() => {
+                        if (!ed.isBundleChild && !ed.isSeasonTab) {
+                          const baseLogVal = entry.logs[baseId] || createDefaultLog();
+                          const currentVersions = baseLogVal.selectedVersion
+                            ? baseLogVal.selectedVersion.split(',')
+                            : [];
+                          if (!currentVersions.includes(ed.externalId)) {
+                            const nextVersions = [...currentVersions, ed.externalId].join(',');
+                            dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
+                          }
+                        }
+                        if (!entry.logs[ed.externalId]) {
+                          dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId, ed.isSeasonTab ? 'anime' : 'game') });
+                        }
+                        dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
+                      }}
+                    >
+                      {tabLabel}
+                    </button>
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
 

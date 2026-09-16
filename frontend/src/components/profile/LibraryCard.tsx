@@ -78,14 +78,22 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     [bundleMeta, orderedGrouped, item]
   );
 
+  const customGeneralRating = useMemo(() => {
+    if (!hideGroupingUi) return null;
+    const val = localStorage.getItem(`general_rating:${item.external_id}`);
+    return val ? parseFloat(val) : null;
+  }, [hideGroupingUi, item.external_id]);
+
   const ratingHtml = useMemo(() => {
     const isAggregate = !!bundleMeta || !!aggregateStats;
     const isSecondaryRating = ratingSlot === 'rating_2';
     const members = aggregateMembers;
-    return isAggregate
-      ? formatRatingHtml(averageRating(members, ratingSlot), isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10)
-      : formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
-  }, [bundleMeta, aggregateStats, aggregateMembers, ratingSlot, item.rating, item.rating_2]);
+    if (isAggregate) {
+      const displayScore = (hideGroupingUi && customGeneralRating !== null) ? customGeneralRating : averageRating(members, ratingSlot);
+      return formatRatingHtml(displayScore, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
+    }
+    return formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
+  }, [bundleMeta, aggregateStats, aggregateMembers, ratingSlot, item.rating, item.rating_2, hideGroupingUi, customGeneralRating]);
 
   const dateStr = useMemo(() => {
     const earliestDate = (dates: (string | null | undefined)[]): string => {

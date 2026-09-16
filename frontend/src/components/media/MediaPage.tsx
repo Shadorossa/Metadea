@@ -446,40 +446,75 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     return () => { cancelled = true; };
   }, [previewMode, currentId, data?.type]);
 
-  // With the same toggle on, Episodios/Temas show every season's own
-  // episodes/themes concatenated in chain order, not just this page's own —
-  // fetchMediaEpisodes/fetchMediaThemes already number each season counting
-  // from the END of every earlier season in the chain
-  // (getAnimePrequelEpisodeOffset/getAnimePrequelThemeOffsets in
-  // episode-list.ts/theme-list.ts, which the single-season view already
-  // relied on to keep numbering continuous), so fetching every chain member
-  // independently and sorting the results by number is enough to interleave
-  // them correctly — no extra offset math needed here. Runs after (and
-  // overwrites) the single-season fetch above once the chain itself
-  // resolves, so this page still shows ITS OWN episodes immediately instead
-  // of waiting on every sibling season's fetch first.
+  // When "Unificar temporadas" is on, fetch episodes/themes from TV seasons in sequence,
+  // filtering out non-TV specials/movies and deduplicating by episode number and theme slug.
   useEffect(() => {
-    if (previewMode || animeSeasonChain.length <= 1) return;
+    if (previewMode || !currentId || data?.type !== 'anime') return;
     let cancelled = false;
 
-    Promise.all(animeSeasonChain.map(entry => fetchMediaEpisodes(entry.externalId, false).catch(() => [] as MediaEpisode[])))
-      .then(results => {
-        if (cancelled) return;
-        const merged = results.flat().sort((a, b) => a.episode_number - b.episode_number);
-        if (merged.length > 0) setEpisodes(merged);
-      });
+    if (!isUnifySeasonsEnabled() || animeSeasonChain.length <= 1) {
+      // Single-season mode: load only current anime's episodes and themes
+      fetchMediaEpisodes(currentId, false).then(eps => {
+        if (!cancelled && eps.length > 0) setEpisodes(eps);
+      }).catch(() => {});
+      fetchMediaThemes(currentId).then(th => {
+        if (!cancelled && th.length > 0) setThemes(th);
+      }).catch(() => {});
+      return;
+    }
 
-    Promise.all(animeSeasonChain.map(entry => fetchMediaThemes(entry.externalId).catch(() => [] as MediaTheme[])))
-      .then(results => {
+    (async () => {
+      const allEpisodes: MediaEpisode[] = [];
+      const allThemes: MediaTheme[] = [];
+
+      const TV_FORMATS = new Set(['TV', 'TV_SHORT']);
+      const tvSeasons = animeSeasonChain.filter(e => !e.format || TV_FORMATS.has(e.format.toUpperCase()));
+      const seasonsToFetch = tvSeasons.length > 0 ? tvSeasons : animeSeasonChain;
+
+      for (const seasonEntry of seasonsToFetch) {
         if (cancelled) return;
-        const merged = results.flat().sort((a, b) =>
+
+        const seasonEpisodes = await fetchMediaEpisodes(seasonEntry.externalId, false).catch(() => [] as MediaEpisode[]);
+        allEpisodes.push(...seasonEpisodes);
+
+        const seasonThemes = await fetchMediaThemes(seasonEntry.externalId).catch(() => [] as MediaTheme[]);
+        allThemes.push(...seasonThemes);
+      }
+
+      if (cancelled) return;
+
+      if (allEpisodes.length > 0) {
+        const epMap = new Map<number, MediaEpisode>();
+        for (const ep of allEpisodes) {
+          if (!epMap.has(ep.episode_number)) {
+            epMap.set(ep.episode_number, ep);
+          }
+        }
+        const mergedEpisodes = Array.from(epMap.values()).sort((a, b) => {
+          if (a.episode_number > 0 && b.episode_number > 0) return a.episode_number - b.episode_number;
+          if (a.episode_number < 0 && b.episode_number < 0) return Math.abs(a.episode_number) - Math.abs(b.episode_number);
+          return a.episode_number > 0 ? -1 : 1;
+        });
+        setEpisodes(mergedEpisodes);
+      }
+
+      if (allThemes.length > 0) {
+        const themeMap = new Map<string, MediaTheme>();
+        for (const th of allThemes) {
+          const key = `${th.theme_type}_${th.sequence}_${(th.song_title || th.slug).toLowerCase().trim()}`;
+          if (!themeMap.has(key)) {
+            themeMap.set(key, th);
+          }
+        }
+        const mergedThemes = Array.from(themeMap.values()).sort((a, b) =>
           a.theme_type !== b.theme_type ? (a.theme_type === 'OP' ? -1 : 1) : a.sequence - b.sequence
         );
-        if (merged.length > 0) setThemes(merged);
-      });
+        setThemes(mergedThemes);
+      }
+    })();
 
     return () => { cancelled = true; };
-  }, [previewMode, animeSeasonChain]);
+  }, [previewMode, currentId, data?.type, animeSeasonChain]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1631,7 +1666,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                     .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
                     .map(t => (
                       <ThemeCardItem
-                        key={t.slug}
+                        key={`${t.external_id || currentId}-${t.theme_type}-${t.sequence}-${t.slug}`}
                         theme={t}
                         onPlay={() => setPlayingTheme(t)}
                         fallbackUrl={data.bannerImage || data.cover}
@@ -1710,7 +1745,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 <>
                   <div className="media-relations-grid">
                     {pageEpisodes.map(ep => (
-                      <EpisodeCard key={`${ep.season_number}-${ep.episode_number}`} ep={ep} />
+                      <EpisodeCard key={`${ep.external_id || currentId}-${ep.season_number}-${ep.episode_number}`} ep={ep} />
                     ))}
                   </div>
                   {totalEpPages > 1 && (

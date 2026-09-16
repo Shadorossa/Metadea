@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   scanFolderContents, getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry,
@@ -34,6 +34,11 @@ import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
 import { openMediaEditor } from '../../../lib/media/openMediaEditor';
 
+interface ChainHistoryEntry extends EpisodeHistoryEntry {
+  seasonNum?: number | null;
+  seasonTitle?: string;
+}
+
 interface LocalMediaDetailPanelProps {
   item:            LocalMediaItem;
   rootFolder:      string | undefined;
@@ -67,7 +72,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const playback = usePlaybackState();
   const isThisPlaying = playback?.externalId === item.externalId;
   const playState: 'idle' | 'playing' | 'paused' = isThisPlaying ? playback!.status : 'idle';
-  const [history, setHistory] = useState<EpisodeHistoryEntry[]>([]);
+  const [history, setHistory] = useState<ChainHistoryEntry[]>([]);
   // Right-click on a history row — same delete-entry pattern as Profile's
   // own activity feed (see ActivitySection.tsx).
   const [historyMenu, setHistoryMenu] = useState<{ x: number; y: number; entry: EpisodeHistoryEntry } | null>(null);
@@ -208,26 +213,56 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return null;
   }, [matchedFolder, rootFolder, deepTagMatch]);
 
+  const fetchChainHistory = useCallback(async () => {
+    try {
+      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
+      const seasonEntries = Object.entries(seasonMap);
+      if (seasonEntries.length === 0) {
+        const direct = await getEpisodeHistory(item.externalId);
+        return direct.map(h => ({ ...h, seasonNum: itemSeason, seasonTitle: item.title }));
+      }
+
+      const all = await Promise.all(
+        seasonEntries.map(async ([sStr, sInfo]) => {
+          const sNum = parseInt(sStr, 10);
+          try {
+            const list = await getEpisodeHistory(sInfo.externalId);
+            return list.map(h => ({
+              ...h,
+              seasonNum: sNum,
+              seasonTitle: sInfo.title || item.title,
+            }));
+          } catch {
+            return [];
+          }
+        })
+      );
+      const merged = all.flat();
+      merged.sort((a, b) => new Date(b.watched_at).getTime() - new Date(a.watched_at).getTime());
+      return merged;
+    } catch {
+      const direct = await getEpisodeHistory(item.externalId).catch(() => []);
+      return direct.map(h => ({ ...h, seasonNum: itemSeason, seasonTitle: item.title }));
+    }
+  }, [item.externalId, item.title, itemSeason]);
+
   useEffect(() => {
     setPlayError(null);
-    getEpisodeHistory(item.externalId).then(setHistory).catch(() => setHistory([]));
-  }, [item.externalId]);
+    let cancelled = false;
+    fetchChainHistory().then(res => {
+      if (!cancelled) setHistory(res);
+    });
+    return () => { cancelled = true; };
+  }, [fetchChainHistory]);
 
-  // playback-service.ts dispatches this after successfully auto-marking an
-  // episode watched (from anywhere — this panel doesn't have to be mounted,
-  // or even open on this item, when it fires) — refetches history and tells
-  // the parent grid to refresh, same as markWatched used to do directly
-  // before that logic moved into the shared service.
   useEffect(() => {
-    function onEpisodeMarked(e: Event) {
-      const detail = (e as CustomEvent<{ externalId: string; episodeNumber: number }>).detail;
-      if (detail?.externalId !== item.externalId) return;
-      getEpisodeHistory(item.externalId).then(setHistory).catch(() => {});
+    function onEpisodeMarked() {
+      fetchChainHistory().then(setHistory).catch(() => {});
       onProgressSaved();
     }
     window.addEventListener('metadea:episode-marked', onEpisodeMarked);
     return () => window.removeEventListener('metadea:episode-marked', onEpisodeMarked);
-  }, [item.externalId, onProgressSaved]);
+  }, [fetchChainHistory, onProgressSaved]);
 
   useEffect(() => {
     if (!historyMenu) return;
@@ -870,11 +905,18 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                 >
                   <IconCheck />
                   {isMovieFormat ? (
-                    <span>{t.local.seen_count} <strong>{item.title}</strong></span>
+                    <span>{t.local.seen_count} <strong>{h.seasonTitle || item.title}</strong></span>
                   ) : (
                     <span>
-                      {isReadingType(item.libraryEntry.type) ? t.media.chapter : t.media.episode}{' '}
-                      <strong>{h.episode_number}</strong> - {item.title}
+                      {isReadingType(item.libraryEntry.type) ? (
+                        <>
+                          {t.media.chapter} <strong>{h.episode_number}</strong> - {h.seasonTitle || item.title}
+                        </>
+                      ) : (
+                        <>
+                          <strong>{formatEpisodeLabel(h.seasonNum ?? itemSeason, h.episode_number, item.libraryEntry.type)}</strong> - {h.seasonTitle || item.title}
+                        </>
+                      )}
                     </span>
                   )}
                   <span className="local-media-history-date">{formatWatchedAt(h.watched_at)}</span>

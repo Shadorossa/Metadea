@@ -132,10 +132,6 @@ async function findChainNeighbor(externalId: string, relationType: 'PREQUEL' | '
 // numbered folder. Depth-capped purely to bound how many round trips a
 // dead-end/cyclical chain can cost.
 //
-// Forward: only ever the immediate next season is looked up — the one
-// existing consumer of a forward entry (buildLocateRenamePlan tagging a
-// file that carries its own explicit "S02" marker, e.g. Ghost in the
-// Shell's 2nd GIG) never needs more than one hop past the current season.
 export async function resolveSeasonExternalIds(
   externalId: string,
   title: string,
@@ -147,16 +143,20 @@ export async function resolveSeasonExternalIds(
   let currentId = externalId;
   for (let i = 0; i < 6 && currentSeason > 1; i++) {
     const prequel = await findChainNeighbor(currentId, 'PREQUEL');
-    if (!prequel) break;
+    if (!prequel || Object.values(map).some(s => s.externalId === prequel.externalId)) break;
     currentSeason -= 1;
     map[currentSeason] = prequel;
     currentId = prequel.externalId;
   }
 
-  const sequel = await findChainNeighbor(externalId, 'SEQUEL');
-  if (sequel) {
-    const sequelSeason = (season ?? 1) + 1;
-    if (!(sequelSeason in map)) map[sequelSeason] = sequel;
+  let forwardSeason = season ?? 1;
+  let forwardId = externalId;
+  for (let i = 0; i < 6; i++) {
+    const sequel = await findChainNeighbor(forwardId, 'SEQUEL');
+    if (!sequel || Object.values(map).some(s => s.externalId === sequel.externalId)) break;
+    forwardSeason += 1;
+    if (!(forwardSeason in map)) map[forwardSeason] = sequel;
+    forwardId = sequel.externalId;
   }
 
   return map;
