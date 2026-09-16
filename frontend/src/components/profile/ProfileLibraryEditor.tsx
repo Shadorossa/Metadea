@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { AnimatePresence } from 'motion/react';
 import { MediaEditorModal } from '../media/MediaEditorModal';
 import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations, patchCachedRelations, inferProgressStatus } from '../../lib/media/mediaService';
 import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
@@ -87,22 +88,20 @@ export function ProfileLibraryEditor({ i18n }: Props) {
     return () => window.removeEventListener('open-profile-editor', handleOpen as EventListener);
   }, []);
 
-  if (!state) return null;
-
   return (
-    <MediaEditorModal
-      externalId={state.externalId}
-      data={state.mediaData}
-      i18n={t}
-      initialEntry={state.libraryEntry}
-      activeRatingSlot={state.ratingSlot}
-      onClose={() => setState(null)}
-      // refresh-profile-library is now dispatched centrally by
-      // saveLibraryEntry/deleteLibraryEntry themselves (lib/tauri/library.ts)
-      // — every save/delete path invalidates the shared cache, not just this
-      // one, so nothing extra needs dispatching here.
-      onSaved={() => {}}
-      onDeleted={() => setState(null)}
-    />
+    <AnimatePresence>
+      {state && (
+        <MediaEditorModal
+          externalId={state.externalId}
+          data={state.mediaData}
+          i18n={t}
+          initialEntry={state.libraryEntry}
+          activeRatingSlot={state.ratingSlot}
+          onClose={() => setState(null)}
+          onSaved={() => {}}
+          onDeleted={() => setState(null)}
+        />
+      )}
+    </AnimatePresence>
   );
 }

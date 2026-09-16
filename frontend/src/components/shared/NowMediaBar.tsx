@@ -1,12 +1,8 @@
 import type { ReactNode } from 'react';
+import { motion } from 'motion/react';
 
 interface Props {
-  /** Outer wrapper class(es) — each caller has its own (now-playing-bar /
-   *  now-reading-bar, the latter with a conditional modifier). */
   className: string;
-  /** The two callers use differently-named progress bar classes
-   *  (now-playing-progress-* / now-reading-progress-*) even though they're
-   *  visually identical — kept as-is rather than renaming either one's CSS. */
   progressTrackClassName: string;
   progressFillClassName: string;
   progressPct: number;
@@ -17,16 +13,19 @@ interface Props {
   controls: ReactNode;
 }
 
-// Shared shell behind both NowPlayingBar (video) and NowReadingBar (comics/
-// manga/books) — progress track, cover, title/subtitle and a controls slot.
-// Each caller only supplies its own data source and its own buttons; this
-// only renders the (previously duplicated) markup around them.
 export function NowMediaBar({
   className, progressTrackClassName, progressFillClassName, progressPct,
   mediaUrl, cover, title, subtitle, controls,
 }: Props) {
   return (
-    <div className={className}>
+    <motion.div
+      className={className}
+      layout="position"
+      initial={{ y: 80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 80, opacity: 0 }}
+      transition={{ duration: 0.25, ease: [0.25, 0, 0.15, 1] }}
+    >
       <div className={progressTrackClassName}>
         <div className={progressFillClassName} style={{ width: `${progressPct}%` }} />
       </div>
@@ -44,6 +43,6 @@ export function NowMediaBar({
           {controls}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

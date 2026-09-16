@@ -5,6 +5,7 @@
 // AniList-style section, all merged into one grid instead of behind a
 // category filter.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { search as searchMedia, type SearchResult } from '../../lib/search';
 import { searchAniListStaff, fetchAniListStaffDetail, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import { searchUsers, type UserSearchResult } from '../../lib/social/users';
@@ -253,17 +254,12 @@ export function QuickSearchOverlay() {
 
   const totalRows = useMemo(() => sections?.reduce((sum, sec) => sum + sec.rows.length, 0) ?? 0, [sections]);
 
-  if (!open) return null;
-
   async function goTo(href: string) {
     setOpen(false);
     const { navigate } = await import('astro:transitions/client');
     navigate(href);
   }
 
-  // "Ver todos" already has this exact query+type's results in hand — hands
-  // them to /search (SearchIsland reads this same sessionStorage key) instead
-  // of letting it re-run the identical fetch this component just made.
   function goToViewAll(section: Section) {
     if (!section.viewAllHref) return;
     const results = section.key === 'character' ? handoffRef.current.characterResults : handoffRef.current.byType.get(section.key);
@@ -286,8 +282,24 @@ export function QuickSearchOverlay() {
   }
 
   return (
-    <div className="quick-search-backdrop" onClick={() => setOpen(false)}>
-      <div className="quick-search-box" onClick={e => e.stopPropagation()}>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="quick-search-backdrop"
+          onClick={() => setOpen(false)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
+          <motion.div
+            className="quick-search-box"
+            onClick={e => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.98, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: -10 }}
+            transition={{ duration: 0.2, ease: [0.25, 0, 0.15, 1] }}
+          >
         <div className="quick-search-row">
           <input
             ref={inputRef}
@@ -343,13 +355,15 @@ export function QuickSearchOverlay() {
           </div>
         )}
 
-      </div>
+          </motion.div>
 
-      {loading && (
-        <div className="quick-search-loading-bar">
-          <div className="quick-search-loading-bar-fill" />
-        </div>
+          {loading && (
+            <div className="quick-search-loading-bar">
+              <div className="quick-search-loading-bar-fill" />
+            </div>
+          )}
+        </motion.div>
       )}
-    </div>
+    </AnimatePresence>
   );
 }

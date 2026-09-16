@@ -4,7 +4,7 @@ import type { Translations } from '../../i18n/index';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
 import { lookupLabel } from '../../lib/media/mapper-utils';
-import { useClosingTransition } from '../../lib/shared/useClosingTransition';
+import { motion } from 'motion/react';
 import { loadSagaChain, loadSagaArcs } from '../../lib/media/sagaData';
 import type { StoryArc } from '../../lib/tauri/story-arcs';
 
@@ -40,7 +40,6 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   // would just clip an absolutely-positioned panel instead of letting it
   // escape to the right. Rendered via a portal straight to <body> below.
   const [hoverPanelPos, setHoverPanelPos] = useState<{ top: number; left: number } | null>(null);
-  const { isClosing, close: handleClose } = useClosingTransition(onClose);
 
   // Whether every saga member's own arcs have been checked at least once —
   // gates the strip's first paint (see `modal` JSX) so whether the Arcos
@@ -101,8 +100,22 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   }
 
   const modal = (
-    <div className={`me-overlay saga-overlay${isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
-      <div className="saga-strip-container" onClick={e => e.stopPropagation()}>
+    <motion.div
+      className="me-overlay saga-overlay"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+    >
+      <motion.div
+        className="saga-strip-container"
+        onClick={e => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.98, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: 12 }}
+        transition={{ duration: 0.2, ease: [0.25, 0, 0.15, 1] }}
+      >
         {!arcsFullyChecked ? (
           // Whether the Arcos Argumentales tab exists at all isn't decided
           // yet — holding off the header/body until it is means the tab is
@@ -230,11 +243,11 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
           </>
         )}
 
-        <button type="button" className="saga-strip-close" onClick={handleClose}>
+        <button type="button" className="saga-strip-close" onClick={onClose}>
           <IconX size={20} />
         </button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 
   const hoveredArc = sagaArcs.find(a => a.id === hoveredArcId);

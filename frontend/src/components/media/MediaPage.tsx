@@ -8,6 +8,7 @@ import type { LibraryEntry, MediaEpisode, MediaTheme } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
+import { AnimatePresence } from 'motion/react';
 import { ThemePreviewCardVideo } from './ThemePreviewCardVideo';
 import { prefetchSagaData } from '../../lib/media/sagaData';
 import { PrEditorModal } from './PrEditorModal';
@@ -1117,21 +1118,25 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           {tm.editor.saved_toast}
         </div>
       )}
-      {!previewMode && showEditor && (
-        <MediaEditorModal
-          externalId={currentId}
-          data={data}
-          i18n={tm}
-          initialEntry={libEntry ?? undefined}
-          initialActiveLogId={activeLogIdOverride}
-          onClose={handleEditorClose}
-          onSaved={handleEditorSaved}
-          onDeleted={handleEditorDeleted}
-        />
-      )}
-      {!previewMode && showSaga && (
-        <SagaViewerModal externalId={currentId} i18n={tm} onClose={() => setShowSaga(false)} />
-      )}
+      <AnimatePresence>
+        {!previewMode && showEditor && (
+          <MediaEditorModal
+            externalId={currentId}
+            data={data}
+            i18n={tm}
+            initialEntry={libEntry ?? undefined}
+            initialActiveLogId={activeLogIdOverride}
+            onClose={handleEditorClose}
+            onSaved={handleEditorSaved}
+            onDeleted={handleEditorDeleted}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {!previewMode && showSaga && (
+          <SagaViewerModal externalId={currentId} i18n={tm} onClose={() => setShowSaga(false)} />
+        )}
+      </AnimatePresence>
       {playingTheme && (() => {
         const currentThemeIdx = themes.findIndex(t => t.slug === playingTheme.slug);
         const prevTheme = currentThemeIdx > 0 ? themes[currentThemeIdx - 1] : null;

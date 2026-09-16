@@ -20,7 +20,7 @@ import {
 } from '../../lib/media/log-state';
 import { IGDB_TYPES } from '../../lib/constants/media';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
-import { MODAL_CLOSE_TRANSITION_MS } from '../../lib/shared/useClosingTransition';
+import { motion } from 'motion/react';
 import { getRatingName2, getRating2System, getRating2Min, getRating2Max, type RatingSlot } from '../../lib/settings/preferences';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -356,8 +356,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   }, [baseSelectedVersion]);
 
   const handleClose = useCallback(() => {
-    dispatchUi({ type: 'SET_CLOSING' });
-    setTimeout(onClose, MODAL_CLOSE_TRANSITION_MS);
+    onClose();
   }, [onClose]);
 
   const handleImportFromAniList = useCallback(async () => {
@@ -712,8 +711,22 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   }, [entry.activeLogId, baseId, data.parentGame, data.titleMain, data.cover, allAvailableEditions]);
 
   const modal = (
-    <div className={`me-overlay${ui.isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
-      <div className="me-modal" onClick={e => e.stopPropagation()}>
+    <motion.div
+      className="me-overlay"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+    >
+      <motion.div
+        className="me-modal"
+        onClick={e => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.97, y: 14 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 14 }}
+        transition={{ duration: 0.22, ease: [0.25, 0, 0.15, 1] }}
+      >
 
         {/* Header */}
         <div className="me-header">
@@ -1100,8 +1113,8 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 
   return typeof document !== 'undefined'
