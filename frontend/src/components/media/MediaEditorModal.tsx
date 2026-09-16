@@ -308,6 +308,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   const isUnifiedAnime = data.type === 'anime' && isUnifySeasonsEnabled() && animeSeasonChain.length > 1;
   const GENERAL_LOG_ID = isUnifiedAnime && animeSeasonChain[0] ? `general:${animeSeasonChain[0].externalId}` : '';
+  const isGeneralTab = isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID;
 
   useEffect(() => {
     if (data.type !== 'anime' || !isUnifySeasonsEnabled()) {
@@ -483,7 +484,44 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   const handleImportFromAniList = useCallback(async () => {
     dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'syncing' });
-    const result = await fetchAniListLogData(externalId, data.type);
+
+    if (isGeneralTab && animeSeasonChain.length > 0) {
+      try {
+        const results = await Promise.all(
+          animeSeasonChain.map(s => fetchAniListLogData(s.externalId, data.type))
+        );
+        const updatesById: Record<string, Partial<LogState>> = {};
+        let anySuccess = false;
+        results.forEach((res, idx) => {
+          if (res.ok && res.data) {
+            anySuccess = true;
+            const { status, rating, progress, progressVolumes, startedAt, finishedAt, notes } = res.data;
+            updatesById[animeSeasonChain[idx].externalId] = {
+              status, rating, progress, progressCount2: progressVolumes, startedAt, finishedAt, notes,
+            };
+          }
+        });
+
+        if (!anySuccess) {
+          const firstError = results.find(r => !r.ok)?.error;
+          dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'error', error: firstError });
+          return;
+        }
+
+        dispatchEntry({ type: 'UPDATE_LOGS_BULK', updatesById });
+        dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'ok' });
+        setTimeout(() => dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'idle' }), 3000);
+      } catch (err) {
+        dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'error', error: String(err) });
+      }
+      return;
+    }
+
+    const targetId = entry.activeLogId && !entry.activeLogId.startsWith('general:')
+      ? entry.activeLogId
+      : externalId;
+
+    const result = await fetchAniListLogData(targetId, data.type);
     if (!result.ok || !result.data) {
       dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'error', error: result.error });
       return;
@@ -495,7 +533,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     });
     dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'ok' });
     setTimeout(() => dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'idle' }), 3000);
-  }, [externalId, data.type]);
+  }, [isGeneralTab, animeSeasonChain, data.type, entry.activeLogId, externalId]);
 
   const handleSave = useCallback(async () => {
     dispatchUi({ type: 'SET_SAVING', value: true });
@@ -847,8 +885,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     const newKey = selectedMonthKey === targetKey ? null : targetKey;
     dispatchEntry({ type: 'SET_MONTH', ids: [...sameGameIds], primaryId: baseId, key: newKey, year: entry.selectedYear });
   }, [sameGameIds, baseId, entry.selectedYear, selectedMonthKey]);
-
-  const isGeneralTab = isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID;
 
   // Which season (if any) the currently active tab is — undefined on the
   // series' own general tab or when the season tabs aren't active at all.
