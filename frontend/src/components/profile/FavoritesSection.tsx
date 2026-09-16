@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, memo } from 'react';
+import { motion } from 'motion/react';
 import { getAllLibraryEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
 import type { MediaCatalogEntry, FavoriteCustomImage, CharacterEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
@@ -32,9 +33,13 @@ interface FavCardProps {
   reorderModeActive: boolean;
   readOnly: boolean;
   isCrowned: boolean;
+  isDragging?: boolean;
   onToggleCrown: (id: string) => void;
   onRemove: (id: string, type: string) => void;
   onEditImage: (item: FavItem) => void;
+  onDragStart?: (e: React.DragEvent, idx: number) => void;
+  onDragOver?: (e: React.DragEvent, idx: number) => void;
+  onDragEnd?: () => void;
 }
 
 const MemoizedFavCard = memo(function FavCard({
@@ -46,9 +51,13 @@ const MemoizedFavCard = memo(function FavCard({
   reorderModeActive,
   readOnly,
   isCrowned,
+  isDragging,
   onToggleCrown,
   onRemove,
   onEditImage,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
 }: FavCardProps) {
   const title = item.type === 'character'
     ? (characterMap.get(item.external_id)?.name ?? item.external_id)
@@ -62,7 +71,16 @@ const MemoizedFavCard = memo(function FavCard({
     : `/media?id=${encodeURIComponent(item.external_id)}`;
 
   return (
-    <div className={`fav-card ${reorderModeActive ? 'reordering' : ''}`} data-id={item.external_id} draggable={reorderModeActive && !readOnly}>
+    <motion.div
+      layout
+      transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+      className={`fav-card ${reorderModeActive ? 'reordering' : ''}${isDragging ? ' drag-source' : ''}`}
+      data-id={item.external_id}
+      draggable={reorderModeActive && !readOnly}
+      onDragStart={(e: any) => onDragStart?.(e, idx)}
+      onDragOver={(e: any) => onDragOver?.(e, idx)}
+      onDragEnd={() => onDragEnd?.()}
+    >
       <a className="fav-card-link" href={mediaUrl} draggable={false} />
       <div className="fav-badge">#{idx + 1}</div>
 
@@ -113,7 +131,7 @@ const MemoizedFavCard = memo(function FavCard({
       <div className="fav-overlay">
         <span className="fav-title">{title}</span>
       </div>
-    </div>
+    </motion.div>
   );
 });
 
@@ -282,139 +300,49 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
     });
   };
 
-  // Native HTML5 drag & drop (same approach as Lists' item reorder,
-  // ListsSection.tsx) — the browser/OS renders the drag ghost that tracks
-  // the cursor, entirely outside our own render loop, so it can't stutter.
-  // Cards stay draggable={true} only while reorderModeActive (the "edit
-  // mode" toggle below), which also keeps its own wiggle animation
-  // (.fav-card.reordering, profile.css) untouched — that's a permanent
-  // visual while edit mode is on, independent of whether a drag is
-  // actually in progress.
-  useEffect(() => {
+  const dragIndexRef = useRef<number | null>(null);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [isDraggingActive, setIsDraggingActive] = useState(false);
+
+  const handleDragStart = (e: React.DragEvent, idx: number) => {
     if (readOnly || !reorderModeActive) return;
-    const container = gridRef.current;
-    if (!container) return;
-
-    let dragCard: HTMLElement | null = null;
-    let didMove = false;
-
-    type CardRect = { el: HTMLElement; cx: number; cy: number; left: number; width: number };
-    let rectCache: CardRect[] = [];
-
-    const refreshRectCache = () => {
-      rectCache = Array.from(container.querySelectorAll('.fav-card:not(.drag-source)')).map(cardEl => {
-        const r = (cardEl as HTMLElement).getBoundingClientRect();
-        return { el: cardEl as HTMLElement, cx: r.left + r.width / 2, cy: r.top + r.height / 2, left: r.left, width: r.width };
-      });
-    };
-
-    const getClosestCard = (clientX: number, clientY: number): CardRect | null => {
-      let closest: CardRect | null = null;
-      let closestDist = Infinity;
-      for (const entry of rectCache) {
-        const dist = Math.hypot(clientX - entry.cx, clientY - entry.cy);
-        if (dist < closestDist) { closestDist = dist; closest = entry; }
-      }
-      return closest;
-    };
-
-    let rafId = 0;
-    let pendingEvent: DragEvent | null = null;
-    let lastMoveX = 0;
-    let prevMoveX = 0;
-
-    // Which side of the target card the dragged card lands on is decided by
-    // the direction of travel, not a static 50/50 split — self-stabilizing,
-    // avoids the oscillation flicker a fixed midpoint check causes.
-    const reorderTick = () => {
-      rafId = 0;
-      if (!dragCard || !pendingEvent) return;
-      lastMoveX = pendingEvent.clientX;
-      const target = getClosestCard(pendingEvent.clientX, pendingEvent.clientY);
-      if (target && target.el !== dragCard) {
-        const movingRight = lastMoveX >= prevMoveX;
-        const midpoint = target.left + target.width / 2;
-        const passedMidpoint = movingRight ? lastMoveX > midpoint : lastMoveX < midpoint;
-        if (passedMidpoint) {
-          didMove = true;
-          if (movingRight) container.insertBefore(dragCard, target.el.nextSibling);
-          else container.insertBefore(dragCard, target.el);
-          refreshRectCache();
-        }
-      }
-      prevMoveX = lastMoveX;
-    };
-
-    const onDragStart = (e: DragEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('.fav-crown-btn')) { e.preventDefault(); return; } // ignore drags starting on the crown button
-
-      const card = target.closest<HTMLElement>('.fav-card');
-      if (!card || !container.contains(card)) { e.preventDefault(); return; }
-
-      dragCard = card;
-      prevMoveX = e.clientX;
-      if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', card.dataset.id ?? '');
-      }
-      // Dim the source a frame later — the browser snapshots the drag
-      // ghost synchronously, so dimming it right away would fade the ghost
-      // that follows the cursor too.
-      requestAnimationFrame(() => card.classList.add('drag-source'));
-      container.classList.add('is-dragging');
-      refreshRectCache();
-    };
-
-    const onDragOver = (e: DragEvent) => {
-      if (!dragCard) return;
-      e.preventDefault(); // required for this to be a valid drop target
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-      pendingEvent = e;
-      if (!rafId) rafId = requestAnimationFrame(reorderTick);
-    };
-
-    const finishDrag = async () => {
-      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-      pendingEvent = null;
-      if (!dragCard) return;
-
-      dragCard.classList.remove('drag-source');
-      container.classList.remove('is-dragging');
-      dragCard = null;
-      const moved = didMove;
-      didMove = false;
-      if (!moved) return;
-
-      const newOrder = Array.from(container.querySelectorAll('.fav-card'))
-        .map(c => (c as HTMLElement).dataset.id)
-        .filter(Boolean) as string[];
-      const next = { ...favDataRef.current, [activeCatKeyRef.current]: newOrder };
-      await persistFavData(next);
-    };
-
-    const onDrop = (e: DragEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.fav-crown-btn, .fav-remove-btn, .fav-edit-image-btn')) {
       e.preventDefault();
-      finishDrag();
-    };
+      return;
+    }
+    dragIndexRef.current = idx;
+    setDraggedIdx(idx);
+    setIsDraggingActive(true);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+    }
+  };
 
-    // Fires whether the drag ended on a valid drop target or not (e.g.
-    // released outside the grid) — always cleans up either way.
-    const onDragEnd = () => finishDrag();
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    if (dragIndexRef.current === null || dragIndexRef.current === idx) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    const from = dragIndexRef.current;
+    const to = idx;
+    dragIndexRef.current = to;
+    setDraggedIdx(to);
+    setFavData(prev => {
+      const list = [...(prev[activeCatKey] || [])];
+      if (from < 0 || from >= list.length || to < 0 || to >= list.length) return prev;
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved);
+      return { ...prev, [activeCatKey]: list };
+    });
+  };
 
-    container.addEventListener('dragstart', onDragStart);
-    container.addEventListener('dragover', onDragOver);
-    container.addEventListener('drop', onDrop);
-    container.addEventListener('dragend', onDragEnd);
-    return () => {
-      container.removeEventListener('dragstart', onDragStart);
-      container.removeEventListener('dragover', onDragOver);
-      container.removeEventListener('drop', onDrop);
-      container.removeEventListener('dragend', onDragEnd);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reorderModeActive, activeCatKey]);
+  const handleDragEnd = async () => {
+    dragIndexRef.current = null;
+    setDraggedIdx(null);
+    setIsDraggingActive(false);
+    await persistFavData(favDataRef.current);
+  };
 
   if (items === null) return null;
 
@@ -453,7 +381,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
       </div>
       <div className="fav-grid-container">
         {catItems.length > 0 ? (
-          <div className="fav-grid" ref={gridRef} key={activeCatKey}>
+          <div className={`fav-grid${isDraggingActive ? ' is-dragging' : ''}`} ref={gridRef} key={activeCatKey}>
             {catItems.map((item, idx) => {
               const isCrowned = Boolean(favData.multimedia?.includes(item.external_id));
               return (
@@ -465,11 +393,15 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
                   characterMap={characterMap}
                   customImageMap={customImageMap}
                   reorderModeActive={reorderModeActive}
-                  readOnly={readOnly}
+                  readOnly={Boolean(readOnly)}
                   isCrowned={isCrowned && activeCatKey !== 'multimedia'}
+                  isDragging={draggedIdx === idx}
                   onToggleCrown={toggleCrown}
                   onRemove={removeFavorite}
                   onEditImage={editImage}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
                 />
               );
             })}
