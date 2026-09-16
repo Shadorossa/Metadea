@@ -1,0 +1,45 @@
+{
+  "media_catalog": {
+    "id": "ffd94165ebd41903ffd94165ebd41903",
+    "external_id": "anime:100784",
+    "type": "anime",
+    "title_main": "Gintama.: Shirogane no Tamashii-hen",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:100784",
+      "related_media_external_id": "manga:30044",
+      "relation_type": "SOURCE",
+      "type_label": "Source Material",
+      "title": "Gintama",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx30044-vPmoz3vTPvZs.jpg",
+      "format": null,
+      "release_day": 8,
+      "release_month": 12,
+      "release_year": 2003
+    },
+    {
+      "media_external_id": "anime:100784",
+      "related_media_external_id": "anime:99714",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Gintama.: Porori-hen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx99714-0pCKHe4XYIz7.jpg"
+    },
+    {
+      "media_external_id": "anime:100784",
+      "related_media_external_id": "anime:101925",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Gintama.: Shirogane no Tamashii-hen - Kouhan-sen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101925-gcA84dgcSj2w.png"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Gintama"
+}

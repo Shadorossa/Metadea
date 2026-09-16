@@ -1,0 +1,415 @@
+{
+  "media_catalog": {
+    "id": "fc8984ac2a944ef3fc8984ac2a944ef3",
+    "external_id": "anime:204066",
+    "type": "anime",
+    "title_main": "Jujutsu Kaisen: Shibuya Jihen Tokubetsu Henshuu-ban x Shimetsu Kaiyuu Senkou Jouei",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:204066",
+      "related_media_external_id": "manga:101517",
+      "relation_type": "SOURCE",
+      "type_label": "Source Material",
+      "title": "Jujutsu Kaisen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx101517-H3TdM3g5ZUe9.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:127212",
+      "name": "Yuuji Itadori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b127212-FVm2tD0erQ5B.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:129571",
+      "name": "Yuuta Okkotsu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b129571-GHJk7gviHOOw.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:133701",
+      "name": "Sukuna",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b133701-rCQuDpHr3UZL.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:133702",
+      "name": "Mahito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b133702-Y7JRG5vAvjIL.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:126635",
+      "name": "Megumi Fushiguro",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b126635-L0y3I92JSUkN.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:127691",
+      "name": "Satoru Gojou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b127691-9zqh1xpIubn7.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:133700",
+      "name": "Nobara Kugisaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b133700-f6sOO3TcgLV6.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:133704",
+      "name": "Kento Nanami",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b133704-8wLTGjc234q2.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134167",
+      "name": "Maki Zenin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134167-5TCytk45YByD.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:137975",
+      "name": "Aoi Toudou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b137975-6TH7PiLWJaqy.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:156991",
+      "name": "Jougo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b156991-niYjdp9CxO4w.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:157115",
+      "name": "Toge Inumaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b157115-kdhRYQdVhH95.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:157116",
+      "name": "Chousou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b157116-2jYQf3y8NeTZ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:157215",
+      "name": "Mei Mei",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b157215-I3TQJu8nkDwD.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:157865",
+      "name": "Takuma Ino",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b157865-X9ENX9OzWevS.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:158154",
+      "name": "Shouko Ieiri",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b158154-UCqbiULli62P.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:162722",
+      "name": "Touji Fushiguro",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b162722-btzdghBizxKS.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172743",
+      "name": "Hanami",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172743-4Y5SXqED6A3G.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:189237",
+      "name": "Masamichi Yaga",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b189237-ZxNJwVPL8DvW.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:189238",
+      "name": "Kiyotaka Ijichi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b189238-ItSLams6lRk9.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:194074",
+      "name": "Wasuke Itadori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b194074-SnbrUkHIyM62.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:196502",
+      "name": "Yuki Tsukumo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b196502-aBvtPFr9lGm2.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:197119",
+      "name": "Nobuko Takada",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b197119-Z2EBJXGTATzN.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:204383",
+      "name": "Dagon",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b204383-5oTlVPpaCnM2.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:208204",
+      "name": "Naoya Zenin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b208204-1CoWbBOC2Jqr.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:209694",
+      "name": "Haruta Shigemo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b209694-xSS6FxN4al3l.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210154",
+      "name": "Koukichi Muta",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210154-nIn9DX39GFKP.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210830",
+      "name": "Uraume",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210830-rJ8LVEvLUqjE.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:217290",
+      "name": "Ui Ui",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b217290-dEovi2HxGOnV.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:217291",
+      "name": "Tengen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b217291-zKcyXtXLZZJy.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:227443",
+      "name": "Ogi Zenin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b227443-nPWnp2f0jwNA.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:289584",
+      "name": "Kenjaku",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b289584-KndGudJZm5Ik.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:306263",
+      "name": "Housougami",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b306263-P94VBlsmRYOb.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:319339",
+      "name": "Yatsuka no Tsurugi Ikaishinshou Makora",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b319339-B50Yn0NHXCua.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:322289",
+      "name": "Shoujo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b322289-kyM6VP3Qx7lH.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:229952",
+      "name": "Jinichi Zenin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b229952-mi0WoIU33kjI.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:283137",
+      "name": "Jin Itadori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b283137-nqjpjzZC0AYo.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:322290",
+      "name": "Hito no Sugata no Jurei",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b322290-ZveNAymdiFKd.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:380084",
+      "name": "Kaori Itadori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b380084-ddKGDd50c36B.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:188432",
+      "name": "Naobito Zenin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b188432-WePQBJsEuSts.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:193479",
+      "name": "Tsumiki Fushiguro",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b193479-aGNRmbU5jNwR.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:196503",
+      "name": "Noritoshi Kamo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b196503-wThFUu5XPqO2.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210831",
+      "name": "Esou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210831-wsucHRbSZjbV.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210832",
+      "name": "Kechizu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210832-d1Fg0CePSU86.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:228986",
+      "name": "Mimiko Hasaba",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b228986-TXJuABOhrxRA.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:228987",
+      "name": "Nanako Hasaba",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b228987-Su63YTP33b6W.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:306248",
+      "name": "Mago",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b306248-NefuODIxBeG1.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:306254",
+      "name": "Manami Suda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b306254-rcw8cnkJlTak.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:306257",
+      "name": "Toshihisa Negi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b306257-XmeYJw91idBY.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:137974",
+      "name": "Panda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b137974-9qnK3DPrvLKh.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210846",
+      "name": "Akari Nitta",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210846-XcRQ643Ne8Pb.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:205234",
+      "name": "Atsuya Kusakabe",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b205234-nrush17kFWaE.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:320325",
+      "name": "Arata Nitta",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b320325-uGhurK5IhUeO.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:a125415",
+      "name": "Gege Akutami",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/large/n125415-B1o6NtIImcCK.png",
+      "role": "Original Creator",
+      "url": "/author?id=person:a125415",
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "saga_name": "Jujutsu Kaisen",
+  "story_arcs": []
+}
