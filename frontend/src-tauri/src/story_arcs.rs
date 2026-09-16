@@ -13,6 +13,7 @@ pub struct StoryArcItem {
     pub ep_start: Option<i64>,
     pub ep_end: Option<i64>,
     pub position: i64,
+    pub group_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -79,7 +80,7 @@ fn story_arcs_for_media_ids(
 
     let mut items_stmt = conn
         .prepare(
-            "SELECT id, arc_id, media_external_id, ep_start, ep_end, position
+            "SELECT id, arc_id, media_external_id, ep_start, ep_end, position, group_id
              FROM story_arc_items WHERE arc_id = ?1 ORDER BY position",
         )
         .str_err()?;
@@ -92,6 +93,7 @@ fn story_arcs_for_media_ids(
                     ep_start: row.get(3)?,
                     ep_end: row.get(4)?,
                     position: row.get(5)?,
+                    group_id: row.get(6)?,
                 })
             })
             .str_err()?
@@ -161,8 +163,8 @@ pub async fn save_story_arc(
     tx.execute("DELETE FROM story_arc_items WHERE arc_id = ?1", [&arc_id]).str_err()?;
     for (index, item) in arc.items.iter().enumerate() {
         tx.execute(
-            "INSERT INTO story_arc_items (id, arc_id, media_external_id, ep_start, ep_end, position)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO story_arc_items (id, arc_id, media_external_id, ep_start, ep_end, position, group_id)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![
                 generate_id(),
                 &arc_id,
@@ -170,6 +172,7 @@ pub async fn save_story_arc(
                 &item.ep_start,
                 &item.ep_end,
                 index as i64,
+                &item.group_id,
             ],
         )
         .str_err()?;

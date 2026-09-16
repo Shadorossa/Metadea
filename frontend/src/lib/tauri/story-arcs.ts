@@ -6,6 +6,7 @@ export interface StoryArcItem {
   ep_start: number | null;
   ep_end: number | null;
   position: number;
+  group_id?: string | null;
 }
 
 export interface StoryArc {

@@ -1214,3 +1214,108 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   border-color: var(--text-main) !important;
   transform: none !important;
 }
+
+/* Scrollbars */
+[data-theme="newspaper-dark"] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+[data-theme="newspaper-dark"] ::-webkit-scrollbar-track {
+  background: var(--bg-primary, #12110f) !important;
+}
+[data-theme="newspaper-dark"] ::-webkit-scrollbar-thumb {
+  background: #353028 !important;
+  border: 1px solid var(--border-color, #4a4237) !important;
+  border-radius: 0px !important;
+}
+[data-theme="newspaper-dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent, #a69a7d) !important;
+}
+[data-theme="newspaper-dark"] * {
+  scrollbar-width: thin;
+  scrollbar-color: #353028 var(--bg-primary, #12110f);
+}
+
+/* Story Arc Episode Popover & Trigger */
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-popover,
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-popover *,
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-trigger,
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-select,
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-select option {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-popover {
+  background: var(--bg-card, #282521) !important;
+  border: 1px solid var(--border-color, #4a4237) !important;
+  border-radius: 0px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-range-row {
+  background: var(--bg-elevated, #1c1a17) !important;
+  border-bottom: 1px solid var(--border-color, #4a4237) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-range-label {
+  color: var(--text-muted, #9c8f80) !important;
+  font-style: italic !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-select {
+  background: var(--bg-primary, #12110f) !important;
+  border: 1px solid var(--border-color, #4a4237) !important;
+  border-radius: 0px !important;
+  color: var(--text-main, #f5f2eb) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-select option {
+  background: var(--bg-primary, #12110f) !important;
+  color: var(--text-main, #f5f2eb) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-clear-btn {
+  background: var(--bg-elevated, #1c1a17) !important;
+  border: 1px solid var(--border-color, #4a4237) !important;
+  border-radius: 0px !important;
+  color: var(--text-muted, #9c8f80) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-item {
+  border-radius: 0px !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-item:hover {
+  background: rgba(166, 154, 125, 0.08) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-item.is-selected {
+  background: rgba(166, 154, 125, 0.16) !important;
+  border-color: var(--accent, #a69a7d) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-thumb {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color, #4a4237) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-trigger {
+  border-radius: 0px !important;
+  border-color: var(--border-color, #4a4237) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-season-num {
+  color: var(--accent, #a69a7d) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-arc-ep-sub {
+  font-style: italic !important;
+}
+
+

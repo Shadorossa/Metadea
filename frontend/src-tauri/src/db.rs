@@ -823,6 +823,7 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
                 ep_start          INTEGER,
                 ep_end            INTEGER,
                 position          INTEGER NOT NULL DEFAULT 0,
+                group_id          TEXT,
                 FOREIGN KEY (arc_id) REFERENCES story_arcs(id) ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS story_arc_items_arc_idx ON story_arc_items(arc_id);
@@ -1167,6 +1168,10 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
              );"
         );
         mark_migration(conn, 60)?;
+    }
+    if v < 61 {
+        let _ = conn.execute("ALTER TABLE story_arc_items ADD COLUMN group_id TEXT", []);
+        mark_migration(conn, 61)?;
     }
 
     Ok(())

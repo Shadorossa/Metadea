@@ -1,20 +1,10 @@
-// "Arcos Argumentales" — a curator concept distinct from both
-// media_relations (which media are related) and the saga chain
-// (chronological order of whole entries): an arc groups specific *episode
-// ranges* within one or more media entries under one name and optional
-// custom cover. Two shapes this supports:
-//   - Same media, several arcs: e.g. Bleach (2004) selected repeatedly to
-//     create "Sociedad de Almas" (21-54), "Arrancar" (91-120), etc. — each
-//     a separate arc pointing at the same media_external_id with its own
-//     episode range.
-//   - Several media, one arc: e.g. Bleach: Sennen Kessen-hen's 4 parts all
-//     added as items of one "Thousand Year Blood War" arc.
-// Saves directly to its own local-only table (see db.rs migration 41) as
-// soon as each arc is saved — no GitHub proposal step, same as Favorites'
-// custom images; this isn't part of the shared community catalog.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Unlink2, Trash2 } from 'lucide-react';
 import { getStoryArcsForMedia, saveStoryArc, reorderStoryArcs, deleteStoryArc, type StoryArc, type StoryArcItem } from '../../../lib/tauri/story-arcs';
 import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri/catalog';
+import { fetchMediaEpisodes } from '../../../lib/media/episode-list';
+import type { MediaEpisode } from '../../../lib/tauri';
 import { openImageCropModal } from '../../shared/ImageCropModal';
 import { MediaSearchPopup } from '../MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../../lib/search';
@@ -26,36 +16,38 @@ interface EditingItem {
   cover: string | null;
   ep_start: number | null;
   ep_end: number | null;
+  group_id?: string | null;
 }
 
 interface EditingArc {
-  id: string; // '' while creating a brand-new arc
+  id: string;
   name: string;
   imageBase64: string | null;
   items: EditingItem[];
-  // For arcs like Bleach's Thousand Year Blood War, which spans several
-  // separately-released parts that don't each have their own meaningful
-  // sub-range — one shared ep_start/ep_end gets written to every item
-  // instead of asking the curator to fill in (and keep in sync) N copies of
-  // the same numbers. Purely a UI convenience: story_arc_items still stores
-  // a range per item either way, nothing new on the DB side.
-  sharedRange: boolean;
+}
+
+interface DisplayUnit {
+  id: string;
+  isGroup: boolean;
+  groupId: string | null;
+  items: EditingItem[];
+}
+
+interface UnifiedEpisode {
+  generalEpNumber: number;
+  seasonEpNumber: number;
+  mediaExternalId: string;
+  mediaTitle: string;
+  name: string | null;
+  coverUrl: string | null;
 }
 
 interface Props {
   externalId: string;
   currentTitle: string;
   currentCover: string | null;
-  // The saga chain already loaded in this same editor's "Saga" section —
-  // lets "+ Añadir obra" offer picking one of those directly (e.g. Sennen
-  // Kessen-hen's other 3 parts, already known here) instead of always
-  // having to search the live APIs again for something already on screen.
   sagaOrder: string[];
   resolveSagaMeta: (id: string) => { title: string | null; cover: string | null };
-  // Tells the parent editor this arc was deleted this session — needed for
-  // the GitHub proposal's merge to actually drop it upstream too (see
-  // submitCollaborativeProposal's mergeListByKey), since the local delete
-  // above already happens immediately and can't be inferred from a diff.
   onArcDeleted?: (arcId: string) => void;
 }
 
@@ -63,6 +55,58 @@ function formatRange(item: Pick<StoryArcItem, 'ep_start' | 'ep_end'>): string {
   if (item.ep_start != null && item.ep_end != null) return `${item.ep_start}-${item.ep_end}`;
   if (item.ep_start != null) return `${item.ep_start}+`;
   return '';
+}
+
+function buildDisplayUnits(items: EditingItem[], sagaOrder: string[] = []): DisplayUnit[] {
+  const units: DisplayUnit[] = [];
+  const visited = new Set<number>();
+
+  for (let i = 0; i < items.length; i++) {
+    if (visited.has(i)) continue;
+    const item = items[i];
+
+    if (item.group_id) {
+      const groupItems: EditingItem[] = [];
+      for (let j = 0; j < items.length; j++) {
+        if (items[j].group_id === item.group_id) {
+          visited.add(j);
+          groupItems.push(items[j]);
+        }
+      }
+      if (sagaOrder.length > 1) {
+        groupItems.sort((a, b) => {
+          const idxA = sagaOrder.indexOf(a.media_external_id);
+          const idxB = sagaOrder.indexOf(b.media_external_id);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return 0;
+        });
+      }
+      units.push({
+        id: item.group_id,
+        isGroup: groupItems.length > 1,
+        groupId: item.group_id,
+        items: groupItems,
+      });
+    } else {
+      visited.add(i);
+      units.push({
+        id: item.media_external_id,
+        isGroup: false,
+        groupId: null,
+        items: [item],
+      });
+    }
+  }
+
+  return units;
+}
+
+function canGroupUnits(u1: DisplayUnit | undefined, u2: DisplayUnit | undefined, sagaOrder: string[]): boolean {
+  if (!u1 || !u2 || !sagaOrder || sagaOrder.length <= 1) return false;
+  return u1.items.every(i => sagaOrder.includes(i.media_external_id)) &&
+         u2.items.every(i => sagaOrder.includes(i.media_external_id));
 }
 
 export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCover, sagaOrder, resolveSagaMeta, onArcDeleted }: Props) {
@@ -74,18 +118,22 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
   const [showSagaPicker, setShowSagaPicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Episodes cache for anime/series items
+  const [episodesMap, setEpisodesMap] = useState<Record<string, MediaEpisode[]>>({});
+  const [activePopoverUnitId, setActivePopoverUnitId] = useState<string | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+
+  // Drag and drop state
+  const [draggedUnitIdx, setDraggedUnitIdx] = useState<number | null>(null);
+  const [dropTargetUnitIdx, setDropTargetUnitIdx] = useState<number | null>(null);
+  const [dropTargetMode, setDropTargetMode] = useState<'before' | 'after' | 'group' | null>(null);
+
   function resolveMeta(id: string): { title: string; cover: string | null } {
     if (id === externalId) return { title: currentTitle, cover: currentCover };
     return metaById[id] ?? { title: id, cover: null };
   }
 
   async function reload() {
-    // Not just this entry's own arcs — any arc touching *any* member of the
-    // saga chain this entry belongs to, so e.g. opening Sennen Kessen-hen
-    // Part 2's editor still shows the "Thousand Year Blood War" arc even
-    // though Part 2 itself might not be one of its items (only Parts 1 and
-    // 3 could be, say) — the arc still concerns this saga, so it's worth
-    // seeing (and editing) from any of its members' editors.
     const idsToCheck = sagaOrder.length > 0 ? sagaOrder : [externalId];
     const perIdResults = await Promise.all(
       idsToCheck.map(id => getStoryArcsForMedia(id).catch(() => [] as StoryArc[]))
@@ -116,37 +164,58 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     });
   }
 
-  // sagaOrder.join(',') instead of sagaOrder itself — a stable primitive so
-  // this only re-fetches when saga membership actually changes, not on
-  // every parent re-render that happens to pass a fresh array reference.
   useEffect(() => { reload(); }, [externalId, sagaOrder.join(',')]);
+
+  // Fetch episodes for anime/series items when editing an arc
+  useEffect(() => {
+    if (!editingArc) return;
+    const animeIds = editingArc.items
+      .map(i => i.media_external_id)
+      .filter(id => (id.startsWith('anime:') || id.startsWith('series:')) && !episodesMap[id]);
+
+    if (animeIds.length === 0) return;
+    animeIds.forEach(id => {
+      fetchMediaEpisodes(id).then(eps => {
+        setEpisodesMap(prev => ({ ...prev, [id]: eps }));
+      }).catch(() => {
+        setEpisodesMap(prev => ({ ...prev, [id]: [] }));
+      });
+    });
+  }, [editingArc, episodesMap]);
+
+  // Close episode popover on click outside
+  useEffect(() => {
+    if (!activePopoverUnitId) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.pr-editor-arc-ep-popover') && !target.closest('.pr-editor-arc-ep-trigger')) {
+        setActivePopoverUnitId(null);
+      }
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, [activePopoverUnitId]);
 
   function startNewArc() {
     setEditingArc({
       id: '',
       name: '',
       imageBase64: null,
-      items: [{ media_external_id: externalId, title: currentTitle, cover: currentCover, ep_start: null, ep_end: null }],
-      sharedRange: false,
+      items: [{ media_external_id: externalId, title: currentTitle, cover: currentCover, ep_start: null, ep_end: null, group_id: null }],
     });
   }
 
   function startEditArc(arc: StoryArc) {
-    const items = arc.items.map(i => ({ ...resolveMeta(i.media_external_id), media_external_id: i.media_external_id, ep_start: i.ep_start, ep_end: i.ep_end }));
-    // Detects arcs that were already saved with the same range on every
-    // item — re-opening one shows the shared-range control pre-checked
-    // instead of looking like N independently-matching coincidences.
-    const sharedRange = items.length > 1 && items.every(i => i.ep_start === items[0].ep_start && i.ep_end === items[0].ep_end);
-    setEditingArc({ id: arc.id, name: arc.name, imageBase64: arc.image_base64, items, sharedRange });
+    const items = arc.items.map(i => ({
+      ...resolveMeta(i.media_external_id),
+      media_external_id: i.media_external_id,
+      ep_start: i.ep_start,
+      ep_end: i.ep_end,
+      group_id: i.group_id ?? null,
+    }));
+    setEditingArc({ id: arc.id, name: arc.name, imageBase64: arc.image_base64, items });
   }
 
-  // Same pick/pan/zoom modal Favorites and the character-photo editor both
-  // use (ImageCropModal.tsx) — paste a URL, drag a file in, or drop one, and
-  // the crop it returns is baked into a single PNG data: URL, same as
-  // CharacterPrEditorModal's own "just wants the picked URL" usage. Stored
-  // as-is in story_arcs.image_base64 — no separate pan/zoom persistence,
-  // since (unlike Favorites) there's no need to reopen the *original* image
-  // and re-crop it later.
   async function handleImagePick() {
     const result = await openImageCropModal({
       title: 'Imagen del arco',
@@ -163,49 +232,40 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     setEditingArc(prev => {
       if (!prev) return prev;
       if (prev.items.some(i => i.media_external_id === result.externalId)) return prev;
-      const [ep_start, ep_end] = sharedRangeValues(prev);
       return {
         ...prev,
-        items: [...prev.items, { media_external_id: result.externalId, title: result.titleMain, cover: result.coverUrl, ep_start, ep_end }],
+        items: [...prev.items, { media_external_id: result.externalId, title: result.titleMain, cover: result.coverUrl, ep_start: null, ep_end: null, group_id: null }],
       };
     });
   }
 
-  // Picking a work from the saga also pulls in its own SOURCE relation (the
-  // original manga/novel/etc. it was adapted from), if it has one — one arc
-  // then covers both the anime's episode range and the source material's
-  // corresponding chapter range at once, instead of having to separately
-  // remember to add the source afterward.
   async function addSagaItem(id: string) {
     const meta = resolveSagaMeta(id);
     setEditingArc(prev => {
       if (!prev) return prev;
       if (prev.items.some(i => i.media_external_id === id)) return prev;
-      const [ep_start, ep_end] = sharedRangeValues(prev);
       return {
         ...prev,
-        items: [...prev.items, { media_external_id: id, title: meta.title || id, cover: meta.cover, ep_start, ep_end }],
+        items: [...prev.items, { media_external_id: id, title: meta.title || id, cover: meta.cover, ep_start: null, ep_end: null, group_id: null }],
       };
     });
     setShowSagaPicker(false);
 
-    // Works either direction — an anime's SOURCE (its original manga) or a
-    // manga's ADAPTATION (its anime) — whichever this particular entry has.
     const rels = await getMediaRelationsForEditor(id).catch(() => []);
     const source = rels.find(r => r.relation_type === 'SOURCE' || r.relation_type === 'ADAPTATION');
     if (!source) return;
     setEditingArc(prev => {
       if (!prev) return prev;
       if (prev.items.some(i => i.media_external_id === source.related_media_external_id)) return prev;
-      const [ep_start, ep_end] = sharedRangeValues(prev);
       return {
         ...prev,
         items: [...prev.items, {
           media_external_id: source.related_media_external_id,
           title: source.title || source.related_media_external_id,
           cover: source.cover || null,
-          ep_start,
-          ep_end,
+          ep_start: null,
+          ep_end: null,
+          group_id: null,
         }],
       };
     });
@@ -215,53 +275,236 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     setEditingArc(prev => prev && { ...prev, items: prev.items.filter(i => i.media_external_id !== id) });
   }
 
-  // Item order becomes each item's saved `position` (see handleSaveArc) —
-  // matters for arcs like Thousand Year Blood War where the parts should
-  // list in release/watch order, not whatever order they happened to be
-  // added in.
-  function moveItem(index: number, direction: -1 | 1) {
-    setEditingArc(prev => {
-      if (!prev) return prev;
-      const target = index + direction;
-      if (target < 0 || target >= prev.items.length) return prev;
-      const items = [...prev.items];
-      [items[index], items[target]] = [items[target], items[index]];
-      return { ...prev, items };
-    });
-  }
-
-  // A brand-new item joining a shared-range arc should read the same range
-  // as everything else already in it, instead of showing up blank next to
-  // matching numbers on every other row.
-  function sharedRangeValues(arc: EditingArc): [number | null, number | null] {
-    if (!arc.sharedRange || arc.items.length === 0) return [null, null];
-    return [arc.items[0].ep_start, arc.items[0].ep_end];
-  }
-
-  // In shared-range mode every item is kept in lockstep — editing any one
-  // row's range updates all of them, so they never actually diverge while
-  // the toggle is on.
   function updateItemRange(id: string, field: 'ep_start' | 'ep_end', value: string) {
     const num = value === '' ? null : parseInt(value, 10);
     const safeNum = num !== null && Number.isFinite(num) ? num : null;
     setEditingArc(prev => prev && {
       ...prev,
-      items: prev.items.map(i => (prev.sharedRange || i.media_external_id === id) ? { ...i, [field]: safeNum } : i),
+      items: prev.items.map(i => i.media_external_id === id ? { ...i, [field]: safeNum } : i),
     });
   }
 
-  // Turning it on consolidates everything to the first item's current
-  // values (rather than leaving mismatched numbers around and pretending
-  // they're unified); turning it off just stops keeping them in sync,
-  // whatever values are already there stay put.
-  function toggleSharedRange() {
+  // Ungroup a grouped display unit
+  function ungroupUnit(unit: DisplayUnit) {
     setEditingArc(prev => {
       if (!prev) return prev;
-      const next = !prev.sharedRange;
-      if (!next) return { ...prev, sharedRange: false };
-      const [ep_start, ep_end] = [prev.items[0]?.ep_start ?? null, prev.items[0]?.ep_end ?? null];
-      return { ...prev, sharedRange: true, items: prev.items.map(i => ({ ...i, ep_start, ep_end })) };
+      const memberIds = new Set(unit.items.map(i => i.media_external_id));
+      return {
+        ...prev,
+        items: prev.items.map(i => memberIds.has(i.media_external_id) ? { ...i, group_id: null } : i),
+      };
     });
+  }
+
+  // Get unified continuous episodes for a display unit
+  function getUnifiedEpisodes(unit: DisplayUnit): UnifiedEpisode[] {
+    const result: UnifiedEpisode[] = [];
+    let cumulativeOffset = 0;
+
+    for (const item of unit.items) {
+      const eps = (episodesMap[item.media_external_id] || []).filter(e => e.episode_number > 0);
+      if (eps.length > 0) {
+        eps.sort((a, b) => a.episode_number - b.episode_number);
+        const baseOffset = cumulativeOffset;
+        for (let i = 0; i < eps.length; i++) {
+          const ep = eps[i];
+          const seasonEpNumber = i + 1;
+          const generalEpNumber = Math.max(Math.round(ep.episode_number), baseOffset + i + 1);
+
+          result.push({
+            generalEpNumber,
+            seasonEpNumber,
+            mediaExternalId: item.media_external_id,
+            mediaTitle: item.title,
+            name: ep.name,
+            coverUrl: ep.cover_url,
+          });
+        }
+        cumulativeOffset = result[result.length - 1].generalEpNumber;
+      }
+    }
+    return result;
+  }
+
+  function getUnitGlobalRange(unit: DisplayUnit, unifiedEps: UnifiedEpisode[]): { globalStart: number | null; globalEnd: number | null } {
+    if (unifiedEps.length === 0) return { globalStart: null, globalEnd: null };
+
+    let globalStart: number | null = null;
+    let globalEnd: number | null = null;
+
+    for (const item of unit.items) {
+      if (item.ep_start != null && globalStart == null) {
+        const match = unifiedEps.find(ep => ep.mediaExternalId === item.media_external_id && (ep.generalEpNumber === item.ep_start || ep.seasonEpNumber === item.ep_start));
+        if (match) globalStart = match.generalEpNumber;
+      }
+      if (item.ep_end != null) {
+        const match = unifiedEps.find(ep => ep.mediaExternalId === item.media_external_id && (ep.generalEpNumber === item.ep_end || ep.seasonEpNumber === item.ep_end));
+        if (match) globalEnd = match.generalEpNumber;
+      }
+    }
+    return { globalStart, globalEnd };
+  }
+
+  function applyGlobalRangeToUnit(unit: DisplayUnit, unifiedEps: UnifiedEpisode[], startGen: number | null, endGen: number | null) {
+    if (startGen == null && endGen == null) {
+      setEditingArc(prev => {
+        if (!prev) return prev;
+        const ids = new Set(unit.items.map(i => i.media_external_id));
+        return {
+          ...prev,
+          items: prev.items.map(i => ids.has(i.media_external_id) ? { ...i, ep_start: null, ep_end: null } : i),
+        };
+      });
+      return;
+    }
+
+    const effectiveStart = startGen ?? unifiedEps[0].generalEpNumber;
+    const effectiveEnd = endGen ?? startGen ?? unifiedEps[unifiedEps.length - 1].generalEpNumber;
+    const minG = Math.min(effectiveStart, effectiveEnd);
+    const maxG = Math.max(effectiveStart, effectiveEnd);
+
+    setEditingArc(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item => {
+          if (!unit.items.some(u => u.media_external_id === item.media_external_id)) return item;
+          const itemEps = unifiedEps.filter(ep => ep.mediaExternalId === item.media_external_id);
+          if (itemEps.length === 0) return item;
+          const itemMinG = itemEps[0].generalEpNumber;
+          const itemMaxG = itemEps[itemEps.length - 1].generalEpNumber;
+
+          if (maxG < itemMinG || minG > itemMaxG) {
+            return { ...item, ep_start: null, ep_end: null };
+          }
+
+          const clampedStartG = Math.max(minG, itemMinG);
+          const clampedEndG = Math.min(maxG, itemMaxG);
+
+          return {
+            ...item,
+            ep_start: clampedStartG,
+            ep_end: clampedEndG,
+          };
+        }),
+      };
+    });
+  }
+
+  function handleEpisodeClick(
+    unit: DisplayUnit,
+    unifiedEps: UnifiedEpisode[],
+    clickedEp: number,
+    globalStart: number | null,
+    globalEnd: number | null,
+    isCtrl: boolean,
+  ) {
+    if (isCtrl) {
+      // Ctrl + Clic: fija el final (Hasta)
+      const currentStart = globalStart ?? clickedEp;
+      const effectiveStart = Math.min(currentStart, clickedEp);
+      applyGlobalRangeToUnit(unit, unifiedEps, effectiveStart, clickedEp);
+    } else {
+      // Clic izquierdo: fija el inicio (Desde)
+      const hasExplicitRange = globalStart != null && globalEnd != null && globalEnd > globalStart;
+      const effectiveEnd = (hasExplicitRange && globalEnd != null && globalEnd >= clickedEp)
+        ? globalEnd
+        : clickedEp;
+      applyGlobalRangeToUnit(unit, unifiedEps, clickedEp, effectiveEnd);
+    }
+  }
+
+  // Drag and drop mechanics
+  function handleDragStart(unitIdx: number) {
+    setDraggedUnitIdx(unitIdx);
+  }
+
+  function handleDragOverCard(e: React.DragEvent, unitIdx: number) {
+    e.preventDefault();
+    if (draggedUnitIdx === null || draggedUnitIdx === unitIdx) {
+      setDropTargetUnitIdx(null);
+      setDropTargetMode(null);
+      return;
+    }
+
+    const draggedUnit = displayUnits[draggedUnitIdx];
+    const targetUnit = displayUnits[unitIdx];
+    const canGroup = canGroupUnits(draggedUnit, targetUnit, sagaOrder);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const width = rect.width;
+
+    if (offsetX < width * 0.22 || (!canGroup && offsetX <= width * 0.5)) {
+      setDropTargetMode('before');
+    } else if (offsetX > width * 0.78 || (!canGroup && offsetX > width * 0.5)) {
+      setDropTargetMode('after');
+    } else if (canGroup) {
+      setDropTargetMode('group');
+    } else {
+      setDropTargetMode(null);
+    }
+    setDropTargetUnitIdx(unitIdx);
+  }
+
+  function handleDrop(units: DisplayUnit[]) {
+    if (draggedUnitIdx === null || dropTargetUnitIdx === null || draggedUnitIdx === dropTargetUnitIdx) {
+      setDraggedUnitIdx(null);
+      setDropTargetUnitIdx(null);
+      setDropTargetMode(null);
+      return;
+    }
+
+    const draggedUnit = units[draggedUnitIdx];
+    const targetUnit = units[dropTargetUnitIdx];
+
+    if (dropTargetMode === 'group') {
+      if (!canGroupUnits(draggedUnit, targetUnit, sagaOrder)) {
+        setDraggedUnitIdx(null);
+        setDropTargetUnitIdx(null);
+        setDropTargetMode(null);
+        return;
+      }
+
+      const sharedGroupId = targetUnit.groupId || draggedUnit.groupId || `grp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const mergedItems = [...targetUnit.items, ...draggedUnit.items].map(i => ({ ...i, group_id: sharedGroupId }));
+
+      // Order items strictly by prequel/sequel chain
+      if (sagaOrder.length > 1) {
+        mergedItems.sort((a, b) => {
+          const idxA = sagaOrder.indexOf(a.media_external_id);
+          const idxB = sagaOrder.indexOf(b.media_external_id);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return 0;
+        });
+      }
+
+      const nextUnits = units.filter((_, idx) => idx !== draggedUnitIdx && idx !== dropTargetUnitIdx);
+      const insertAt = dropTargetUnitIdx > draggedUnitIdx ? dropTargetUnitIdx - 1 : dropTargetUnitIdx;
+      nextUnits.splice(insertAt, 0, {
+        id: sharedGroupId,
+        isGroup: true,
+        groupId: sharedGroupId,
+        items: mergedItems,
+      });
+
+      const nextFlatItems = nextUnits.flatMap(u => u.items);
+      setEditingArc(prev => prev ? { ...prev, items: nextFlatItems } : prev);
+    } else {
+      const remainingUnits = units.filter((_, idx) => idx !== draggedUnitIdx);
+      let insertIdx = remainingUnits.indexOf(targetUnit);
+      if (dropTargetMode === 'after') insertIdx++;
+      remainingUnits.splice(insertIdx, 0, draggedUnit);
+
+      const nextFlatItems = remainingUnits.flatMap(u => u.items);
+      setEditingArc(prev => prev ? { ...prev, items: nextFlatItems } : prev);
+    }
+
+    setDraggedUnitIdx(null);
+    setDropTargetUnitIdx(null);
+    setDropTargetMode(null);
   }
 
   async function handleSaveArc() {
@@ -273,10 +516,13 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
         name: editingArc.name.trim(),
         image_base64: editingArc.imageBase64,
         items: editingArc.items.map((i, index) => ({
-          id: '', media_external_id: i.media_external_id, ep_start: i.ep_start, ep_end: i.ep_end, position: index,
+          id: '',
+          media_external_id: i.media_external_id,
+          ep_start: i.ep_start,
+          ep_end: i.ep_end,
+          position: index,
+          group_id: i.group_id ?? null,
         })),
-        // Ignored by save_story_arc either way (see its own comment) — only
-        // present to satisfy the type.
         sort_order: 0,
       });
       setEditingArc(null);
@@ -301,6 +547,8 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     setArcs(reordered);
     await reorderStoryArcs(reordered.map(a => a.id));
   }
+
+  const displayUnits = editingArc ? buildDisplayUnits(editingArc.items, sagaOrder) : [];
 
   return (
     <div className="pr-editor-section">
@@ -365,47 +613,228 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
             />
           </div>
 
-          <p className="pr-editor-arc-range-hint">{t.episodes_optional}</p>
-
-          {editingArc.items.length > 1 && (
-            <label className="pr-editor-arc-shared-range-toggle">
-              <input type="checkbox" checked={editingArc.sharedRange} onChange={toggleSharedRange} />
-              Mismo rango de episodios para todas las obras
-            </label>
-          )}
-
           <div className="pr-editor-arc-items-list">
-            {editingArc.items.map((item, index) => (
-              <div key={item.media_external_id} className="pr-editor-arc-item-row">
-                {editingArc.items.length > 1 && (
-                  <div className="pr-editor-arc-card-reorder">
-                    <button type="button" className="pr-editor-arc-card-move" disabled={index === 0} onClick={() => moveItem(index, -1)}>▲</button>
-                    <button type="button" className="pr-editor-arc-card-move" disabled={index === editingArc.items.length - 1} onClick={() => moveItem(index, 1)}>▼</button>
+            {displayUnits.map((unit, unitIdx) => {
+              const isDragging = draggedUnitIdx === unitIdx;
+              const isDropTarget = dropTargetUnitIdx === unitIdx;
+              const isGroupTarget = isDropTarget && dropTargetMode === 'group';
+              const isBeforeTarget = isDropTarget && dropTargetMode === 'before';
+              const isAfterTarget = isDropTarget && dropTargetMode === 'after';
+
+              const unifiedEps = getUnifiedEpisodes(unit);
+              const { globalStart, globalEnd } = getUnitGlobalRange(unit, unifiedEps);
+              const hasEpisodes = unifiedEps.length > 0;
+
+              const rangeLabel = globalStart != null && globalEnd != null
+                ? (globalStart === globalEnd ? `Ep. ${globalStart}` : `Ep. ${globalStart}–${globalEnd}`)
+                : (globalStart != null ? `Ep. ${globalStart}+` : 'Episodios');
+
+              return (
+                <div
+                  key={unit.id}
+                  className={`pr-editor-arc-item-row ${isDragging ? 'is-dragging' : ''} ${isGroupTarget ? 'is-drop-target-group' : ''} ${isBeforeTarget ? 'is-drop-target-before' : ''} ${isAfterTarget ? 'is-drop-target-after' : ''}`}
+                  draggable
+                  onDragStart={() => handleDragStart(unitIdx)}
+                  onDragOver={e => handleDragOverCard(e, unitIdx)}
+                  onDragLeave={() => {
+                    if (dropTargetUnitIdx === unitIdx) {
+                      setDropTargetUnitIdx(null);
+                      setDropTargetMode(null);
+                    }
+                  }}
+                  onDrop={() => handleDrop(displayUnits)}
+                  title={unit.items.map(i => i.title).join(' + ')}
+                >
+                  {isGroupTarget && (
+                    <div className="pr-editor-arc-group-overlay">
+                      + Agrupar
+                    </div>
+                  )}
+
+                  <div className="pr-editor-arc-item-cover-col">
+                    {unit.isGroup ? (
+                      <div className="pr-editor-arc-stacked-covers">
+                        {unit.items.slice(0, 3).map((item, idx) => (
+                          <div key={item.media_external_id} className="pr-editor-arc-stacked-covers-item">
+                            {item.cover ? <img src={item.cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
+                          </div>
+                        ))}
+                        <span className="pr-editor-arc-group-count-badge">{unit.items.length} obras</span>
+                      </div>
+                    ) : (
+                      <div className="pr-editor-arc-item-cover">
+                        {unit.items[0].cover ? <img src={unit.items[0].cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
+                      </div>
+                    )}
+
+                    {hasEpisodes ? (
+                      <button
+                        type="button"
+                        className={`pr-editor-arc-ep-trigger ${activePopoverUnitId === unit.id ? 'is-active' : ''}`}
+                        onClick={e => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const top = rect.bottom + 6 + 280 > window.innerHeight ? Math.max(10, rect.top - 280) : rect.bottom + 6;
+                          const left = Math.min(Math.max(10, rect.left - 60), window.innerWidth - 380);
+                          setPopoverPos({ top, left });
+                          setActivePopoverUnitId(activePopoverUnitId === unit.id ? null : unit.id);
+                        }}
+                      >
+                        <span>{rangeLabel}</span>
+                        <span style={{ fontSize: '0.55rem', opacity: 0.7 }}>▼</span>
+                      </button>
+                    ) : (
+                      <div className="pr-editor-arc-item-range">
+                        <input
+                          type="number"
+                          placeholder={t.ep_start_ph}
+                          value={unit.items[0].ep_start ?? ''}
+                          onChange={e => updateItemRange(unit.items[0].media_external_id, 'ep_start', e.target.value)}
+                          className="pr-editor-arc-item-range-input"
+                        />
+                        <span className="pr-editor-arc-item-range-sep">–</span>
+                        <input
+                          type="number"
+                          placeholder={t.ep_end_ph}
+                          value={unit.items[0].ep_end ?? ''}
+                          onChange={e => updateItemRange(unit.items[0].media_external_id, 'ep_end', e.target.value)}
+                          className="pr-editor-arc-item-range-input"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-                <div className="pr-editor-arc-item-cover">
-                  {item.cover ? <img src={item.cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
+
+                  <div className="pr-editor-arc-item-actions">
+                    {unit.isGroup && (
+                      <button
+                        type="button"
+                        className="pr-editor-arc-card-action-btn"
+                        onClick={e => {
+                          e.stopPropagation();
+                          ungroupUnit(unit);
+                        }}
+                        title="Separar obras agrupadas"
+                      >
+                        <Unlink2 size={12} strokeWidth={2.2} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="pr-editor-arc-card-delete"
+                      onClick={e => {
+                        e.stopPropagation();
+                        unit.items.forEach(i => removeItem(i.media_external_id));
+                      }}
+                      title="Eliminar del arco"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
-                <div className="pr-editor-arc-item-title" title={item.title}>{item.title}</div>
-                <div className="pr-editor-arc-item-range">
-                  <input
-                    type="number" placeholder={t.ep_start_ph} value={item.ep_start ?? ''}
-                    onChange={e => updateItemRange(item.media_external_id, 'ep_start', e.target.value)}
-                    className="pr-editor-arc-item-range-input"
-                  />
-                  <span className="pr-editor-arc-item-range-sep">–</span>
-                  <input
-                    type="number" placeholder={t.ep_end_ph} value={item.ep_end ?? ''}
-                    onChange={e => updateItemRange(item.media_external_id, 'ep_end', e.target.value)}
-                    className="pr-editor-arc-item-range-input"
-                  />
-                </div>
-                {editingArc.items.length > 1 && (
-                  <button type="button" className="pr-editor-arc-card-delete" onClick={() => removeItem(item.media_external_id)}>×</button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
+
+          {/* Episode Selector Dropdown Popover */}
+          {activePopoverUnitId && popoverPos && (() => {
+            const unit = displayUnits.find(u => u.id === activePopoverUnitId);
+            if (!unit) return null;
+            const unifiedEps = getUnifiedEpisodes(unit);
+            const { globalStart, globalEnd } = getUnitGlobalRange(unit, unifiedEps);
+
+            return createPortal(
+              <div
+                className="pr-editor-arc-ep-popover"
+                style={{ top: popoverPos.top, left: popoverPos.left }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="pr-editor-arc-ep-range-row">
+                  <div className="pr-editor-arc-ep-range-field">
+                    <span className="pr-editor-arc-ep-range-label">Desde:</span>
+                    <select
+                      className="pr-editor-arc-ep-select"
+                      value={globalStart ?? ''}
+                      onChange={e => {
+                        const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                        applyGlobalRangeToUnit(unit, unifiedEps, val, globalEnd ?? val);
+                      }}
+                    >
+                      <option value="">(Inicio)</option>
+                      {unifiedEps.map(ep => (
+                        <option key={ep.generalEpNumber} value={ep.generalEpNumber}>
+                          Ep. {ep.generalEpNumber}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="pr-editor-arc-ep-range-field">
+                    <span className="pr-editor-arc-ep-range-label">Hasta:</span>
+                    <select
+                      className="pr-editor-arc-ep-select"
+                      value={globalEnd ?? ''}
+                      onChange={e => {
+                        const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                        applyGlobalRangeToUnit(unit, unifiedEps, globalStart ?? unifiedEps[0]?.generalEpNumber ?? val, val);
+                      }}
+                    >
+                      <option value="">(Fin)</option>
+                      {unifiedEps.map(ep => (
+                        <option key={ep.generalEpNumber} value={ep.generalEpNumber}>
+                          Ep. {ep.generalEpNumber}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="pr-editor-arc-ep-clear-btn"
+                    onClick={() => applyGlobalRangeToUnit(unit, unifiedEps, null, null)}
+                    title="Limpiar rango"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+
+                <div className="pr-editor-arc-ep-list">
+                  {unifiedEps.map(ep => {
+                    const isSelected = globalStart != null && globalEnd != null
+                      && ep.generalEpNumber >= Math.min(globalStart, globalEnd)
+                      && ep.generalEpNumber <= Math.max(globalStart, globalEnd);
+                    return (
+                      <button
+                        type="button"
+                        key={ep.generalEpNumber}
+                        className={`pr-editor-arc-ep-item ${isSelected ? 'is-selected' : ''}`}
+                        title="Clic: fijar inicio (Desde) · Ctrl+Clic: fijar final (Hasta)"
+                        onClick={e => {
+                          handleEpisodeClick(unit, unifiedEps, ep.generalEpNumber, globalStart, globalEnd, e.ctrlKey || e.metaKey);
+                        }}
+                      >
+                        {ep.coverUrl ? (
+                          <img className="pr-editor-arc-ep-thumb" src={ep.coverUrl} alt="" />
+                        ) : (
+                          <div className="pr-editor-arc-ep-thumb" />
+                        )}
+                        <div className="pr-editor-arc-ep-info">
+                          <span className="pr-editor-arc-ep-name">
+                            Ep. {ep.generalEpNumber}{ep.name ? ` · ${ep.name}` : ''}
+                            {(unit.isGroup || ep.generalEpNumber !== ep.seasonEpNumber) && (
+                              <> (<strong className="pr-editor-arc-ep-season-num">Ep. {ep.seasonEpNumber}</strong>)</>
+                            )}
+                          </span>
+                          {unit.isGroup && (
+                            <span className="pr-editor-arc-ep-sub">{ep.mediaTitle}</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>,
+              document.body,
+            );
+          })()}
 
           <div className="pr-editor-arc-editor-footer">
             <div className="pr-editor-arc-add-item-group">
