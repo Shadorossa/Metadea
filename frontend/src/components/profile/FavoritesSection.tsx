@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { motion } from 'motion/react';
+import { Crown, Star, Image as ImageIcon, Shuffle } from 'lucide-react';
 import { getAllLibraryEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
 import type { MediaCatalogEntry, FavoriteCustomImage, CharacterEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
@@ -7,20 +8,19 @@ import { typeIconMap } from '../../lib/shared/icon-strings';
 import { openFavoriteImageEditor } from '../../lib/profile/favorite-image-editor';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
+import { IconCharacter, IconX } from '../local/ui/icons';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type FavData = Record<string, string[]>;
 
+// Per-media-type tab icons (anime/manga/game/...) still come from
+// icon-strings.ts's typeIconMap rather than lucide-react directly — that
+// module is the single source shared with the plain-HTML .astro pages
+// (settings tabs, etc.), which can't render React/lucide components at all.
+// Everything below this line WAS its own local hand-drawn <svg>-as-string
+// (rendered via dangerouslySetInnerHTML) with no such cross-framework
+// constraint, so those are real React icons now instead.
 const TYPE_ICON = typeIconMap(16);
-
-const CROWN_ICON_ON = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>`;
-const CROWN_ICON_OFF = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>`;
-const REMOVE_ICON = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-const EDIT_IMAGE_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
-const MULTIMEDIA_TAB_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
-const CHARACTER_TAB_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
-const REORDER_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M21 3L14 10"/><path d="M18 14l3 3M14 21h7v-7"/><path d="M21 21L14 14"/><path d="M3 3l18 18"/></svg>`;
-const EMPTY_ICON = `<svg class="fav-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
 
 interface FavItem { external_id: string; type: string; }
 
@@ -93,24 +93,27 @@ const MemoizedFavCard = memo(function FavCard({
                 className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
                 title="Multimedia"
                 onClick={e => { e.stopPropagation(); onToggleCrown(item.external_id); }}
-                dangerouslySetInnerHTML={{ __html: isCrowned ? CROWN_ICON_ON : CROWN_ICON_OFF }}
-              />
+              >
+                <Crown size={13} strokeWidth={2} color={isCrowned ? '#fbbf24' : 'currentColor'} fill={isCrowned ? '#fbbf24' : 'none'} />
+              </button>
             )}
             <button
               type="button"
               className="fav-remove-btn"
               title="Eliminar"
               onClick={e => { e.stopPropagation(); e.preventDefault(); onRemove(item.external_id, item.type); }}
-              dangerouslySetInnerHTML={{ __html: REMOVE_ICON }}
-            />
+            >
+              <IconX size={11} strokeWidth={2.5} />
+            </button>
           </div>
           <button
             type="button"
             className="fav-edit-image-btn"
             title="Editar imagen"
             onClick={e => { e.stopPropagation(); e.preventDefault(); onEditImage(item); }}
-            dangerouslySetInnerHTML={{ __html: EDIT_IMAGE_ICON }}
-          />
+          >
+            <ImageIcon size={12} strokeWidth={2} />
+          </button>
         </div>
       )}
 
@@ -242,16 +245,16 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
   };
 
   const categories = useMemo(() => [
-    { key: 'multimedia', label: p.favorites_multimedia || 'Multimedia', icon: MULTIMEDIA_TAB_ICON },
-    { key: 'anime', label: s.anime, icon: TYPE_ICON['anime'] },
-    { key: 'manga', label: s.manga, icon: TYPE_ICON['manga'] },
-    { key: 'game', label: s.game, icon: TYPE_ICON['game'] },
-    { key: 'vnovel', label: s.vnovel, icon: TYPE_ICON['vnovel'] },
-    { key: 'lnovel', label: s.lnovel, icon: TYPE_ICON['lnovel'] },
-    { key: 'series', label: s.series, icon: TYPE_ICON['series'] },
-    { key: 'movie', label: s.movie, icon: TYPE_ICON['movie'] },
-    { key: 'book', label: s.book, icon: TYPE_ICON['book'] },
-    { key: 'character', label: s.character || 'Personajes', icon: CHARACTER_TAB_ICON },
+    { key: 'multimedia', label: p.favorites_multimedia || 'Multimedia', icon: <Star size={14} strokeWidth={2} /> },
+    { key: 'anime', label: s.anime, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['anime'] }} /> },
+    { key: 'manga', label: s.manga, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['manga'] }} /> },
+    { key: 'game', label: s.game, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['game'] }} /> },
+    { key: 'vnovel', label: s.vnovel, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['vnovel'] }} /> },
+    { key: 'lnovel', label: s.lnovel, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['lnovel'] }} /> },
+    { key: 'series', label: s.series, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['series'] }} /> },
+    { key: 'movie', label: s.movie, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['movie'] }} /> },
+    { key: 'book', label: s.book, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['book'] }} /> },
+    { key: 'character', label: s.character || 'Personajes', icon: <IconCharacter size={14} strokeWidth={2} /> },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [p, s]);
 
@@ -362,7 +365,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
                 className={`fav-tab-btn ${c.key === activeCatKey ? 'active' : ''}`}
                 onClick={() => setActiveCatKey(c.key)}
               >
-                <span dangerouslySetInnerHTML={{ __html: c.icon }} />
+                {c.icon}
                 <span>{c.label}</span>
                 {count > 0 && <span className="fav-tab-count">{count}</span>}
               </button>
@@ -375,8 +378,9 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
             className={`fav-tab-btn fav-reorder-btn ${reorderModeActive ? 'active' : ''}`}
             title={p.reorder}
             onClick={() => setReorderModeActive(a => !a)}
-            dangerouslySetInnerHTML={{ __html: REORDER_ICON }}
-          />
+          >
+            <Shuffle size={16} strokeWidth={2} />
+          </button>
         )}
       </div>
       <div className="fav-grid-container">
@@ -408,7 +412,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
           </div>
         ) : (
           <div className="fav-empty-state">
-            <span dangerouslySetInnerHTML={{ __html: EMPTY_ICON }} />
+            <Star className="fav-empty-icon" size={48} strokeWidth={1.5} />
             <h3 className="fav-empty-title">{cat.label}</h3>
             <p className="fav-empty-text">{p.empty_favorites}</p>
           </div>

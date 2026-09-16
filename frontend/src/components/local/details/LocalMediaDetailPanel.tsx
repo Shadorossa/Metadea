@@ -28,7 +28,7 @@ import { formatWatchedAt, formatPlaybackTime } from '../utils/formatters';
 import { catalogReleaseTimestampMs, firstCsvUrl } from '../../../lib/media/mapper-utils';
 import { isReadingType } from '../../../lib/constants/media';
 import { formatDateLong } from '../../../lib/shared/formatDate';
-import { IconX, IconFolder, IconCheck, IconPencil } from '../ui/icons';
+import { IconX, IconFolder, IconCheck, IconPencil, IconTrash } from '../ui/icons';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
@@ -895,12 +895,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
               className="local-history-context-menu-item delete"
               onClick={() => handleDeleteHistoryEntry(historyMenu.entry)}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
+              <span style={{ marginRight: 6, display: 'inline-flex' }}><IconTrash /></span>
               <span>{t.local.delete_history_entry}</span>
             </button>
           </div>,

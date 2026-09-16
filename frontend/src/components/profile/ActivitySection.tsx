@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { readUserJourney, writeUserJourney } from '../../lib/tauri';
 import type { DayJourney, UserJourneyEvent, MediaCatalogEntry } from '../../lib/tauri';
 import { typeIconMap } from '../../lib/shared/icon-strings';
+import { IconTrash } from '../local/ui/icons';
 import { getTypeLabel } from '../../lib/constants/media';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
@@ -214,12 +215,7 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
             className="act-context-menu-item delete"
             onClick={() => handleDelete(menu.event)}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              <line x1="10" y1="11" x2="10" y2="17" />
-              <line x1="14" y1="11" x2="14" y2="17" />
-            </svg>
+            <span style={{ marginRight: 6, display: 'inline-flex' }}><IconTrash /></span>
             <span>{p.activity_delete}</span>
           </button>
         </div>,

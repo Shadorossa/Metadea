@@ -1,99 +1,65 @@
-import React from 'react';
+import {
+  Monitor, Folder, File as FileIcon, RefreshCw, Download, Plus, X, SquarePen, Eye, ExternalLink, Trash2,
+  LayoutGrid, BookOpen, Bookmark, Gamepad2, MessageSquare, Film, MonitorPlay, Book, BookImage, User, IdCard,
+  CirclePlay, CircleCheckBig, CirclePause, CircleX, Check, CircleAlert, Layers, Heart, Award, Hourglass, Play, Pause,
+} from 'lucide-react';
+
+// Every icon below used to be its own hand-drawn <svg> (duplicated, in several
+// cases identically, across other components too — see DeleteContextMenu.tsx,
+// LocalMediaDetailPanel.tsx, MediaEditorModal.tsx, ActivitySection.tsx,
+// TierIndex.tsx for the same trash glyph alone). Routing them all through
+// lucide-react here means every one of those call sites gets a consistent
+// stroke width/size/library instead of a hand-copied path, without any of
+// them needing to change — this file's exported names and prop shapes are
+// unchanged. IconGithub and IconAnime stay hand-drawn: lucide dropped brand
+// logos (no github/youtube icons), and there's no stock icon for a kanji
+// glyph.
 
 // ── Generic UI ────────────────────────────────────────────────────────────────
 
 export function IconMonitor() {
-  return (
-    <svg width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/>
-      <line x1="8" y1="21" x2="16" y2="21"/>
-      <line x1="12" y1="17" x2="12" y2="21"/>
-    </svg>
-  );
+  return <Monitor size={48} strokeWidth={1.5} />;
 }
 
 export function IconFolder({ size = 40, strokeWidth = 1.5 }: { size?: number; strokeWidth?: number } = {}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-    </svg>
-  );
+  return <Folder size={size} strokeWidth={strokeWidth} />;
 }
 
 export function IconFile() {
-  return (
-    <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
-      <polyline points="13 2 13 9 20 9"/>
-    </svg>
-  );
+  return <FileIcon size={32} strokeWidth={1.5} />;
 }
 
 export function IconRefresh() {
-  return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="23 4 23 10 17 10"/>
-      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-    </svg>
-  );
+  return <RefreshCw size={16} strokeWidth={2} />;
 }
 
 export function IconDownload() {
-  return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="7 10 12 15 17 10"/>
-      <line x1="12" y1="15" x2="12" y2="3"/>
-    </svg>
-  );
+  return <Download size={16} strokeWidth={2} />;
 }
 
 export function IconPlus({ size = 16, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19"/>
-      <line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-  );
+  return <Plus size={size} strokeWidth={strokeWidth} />;
 }
 
 export function IconX({ size = 12, strokeWidth = 2.5 }: { size?: number; strokeWidth?: number } = {}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18"/>
-      <line x1="6" y1="6" x2="18" y2="18"/>
-    </svg>
-  );
+  return <X size={size} strokeWidth={strokeWidth} />;
 }
 
 export function IconPencil({ size = 14, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-    </svg>
-  );
+  return <SquarePen size={size} strokeWidth={strokeWidth} />;
 }
 
 export function IconEye({ size = 16, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  );
+  return <Eye size={size} strokeWidth={strokeWidth} />;
 }
 
 export function IconExternalLink({ size = 16, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-      <polyline points="15 3 21 3 21 9"/>
-      <line x1="10" y1="14" x2="21" y2="3"/>
-    </svg>
-  );
+  return <ExternalLink size={size} strokeWidth={strokeWidth} />;
 }
 
+// Brand logo — lucide-react removed all brand/wordmark icons (trademark
+// reasons), so this one stays hand-drawn; there's no library equivalent to
+// standardize onto.
 export function IconGithub({ size = 16, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -103,31 +69,20 @@ export function IconGithub({ size = 16, strokeWidth = 2 }: { size?: number; stro
 }
 
 export function IconTrash({ size = 14, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6"/>
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-    </svg>
-  );
+  return <Trash2 size={size} strokeWidth={strokeWidth} />;
 }
 
 // ── Media type icons (search tabs, etc.) ──────────────────────────────────────
 
 interface SvgProps { size?: number; strokeWidth?: number; }
 
-function Svg({ size = 20, strokeWidth = 2, children }: SvgProps & { children: React.ReactNode }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      {children}
-    </svg>
-  );
-}
-
 export function IconAll(p: SvgProps) {
-  return <Svg {...p}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></Svg>;
+  return <LayoutGrid {...p} />;
 }
 
+// A kanji glyph, not a pictogram — no stock icon (lucide or otherwise) stands
+// in for "anime" the way BookOpen can stand in for "manga", so this one stays
+// hand-drawn text.
 export function IconAnime(p: SvgProps) {
   const size = p.size ?? 20;
   return (
@@ -138,138 +93,111 @@ export function IconAnime(p: SvgProps) {
 }
 
 export function IconManga(p: SvgProps) {
-  return <Svg {...p}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></Svg>;
+  return <BookOpen {...p} />;
 }
 
 export function IconNovel(p: SvgProps) {
-  return <Svg {...p}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></Svg>;
+  return <Bookmark {...p} />;
 }
 
 export function IconGame(p: SvgProps) {
-  return (
-    <Svg {...p}>
-      <rect x="2" y="6" width="20" height="12" rx="2"/>
-      <path d="M6 12h4M8 10v4"/>
-      <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/>
-      <circle cx="18" cy="10" r="1" fill="currentColor" stroke="none"/>
-    </Svg>
-  );
+  return <Gamepad2 {...p} />;
 }
 
 export function IconVNovel(p: SvgProps) {
-  return <Svg {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></Svg>;
+  return <MessageSquare {...p} />;
 }
 
 export function IconMovie(p: SvgProps) {
-  return <Svg {...p}><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M17 7h5M2 17h5M17 17h5"/></Svg>;
+  return <Film {...p} />;
 }
 
 export function IconSeries(p: SvgProps) {
-  return (
-    <Svg {...p}>
-      <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/>
-      <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="currentColor" stroke="none"/>
-    </Svg>
-  );
+  return <MonitorPlay {...p} />;
 }
 
 export function IconBook(p: SvgProps) {
-  return <Svg {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></Svg>;
+  return <Book {...p} />;
 }
 
 export function IconComic(p: SvgProps) {
-  return <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></Svg>;
+  return <BookImage {...p} />;
 }
 
 export function IconCharacter(p: SvgProps) {
-  return <Svg {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></Svg>;
+  return <User {...p} />;
 }
 
 // A crew ID badge — distinct from IconCharacter's plain person silhouette,
 // since this represents the people who made a work (director/writer/...)
 // rather than a character within it.
 export function IconStaff(p: SvgProps) {
-  return <Svg {...p}><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h3M15 12h3M6 16h12"/></Svg>;
+  return <IdCard {...p} />;
 }
 
 // ── Status icons (editor modal, profile render) ───────────────────────────────
 
 export function IconStatusPlanning(p: SvgProps) {
-  return <Svg {...p}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></Svg>;
+  return <Bookmark {...p} />;
 }
 
 export function IconStatusInProgress(p: SvgProps) {
-  return (
-    <Svg {...p}>
-      <circle cx="12" cy="12" r="10"/>
-      <polygon fill="currentColor" stroke="none" points="10,8 16,12 10,16"/>
-    </Svg>
-  );
+  return <CirclePlay {...p} />;
 }
 
 export function IconStatusCompleted(p: SvgProps) {
-  return <Svg {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></Svg>;
+  return <CircleCheckBig {...p} />;
 }
 
 export function IconStatusPaused(p: SvgProps) {
-  return <Svg {...p}><circle cx="12" cy="12" r="10"/><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></Svg>;
+  return <CirclePause {...p} />;
 }
 
 export function IconStatusDropped(p: SvgProps) {
-  return <Svg {...p}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></Svg>;
+  return <CircleX {...p} />;
 }
 
 // ── Utility icons ─────────────────────────────────────────────────────────────
 
 export function IconCheck(p: SvgProps) {
-  return <Svg {...p}><polyline points="20 6 9 17 4 12"/></Svg>;
+  return <Check {...p} />;
 }
 
 export function IconAlertCircle(p: SvgProps) {
-  return <Svg {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Svg>;
+  return <CircleAlert {...p} />;
 }
 
 export function IconLayers(p: SvgProps) {
-  return <Svg {...p}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></Svg>;
+  return <Layers {...p} />;
 }
 
 export function IconHeart({ filled = false, size = 20, strokeWidth = 1.8 }: SvgProps & { filled?: boolean }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'}
-      stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-    </svg>
-  );
+  return <Heart size={size} strokeWidth={strokeWidth} fill={filled ? 'currentColor' : 'none'} />;
 }
 
 export function IconPlatinum({ filled = false, size = 20, strokeWidth = 1.8 }: SvgProps & { filled?: boolean }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'}
-      stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
-    </svg>
-  );
+  return <Award size={size} strokeWidth={strokeWidth} fill={filled ? 'currentColor' : 'none'} />;
 }
 
 // ── Tray status icon (MediaPage — different designs from editor status icons) ──
 
 export function IconTrayStatus({ status, size = 20 }: { status: string; size?: number }) {
-  const props = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  const props = { size, strokeWidth: 2.5 };
   switch (status) {
     case 'planning':
-      return <svg {...props}><path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z"/><path d="M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/></svg>;
+      return <Hourglass {...props} />;
     case 'watching':
     case 'reading':
-      return <svg {...props}><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+      return <Play {...props} />;
     case 'playing':
-      return <svg {...props}><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="10" r="1" fill="currentColor" stroke="none"/></svg>;
+      return <Gamepad2 {...props} />;
     case 'completed':
-      return <svg {...props}><polyline points="20 6 9 17 4 12"/></svg>;
+      return <Check {...props} />;
     case 'paused':
-      return <svg {...props}><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>;
+      return <Pause {...props} />;
     case 'dropped':
-      return <svg {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+      return <X {...props} />;
     default:
-      return <svg {...props}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+      return <Plus {...props} />;
   }
 }
