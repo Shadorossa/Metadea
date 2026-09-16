@@ -527,9 +527,15 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       return;
     }
     const { status, rating, progress, progressVolumes, startedAt, finishedAt, notes } = result.data;
+    // UPDATE_LOGS_BULK (keyed explicitly by targetId) instead of UPDATE_LOG
+    // (which always writes to whatever state.activeLogId is AT DISPATCH
+    // TIME) — this fetch is async, so if the user switches tabs while it's
+    // in flight, UPDATE_LOG would silently write this response onto
+    // whichever OTHER tab they'd switched to by the time it resolved,
+    // instead of the one it was actually fetched for.
     dispatchEntry({
-      type: 'UPDATE_LOG',
-      updates: { status, rating, progress, progressCount2: progressVolumes, startedAt, finishedAt, notes },
+      type: 'UPDATE_LOGS_BULK',
+      updatesById: { [targetId]: { status, rating, progress, progressCount2: progressVolumes, startedAt, finishedAt, notes } },
     });
     dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'ok' });
     setTimeout(() => dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'idle' }), 3000);

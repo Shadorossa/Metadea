@@ -91,8 +91,22 @@ export function ProfileLibraryEditor({ i18n }: Props) {
         .catch(console.error);
     };
 
-    window.addEventListener('open-profile-editor', handleOpen as EventListener);
-    return () => window.removeEventListener('open-profile-editor', handleOpen as EventListener);
+    const attach = () => window.addEventListener('open-profile-editor', handleOpen as EventListener);
+    attach();
+    // Astro's client-side navigation (View Transitions) can leave a
+    // client:idle island's own event listeners stale after enough
+    // back-and-forth through the profile page — the "open editor" click
+    // from a library card then silently does nothing until a hard refresh.
+    // Re-attaching on every astro:page-load (a no-op if `handleOpen` — a
+    // fresh closure per effect run — is already the one currently bound)
+    // guards against that instead of relying on this effect's own mount/
+    // unmount cycle firing correctly across every kind of navigation.
+    document.addEventListener('astro:page-load', attach);
+
+    return () => {
+      window.removeEventListener('open-profile-editor', handleOpen as EventListener);
+      document.removeEventListener('astro:page-load', attach);
+    };
   }, []);
 
   return (
