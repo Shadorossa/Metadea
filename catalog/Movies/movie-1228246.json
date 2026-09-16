@@ -1,0 +1,195 @@
+{
+  "media_catalog": {
+    "id": "1e2c48b0e6be44131e2c48b0e6be4413",
+    "external_id": "movie:1228246",
+    "type": "movie",
+    "title_main": "Five Nights at Freddy's 2",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:11133",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Poltergeist II: The Other Side",
+      "cover": "https://image.tmdb.org/t/p/w300/tVQPv69XWIgzF5n1MRrTuhPyNr5.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:167032",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Curse of Chucky",
+      "cover": "https://image.tmdb.org/t/p/w300/x9DzkDWp8O82Wzxk6otuD9bce9a.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:41436",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Paranormal Activity 2",
+      "cover": "https://image.tmdb.org/t/p/w300/gfdrkBZAyUUXJJ2iLQe03SAYRD3.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:2082",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Halloween",
+      "cover": "https://image.tmdb.org/t/p/w300/cD8JrfSEI4j7WVnKM1GdiYzMoUh.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:393345",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Cult of Chucky",
+      "cover": "https://image.tmdb.org/t/p/w300/r5JUiMYfatwYeDkxkLWYUx5GIjY.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:424139",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Halloween",
+      "cover": "https://image.tmdb.org/t/p/w300/f7JAX5EGk4GgsEnus6OxyzwpFp7.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:610253",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Halloween Kills",
+      "cover": "https://image.tmdb.org/t/p/w300/ir9eyz1mtgsohjvo7UYtqUfFuES.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:11281",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Halloween II",
+      "cover": "https://image.tmdb.org/t/p/w300/3nX5HHGgOKaVMxXwMLT9DHO1Ne6.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:396422",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Annabelle: Creation",
+      "cover": "https://image.tmdb.org/t/p/w300/tb86j8jVCVsdZnzf8I6cIi65IeM.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:11357",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Halloween 4: The Return of Michael Myers",
+      "cover": "https://image.tmdb.org/t/p/w300/eFSOkXF9n9hsfGv45MDsPixiOyx.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:10225",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Jason Lives - Friday the 13th Part VI",
+      "cover": "https://image.tmdb.org/t/p/w300/6vdUpHvkspQonXBdWcLWW5ciEPJ.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:616820",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Halloween Ends",
+      "cover": "https://image.tmdb.org/t/p/w300/q06saepaXeBdkMibuN4R2fXmgIw.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:1159559",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Scream 7",
+      "cover": "https://image.tmdb.org/t/p/w300/jjyuk0edLiW8vOSnlfwWCCLpbh5.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:11187",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Child's Play 3",
+      "cover": "https://image.tmdb.org/t/p/w300/6toMk9OCuDYEEf733Bzlq3yiw3z.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:10131",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "A Nightmare on Elm Street 4: The Dream Master",
+      "cover": "https://image.tmdb.org/t/p/w300/boStYG7jKdoIZTduiOOsUVknD13.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:287084",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Town that Dreaded Sundown",
+      "cover": "https://image.tmdb.org/t/p/w300/dHXH9Gzk14am6KFFG7B3W60P5R4.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:934433",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Scream VI",
+      "cover": "https://image.tmdb.org/t/p/w300/wDWwtvkRRlgTiUr6TyLSMX8FCuZ.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:11683",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Land of the Dead",
+      "cover": "https://image.tmdb.org/t/p/w300/xxp0qcZ3n2YA53SIzWilDSfIaA4.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:574475",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Final Destination Bloodlines",
+      "cover": "https://image.tmdb.org/t/p/w300/6WxhEvFsauuACfv8HyoVX6mZKFj.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:1228246",
+      "related_media_external_id": "movie:507089",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Five Nights at Freddy's",
+      "cover": "https://image.tmdb.org/t/p/w300/7BpNtNfxuocYEVREzVMO75hso1l.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
