@@ -24,7 +24,7 @@ interface GameCardProps {
   onRequestDelete?: (game: LocalGame, x: number, y: number) => void;
   // The linked catalog entry's own title, when there is one — takes over
   // from game.name (the raw scanned name, which for a ROM is often a messy
-  // dump filename) once a catalog link exists. See VideojuegosGrid's
+  // dump filename) once a catalog link exists. See GamesGrid's
   // displayNameFor.
   displayName?: string;
 }

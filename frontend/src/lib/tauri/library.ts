@@ -92,7 +92,7 @@ export async function addPlaytimeHours(externalId: string, hours: number): Promi
   // untouched here (progress-only, like before) meant an auto-tracked
   // session made progress correct but minutes_spent stale until the next
   // manual save — visible anywhere minutes_spent itself gets read directly
-  // (VideojuegosGrid's own "ordenar por tiempo jugado", say).
+  // (GamesGrid's own "ordenar por tiempo jugado", say).
   await saveLibraryEntry({ ...entry, progress, minutes_spent: Math.round(progress * 60) });
 }
 

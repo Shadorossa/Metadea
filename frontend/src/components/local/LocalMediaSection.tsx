@@ -85,7 +85,7 @@ interface LocalMediaSectionProps {
   onSetCatalogSelection: (id: string | null) => void;
   onSetGameSelection: (g: LocalGame | null) => void;
   onOpenPendingSelection: (item: LocalMediaItem, launchGame?: LocalGame) => void;
-  // Same lookup VideojuegosGrid uses for its own GameCards — once a Steam
+  // Same lookup GamesGrid uses for its own GameCards — once a Steam
   // VN has been linked to a catalog entry (a Steam-ID guess, or a manual
   // "editar metadatos" pick), its card shows that entry's own title_main
   // instead of the raw scanned Steam name.
@@ -93,7 +93,7 @@ interface LocalMediaSectionProps {
   // "Eliminar de la lista" — only ever passed (and only ever rendered, see
   // isGameLike below) for Visual Novel, the one non-Videojuegos category
   // with its own scanned-install ("steam" kind) and catalog-tracked
-  // ("catalog" kind) entries alike, same as VideojuegosGrid's own pair.
+  // ("catalog" kind) entries alike, same as GamesGrid's own pair.
   // Every other category (anime/manga/...) never gets a delete option here.
   onRemoveGame?: (launcher: string, linkKey: string) => void;
   onDeleteLibraryItem?: (externalId: string) => void;
@@ -204,7 +204,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   const isGameLike = !!steamGames;
 
   // "Eliminar de la lista" — same shared game/library-entry menu
-  // VideojuegosGrid uses, only ever wired below when isGameLike (see
+  // GamesGrid uses, only ever wired below when isGameLike (see
   // onRemoveGame/onDeleteLibraryItem's own doc comments above): anime/manga/
   // etc. never render a "steam" kind entry at all, and their "catalog" kind
   // LocalMediaCards never get onRequestDelete passed in the first place.

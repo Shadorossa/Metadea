@@ -67,7 +67,7 @@ function launcherFromIgdbDetail(detail: Record<string, unknown> | null): string 
 // belong to which launcher section — matched first via any already-resolved
 // launchGame, then the catalog's own (locally cached) shop_links_csv, and
 // finally a live IGDB lookup for whatever's left unresolved. Shared by
-// VideojuegosGrid (to render these into their launcher section) and
+// GamesGrid (to render these into their launcher section) and
 // LocalLibrary (to light up that platform's sidebar icon even when it has
 // zero actually-installed games). "En progreso" entries are deliberately
 // NOT considered here — that section stays one general list regardless of

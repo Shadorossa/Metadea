@@ -1410,7 +1410,7 @@
      used to only free the grid's space once THIS element's own 300ms exit
      slide finished and got removed from the tree, which never re-rendered
      the (sibling) games grid to notice — the grid's own reflow (see
-     VideojuegosGrid's launcher-title rule/controls) only ever animated on
+     GamesGrid's launcher-title rule/controls) only ever animated on
      open, snapping instantly on close. Fixed positioning needs no sticky
      parent behavior to land in the right spot, just top/right below. */
   position: fixed;

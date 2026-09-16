@@ -82,7 +82,7 @@ function entryKey(entry: StatusEntry): string {
   return entry.kind === 'game' ? `g-${entry.game.app_id ?? entry.game.install_path ?? entry.game.name}` : `c-${entry.item.externalId}`;
 }
 
-interface VideojuegosGridProps {
+interface GamesGridProps {
   gamesState:    GamesState;
   gamesCount:    number;
   rootFolder:    string | undefined;
@@ -144,13 +144,13 @@ interface VideojuegosGridProps {
 // block directly alongside every other category's selection/metadata-fetch
 // state; this only needs the already-resolved data and a handful of
 // callbacks.
-export function VideojuegosGrid({
+export function GamesGrid({
   gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
   currentlyEntries, planningEntries, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
   pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds, gameStatusMatch, catalogMapById, onRemoveGame,
   onDeleteLibraryItem,
-}: VideojuegosGridProps) {
+}: GamesGridProps) {
   const t = getT();
   const tLocal = t.local;
   const displayNameFor = (g: LocalGame): string | undefined =>

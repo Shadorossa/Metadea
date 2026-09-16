@@ -30,7 +30,7 @@ import { DetailPanelShell } from './details/DetailPanelShell';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
-import { VideojuegosGrid } from './VideojuegosGrid';
+import { GamesGrid } from './GamesGrid';
 
 export default function LocalLibrary() {
   const t = getT();
@@ -145,7 +145,7 @@ export default function LocalLibrary() {
   }, [refetchMedia]);
 
   // "Eliminar de la lista" for a catalog-tracked pendiente/en progreso entry
-  // (VideojuegosGrid/LocalMediaSection's own LocalMediaCard) — unlike
+  // (GamesGrid/LocalMediaSection's own LocalMediaCard) — unlike
   // removeGame above (an optimistic, purely local removal from useLocalGames'
   // own state, since a scanned install has no "row" to refetch), there's no
   // cheap optimistic path here: mediaRaw is a plain snapshot, not something
@@ -583,7 +583,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
               AnimatePresence removed it from the tree — which never
               triggered a re-render over here at all (a sibling's internal
               state settling doesn't retrigger this component), so the
-              games grid's own reflow (see VideojuegosGrid's launcher-title
+              games grid's own reflow (see GamesGrid's launcher-title
               rule/controls) never got a chance to animate on close, only
               on open. Reserving the space here instead ties it directly to
               panelOpen, so both directions change on the exact same render
@@ -613,7 +613,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             ) : (
               /* ── Games view (Videojuegos only — LOCAL_MEDIA_TYPE_BY_CATEGORY
                   covers every other category) ──────────────────────────── */
-              <VideojuegosGrid
+              <GamesGrid
                 gamesState={gamesState}
                 gamesCount={games.length}
                 rootFolder={routes['videojuegos']}

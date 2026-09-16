@@ -34,7 +34,7 @@ export function useLocalGames() {
     debugScanInfo().then(setDebugInfo).catch((e: unknown) => setDebugInfo(String(e)));
   }, []);
 
-  // Optimistic client-side removal for VideojuegosGrid's "Eliminar de la
+  // Optimistic client-side removal for GamesGrid's "Eliminar de la
   // lista" — the backend call (removeLocalGame) is what actually makes the
   // removal durable (see remove_local_game), this just drops it from local
   // state immediately instead of running loadGames()'s full re-scan (which
