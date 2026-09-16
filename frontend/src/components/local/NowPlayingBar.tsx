@@ -1,8 +1,3 @@
-// Global "now playing" bar — mounted once in BaseLayout.astro (outside
-// <slot />, transition:persist) so it survives Astro page transitions the
-// same way playback-service.ts's own module state does, showing whatever's
-// playing through Metadea's local player regardless of which page you're on
-// — the same idea as Spotify's own always-there mini-player.
 import { usePlaybackState, pausePlayback, resumePlayback, skipToNext, stopPlayback } from '../../lib/local/playback-service';
 import { wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
@@ -10,8 +5,10 @@ import { isReadingType } from '../../lib/constants/media';
 import { formatPlaybackTime } from './utils/formatters';
 import { NowMediaBar } from '../shared/NowMediaBar';
 import { IconX } from './ui/icons';
+import { getT } from '../../i18n/client';
 
 export function NowPlayingBar() {
+  const t = getT().local;
   const playback = usePlaybackState();
   if (!playback) return null;
 
@@ -43,7 +40,7 @@ export function NowPlayingBar() {
             type="button"
             className="now-playing-btn"
             onClick={() => (playback.status === 'playing' ? pausePlayback() : resumePlayback())}
-            aria-label={playback.status === 'playing' ? 'Pausar' : 'Reproducir'}
+            aria-label={playback.status === 'playing' ? t.pause : t.play}
           >
             {playback.status === 'playing' ? (
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
@@ -56,13 +53,13 @@ export function NowPlayingBar() {
             )}
           </button>
           {hasNext && (
-            <button type="button" className="now-playing-btn" onClick={skipToNext} aria-label="Siguiente episodio">
+            <button type="button" className="now-playing-btn" onClick={skipToNext} aria-label={t.next_episode}>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 4 15 12 5 20 5 4" /><rect x="17" y="4" width="3" height="16" />
               </svg>
             </button>
           )}
-          <button type="button" className="now-playing-btn now-playing-btn--close" onClick={stopPlayback} aria-label="Detener">
+          <button type="button" className="now-playing-btn now-playing-btn--close" onClick={stopPlayback} aria-label={t.stop}>
             <IconX size={14} />
           </button>
         </>

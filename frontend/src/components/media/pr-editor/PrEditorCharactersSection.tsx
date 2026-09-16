@@ -111,7 +111,7 @@ export function PrEditorCharactersSection({ t, characters, changed, onRemove, on
             className="pr-editor-btn pr-editor-btn--cancel"
             style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', margin: 0 }}
             onClick={onOpenCreate}
-            title="Para un personaje que no existe en AniList"
+            title={t.character.non_anilist_character_title}
           >
             + Crear personaje
           </button>

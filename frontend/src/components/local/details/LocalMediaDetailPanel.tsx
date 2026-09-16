@@ -870,10 +870,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                 >
                   <IconCheck />
                   {isMovieFormat ? (
-                    <span>Has visto <strong>{item.title}</strong></span>
+                    <span>{t.local.seen_count} <strong>{item.title}</strong></span>
                   ) : (
                     <span>
-                      {isReadingType(item.libraryEntry.type) ? 'Capítulo' : 'Episodio'}{' '}
+                      {isReadingType(item.libraryEntry.type) ? t.media.chapter : t.media.episode}{' '}
                       <strong>{h.episode_number}</strong> - {item.title}
                     </span>
                   )}

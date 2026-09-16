@@ -152,6 +152,7 @@ export function VideojuegosGrid({
   onDeleteLibraryItem,
 }: VideojuegosGridProps) {
   const t = getT();
+  const tLocal = t.local;
   const displayNameFor = (g: LocalGame): string | undefined =>
     g.external_id ? catalogMapById.get(g.external_id)?.title_main ?? undefined : undefined;
 
@@ -335,11 +336,11 @@ export function VideojuegosGrid({
                     className="local-sort-select"
                     value={sortMode}
                     onChange={e => setSortMode(e.target.value as SortMode)}
-                    title="Ordenar"
+                    title={tLocal.sort_title}
                   >
-                    <option value="alpha">Alfabético</option>
-                    <option value="lastPlayed">Última vez jugado</option>
-                    <option value="playtime">Tiempo jugado</option>
+                    <option value="alpha">{tLocal.sort_alpha}</option>
+                    <option value="lastPlayed">{tLocal.sort_last_played}</option>
+                    <option value="playtime">{tLocal.sort_playtime}</option>
                   </select>
                   {idx === 0 && (
                     <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan} disabled={gamesState === 'loading'}>

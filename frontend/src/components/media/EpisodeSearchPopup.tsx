@@ -142,7 +142,7 @@ export function EpisodeSearchPopup({
           {/* Show Selection State */}
           {!selectedShow && (
             <>
-              {isSearchingShows && <div className="pr-editor-search-loading">{s.search_loading}</div>}
+              {isSearchingShows && <div className="pr-editor-search-loading">{s.loading}</div>}
               {!isSearchingShows && deduplicatedShows.length === 0 && query && (
                 <div className="pr-editor-search-empty">{s.no_results}</div>
               )}
@@ -174,7 +174,7 @@ export function EpisodeSearchPopup({
           {/* Episode Selection State */}
           {selectedShow && (
             <>
-              {isLoadingEpisodes && <div className="pr-editor-search-loading">{s.search_loading}</div>}
+              {isLoadingEpisodes && <div className="pr-editor-search-loading">{s.loading}</div>}
               {!isLoadingEpisodes && episodes.length === 0 && (
                 <div className="pr-editor-search-empty">{s.no_results}</div>
               )}

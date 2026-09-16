@@ -18,6 +18,7 @@ import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri/
 import { openImageCropModal } from '../../shared/ImageCropModal';
 import { MediaSearchPopup } from '../MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../../lib/search';
+import { getT } from '../../../i18n/client';
 
 interface EditingItem {
   media_external_id: string;
@@ -65,6 +66,7 @@ function formatRange(item: Pick<StoryArcItem, 'ep_start' | 'ep_end'>): string {
 }
 
 export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCover, sagaOrder, resolveSagaMeta, onArcDeleted }: Props) {
+  const t = getT().pr_editor.story_arcs;
   const [arcs, setArcs] = useState<StoryArc[]>([]);
   const [metaById, setMetaById] = useState<Record<string, { title: string; cover: string | null }>>({});
   const [editingArc, setEditingArc] = useState<EditingArc | null>(null);
@@ -285,15 +287,12 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
   }
 
   async function handleDeleteArc(arcId: string) {
-    if (!window.confirm('¿Eliminar este arco argumental?')) return;
+    if (!window.confirm(t.delete_confirm)) return;
     await deleteStoryArc(arcId);
     onArcDeleted?.(arcId);
     await reload();
   }
 
-  // Swaps this arc with its neighbor and persists the whole visible list's
-  // new order — reorder_story_arcs only touches the ids it's given, so this
-  // never affects an arc outside what's currently shown here.
   async function moveArc(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= arcs.length) return;
@@ -306,13 +305,13 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
   return (
     <div className="pr-editor-section">
       <div className="pr-editor-section-header-row">
-        <span className="pr-editor-section-title">Arcos Argumentales</span>
-        {!editingArc && <button type="button" className="pr-editor-add-btn" onClick={startNewArc}>+ Nuevo arco</button>}
+        <span className="pr-editor-section-title">{t.title}</span>
+        {!editingArc && <button type="button" className="pr-editor-add-btn" onClick={startNewArc}>{t.new_arc}</button>}
       </div>
 
       {!editingArc && (
         arcs.length === 0 ? (
-          <p className="pr-editor-bundle-children-hint">Sin arcos argumentales todavía.</p>
+          <p className="pr-editor-bundle-children-hint">{t.empty}</p>
         ) : (
           <div className="pr-editor-arcs-list">
             {arcs.map((arc, index) => (
@@ -340,7 +339,7 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
                   </div>
                 </div>
                 <div className="pr-editor-arc-card-actions">
-                  <button type="button" className="pr-editor-add-btn" onClick={() => startEditArc(arc)}>Editar</button>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => startEditArc(arc)}>{t.edit}</button>
                   <button type="button" className="pr-editor-arc-card-delete" onClick={() => handleDeleteArc(arc.id)}>×</button>
                 </div>
               </div>
@@ -355,23 +354,23 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
             <button type="button" className="pr-editor-arc-image-picker" onClick={handleImagePick}>
               {editingArc.imageBase64
                 ? <img src={editingArc.imageBase64} alt="" />
-                : <span>+ Imagen</span>}
+                : <span>{t.add_image}</span>}
             </button>
             <input
               type="text"
-              placeholder="Nombre del arco (ej. Sociedad de Almas)"
+              placeholder={t.name_ph}
               value={editingArc.name}
               onChange={e => setEditingArc({ ...editingArc, name: e.target.value })}
               className="pr-editor-arc-name-input"
             />
           </div>
 
-          <p className="pr-editor-arc-range-hint">El rango de episodios/capítulos es opcional.</p>
+          <p className="pr-editor-arc-range-hint">{t.episodes_optional}</p>
 
           {editingArc.items.length > 1 && (
             <label className="pr-editor-arc-shared-range-toggle">
               <input type="checkbox" checked={editingArc.sharedRange} onChange={toggleSharedRange} />
-              Mismo rango de episodios para todas las obras (ej. arcos como Thousand Year Blood War, repartidos en varias partes)
+              Mismo rango de episodios para todas las obras
             </label>
           )}
 
@@ -390,13 +389,13 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
                 <div className="pr-editor-arc-item-title" title={item.title}>{item.title}</div>
                 <div className="pr-editor-arc-item-range">
                   <input
-                    type="number" placeholder="Ep. inicio" value={item.ep_start ?? ''}
+                    type="number" placeholder={t.ep_start_ph} value={item.ep_start ?? ''}
                     onChange={e => updateItemRange(item.media_external_id, 'ep_start', e.target.value)}
                     className="pr-editor-arc-item-range-input"
                   />
                   <span className="pr-editor-arc-item-range-sep">–</span>
                   <input
-                    type="number" placeholder="Ep. fin" value={item.ep_end ?? ''}
+                    type="number" placeholder={t.ep_end_ph} value={item.ep_end ?? ''}
                     onChange={e => updateItemRange(item.media_external_id, 'ep_end', e.target.value)}
                     className="pr-editor-arc-item-range-input"
                   />
@@ -412,11 +411,11 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
             <div className="pr-editor-arc-add-item-group">
               {sagaOrder.length > 1 && (
                 <div className="pr-editor-arc-saga-picker-wrap">
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setShowSagaPicker(v => !v)}>+ De la saga</button>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setShowSagaPicker(v => !v)}>{t.from_saga}</button>
                   {showSagaPicker && (
                     <div className="pr-editor-arc-saga-picker">
                       {sagaOrder.filter(id => !editingArc.items.some(i => i.media_external_id === id)).length === 0 ? (
-                        <span className="pr-editor-arc-saga-picker-empty">Ya están todas añadidas</span>
+                        <span className="pr-editor-arc-saga-picker-empty">{t.all_added}</span>
                       ) : (
                         sagaOrder
                           .filter(id => !editingArc.items.some(i => i.media_external_id === id))
@@ -434,12 +433,12 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
                   )}
                 </div>
               )}
-              <button type="button" className="pr-editor-add-btn" onClick={() => setShowItemSearch(true)}>+ Buscar obra</button>
+              <button type="button" className="pr-editor-add-btn" onClick={() => setShowItemSearch(true)}>{t.search_media}</button>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => setEditingArc(null)} disabled={saving}>Cancelar</button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => setEditingArc(null)} disabled={saving}>{t.cancel}</button>
               <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSaveArc} disabled={saving || !editingArc.name.trim()}>
-                {saving ? 'Guardando...' : 'Guardar arco'}
+                {saving ? '...' : t.edit}
               </button>
             </div>
           </div>

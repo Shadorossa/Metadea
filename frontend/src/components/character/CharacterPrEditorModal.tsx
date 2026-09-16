@@ -85,14 +85,16 @@ function VoiceActorLangStepper({
     onChange(VA_LANGUAGES[nextIdx].name);
   };
 
+  const tChar = getT().character;
+
   return (
     <div className="pr-editor-va-stepper">
       <button
         type="button"
         className="pr-editor-va-stepper-btn"
         onClick={prev}
-        title="Idioma anterior"
-        aria-label="Idioma anterior"
+        title={tChar.prev_lang_title}
+        aria-label={tChar.prev_lang_aria}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6" />
@@ -109,8 +111,8 @@ function VoiceActorLangStepper({
         type="button"
         className="pr-editor-va-stepper-btn"
         onClick={next}
-        title="Siguiente idioma"
-        aria-label="Siguiente idioma"
+        title={tChar.next_lang_title}
+        aria-label={tChar.next_lang_aria}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="9 18 15 12 9 6" />

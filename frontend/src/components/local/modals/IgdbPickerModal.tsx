@@ -127,7 +127,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
           )}
         </div>
         {loading ? (
-          <div className="igdb-picker-loading">Buscando...</div>
+          <div className="igdb-picker-loading">{t.local.searching_ellipsis}</div>
         ) : error ? (
           <div className="igdb-picker-loading" style={{ color: 'var(--text-danger, #f87171)' }}>Error: {error}</div>
         ) : candidates.length === 0 ? (

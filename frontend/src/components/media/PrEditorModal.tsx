@@ -99,11 +99,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // keep this entry's own type, not always default to 'game' — a VN's
   // remaster is still a VN (see MediaSearchPopup's own comment).
   const igdbRelationMediaType = isVnovelExternalId(externalId) ? 'vnovel' as const : 'game' as const;
+  const tPr = getT().pr_editor;
 
-  // Splits what used to be one dense always-visible 3-column grid into tabs
-  // — General (titles/release/media/classification), Personajes, and
-  // Relaciones y Saga (saga/relations/bundled/contains) — so only one
-  // concern is on screen at a time instead of all ~9 sections at once.
   const [activeTab, setActiveTab] = useState<'general' | 'cast' | 'relations'>('general');
   const [loading, setLoading] = useState(true);
   // Every 'proposal'-mode edit ends in a GitHub submission — checked up
@@ -754,7 +751,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // it already carries every format key both AniList (TV/MOVIE/OVA/...) and
   // IGDB (GAME/REMAKE/REMASTER/.../VISUAL_NOVEL) mappers can produce, so this
   // never drifts out of sync with what a live fetch would set automatically.
-  const mediaTypesDict = (tm.search?.types ?? {
+  const mediaTypesDict = (getT().search?.types ?? {
     anime: 'Anime',
     manga: 'Manga',
     lnovel: 'Novela Ligera',
@@ -911,7 +908,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                       <RichTextEditor
                         value={entry.synopsis || ''}
                         onChange={html => handleChange('synopsis', html)}
-                        placeholder="Synopsis / Description"
+                        placeholder={tPr.synopsis_ph}
                       />
                     </Field>
                   </div>
@@ -1031,7 +1028,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                     className="pr-editor-media-card-group-input"
                     style={{ flex: 1, maxWidth: '200px', fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
                   />
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add to Saga</button>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>{tPr.add_to_saga}</button>
                 </div>
                 <PrEditorSagaOrderSection
                   externalId={externalId}
@@ -1051,7 +1048,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                     <span className={`pr-editor-section-chevron${relationsExpanded ? ' pr-editor-section-chevron--open' : ''}`}>▸</span>
                     {sectionTitle('Relations', [])}
                   </button>
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>+ Add Relation</button>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>{tPr.add_relation}</button>
                 </div>
                 {relationsExpanded && (
                   <PrEditorRelationsSection
@@ -1069,7 +1066,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
               <div className="pr-editor-section">
                 <div className="pr-editor-section-header-row">
                   {sectionTitle('Bundled In', [])}
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>{tPr.add_generic}</button>
                 </div>
                 <PrEditorRelationCardList
                   relations={bundledRelations}
@@ -1099,7 +1096,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                       <span className={`pr-editor-section-chevron${issuesExpanded ? ' pr-editor-section-chevron--open' : ''}`}>▸</span>
                       {sectionTitle('Issues (ComicVine)', [])}
                     </button>
-                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('issues')}>+ Add</button>
+                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('issues')}>{tPr.add_generic}</button>
                   </div>
                   {issuesExpanded && (
                     <PrEditorRelationCardList
@@ -1120,7 +1117,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                 <div className="pr-editor-section">
                   <div className="pr-editor-section-header-row">
                     {sectionTitle(`Contenido de "${bundledRelations[0].title || bundledRelations[0].external_id}"`, [])}
-                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundle-children')}>+ Add</button>
+                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundle-children')}>{tPr.add_generic}</button>
                   </div>
                   <p className="pr-editor-bundle-children-hint">
                     Esta obra ya queda incluida automáticamente — añade aquí el resto de obras del bundle.
@@ -1141,7 +1138,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                 <div className="pr-editor-section">
                   <div className="pr-editor-section-header-row">
                     {sectionTitle('Contains', [])}
-                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('contains')}>+ Add</button>
+                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('contains')}>{tPr.add_generic}</button>
                   </div>
                   <PrEditorRelationCardList
                     relations={containedRelations}

@@ -897,7 +897,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
           <button
             type="button"
             className="catalog-admin-source-btn"
-            title="Para un personaje que no existe en AniList"
+            title={getT().character.non_anilist_character_title}
             onClick={() => (window as any).openCharacterEditor?.(generateCustomCharacterId())}
           >
             + Crear personaje custom

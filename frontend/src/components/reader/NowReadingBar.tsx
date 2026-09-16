@@ -10,8 +10,10 @@ import { toSmallCover } from '../../lib/shared/small-cover';
 import { NowMediaBar } from '../shared/NowMediaBar';
 import { ReaderModal } from './ReaderModal';
 import { IconX } from '../local/ui/icons';
+import { getT } from '../../i18n/client';
 
 export function NowReadingBar() {
+  const t = getT().reader;
   const session = useReadingSession();
   const resumeOpen = useResumeOpen();
   const playback = usePlaybackState();
@@ -41,15 +43,15 @@ export function NowReadingBar() {
           mediaUrl={mediaUrl}
           cover={cover}
           title={session.title}
-          subtitle={<>{pageLabel} &middot; En pausa</>}
+          subtitle={<>{pageLabel} &middot; {t.standby_aria}</>}
           controls={
             <>
               <button
                 type="button"
                 className="now-playing-btn"
                 onClick={openResumeModal}
-                aria-label="Continuar leyendo"
-                title="Continuar leyendo"
+                aria-label={t.continue_reading_aria}
+                title={t.continue_reading_title}
               >
                 <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
@@ -60,8 +62,8 @@ export function NowReadingBar() {
                 type="button"
                 className="now-playing-btn now-playing-btn--close"
                 onClick={clearReadingSession}
-                aria-label="Cerrar sesion de lectura"
-                title="Cerrar"
+                aria-label={t.close_session_aria}
+                title={t.close_session_title}
               >
                 <IconX size={14} />
               </button>

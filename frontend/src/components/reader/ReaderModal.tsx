@@ -23,6 +23,7 @@ if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
 import { useClosingTransition } from '../../lib/shared/useClosingTransition';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { IconX } from '../local/ui/icons';
+import { getT } from '../../i18n/client';
 
 interface Props {
   externalId:    string;
@@ -184,6 +185,7 @@ export function ReaderModal({
   onStandBy,
   onProgressSaved,
 }: Props) {
+  const t = getT().reader;
   const { isClosing, close: handleClose } = useClosingTransition(onClose);
 
   const [loadState, setLoadState] = useState<LoadState>('loading');
@@ -516,7 +518,7 @@ export function ReaderModal({
           <span className="comic-reader-page-count">{pageLabel}</span>
         )}
         {onStandBy && (
-          <button type="button" className="comic-reader-header-btn" onClick={handleStandBy} title="Dejar en pausa (volver a la app)" aria-label="Stand by">
+          <button type="button" className="comic-reader-header-btn" onClick={handleStandBy} title={t.standby_title} aria-label={t.standby_aria}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
@@ -527,8 +529,8 @@ export function ReaderModal({
           type="button"
           className="comic-reader-header-btn"
           onClick={toggleFullscreen}
-          title={isFullscreen ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa'}
-          aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          title={isFullscreen ? t.fullscreen_exit_title : 'Pantalla completa'}
+          aria-label={isFullscreen ? t.fullscreen_exit_aria : 'Pantalla completa'}
         >
           {isFullscreen ? (
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -540,7 +542,7 @@ export function ReaderModal({
             </svg>
           )}
         </button>
-        <button type="button" className="comic-reader-close" onClick={handleClose} title="Cerrar (Esc)">
+        <button type="button" className="comic-reader-close" onClick={handleClose} title={t.close_title}>
           <IconX />
         </button>
       </div>
@@ -550,8 +552,8 @@ export function ReaderModal({
           type="button"
           className="comic-reader-fullscreen-exit"
           onClick={toggleFullscreen}
-          title="Salir de pantalla completa (Esc)"
-          aria-label="Salir de pantalla completa"
+          title={t.fullscreen_exit_title}
+          aria-label={t.fullscreen_exit_aria}
         >
           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>
@@ -569,7 +571,7 @@ export function ReaderModal({
 
         {loadState === 'error' && (
           <div className="comic-reader-state comic-reader-state--error">
-            <p>No se pudo abrir el archivo.</p>
+            <p>{t.open_error}</p>
             <p className="comic-reader-error-detail">{errorMsg}</p>
           </div>
         )}
@@ -625,7 +627,7 @@ export function ReaderModal({
               className="comic-reader-nav comic-reader-nav--prev"
               onClick={e => { e.stopPropagation(); goPrev(); }}
               disabled={spreadIndex === 0}
-              aria-label="Página anterior"
+              aria-label={t.prev_page_aria}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6" />
@@ -636,7 +638,7 @@ export function ReaderModal({
               className="comic-reader-nav comic-reader-nav--next"
               onClick={e => { e.stopPropagation(); goNext(); }}
               disabled={spreadIndex === spreads.length - 1}
-              aria-label="Página siguiente"
+              aria-label={t.next_page_aria}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 18 15 12 9 6" />
