@@ -1,0 +1,66 @@
+{
+  "character": {
+    "external_id": "character:cs:170954"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:2059",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:2060",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:2061",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:2062",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:2063",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:11397",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:12595",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:12527",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:55090",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:36550",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:217623",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:317317",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:368182",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "person:a103022",
+      "role": "voice",
+      "language": "Japanese"
+    }
+  ]
+}
