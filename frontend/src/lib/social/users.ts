@@ -69,6 +69,26 @@ export async function getPublicProfile(userId: string): Promise<PublicProfile | 
   return res.json();
 }
 
+// The caller's own followers/following lists — always the signed-in user,
+// not a :userId param (see the backend route's own doc comment for why).
+export async function getFollowers(): Promise<UserSearchResult[]> {
+  const headers = await authHeaders();
+  if (!headers) return [];
+  const res = await fetch(`${API_URL}/api/follows/followers`, { headers });
+  if (!res.ok) return [];
+  const { results } = await res.json() as { results: UserSearchResult[] };
+  return results;
+}
+
+export async function getFollowing(): Promise<UserSearchResult[]> {
+  const headers = await authHeaders();
+  if (!headers) return [];
+  const res = await fetch(`${API_URL}/api/follows/following`, { headers });
+  if (!res.ok) return [];
+  const { results } = await res.json() as { results: UserSearchResult[] };
+  return results;
+}
+
 export async function followUser(userId: string): Promise<boolean> {
   const headers = await authHeaders();
   if (!headers) return false;

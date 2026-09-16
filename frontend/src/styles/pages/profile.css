@@ -3441,6 +3441,170 @@
   text-align: center;
 }
 
+/* ── Amigos (followers/following) ──────────────────────────────────────── */
+
+.friends-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.friends-tabs {
+  display: flex;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+}
+
+.friends-tab {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: color var(--anim-fast);
+}
+
+.friends-tab:hover {
+  color: var(--text-main);
+}
+
+.friends-tab.active {
+  color: var(--accent);
+}
+
+.friends-tab-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+
+.friends-tab.active .friends-tab-count {
+  color: var(--accent);
+}
+
+.friends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 1rem;
+}
+
+/* Small, mostly-square card (a touch of rounding, not the pill-ish
+   --radius-xl the rest of the profile page's cards use) wrapping a
+   story-bubble-style circular photo — the whole thing reads as one compact
+   unit per person, not a wide info row. */
+.friend-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s;
+}
+
+.friend-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.friend-card-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  width: 100%;
+  text-decoration: none;
+}
+
+/* The ring around the photo itself — same idea as Instagram's own story
+   bubble (a circular photo with a coloured ring around it), not a plain
+   flat avatar. */
+.friend-card-avatar-wrap {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  padding: 2.5px;
+  background: linear-gradient(135deg, var(--accent, #7c6af7), color-mix(in srgb, var(--accent, #7c6af7) 40%, transparent));
+  flex-shrink: 0;
+}
+
+.friend-card-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: var(--bg-elevated);
+  border: 2px solid var(--bg-card, #16161f);
+}
+
+.friend-card-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.friend-card-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+
+/* Overlaid on the photo's own top-right corner (same spot apps put a
+   "remove" control on an avatar bubble) instead of a separate text button
+   underneath. */
+.friend-card-unfollow {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card, #16161f);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.friend-card-unfollow:hover {
+  color: #fff;
+  background: #f87171;
+  border-color: #f87171;
+}
+
+.friends-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
 .list-input {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-color);

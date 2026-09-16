@@ -56,6 +56,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .reviews-search,
 [data-theme="newspaper-dark"] .review-card,
 [data-theme="newspaper-dark"] .list-item-cover-link,
+[data-theme="newspaper-dark"] .friend-card-unfollow,
 [data-theme="newspaper-dark"] .igdb-picker-card {
   border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
@@ -844,12 +845,15 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 /* Home activity feed's Amigos/General toggle — same ink-press treatment as
-   the settings tabs elsewhere in this theme. */
-[data-theme="newspaper-dark"] .home-activity-tab:hover {
+   the settings tabs elsewhere in this theme. Profile page's own Amigos tab
+   (Te siguen/Sigues) reuses the identical toggle treatment. */
+[data-theme="newspaper-dark"] .home-activity-tab:hover,
+[data-theme="newspaper-dark"] .friends-tab:hover {
   color: var(--text-main) !important;
 }
 
-[data-theme="newspaper-dark"] .home-activity-tab.active {
+[data-theme="newspaper-dark"] .home-activity-tab.active,
+[data-theme="newspaper-dark"] .friends-tab.active {
   text-decoration: underline !important;
 }
 
@@ -883,6 +887,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 [data-theme="newspaper-dark"] .act-empty,
 [data-theme="newspaper-dark"] .home-activity-tab,
+[data-theme="newspaper-dark"] .friends-tab,
+[data-theme="newspaper-dark"] .friends-tab-count,
 [data-theme="newspaper-dark"] .home-calendar-toggle-btn,
 [data-theme="newspaper-dark"] .home-calendar-type-tab,
 [data-theme="newspaper-dark"] .calendar-popover-type-tab,

@@ -100,15 +100,13 @@ export function ActivityFeedSection({ title, i18n }: { title: string; i18n?: any
     </div>
   );
 
-  if (!mounted || events.length === 0) {
-    return (
-      <>
-        {header}
-        <div className="act-empty"><span>{p.no_activity}</span></div>
-      </>
-    );
-  }
-
+  // Both hooks below must run unconditionally on every render, same as
+  // every other one above — they used to sit after the early return further
+  // down, so a render that took that branch (still loading, or a genuinely
+  // empty feed) called fewer hooks than one that didn't, which is exactly
+  // the "rendered more hooks than during the previous render" crash React's
+  // Rules of Hooks exist to prevent. Neither depends on `mounted`/`events`,
+  // so hoisting them here changes nothing about what they compute.
   const j = p.journey;
 
   const describe = useMemo(() => (ev: FlatEvent, title: string): string => {
@@ -164,6 +162,15 @@ export function ActivityFeedSection({ title, i18n }: { title: string; i18n?: any
       </div>
     );
   }), [catalog, describe]);
+
+  if (!mounted || events.length === 0) {
+    return (
+      <>
+        {header}
+        <div className="act-empty"><span>{p.no_activity}</span></div>
+      </>
+    );
+  }
 
   return (
     <>

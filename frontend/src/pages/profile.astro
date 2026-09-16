@@ -11,6 +11,7 @@ import {
   ICON_PROFILE_STATS,
   ICON_PROFILE_REVIEWS,
   ICON_PROFILE_LISTS,
+  ICON_PROFILE_FRIENDS,
 } from '../lib/shared/icon-strings';
 
 const lang = getLang(Astro.url);
@@ -87,11 +88,12 @@ const t    = useTranslations(lang);
       <button class="profile-tab" data-tab="stats" data-tooltip={t.profile.tab_stats} set:html={ICON_PROFILE_STATS}></button>
       <button class="profile-tab" data-tab="reviews" data-tooltip={t.profile.reviews} set:html={ICON_PROFILE_REVIEWS}></button>
       <button class="profile-tab" data-tab="lists" data-tooltip={t.profile.lists} set:html={ICON_PROFILE_LISTS}></button>
+      <button class="profile-tab" data-tab="friends" data-tooltip={t.profile.friends} set:html={ICON_PROFILE_FRIENDS}></button>
       <script is:inline>
         (function() {
           var params = new URLSearchParams(window.location.search);
           var hash = params.get('list') ? 'lists' : window.location.hash.replace('#', '');
-          var tabs = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists'];
+          var tabs = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists', 'friends'];
           if (hash && tabs.indexOf(hash) !== -1) {
             var buttons = document.querySelectorAll('.profile-tab');
             buttons.forEach(function(btn) {
@@ -111,6 +113,7 @@ const t    = useTranslations(lang);
             stats: p.tab_stats,
             reviews: p.reviews,
             lists: p.lists,
+            friends: p.friends,
           };
           document.querySelectorAll('.profile-tab').forEach(btn => {
             const tab = (btn as HTMLElement).dataset.tab;
@@ -131,6 +134,7 @@ const t    = useTranslations(lang);
       <div id="tab-pane-stats" class="profile-tab-pane" hidden></div>
       <div id="tab-pane-reviews" class="profile-tab-pane" hidden></div>
       <div id="tab-pane-lists" class="profile-tab-pane" hidden></div>
+      <div id="tab-pane-friends" class="profile-tab-pane" hidden></div>
     </div>
 
     <ProfileLibraryEditor client:idle i18n={t.media} />
@@ -147,6 +151,7 @@ const t    = useTranslations(lang);
   import { renderStats } from '../lib/profile/render-stats';
   import { renderReviews } from '../lib/profile/render-reviews';
   import { renderLists }   from '../lib/profile/render-lists';
+  import { renderFriends } from '../lib/profile/render-friends';
   import { getImage } from '../lib/storage/images';
   import { getFontFile } from '../lib/settings/fonts';
   import { STORAGE_KEYS } from '../lib/shared/storage-keys';
@@ -154,7 +159,7 @@ const t    = useTranslations(lang);
 
   (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
 
-  const TABS = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists'] as const;
+  const TABS = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists', 'friends'] as const;
   type Tab = typeof TABS[number];
 
   function getTabFromHash(): Tab {
@@ -176,6 +181,7 @@ const t    = useTranslations(lang);
       stats:     document.getElementById('tab-pane-stats'),
       reviews:   document.getElementById('tab-pane-reviews'),
       lists:     document.getElementById('tab-pane-lists'),
+      friends:   document.getElementById('tab-pane-friends'),
     };
   }
 
@@ -324,6 +330,7 @@ const t    = useTranslations(lang);
       stats:     () => renderStats(panes.stats!),
       reviews:   () => renderReviews(panes.reviews!),
       lists:     () => renderLists(panes.lists!),
+      friends:   () => renderFriends(panes.friends!),
     };
 
     await fadeInWhenReady(
