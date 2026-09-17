@@ -30,11 +30,19 @@ const MAX_PER_TYPE = 5;
 // tab already shows — not just however far into the *current* season alone
 // you are. For anything not part of a unified group it's just that entry's
 // own progress, same as trackedEntry.progress.
+//
+// seasonMembers (unified groups only) is every season's own log plus its
+// own episode total, in release order — [group.item, ...group.grouped] is
+// already sorted that way by unifyAnimeSeasons. adjustProgress uses it to
+// redistribute the +/- across seasons (fill season 1 up to its own total,
+// then season 2, ...) instead of just piling extra progress onto whichever
+// season happened to be "active" past its own episode count.
 interface CurrentlyCardItem {
   linkId: string;
   trackedEntry: LibraryEntry;
   coverUrl: string | null;
   displayProgress: number;
+  seasonMembers?: Array<{ entry: LibraryEntry; total: number }>;
 }
 
 interface TypeGroup {
@@ -69,14 +77,21 @@ export function CurrentlySection() {
             coverUrl: catalogMap.get(entry.external_id)?.cover_url ?? null,
             displayProgress: entry.progress,
           })),
-          ...seasonGroups.map(group => ({
-            linkId: group.item.external_id,
-            trackedEntry: group.statusSourceItem,
-            coverUrl: catalogMap.get(group.statusSourceItem.external_id)?.cover_url
-              ?? catalogMap.get(group.item.external_id)?.cover_url
-              ?? null,
-            displayProgress: [group.item, ...group.grouped].reduce((sum, s) => sum + (s.progress ?? 0), 0),
-          })),
+          ...seasonGroups.map(group => {
+            const orderedMembers = [group.item, ...group.grouped];
+            return {
+              linkId: group.item.external_id,
+              trackedEntry: group.statusSourceItem,
+              coverUrl: catalogMap.get(group.statusSourceItem.external_id)?.cover_url
+                ?? catalogMap.get(group.item.external_id)?.cover_url
+                ?? null,
+              displayProgress: orderedMembers.reduce((sum, s) => sum + (s.progress ?? 0), 0),
+              seasonMembers: orderedMembers.map(entry => ({
+                entry,
+                total: catalogMap.get(entry.external_id)?.total_count ?? 0,
+              })),
+            };
+          }),
         ];
       } else {
         cards = items.map(entry => ({
@@ -114,43 +129,84 @@ export function CurrentlySection() {
   // 'game'), which don't track a chapter/episode-style progress number.
   // Updates local state immediately, then persists + AniList-syncs in the
   // background (same convention as LocalMediaDetailPanel's markWatched).
-  function adjustProgress(trackedExternalId: string, delta: number) {
+  function persistAndSync(updated: LibraryEntry) {
+    saveLibraryEntry(updated).catch(err => console.error('Failed to update progress:', err));
+    if (isAniListType(updated.type)) {
+      syncToAniList({
+        externalId:      updated.external_id,
+        type:            updated.type,
+        status:          updated.status ?? '',
+        rating:          updated.rating ?? 0,
+        progress:        updated.progress,
+        progressVolumes: updated.progress_2 ?? 0,
+        startedAt:       updated.started_at ?? '',
+        finishedAt:      updated.finished_at ?? '',
+        notes:           updated.notes ?? '',
+      }).catch(err => console.error('Failed to sync progress to AniList:', err));
+    }
+  }
+
+  // cardLinkId (not trackedEntry's own id) identifies the card, since a
+  // unified group's tracked/active season can itself change as part of
+  // this very adjustment (rolling over into the next season).
+  function adjustProgress(cardLinkId: string, delta: number) {
     setGroups(prev => {
       if (!prev) return prev;
-      const current = prev.flatMap(g => g.items).find(i => i.trackedEntry.external_id === trackedExternalId);
-      if (!current) return prev;
-      const progress = Math.max(0, current.trackedEntry.progress + delta);
-      if (progress === current.trackedEntry.progress) return prev;
-      // The general/summed displayProgress moves by the SAME amount the
-      // tracked season's own progress just did — only one season's count
-      // changed, so its effect on the sum is identical to its own delta,
-      // no need to re-sum every other season in the group from scratch.
-      const appliedDelta = progress - current.trackedEntry.progress;
-      const updated: LibraryEntry = { ...current.trackedEntry, progress };
+      const card = prev.flatMap(g => g.items).find(i => i.linkId === cardLinkId);
+      if (!card) return prev;
+
+      let updatedTracked: LibraryEntry;
+      let updatedSeasonMembers: Array<{ entry: LibraryEntry; total: number }> | undefined;
+      let newDisplayProgress: number;
+      const changed: LibraryEntry[] = [];
+
+      if (!card.seasonMembers) {
+        const progress = Math.max(0, card.trackedEntry.progress + delta);
+        if (progress === card.trackedEntry.progress) return prev;
+        updatedTracked = { ...card.trackedEntry, progress };
+        newDisplayProgress = progress;
+        changed.push(updatedTracked);
+      } else {
+        // The general count moves by delta, then gets redistributed across
+        // every season in release order — fill season 1 up to its own
+        // total, then season 2, and so on — recomputed from scratch each
+        // time so a "-1" that crosses a season boundary rolls back into
+        // the previous season the same way a "+1" rolls forward.
+        newDisplayProgress = Math.max(0, card.displayProgress + delta);
+        let remaining = newDisplayProgress;
+        updatedSeasonMembers = card.seasonMembers.map(({ entry, total }) => {
+          const watched = total > 0 ? Math.min(total, remaining) : 0;
+          remaining = Math.max(0, remaining - watched);
+          if (watched === entry.progress) return { entry, total };
+          const updated = { ...entry, progress: watched };
+          changed.push(updated);
+          return { entry: updated, total };
+        });
+        if (changed.length === 0) return prev;
+        // The season that should now carry status/cover/AniList-sync duty:
+        // the first one that isn't fully watched yet, or — if every season
+        // is either full or the count landed exactly on a boundary — the
+        // last one that actually has any progress on it.
+        updatedTracked = updatedSeasonMembers.find(m => m.total > 0 && m.entry.progress < m.total)?.entry
+          ?? [...updatedSeasonMembers].reverse().find(m => m.entry.progress > 0)?.entry
+          ?? updatedSeasonMembers[0].entry;
+      }
 
       const next = prev.map(group => ({
         ...group,
         items: group.items.map(item =>
-          item.trackedEntry.external_id === trackedExternalId
-            ? { ...item, trackedEntry: updated, displayProgress: item.displayProgress + appliedDelta }
+          item.linkId === cardLinkId
+            ? {
+                ...item,
+                trackedEntry: updatedTracked,
+                displayProgress: newDisplayProgress,
+                ...(updatedSeasonMembers ? { seasonMembers: updatedSeasonMembers } : {}),
+              }
             : item
         ),
       }));
 
-      saveLibraryEntry(updated).catch(err => console.error('Failed to update progress:', err));
-      if (isAniListType(updated.type)) {
-        syncToAniList({
-          externalId:      updated.external_id,
-          type:            updated.type,
-          status:          updated.status ?? '',
-          rating:          updated.rating ?? 0,
-          progress:        updated.progress,
-          progressVolumes: updated.progress_2 ?? 0,
-          startedAt:       updated.started_at ?? '',
-          finishedAt:      updated.finished_at ?? '',
-          notes:           updated.notes ?? '',
-        }).catch(err => console.error('Failed to sync progress to AniList:', err));
-      }
+      for (const entry of changed) persistAndSync(entry);
       return next;
     });
   }
@@ -181,7 +237,7 @@ export function CurrentlySection() {
                     <button
                       type="button"
                       className="home-currently-progress-btn"
-                      onClick={() => adjustProgress(item.trackedEntry.external_id, -1)}
+                      onClick={() => adjustProgress(item.linkId, -1)}
                       aria-label="Restar"
                     >
                       −
@@ -190,7 +246,7 @@ export function CurrentlySection() {
                     <button
                       type="button"
                       className="home-currently-progress-btn"
-                      onClick={() => adjustProgress(item.trackedEntry.external_id, 1)}
+                      onClick={() => adjustProgress(item.linkId, 1)}
                       aria-label="Sumar"
                     >
                       +

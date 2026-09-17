@@ -1161,6 +1161,30 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                           updates.status = 'completed';
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
+
+                        // A series' general tab is the real, continuously-
+                        // numbered episode count across every season (unlike
+                        // anime's, this one isn't auto-derived) — so moving
+                        // it has to redistribute into each season's own log
+                        // too: fill season 1 up to its own episode count,
+                        // then season 2, and so on, recomputed from scratch
+                        // every time so decreasing the count shrinks seasons
+                        // back down the same way.
+                        if (isUnifiedSeries && entry.activeLogId === baseId) {
+                          const updatesById: Record<string, Partial<LogState>> = {};
+                          let remaining = v;
+                          for (const season of seriesSeasons) {
+                            const seasonId = seriesSeasonExternalId(externalId, season.seasonNumber);
+                            const seasonTotal = season.episodeCount ?? 0;
+                            const watched = seasonTotal > 0 ? Math.max(0, Math.min(seasonTotal, remaining)) : 0;
+                            remaining = Math.max(0, remaining - watched);
+                            const su: Partial<LogState> = { progress: watched };
+                            const seasonReleased = !season.airDate || new Date(season.airDate).getTime() <= Date.now();
+                            if (seasonReleased && seasonTotal > 0 && watched >= seasonTotal) su.status = 'completed';
+                            updatesById[seasonId] = su;
+                          }
+                          dispatchEntry({ type: 'UPDATE_LOGS_BULK', updatesById });
+                        }
                       }} />
                     )}
                     {/* Anime's general tab shows the chain's own season
