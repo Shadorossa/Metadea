@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { getT } from '../../i18n/client';
 import { removeLocalGame, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
@@ -16,6 +17,8 @@ import { VirtualCardGrid } from './ui/VirtualCardGrid';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
+
+const LAUNCHER_LINE_TRANSITION = { duration: 0.3, ease: [0.25, 0, 0.15, 1] as const };
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -392,28 +395,31 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
               {sections.map(sec => (
                 <div className="library-section" key={sec.title}>
                   <h3 className="library-section-title">
-                    {sec.icon && (
-                      <span className="local-launcher-icon">
-                        <img src={sec.icon} alt={sec.title} draggable={false} />
-                      </span>
-                    )}
-                    {sec.title}
-                    {/* Sort control only on platform/backlog sections (the
-                        only ones sec.icon is ever set for) — same
-                        alpha/lastPlayed/playtime choice Videojuegos' own
-                        launcher sections give (see GamesGrid). */}
-                    {sec.icon && (
-                      <select
-                        className="local-sort-select"
-                        value={sortMode}
-                        onChange={e => setSortMode(e.target.value as SortMode)}
-                        title={t.local.sort_title}
-                      >
-                        <option value="alpha">{t.local.sort_alpha}</option>
-                        <option value="lastPlayed">{t.local.sort_last_played}</option>
-                        <option value="playtime">{t.local.sort_playtime}</option>
-                      </select>
-                    )}
+                    <div className="local-launcher-title-label">
+                      {sec.icon && (
+                        <span className="local-launcher-icon">
+                          <img src={sec.icon} alt={sec.title} draggable={false} />
+                        </span>
+                      )}
+                      <span>{sec.title}</span>
+                    </div>
+                    {sec.icon ? (
+                      <>
+                        <motion.div className="local-launcher-title-rule" layout="size" transition={LAUNCHER_LINE_TRANSITION} />
+                        <div className="local-launcher-title-controls">
+                          <select
+                            className="local-sort-select"
+                            value={sortMode}
+                            onChange={e => setSortMode(e.target.value as SortMode)}
+                            title={t.local.sort_title}
+                          >
+                            <option value="alpha">{t.local.sort_alpha}</option>
+                            <option value="lastPlayed">{t.local.sort_last_played}</option>
+                            <option value="playtime">{t.local.sort_playtime}</option>
+                          </select>
+                        </div>
+                      </>
+                    ) : null}
                   </h3>
                   <VirtualCardGrid
                     entries={sec.entries}

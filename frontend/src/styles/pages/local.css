@@ -752,14 +752,8 @@
   margin-bottom: 1.5rem !important;
 }
 
-/* newspaper-dark's shared ".library-section-title::after" divider is a
-   bright 2px line meant to stand out against Profile's fewer, longer
-   sections — against Local's shorter, more frequent ones it just piles up
-   as noise. Thinner and dimmer here specifically. */
-[data-theme="newspaper-dark"] .local-games-container .library-section-title::after {
-  height: 1px !important;
-  background: var(--border-color) !important;
-  opacity: 0.7;
+.local-games-container .library-section-title:has(.local-launcher-title-rule)::after {
+  display: none !important;
 }
 
 /* ── Game card ───────────────────────────────────────────────────────────────── */
