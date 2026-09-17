@@ -8,6 +8,7 @@ import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
 import { SEASON_STATUS_PRIORITY } from '../../lib/constants/media';
+import { reconstructSagaOrder } from '../../lib/media/sagaGrouping';
 
 // Groups editions of the same work (remakes, remasters, ports) under one
 // grid slot. Gated behind "Agrupar por ediciones"; saga grouping is separate
@@ -528,11 +529,21 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
   for (const members of byComponent.values()) {
     if (members.length < 2) continue; // nothing to merge — leave the lone owned season as-is
 
-    // Earliest release first, same as refineSagaGroups — the card sits over
-    // its first work, and "primera y más básica" is what a click opens.
-    const sorted = [...members].sort((a, b) =>
-      compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
+    // Earliest release first as the tie-break, but corrected against the
+    // real PREQUEL/SEQUEL chain (reconstructSagaOrder) — plain release-date
+    // order alone gets it backwards whenever two seasons didn't release in
+    // story order (a "Semi-Final"/"Final" movie pair, a delayed re-release,
+    // ...), same issue sagaData.ts's own Temporadas-tab ordering already
+    // guards against. The card sits over its first work, and "primera y más
+    // básica" is what a click opens.
+    const memberIds = members.map(m => m.external_id);
+    const dateOrderedIds = [...memberIds].sort((a, b) =>
+      compareByReleaseDate(catalogMap.get(a) ?? {}, catalogMap.get(b) ?? {})
     );
+    const relsByIndex = dateOrderedIds.map(id => relations.filter(r => r.media_external_id === id));
+    const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
+    const byExternalId = new Map(members.map(m => [m.external_id, m]));
+    const sorted = orderedIds.map(id => byExternalId.get(id)!);
     const [rep, ...rest] = sorted;
 
     let statusSourceItem = sorted[0];

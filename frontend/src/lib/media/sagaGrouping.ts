@@ -111,18 +111,33 @@ export function topoSortByPrecedes(
   return result.length === ids.length ? result : ids;
 }
 
-/** Reconstructs saga order from saved SEQUEL edges instead of trusting
- *  release dates alone — without this, reopening the editor after a manual
- *  drag-reorder silently reverted to release-date order every time, even
- *  though the save itself had gone through fine. Falls back to
- *  `dateOrderedIds` when there are no SEQUEL edges yet or they don't form a
+/** Reconstructs saga order from saved SEQUEL/PREQUEL edges instead of
+ *  trusting release dates alone — without this, reopening the editor after a
+ *  manual drag-reorder silently reverted to release-date order every time,
+ *  even though the save itself had gone through fine. Falls back to
+ *  `dateOrderedIds` when there are no usable edges yet or they don't form a
  *  valid order; unconstrained ties keep release-date order. */
 export function reconstructSagaOrder(dateOrderedIds: string[], relsByIndex: DbMediaRelation[][]): string[] {
   const idSet = new Set(dateOrderedIds);
   const dateIndex = new Map(dateOrderedIds.map((id, i) => [id, i]));
 
-  // precedes.get(A) = ids that a saved SEQUEL edge says come directly after A
+  // precedes.get(A) = ids that come directly after A, from either a saved
+  // SEQUEL edge on A's own row or a PREQUEL edge on the OTHER entry's row
+  // pointing back at A — relations aren't always saved on both sides (an
+  // older sync, a manually-curated single edge, ...), so an A->B PREQUEL-
+  // only edge has to count exactly the same as a B->A SEQUEL edge would, or
+  // that pair silently falls through to release-date order instead (which
+  // is exactly wrong when the two didn't release in story order — e.g. a
+  // pair of movies/OVAs numbered "Semi-Final"/"Final" or similar). Also
+  // covers the pre-fix Spanish labels (SECUELA/PRECUELA) some libraries
+  // still have on disk, same as every other relation-type consumer in this
+  // app (library-grouping.ts, LibrarySection.tsx) already does — this was
+  // the one place still checking 'SEQUEL' alone.
   const precedes = new Map<string, Set<string>>();
+  const addPrecedes = (earlierId: string, laterId: string) => {
+    if (!precedes.has(earlierId)) precedes.set(earlierId, new Set());
+    precedes.get(earlierId)!.add(laterId);
+  };
   // Two alternates of the same group have no SEQUEL edge between them, so
   // without this hint Kahn's tie-break below fell back to release-date order
   // and silently reverted a manual in-group reorder. "#N" is each
@@ -130,15 +145,18 @@ export function reconstructSagaOrder(dateOrderedIds: string[], relsByIndex: DbMe
   const groupPosition = new Map<string, number>();
   const ALT_POSITION_RE = /#(\d+)$/;
   for (let i = 0; i < dateOrderedIds.length; i++) {
+    const ownerId = dateOrderedIds[i];
     for (const r of relsByIndex[i] ?? []) {
-      if (r.relation_type === 'SEQUEL' && idSet.has(r.related_media_external_id)) {
-        const ownerId = dateOrderedIds[i];
-        if (!precedes.has(ownerId)) precedes.set(ownerId, new Set());
-        precedes.get(ownerId)!.add(r.related_media_external_id);
-      }
       if (r.relation_type === 'ALTERNATIVE') {
         const match = ALT_POSITION_RE.exec(r.type_label || '');
-        if (match) groupPosition.set(dateOrderedIds[i], parseInt(match[1], 10));
+        if (match) groupPosition.set(ownerId, parseInt(match[1], 10));
+        continue;
+      }
+      if (!idSet.has(r.related_media_external_id)) continue;
+      if (r.relation_type === 'SEQUEL' || r.relation_type === 'SECUELA') {
+        addPrecedes(ownerId, r.related_media_external_id);
+      } else if (r.relation_type === 'PREQUEL' || r.relation_type === 'PRECUELA') {
+        addPrecedes(r.related_media_external_id, ownerId);
       }
     }
   }

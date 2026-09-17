@@ -116,12 +116,21 @@ async function fetchSagaChain(externalId: string): Promise<SagaChainResult> {
 
   if (cached && cached.length > 0) {
     const sagaTitle = await loadSagaTitle(externalId);
-    // Reconcile against real relations in the background — doesn't block
-    // this result, just corrects a stale cache for the *next* load.
-    reconstructFromRelations(externalId).then(fresh => {
-      if (!fresh || sameOrder(fresh, cached!)) return;
+    // Reconcile against real relations before answering — reconstructFromRelations
+    // is pure local DB reads (no network in the common case), so this stays
+    // fast, and it's what actually fixes an order that went stale before a
+    // relation edge existed locally yet (or before an ordering bug like this
+    // one got fixed) — deferring it to a "background" pass that only wrote
+    // its result for the *next* load meant a stale order could keep showing
+    // indefinitely, since nothing ever prompts a second visit on its own.
+    const fresh = await reconstructFromRelations(externalId).catch(err => {
+      console.warn('[Saga] Reconcile failed, using cache as-is:', err);
+      return null;
+    });
+    if (fresh && !sameOrder(fresh, cached)) {
       saveCachedSaga(fresh).catch(() => {});
-    }).catch(err => console.warn('[Saga] Background reconcile failed:', err));
+      return { entries: await filterBlockedSagaEntries(fresh), sagaTitle, ok: true };
+    }
     return { entries: await filterBlockedSagaEntries(cached), sagaTitle, ok: true };
   }
 

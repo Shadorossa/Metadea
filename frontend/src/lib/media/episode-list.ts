@@ -176,3 +176,45 @@ export async function fetchMediaEpisodes(rawId: string, force = false, knownSeas
   }
   return fresh;
 }
+
+// Episode-NAME lookup for the Local section (the "próximo episodio"/history
+// labels and the "Localizar" rename flow — see LocalMediaDetailPanel and
+// folderMatch.ts's buildLocateRenamePlan), re-keyed to whatever numbering
+// each of those callers' own episode number already is:
+//  - anime: LOCAL to the specific season's own externalId — every local
+//    progress/history number in this app is season-relative for anime (each
+//    season is its own separate library entry), but fetchMediaEpisodes'
+//    own episode_number field is globally offset across the whole prequel
+//    chain (see getAnimePrequelEpisodeOffset). Since that fetch already
+//    only ever returns THIS season's own episodes to begin with, sorting
+//    and re-numbering by array position recovers the season-local number
+//    without needing the offset at all.
+//  - series: this app never splits a TMDB series' library entry per season
+//    (getAllLibraryEntries filters synthetic per-season ids out), so a
+//    series' own progress/history numbers are already the single show's
+//    plain continuous count — exactly what fetchMediaEpisodes already
+//    returns for series (see fetchFromTmdb's own cumulative numbering) —
+//    no re-numbering needed, matched directly.
+// `force` bypasses the media_episode cache (see fetchMediaEpisodes) — used
+// by the "Localizar" flow specifically, since a stale/partial cache (e.g.
+// saved back when the anime<->TMDB season match below didn't exist yet, or
+// picked the wrong candidate) would otherwise keep silently coming back
+// empty forever; a one-off manual rename is worth paying for a fresh fetch,
+// where the "próximo episodio"/history display (called far more often) isn't.
+export async function fetchLocalSeasonEpisodeNames(externalId: string, force = false): Promise<Map<number, string>> {
+  const { type } = parseExternalId(externalId);
+  const map = new Map<number, string>();
+  if (type !== 'anime' && type !== 'series') return map;
+
+  const episodes = await fetchMediaEpisodes(externalId, force).catch(() => []);
+  if (type === 'anime') {
+    [...episodes].sort((a, b) => a.episode_number - b.episode_number).forEach((ep, i) => {
+      if (ep.name) map.set(i + 1, ep.name);
+    });
+  } else {
+    for (const ep of episodes) {
+      if (ep.name) map.set(ep.episode_number, ep.name);
+    }
+  }
+  return map;
+}

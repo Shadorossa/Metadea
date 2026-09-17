@@ -13,6 +13,24 @@ export function normalizeForMatch(s: string): string {
     .trim();
 }
 
+// A provider's own "episode name" is sometimes just the show/season's own
+// title again — e.g. AniList streamingEpisodes with no real per-episode
+// subtitle data falls back to whatever text it does have, which for a lot
+// of shows is literally the title, repeated for every single episode.
+// Never worth showing/writing as if it were a distinct episode title.
+// Substring (not just exact-equality) since the season's own title can
+// carry extra text the bare episode name doesn't ("THE Big O (2003)" vs
+// "The Big O"), and vice versa.
+export function isRedundantEpisodeName(name: string, ...referenceTitles: (string | null | undefined)[]): boolean {
+  const normName = normalizeForMatch(name);
+  if (!normName) return true;
+  return referenceTitles.some(t => {
+    if (!t) return false;
+    const normTitle = normalizeForMatch(t);
+    return normTitle.length > 0 && (normTitle.includes(normName) || normName.includes(normTitle));
+  });
+}
+
 // A catalog title like "Ghost in the Shell: Stand Alone Complex 2nd GIG" (or
 // "... 2nd Season", "... Season 2", "... S2") tells us which season of a
 // multi-season anime this library entry actually is — without this, a
@@ -311,7 +329,11 @@ export function extractEpisodeInfo(filename: string): EpisodeInfo | null {
     }
   }
 
-  const allNumbers = base.match(/\d{1,4}/g)?.map(Number) ?? [];
+  // Digits glued to letters ("NCED1", "NCOP2") are never a real episode
+  // number — just part of that token's own name — so this last-resort scan
+  // only counts a number that's its own separate word (lookbehind/lookahead
+  // both require a non-alphanumeric boundary, or start/end of string).
+  const allNumbers = [...base.matchAll(/(?<![a-z0-9])(\d{1,4})(?![a-z0-9])/gi)].map(m => Number(m[1]));
   if (allNumbers.length === 0) return null;
 
   const meaningful = allNumbers.filter(n => !NOISE_NUMBERS.has(n));
@@ -415,15 +437,35 @@ export interface SeasonExternalIdMap {
   [season: number]: { externalId: string; title: string };
 }
 
+// Season number -> that season's own total episode count, when known (see
+// LocalMediaDetailPanel's fetchSeasonEpisodeCounts) — used by
+// buildLocateRenamePlan below both to slice a bare continuously-numbered
+// folder into its real seasons and to cap every season at its own real
+// length, dropping any trailing extra (an NCOP/PV/CM clip, a bonus disc)
+// that would otherwise get mislabeled as "the next episode".
+export interface SeasonEpisodeCounts {
+  [season: number]: number;
+}
+
 // Builds the "Localizar" flow's rename plan (see LocalMediaDetailPanel):
-// every media file becomes "SxxExx - Work Title - Episode Title
-// [external_id].ext" (falling back to sequential numbering, in filename
-// order, for files with no detectable episode number of their own at all,
-// and dropping the "- Episode Title" part when there isn't one), and the
-// folder itself becomes "Work Title [external_id] [other_external_id] ..."
-// — one bracket tag per distinct catalog entry actually found among its
-// files, so findMatchingFolder's [external_id] fast path recognizes the
-// folder for ALL of them, not just the one being localized right now.
+// every media file becomes "SxxExx - Episode Title - Work/Season Title.ext"
+// (dropping the "- Episode Title" part when there isn't one — never
+// duplicating the season's own title as if it were a distinct episode
+// title, see isRedundantEpisodeName), and the folder itself becomes
+// "Work Title [external_id] [other_external_id] ..." — one bracket tag per
+// distinct catalog entry actually found among its files, so
+// findMatchingFolder's [external_id] fast path recognizes the folder for
+// ALL of them, not just the one being localized right now. Individual files
+// carry no tag of their own: once the folder itself is matched, a real
+// SxxExx marker is all findMatchingEpisodeFile needs to pick the right one
+// back out later — unlike a single loose file with no containing folder at
+// all (see handleLocateSingleFile), which has nothing else to be found by.
+//
+// A file with no detectable episode number anywhere in its name (an
+// ending/PV/CM extra with nothing to key off at all) is left out of the
+// plan entirely — silently skipped, not renamed with some made-up
+// sequential number.
+//
 // `season` should be the CALLER's already-resolved season for this specific
 // library entry (e.g. 2 for a "... 2nd Season" work) — passing the wrong
 // one here is exactly what would mislabel a season-2 folder as S01.
@@ -434,6 +476,23 @@ export interface SeasonExternalIdMap {
 // with THAT entry's id instead, once seasonMap says which id season 2 is.
 // Without it (or for a season missing from it), every file just falls back
 // to this work's own `externalId`/`workTitle` regardless of its own season.
+//
+// `episodeNamesByExternalId` (optional, keyed by each catalog entry's own
+// externalId — see fetchLocalSeasonEpisodeNames) only ever fills in the
+// "- Episode Title" part when the ORIGINAL filename didn't already carry
+// one of its own — a name someone actually put in the file wins over a
+// provider's, same precedence extractEpisodeInfo already gets elsewhere.
+//
+// `seasonEpisodeCounts` (optional) is what makes a folder with NO per-file
+// season marker at all (e.g. "The Big O" - 01..26, two 13-episode seasons
+// sharing one bare-numbered folder) resolvable: the continuous run gets
+// sliced into each known season's own range in order (1-13 -> season 1,
+// 14-26 -> season 2, ...), and anything past the last known season's own
+// total is dropped rather than mislabeled as a further episode. When
+// per-file season markers ARE present (or there's just one season), the
+// same map instead only caps each file's own season at its own real
+// length — a file whose own marker/bare number lands past that gets
+// skipped the same way.
 export function buildLocateRenamePlan(
   entries: LocalFolderEntry[],
   workTitle: string,
@@ -441,33 +500,75 @@ export function buildLocateRenamePlan(
   season: number | null,
   seasonMap?: SeasonExternalIdMap,
   mediaType?: string | null,
+  episodeNamesByExternalId?: Record<string, Map<number, string>>,
+  seasonEpisodeCounts?: SeasonEpisodeCounts,
 ): LocateRenamePlan {
   const mediaFiles = entries
     .filter(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
   const titleSanitized = sanitizeForFilename(workTitle);
-  let nextSequential = 1;
   const usedNames = new Set<string>();
   const usedExternalIds = new Set<string>([externalId]);
 
-  const fileRenames = mediaFiles.map(entry => {
-    const info = extractEpisodeInfo(entry.name);
-    const episode = info ? Math.round(info.episode) : nextSequential;
-    nextSequential = Math.max(nextSequential, episode + 1);
-    const fileSeason = info?.season ?? season;
+  const parsed = mediaFiles
+    .map(entry => ({ entry, info: extractEpisodeInfo(entry.name) }))
+    .filter((p): p is { entry: LocalFolderEntry; info: EpisodeInfo } => p.info !== null);
+
+  const anySeasonMarked = parsed.some(p => p.info.season !== null);
+
+  const seasonBoundaries: { season: number; start: number; end: number }[] = [];
+  if (!anySeasonMarked && seasonEpisodeCounts) {
+    let cursor = 0;
+    for (const s of Object.keys(seasonEpisodeCounts).map(Number).sort((a, b) => a - b)) {
+      const count = seasonEpisodeCounts[s];
+      if (!count || count <= 0) break;
+      seasonBoundaries.push({ season: s, start: cursor + 1, end: cursor + count });
+      cursor += count;
+    }
+  }
+
+  const fileRenames: { entry: LocalFolderEntry; newName: string }[] = [];
+
+  for (const { entry, info } of parsed) {
+    const rawEpisode = Math.round(info.episode);
+    let fileSeason = info.season ?? season;
+    let episode = rawEpisode;
+
+    if (seasonBoundaries.length > 0) {
+      const boundary = seasonBoundaries.find(b => rawEpisode >= b.start && rawEpisode <= b.end);
+      if (!boundary) continue;
+      fileSeason = boundary.season;
+      episode = rawEpisode - boundary.start + 1;
+    } else if (seasonEpisodeCounts) {
+      const cap = seasonEpisodeCounts[fileSeason ?? season ?? 1];
+      if (cap && rawEpisode > cap) continue;
+    }
+
     const seasonInfo = fileSeason != null ? seasonMap?.[fileSeason] : undefined;
     const fileExternalId = seasonInfo?.externalId ?? externalId;
     const fileTitleSanitized = seasonInfo ? sanitizeForFilename(seasonInfo.title) : titleSanitized;
     usedExternalIds.add(fileExternalId);
 
     const fileType = mediaType ?? fileExternalId.split(':')[0] ?? null;
-    const tag = encodeExternalIdForFilename(fileExternalId);
     const ext = entry.name.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
-    const episodeTitle = (fileType === 'lnovel' || fileType === 'book') ? '' : (info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '');
+    const fetchedName = episodeNamesByExternalId?.[fileExternalId]?.get(episode);
+    // info.episodeTitle can itself just be the show's own name again — its
+    // "nothing meaningful follows the number" fallback grabs whatever text
+    // sits BEFORE it instead (see textAroundMatch), which for the ubiquitous
+    // "Show Name - 14 (quality tags)" naming convention is always just the
+    // show's own title. Redundancy-checked the same as a fetched name would
+    // be, so a real embedded title still wins but junk falls through to it.
+    const rawEpisodeTitle = (fileType === 'lnovel' || fileType === 'book')
+      ? ''
+      : (info.episodeTitle && !isRedundantEpisodeName(info.episodeTitle, fileTitleSanitized, titleSanitized) ? info.episodeTitle : fetchedName) || '';
+    const episodeTitle = rawEpisodeTitle && !isRedundantEpisodeName(rawEpisodeTitle, fileTitleSanitized, titleSanitized)
+      ? sanitizeForFilename(rawEpisodeTitle)
+      : '';
+
     const label = formatEpisodeLabel(fileSeason, episode, fileType);
-    const parts = [label, fileTitleSanitized, episodeTitle].filter(Boolean);
-    const base = `${parts.join(' - ')} [${tag}]`;
+    const parts = [label, episodeTitle, fileTitleSanitized].filter(Boolean);
+    const base = parts.join(' - ');
 
     let newName = `${base}${ext}`;
     let dupeIndex = 2;
@@ -476,8 +577,8 @@ export function buildLocateRenamePlan(
       dupeIndex++;
     }
     usedNames.add(newName.toLowerCase());
-    return { entry, newName };
-  });
+    fileRenames.push({ entry, newName });
+  }
 
   const folderTags = [...usedExternalIds].map(id => `[${encodeExternalIdForFilename(id)}]`).join(' ');
   const folderNewName = `${titleSanitized} ${folderTags}`;

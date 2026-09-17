@@ -16,10 +16,11 @@ import {
   formatEpisodeLabel, buildLocateRenamePlan, dirname, type LocateRenamePlan,
   findTaggedPathRecursive, type TaggedMatch, MEDIA_EXTENSIONS, sanitizeForFilename,
   encodeExternalIdForFilename, matchRelationsToFiles, type RelatedFileMatch,
-  type CandidateFileGroup,
+  type CandidateFileGroup, isRedundantEpisodeName, type SeasonEpisodeCounts,
 } from '../utils/folderMatch';
 import { ALL_CHAIN_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { resolveSeasonExternalIds, resolveOwnSeasonNumber } from '../utils/seasonResolve';
+import { fetchLocalSeasonEpisodeNames } from '../../../lib/media/episode-list';
 import {
   usePlaybackState, startQueuePlayback, pausePlayback, resumePlayback,
   type PlaybackQueueItem,
@@ -408,9 +409,41 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   ]);
 
   const isBookOrNovel = item.libraryEntry.type === 'lnovel' || item.libraryEntry.type === 'book';
-  const nextFileEpisodeTitle = (nextFile && !isBookOrNovel)
-    ? extractEpisodeInfo(nextFile.name)?.episodeTitle ?? null
-    : null;
+  // extractEpisodeInfo's episodeTitle can itself just be this work's own
+  // name again (its "nothing meaningful follows the number" fallback grabs
+  // whatever text sits BEFORE it instead — always just the title for the
+  // common "Show Name - 14 (quality tags)" naming convention) — redundancy-
+  // checked so junk falls through to the fetched provider name below
+  // instead of blocking it.
+  const nextFileEpisodeTitleRaw = (nextFile && !isBookOrNovel) ? extractEpisodeInfo(nextFile.name)?.episodeTitle ?? null : null;
+  const nextFileEpisodeTitle = (nextFileEpisodeTitleRaw && !isRedundantEpisodeName(nextFileEpisodeTitleRaw, item.title)) ? nextFileEpisodeTitleRaw : null;
+
+  // Provider-sourced episode names (AniList/TMDB, via the same "Episodios"
+  // data the media page's own tab uses) for the "próximo episodio" chip and
+  // each history row — only anime/series have any concept of one. Keyed
+  // `externalId|episodeNumber` since history spans several seasons' own ids
+  // at once (see ChainHistoryEntry) while the chip only ever needs this
+  // item's own. Fetched once per unique id (fetchLocalSeasonEpisodeNames'
+  // own DB cache makes repeats across renders/other panels cheap), not once
+  // per history row.
+  const [episodeNames, setEpisodeNames] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    if (isReading || isMovieFormat || (item.libraryEntry.type !== 'anime' && item.libraryEntry.type !== 'series')) {
+      setEpisodeNames(new Map());
+      return;
+    }
+    let cancelled = false;
+    const ids = new Set<string>([item.externalId, ...history.map(h => h.external_id)]);
+    (async () => {
+      const merged = new Map<string, string>();
+      await Promise.all([...ids].map(async id => {
+        const localMap = await fetchLocalSeasonEpisodeNames(id).catch(() => new Map<number, string>());
+        for (const [num, name] of localMap) merged.set(`${id}|${num}`, name);
+      }));
+      if (!cancelled) setEpisodeNames(merged);
+    })();
+    return () => { cancelled = true; };
+  }, [item.externalId, item.libraryEntry.type, isReading, isMovieFormat, history]);
 
   const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
   useEffect(() => {
@@ -510,6 +543,39 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return normalizedPicked;
   }
 
+  // Fetched episode names for the "Localizar" rename flow — every distinct
+  // catalog entry seasonMap points at (its own id for each anime season, or
+  // just this work's own single id for a series), so buildLocateRenamePlan
+  // can fill in a real "- Episode Title" for a file whose own name never had
+  // one, instead of leaving it at just "SxxExx - Work Title".
+  async function fetchEpisodeNamesForSeasonMap(
+    mainExternalId: string,
+    seasonMap: Record<number, { externalId: string; title: string }>,
+  ): Promise<Record<string, Map<number, string>>> {
+    if (item.libraryEntry.type !== 'anime' && item.libraryEntry.type !== 'series') return {};
+    const ids = new Set<string>([mainExternalId, ...Object.values(seasonMap).map(s => s.externalId)]);
+    const entries = await Promise.all(
+      [...ids].map(async id => [id, await fetchLocalSeasonEpisodeNames(id, true).catch(() => new Map<number, string>())] as const),
+    );
+    return Object.fromEntries(entries);
+  }
+
+  // Each known season's own real episode total — what lets
+  // buildLocateRenamePlan slice a bare continuously-numbered folder (no
+  // per-file season marker at all) into its real seasons, and cap every
+  // season at its own real length instead of running an extras clip past
+  // it as if it were a further episode.
+  async function fetchSeasonEpisodeCounts(
+    seasonMap: Record<number, { externalId: string; title: string }>,
+  ): Promise<SeasonEpisodeCounts> {
+    const counts: SeasonEpisodeCounts = {};
+    await Promise.all(Object.entries(seasonMap).map(async ([sStr, info]) => {
+      const entry = await getCatalogEntry(info.externalId).catch(() => null);
+      if (entry?.total_count) counts[Number(sStr)] = entry.total_count;
+    }));
+    return counts;
+  }
+
   const handleLocateFolder = async () => {
     setLocateMenuOpen(false);
     setLocateError(null);
@@ -530,7 +596,11 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         return;
       }
       const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
-      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, itemSeason, seasonMap, item.libraryEntry.type);
+      const [episodeNamesByExternalId, seasonEpisodeCounts] = await Promise.all([
+        fetchEpisodeNamesForSeasonMap(item.externalId, seasonMap),
+        fetchSeasonEpisodeCounts(seasonMap),
+      ]);
+      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, itemSeason, seasonMap, item.libraryEntry.type, episodeNamesByExternalId, seasonEpisodeCounts);
       const relatedMatches = await findRelatedSiblingMatches(parent, normalizedPicked);
       setLocatePreview({ pickedPath: normalizedPicked, parentDir: parent, plan, relatedMatches });
     } catch (err) {
@@ -622,10 +692,21 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     const tag = encodeExternalIdForFilename(item.externalId);
     const titleSanitized = sanitizeForFilename(item.title);
     const isBookOrNovel = item.libraryEntry.type === 'lnovel' || item.libraryEntry.type === 'book';
-    const episodeTitle = isBookOrNovel ? '' : (info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '');
+    // info.episodeTitle can itself just be the work's own name again (see
+    // buildLocateRenamePlan's own comment on the same issue) — checked for
+    // redundancy before trusting it, so junk falls through to the fetched
+    // provider name instead of blocking it.
+    let rawEpisodeTitle = (!isBookOrNovel && info?.episodeTitle && !isRedundantEpisodeName(info.episodeTitle, titleSanitized)) ? info.episodeTitle : '';
+    if (!rawEpisodeTitle && !isBookOrNovel) {
+      const fetchedNames = await fetchLocalSeasonEpisodeNames(item.externalId, true).catch(() => new Map<number, string>());
+      rawEpisodeTitle = fetchedNames.get(episode) ?? '';
+    }
+    const episodeTitle = rawEpisodeTitle && !isRedundantEpisodeName(rawEpisodeTitle, titleSanitized)
+      ? sanitizeForFilename(rawEpisodeTitle)
+      : '';
     const ext = oldName.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
     const label = formatEpisodeLabel(itemSeason, episode, item.libraryEntry.type);
-    const parts = [label, titleSanitized, episodeTitle].filter(Boolean);
+    const parts = [label, episodeTitle, titleSanitized].filter(Boolean);
     const newName = `${parts.join(' - ')} [${tag}]${ext}`;
 
     setLocateFilePreview({ container, oldName, newName });
@@ -862,7 +943,15 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                               ? (isBookOrNovel ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type) : (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)))
                               : isBookOrNovel
                               ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)
-                              : `${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`}
+                              : nextFileEpisodeTitle
+                              ? `${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)} - ${nextFileEpisodeTitle}`
+                              : (() => {
+                                  const fetchedName = episodeNames.get(`${item.externalId}|${nextNumber}`);
+                                  const code = formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type);
+                                  return fetchedName && !isRedundantEpisodeName(fetchedName, item.title)
+                                    ? `${code} - "${fetchedName}" - ${cleanFilenameForDisplay(nextFile.name)}`
+                                    : `${code} - ${cleanFilenameForDisplay(nextFile.name)}`;
+                                })()}
                           </strong>
                         </>
                       ) : (
@@ -914,7 +1003,11 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                         </>
                       ) : (
                         <>
-                          <strong>{formatEpisodeLabel(h.seasonNum ?? itemSeason, h.episode_number, item.libraryEntry.type)}</strong> - {h.seasonTitle || item.title}
+                          <strong>{formatEpisodeLabel(h.seasonNum ?? itemSeason, h.episode_number, item.libraryEntry.type)}</strong>
+                          {(() => {
+                            const fetchedName = episodeNames.get(`${h.external_id}|${h.episode_number}`);
+                            return fetchedName && !isRedundantEpisodeName(fetchedName, h.seasonTitle, item.title) ? <> - "{fetchedName}"</> : null;
+                          })()} - {h.seasonTitle || item.title}
                         </>
                       )}
                     </span>
