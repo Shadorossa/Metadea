@@ -99,11 +99,15 @@ function extractExternalIdFromRelationUrl(url: string | null | undefined): strin
 
 // Log tab labels show only what's after the title's colon (e.g. "Trails in
 // the Sky: 2nd Chapter" → "2nd Chapter") — titles rarely share a common
-// prefix with the base game, so diffing against it wasn't reliable.
+// prefix with the base game, so diffing against it wasn't reliable. A
+// remainder of 2 characters or less ("II", "S2", ":D"...) reads as noise
+// rather than a real edition name, so the full title is kept instead.
 function editionTabLabel(editionTitle: string, defaultLabel: string = 'Edition'): string {
   if (!editionTitle) return defaultLabel;
   const idx = editionTitle.indexOf(':');
-  return idx === -1 ? editionTitle : editionTitle.slice(idx + 1).trim();
+  if (idx === -1) return editionTitle;
+  const after = editionTitle.slice(idx + 1).trim();
+  return after.length > 2 ? after : editionTitle;
 }
 
 // ── Small header-field building blocks ───────────────────────────────────────
@@ -218,19 +222,22 @@ function NumberField({ label, value, max, step, disabled, onChange }: {
   );
 }
 
+// Same 2-character noise floor as editionTabLabel above — a colon or
+// baseTitle-prefix remainder of "II"/"S2"/etc. isn't a usable label on its
+// own, so the full title is kept instead of a near-blank tab.
 function formatSeasonTabLabel(title: string, baseTitle?: string): string {
   if (!title) return '';
   const colonIdx = title.indexOf(':');
   if (colonIdx !== -1) {
     const after = title.slice(colonIdx + 1).trim();
-    if (after.length > 0) return after;
+    if (after.length > 2) return after;
   }
   if (baseTitle && baseTitle.trim().length > 2) {
     const normBase = baseTitle.trim().toLowerCase();
     const normTitle = title.trim().toLowerCase();
     if (normTitle.startsWith(normBase)) {
       const remainder = title.trim().slice(baseTitle.trim().length).replace(/^[\s:\-–—]+/, '').trim();
-      if (remainder.length > 0) return remainder;
+      if (remainder.length > 2) return remainder;
     }
   }
   return title;
@@ -899,6 +906,45 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return seriesSeasons.find(s => seriesSeasonExternalId(externalId, s.seasonNumber) === entry.activeLogId);
   }, [isUnifiedSeries, seriesSeasons, externalId, entry.activeLogId]);
 
+  // Same "which season (if any) is the active tab" lookup as
+  // activeSeriesSeasonInfo above, for anime's own unified season tabs —
+  // animeSeasonChain's own SagaEntry already carries its own year/month/day
+  // (unlike seasonMetaMap, which only has title/cover/totalCount), so no
+  // extra fetch is needed to know a specific season's own release date.
+  const activeAnimeSeasonEntry = useMemo(() => {
+    if (!isUnifiedAnime) return undefined;
+    return animeSeasonChain.find(s => s.externalId === entry.activeLogId);
+  }, [isUnifiedAnime, animeSeasonChain, entry.activeLogId]);
+
+  function isFutureDate(year: number | null | undefined, month: number | null | undefined, day: number | null | undefined): boolean {
+    if (!year) return false;
+    const releaseDate = new Date(year, (month ?? 1) - 1, day ?? 1);
+    return releaseDate.getTime() > Date.now();
+  }
+
+  // Nothing not yet out can honestly be completed/dropped/paused/in-progress
+  // — checked per *active tab*, not just the modal's own top-level data:
+  // opening the editor from a season that hasn't aired must not also lock
+  // every OTHER season's tab (already released) out of its own real status.
+  // data.status is the canonical, already-cross-provider-normalized signal
+  // (media-status.ts's CanonicalStatus) for the base/general case — checked
+  // first since it accounts for things a bare date can't (e.g. TMDB's "In
+  // Production" with no date at all yet); the release-date check is a
+  // fallback/belt-and-braces for a catalog row whose status hasn't been
+  // resynced recently but whose date clearly hasn't arrived.
+  const isUpcoming = useMemo(() => {
+    if (activeAnimeSeasonEntry) {
+      return isFutureDate(activeAnimeSeasonEntry.year, activeAnimeSeasonEntry.month, activeAnimeSeasonEntry.day);
+    }
+    if (activeSeriesSeasonInfo) {
+      if (!activeSeriesSeasonInfo.airDate) return false;
+      const d = new Date(activeSeriesSeasonInfo.airDate);
+      return !isNaN(d.getTime()) && d.getTime() > Date.now();
+    }
+    return data.status === 'NOT_YET_RELEASED' || isFutureDate(data.releaseYear, data.releaseMonth, data.releaseDay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAnimeSeasonEntry, activeSeriesSeasonInfo, data.status, data.releaseYear, data.releaseMonth, data.releaseDay]);
+
   const generalBaseTitle = useMemo(() => {
     return stripSeasonSuffix(animeSeasonChain[0]?.title || data.titleMain);
   }, [animeSeasonChain, data.titleMain]);
@@ -1058,7 +1104,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       // four states already come from whichever season
                       // actually has them, so clicking them here would have
                       // nothing real to write.
-                      disabled={isGeneralTab && value !== 'completed'}
+                      //
+                      // Nothing not yet released can honestly be completed/
+                      // dropped/paused/in-progress — only "planning" (queued
+                      // up for whenever it comes out) makes sense.
+                      disabled={(isGeneralTab && value !== 'completed') || (isUpcoming && value !== 'planning')}
                       onClick={() => {
                         if (isGeneralTab) {
                           if (value !== 'completed') return;
@@ -1096,7 +1146,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         max={activeTotalCount && activeTotalCount > 0 ? activeTotalCount : undefined}
                         onChange={v => {
                           const updates: Partial<LogState> = { progress: v };
-                          if (activeTotalCount && activeTotalCount > 0 && v >= activeTotalCount && activeLog.status !== 'completed') {
+                          if (!isUpcoming && activeTotalCount && activeTotalCount > 0 && v >= activeTotalCount && activeLog.status !== 'completed') {
                             updates.status = 'completed';
                           }
                           dispatchEntry({ type: 'UPDATE_LOG', updates });
@@ -1107,7 +1157,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       disabled={isGeneralTab}
                       onChange={v => {
                         const updates: Partial<LogState> = { progress: v };
-                        if (activeTotalCount && activeTotalCount > 0 && v >= activeTotalCount && activeLog.status !== 'completed') {
+                        if (!isUpcoming && activeTotalCount && activeTotalCount > 0 && v >= activeTotalCount && activeLog.status !== 'completed') {
                           updates.status = 'completed';
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
@@ -1159,7 +1209,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       onChange={e => {
                         const val = e.target.value;
                         const updates: Partial<LogState> = { startedAt: val, finishedAt: val };
-                        if (val) {
+                        if (val && !isUpcoming) {
                           updates.status = 'completed';
                           if (activeTotalCount && activeTotalCount > 0) updates.progress = activeTotalCount;
                           if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
@@ -1196,7 +1246,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         onChange={e => {
                           const val = e.target.value;
                           const updates: Partial<LogState> = { finishedAt: val };
-                          if (val) {
+                          if (val && !isUpcoming) {
                             updates.status = 'completed';
                             if (activeTotalCount && activeTotalCount > 0) updates.progress = activeTotalCount;
                             if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
