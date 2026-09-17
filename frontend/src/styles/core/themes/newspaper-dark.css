@@ -253,6 +253,20 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   border-color: var(--accent) !important;
 }
 
+/* User profile library filters */
+[data-theme="newspaper-dark"] .library-filters,
+[data-theme="newspaper-dark"] .library-filters-title,
+[data-theme="newspaper-dark"] .library-filter-label,
+[data-theme="newspaper-dark"] .library-filter-input,
+[data-theme="newspaper-dark"] .library-filter-date-input,
+[data-theme="newspaper-dark"] .library-date-field-label,
+[data-theme="newspaper-dark"] .library-edition-btn,
+[data-theme="newspaper-dark"] .library-status-val,
+[data-theme="newspaper-dark"] .library-status-arrow,
+[data-theme="newspaper-dark"] .library-sort-label {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
 [data-theme="newspaper-dark"] .input-dark:focus,
 [data-theme="newspaper-dark"] .search-input:focus {
   border-color: var(--text-main) !important;
