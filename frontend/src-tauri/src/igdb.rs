@@ -57,10 +57,9 @@ fn name_has_edition_word(name: &str) -> bool {
         .any(|tok| NON_GAME_NAME_WORDS.iter().any(|w| tok.eq_ignore_ascii_case(w)))
 }
 
-/// Returns true if the game is a DLC/addon/non-game entry that should be excluded.
 pub(crate) fn is_non_game(game: &serde_json::Value) -> bool {
-    // Solo permitimos: 0 (main_game), 4 (standalone_expansion), 7 (season), 8 (remake), 14 (update)
-    const ALLOWED: &[u64] = &[0, 4, 7, 8, 14];
+    // 0: main_game, 2: expansion, 3: bundle, 4: standalone, 7: season, 8: remake, 9: remaster, 10: expanded, 11: port, 13: pack, 14: update
+    const ALLOWED: &[u64] = &[0, 2, 3, 4, 7, 8, 9, 10, 11, 13, 14];
     let category = get_game_category(game);
     !ALLOWED.contains(&category)
 }
@@ -1430,12 +1429,13 @@ pub async fn igdb_search_candidates(
         .map(String::from)
         .collect();
 
-    // Take up to 50% of meaningful tokens (min 2) to allow name variations
-    let take = (tokens.len() / 2).max(2).min(tokens.len());
-    let search_query = tokens[..take].join(" ");
+    let search_query = if tokens.is_empty() {
+        game_name.trim().to_string()
+    } else {
+        tokens.join(" ")
+    };
+    let escaped_query = search_query.replace('\\', "\\\\").replace('"', "\\\"");
 
-    // Search with only flat/2-level fields — involved_companies.company.name
-    // (3 levels) causes 400 when combined with `search`
     let results = igdb_query(
         &client,
         &client_id,
@@ -1444,12 +1444,8 @@ pub async fn igdb_search_candidates(
         &format!(
             "fields id,name,cover.image_id,first_release_date,category,game_type; \
              search \"{}\"; where cover != null; limit 20;",
-            search_query
+            escaped_query
         ),
-
-
-
-
     )
     .await?;
 
@@ -1461,7 +1457,6 @@ pub async fn igdb_search_candidates(
         .filter(|g| !is_non_game(g))
         .collect();
 
-    // Fetch developer info in a second query using the game IDs
     let ids: Vec<String> = games
         .iter()
         .filter_map(|g| g["id"].as_u64().map(|id| id.to_string()))
@@ -1517,12 +1512,14 @@ pub async fn igdb_search_candidates(
                 .as_str()
                 .map(|img_id| format!("{}/{}.jpg", IGDB_IMAGE_COVER_BIG, img_id))?;
             let developer = dev_map.get(&id).cloned().unwrap_or_default();
+            let category = game["category"].as_u64();
             Some(serde_json::json!({
                 "id":        id,
                 "name":      game["name"],
                 "year":      year,
                 "cover_url": cover_url,
                 "developer": developer,
+                "category":  category,
             }))
         })
         .collect();

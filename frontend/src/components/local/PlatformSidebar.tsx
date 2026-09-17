@@ -1,6 +1,7 @@
 import React from 'react';
 import { getT } from '../../i18n/client';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type PlatformId } from './utils/constants';
+import { IconFolder } from './ui/icons';
 
 interface PlatformSidebarProps {
   activePlatform:     PlatformId | null;
@@ -27,7 +28,11 @@ export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, 
           aria-label={PLATFORM_LABEL[id]}
         >
           <span className="local-platform-icon">
-            <img src={PLATFORM_LOGO[id]} alt={PLATFORM_LABEL[id]} draggable={false} />
+            {PLATFORM_LOGO[id] ? (
+              <img src={PLATFORM_LOGO[id]} alt={PLATFORM_LABEL[id]} draggable={false} />
+            ) : (
+              <IconFolder size={20} />
+            )}
           </span>
           <span className="local-platform-label">{PLATFORM_LABEL[id]}</span>
         </button>

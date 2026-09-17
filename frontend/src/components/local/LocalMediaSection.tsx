@@ -8,13 +8,14 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { GameCard } from './cards/GameCard';
 import { type CoverCache } from './details/GameDetailPanel';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/catalogGameLinking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, sortEntries, type SortMode, type StatusEntry } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
-import { IconFolder, IconPlus } from './ui/icons';
+import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { VirtualCardGrid } from './ui/VirtualCardGrid';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
+import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -98,13 +99,10 @@ interface LocalMediaSectionProps {
   // Every other category (anime/manga/...) never gets a delete option here.
   onRemoveGame?: (launcher: string, linkKey: string) => void;
   onDeleteLibraryItem?: (externalId: string) => void;
+  onRefreshScan?: () => void;
 }
 
-// Shows the library entries (watching/reading/playing + planning) for a
-// media category as a card grid, and — on click — opens a side panel that
-// tries to match the work to a subfolder of the category's assigned local
-// folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem, onRefreshScan }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -142,14 +140,34 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // against the FULL library (any status, not just allItemsRaw's in-
   // progress/planning-only set) so a VN already logged as completed doesn't
   // get mislabeled into "Backlog de Steam".
+  // Falls back to a plain derivation from mediaRaw when the caller doesn't
+  // pass one (kept optional above so this stays a non-breaking addition) —
+  // LocalLibrary's own copy additionally overlays pickedNames (a game just
+  // re-linked via "editar metadatos", before its real media_catalog row —
+  // see IgdbPickerModal — has actually round-tripped back through here).
+  const resolvedCatalogMapById = useMemo(
+    () => catalogMapById ?? new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
+    [catalogMapById, mediaRaw],
+  );
+
   const steamGameMatch = useMemo(() => {
     const result = new Map<LocalGame, { externalId: string; status: string } | null>();
     if (!steamGames || steamGames.length === 0 || !mediaRaw) return result;
     const byExternalId = new Map(mediaRaw.entries.map(e => [e.external_id, e]));
     for (const g of steamGames) {
       const candidateIds = candidateExternalIdsForGame(g, pathCache ?? {});
-      const matched = candidateIds.map(id => byExternalId.get(id)).find(Boolean) ?? null;
-      result.set(g, matched ? { externalId: matched.external_id, status: matched.status ?? 'planning' } : null);
+      const completedBundleId = candidateIds.find(id => computeBundleCompletionStatus(id, mediaRaw.relations, byExternalId) === 'completed');
+      if (completedBundleId) {
+        result.set(g, { externalId: completedBundleId, status: 'completed' });
+        continue;
+      }
+      const matchedEntry = candidateIds.map(id => byExternalId.get(id)).find(Boolean);
+      if (matchedEntry) {
+        const bundleStatus = computeBundleCompletionStatus(matchedEntry.external_id, mediaRaw.relations, byExternalId);
+        result.set(g, { externalId: matchedEntry.external_id, status: bundleStatus ?? matchedEntry.status ?? 'planning' });
+        continue;
+      }
+      result.set(g, null);
     }
     return result;
   }, [steamGames, mediaRaw, pathCache]);
@@ -170,18 +188,20 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
     const q = filterName.trim().toLowerCase();
     return q ? allItems.filter(i => i.title.toLowerCase().includes(q)) : allItems;
   }, [allItems, filterName]);
-  // Steam games split by their matched library status — unmatched (or
-  // matched to a status this grid doesn't otherwise track, e.g. paused/
-  // dropped) fall into "Backlog de Steam" instead. A completed match is
-  // dropped entirely: same as every other completed work, it doesn't belong
-  // in this "actively tracked" grid at all.
+  // Steam games split by their matched library status — unmatched, paused/
+  // dropped, AND completed all fall into "Backlog de Steam" instead of
+  // their own bucket — same as Videojuegos' own launcher sections (see
+  // GamesGrid/LocalLibrary's groupedGames), which never drop a completed
+  // install off the grid either, just badge it Completado in place. A
+  // completed BUNDLE (see steamGameMatch's own bundleCompletionStatus) is
+  // exactly the case this matters for — Umineko still needs to show up
+  // somewhere once every part's done, not vanish entirely.
   const { steamInProgress, steamPlanning, steamBacklog } = useMemo(() => {
     const inProgress: LocalGame[] = [];
     const planning: LocalGame[] = [];
     const backlog: LocalGame[] = [];
     for (const [g, match] of steamGameMatch) {
-      if (!match) backlog.push(g);
-      else if (match.status === 'completed') continue;
+      if (!match || match.status === 'completed') backlog.push(g);
       else if (isInProgressStatus(match.status)) inProgress.push(g);
       else if (match.status === 'planning') planning.push(g);
       else backlog.push(g);
@@ -222,25 +242,16 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
     setDeleteMenu(null);
   };
 
-  // Falls back to a plain derivation from mediaRaw when the caller doesn't
-  // pass one (kept optional above so this stays a non-breaking addition) —
-  // LocalLibrary's own copy additionally overlays pickedNames (a game just
-  // re-linked via "editar metadatos", before its real media_catalog row —
-  // see IgdbPickerModal — has actually round-tripped back through here).
-  const resolvedCatalogMapById = useMemo(
-    () => catalogMapById ?? new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
-    [catalogMapById, mediaRaw],
-  );
-  type SectionEntry = { kind: 'catalog'; item: LocalMediaItem; launchGame?: LocalGame } | { kind: 'steam'; game: LocalGame };
+  type SectionEntry = { kind: 'catalog'; item: LocalMediaItem; launchGame?: LocalGame } | { kind: 'steam'; game: LocalGame; libraryStatus?: string };
   // A library-only VN entry gets one more chance to resolve to a real (but
   // identity-unmatched) Steam listing by title — the exact same matching
   // Videojuegos' own Pendientes/En progreso sections use (see
   // catalogGameLinking.ts) — instead of unconditionally staying a passive
   // catalog card just because steamGameMatch (identity-only) missed it.
   const toEntries = (catalogItems: LocalMediaItem[], games: LocalGame[]): SectionEntry[] => {
-    const linked = buildLibraryStatusEntries(catalogItems, steamGames ?? [], resolvedCatalogMapById, pathCache ?? {});
+    const linked = buildLibraryStatusEntries(catalogItems, steamGames ?? [], resolvedCatalogMapById, pathCache ?? {}, mediaRaw?.relations ?? []);
     return [
-      ...linked.map((e): SectionEntry => e.kind === 'game' ? { kind: 'steam', game: e.game } : { kind: 'catalog', item: e.item, launchGame: e.launchGame }),
+      ...linked.map((e): SectionEntry => e.kind === 'game' ? { kind: 'steam', game: e.game, libraryStatus: e.libraryStatus } : { kind: 'catalog', item: e.item, launchGame: e.launchGame }),
       ...games.map(game => ({ kind: 'steam' as const, game })),
     ];
   };
@@ -249,6 +260,9 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // launcher instead of a single flat "Backlog de Steam" list, since
   // steamGames/steamBacklog already cover every detected launcher (GOG,
   // Epic, etc.), not just Steam despite the prop's name.
+  // Same sort control Videojuegos gives its own launcher sections (see
+  // GamesGrid) — one shared preference across every platform here too.
+  const [sortMode, setSortMode] = useState<SortMode>('alpha');
   const backlogByPlatform = useMemo(() => {
     const map = new Map<PlatformId, LocalGame[]>();
     for (const g of steamBacklog) {
@@ -262,23 +276,76 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   const sections = useMemo(() => {
     const notReleased = items.filter(isNotReleasedYet);
     const released = items.filter(i => !isNotReleasedYet(i));
-    const platformSections = LAUNCHER_ORDER
-      .filter(id => backlogByPlatform.has(id))
-      .map(id => ({ title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries: toEntries([], backlogByPlatform.get(id)!) }));
+    // Platform/backlog sections are always kind:'steam'-only (built from
+    // toEntries([], ...) — no catalog items ever go into this branch), so
+    // they can be sorted directly as StatusEntry's 'game' variant and mapped
+    // straight back — same sortEntries/SortMode Videojuegos' own launcher
+    // sections use (see GamesGrid).
     const inProgress = released.filter(i => isInProgressStatus(i.status))
       .sort((a, b) => completionFraction(b) - completionFraction(a));
     const planning = released.filter(i => i.status === 'planning')
       .sort((a, b) => episodeCount(a) - episodeCount(b));
+    const planningEntries: StatusEntry[] = isGameLike
+      ? buildLibraryStatusEntries(planning, steamGames ?? [], resolvedCatalogMapById, pathCache ?? {}, mediaRaw?.relations ?? [])
+      : [];
     const unreleased = [...notReleased]
       .sort((a, b) => (releaseTimestamp(a) ?? Infinity) - (releaseTimestamp(b) ?? Infinity));
-    return [
+
+    const platformSections = isGameLike ? LAUNCHER_ORDER
+      .filter(id => backlogByPlatform.has(id) || (id === 'steam' && (planningEntries.length > 0 || steamPlanning.length > 0)))
+      .map(id => {
+        const platformBacklogGames: StatusEntry[] = (backlogByPlatform.get(id) ?? []).map(game => ({ kind: 'game', game }));
+        const additionalPlatformEntries: StatusEntry[] = id === 'steam'
+          ? [
+              ...steamPlanning.map((game): StatusEntry => ({ kind: 'game', game })),
+              ...planningEntries,
+            ]
+          : [];
+        const merged = [...platformBacklogGames, ...additionalPlatformEntries];
+        const sorted = sortEntries(merged, sortMode, displayNameFor);
+        const entries: SectionEntry[] = sorted.map(e => e.kind === 'game'
+          ? { kind: 'steam' as const, game: e.game, libraryStatus: e.libraryStatus }
+          : { kind: 'catalog' as const, item: e.item, launchGame: e.launchGame }
+        );
+        return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries };
+      }) : LAUNCHER_ORDER
+      .filter(id => backlogByPlatform.has(id))
+      .map(id => {
+        const asStatusEntries: StatusEntry[] = backlogByPlatform.get(id)!.map(game => ({ kind: 'game', game }));
+        const sorted = sortEntries(asStatusEntries, sortMode, displayNameFor);
+        const entries: SectionEntry[] = sorted.map(e => ({ kind: 'steam' as const, game: (e as { kind: 'game'; game: LocalGame }).game }));
+        return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries };
+      });
+    const rawSections = [
       { title: p.section_in_progress, icon: undefined, entries: toEntries(inProgress, steamInProgress) },
-      { title: p.section_planning, icon: undefined, entries: toEntries(planning, steamPlanning) },
+      ...(isGameLike ? [] : [{ title: p.section_planning, icon: undefined, entries: toEntries(planning, steamPlanning) }]),
       { title: 'Sin estrenar', icon: undefined, entries: toEntries(unreleased, []) },
       ...platformSections,
-    ].filter(s => s.entries.length > 0);
+    ];
+    // toEntries' own name-matching (see buildLibraryStatusEntries' chapter-
+    // suffix fallback) can resolve a Steam game from INSIDE a status
+    // section — the same game object independently sits in steamBacklog/
+    // platformSections too whenever it wasn't identity-matched. Sections
+    // are built in priority order (a real tracked status first, the raw
+    // platform backlog last), so keeping only each game's FIRST appearance
+    // here is what makes the tracked-status card win over its own
+    // unmatched backlog duplicate instead of showing both.
+    const gameIdentity = (g: LocalGame) => g.app_id ?? g.install_path ?? g.name;
+    const seenGameIds = new Set<string>();
+    return rawSections
+      .map(sec => ({
+        ...sec,
+        entries: sec.entries.filter(e => {
+          if (e.kind !== 'steam') return true;
+          const id = gameIdentity(e.game);
+          if (seenGameIds.has(id)) return false;
+          seenGameIds.add(id);
+          return true;
+        }),
+      }))
+      .filter(s => s.entries.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, resolvedCatalogMapById]);
+  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, resolvedCatalogMapById, sortMode]);
 
   // One bulk exists-check for every catalog card this grid is about to
   // render, instead of each LocalMediaCard racing its own get_cached_cover
@@ -300,6 +367,16 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <FolderRouteControls rootFolder={rootFolder} onSetRoute={onSetRoute} onClearRoute={onClearRoute} />
+              {onRefreshScan && (
+                <button
+                  type="button"
+                  className="local-refresh-btn"
+                  onClick={onRefreshScan}
+                  title={isMounted ? t.local.scan_again : 'Escanear de nuevo'}
+                >
+                  <IconRefresh />
+                </button>
+              )}
             </div>
           </div>
 
@@ -321,6 +398,22 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                       </span>
                     )}
                     {sec.title}
+                    {/* Sort control only on platform/backlog sections (the
+                        only ones sec.icon is ever set for) — same
+                        alpha/lastPlayed/playtime choice Videojuegos' own
+                        launcher sections give (see GamesGrid). */}
+                    {sec.icon && (
+                      <select
+                        className="local-sort-select"
+                        value={sortMode}
+                        onChange={e => setSortMode(e.target.value as SortMode)}
+                        title={t.local.sort_title}
+                      >
+                        <option value="alpha">{t.local.sort_alpha}</option>
+                        <option value="lastPlayed">{t.local.sort_last_played}</option>
+                        <option value="playtime">{t.local.sort_playtime}</option>
+                      </select>
+                    )}
                   </h3>
                   <VirtualCardGrid
                     entries={sec.entries}
@@ -339,6 +432,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         coverCache={coverCache ?? {}}
                         onClick={onSetGameSelection}
                         displayName={displayNameFor(entry.game)}
+                        status={steamGameMatch.get(entry.game)?.status ?? entry.libraryStatus}
                         onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
                       />
                     )}

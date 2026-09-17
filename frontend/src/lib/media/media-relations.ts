@@ -58,6 +58,23 @@ const RELATION_SORT_PRIORITY: Record<string, number> = {
   FORK: 7,
 };
 
+// A bundle's own EPISODE relations (e.g. Umineko's 8 visual-novel episodes)
+// almost always carry their own number right in the title ("Episode 8 -
+// Twilight of the Golden Witch"), which is far more reliable than
+// release_year/month/day for this specific relation type — those columns
+// are only ever populated when the source that curated the edge happened to
+// supply a release date for the related title, which a manually-added or
+// IGDB-sourced EPISODE relation often doesn't, leaving every entry tied at
+// the same fallback date and sorted in whatever arbitrary order they were
+// saved in instead of release order.
+const EPISODE_NUMBER_RE = /\b(?:episode|episodio|cap[ií]tulo|chapter)\s+(\d+(?:\.\d+)?)\b/i;
+
+export function extractEpisodeNumberFromTitle(title: string | null | undefined): number | null {
+  if (!title) return null;
+  const match = EPISODE_NUMBER_RE.exec(title);
+  return match ? parseFloat(match[1]) : null;
+}
+
 function normalizeLegacyDbRelation(rel: DbMediaRelation): DbMediaRelation {
   const canonical = normalizeLegacyRelationType(rel.relation_type);
   if (canonical === rel.relation_type) return rel;
@@ -69,6 +86,14 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
     const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 99;
     const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
+    // An EPISODE relation's own title almost always carries its real number
+    // ("Episode 8 - ...") — more reliable than release date for this type,
+    // whose release_year/month/day is often never populated at all.
+    if (a.relation_type === 'EPISODE' && b.relation_type === 'EPISODE') {
+      const epA = extractEpisodeNumberFromTitle(a.title);
+      const epB = extractEpisodeNumberFromTitle(b.title);
+      if (epA !== null && epB !== null && epA !== epB) return epA - epB;
+    }
     // Within same relation type, sort by full release date (ascending: older first)
     const dateA = (a.release_year ?? 9999) * 10000 + (a.release_month ?? 12) * 100 + (a.release_day ?? 31);
     const dateB = (b.release_year ?? 9999) * 10000 + (b.release_month ?? 12) * 100 + (b.release_day ?? 31);
@@ -100,6 +125,14 @@ function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] {
     const priorityA = RELATION_SORT_PRIORITY[rTypeA] ?? 99;
     const priorityB = RELATION_SORT_PRIORITY[rTypeB] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
+    // An EPISODE relation's own title almost always carries its real number
+    // ("Episode 8 - ...") — more reliable than release date for this type,
+    // whose releaseYear/Month/Day is often never populated at all.
+    if (rTypeA === 'EPISODE' && rTypeB === 'EPISODE') {
+      const epA = extractEpisodeNumberFromTitle(a.title);
+      const epB = extractEpisodeNumberFromTitle(b.title);
+      if (epA !== null && epB !== null && epA !== epB) return epA - epB;
+    }
     // Within same relation type, sort by full release date (ascending: older first)
     const dateA = (a.releaseYear ?? 9999) * 10000 + (a.releaseMonth ?? 12) * 100 + (a.releaseDay ?? 31);
     const dateB = (b.releaseYear ?? 9999) * 10000 + (b.releaseMonth ?? 12) * 100 + (b.releaseDay ?? 31);

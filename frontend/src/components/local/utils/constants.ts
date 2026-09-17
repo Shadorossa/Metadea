@@ -26,7 +26,7 @@ export const CATEGORIES: Array<{ id: CategoryId; label: string }> = [
   { id: 'movies',       label: 'Películas' },
 ];
 
-export const LAUNCHER_ORDER: PlatformId[] = ['steam', 'epic', 'gog', 'xbox', 'ea', 'nintendo', 'playstation'];
+export const LAUNCHER_ORDER: PlatformId[] = ['steam', 'epic', 'gog', 'xbox', 'ea', 'nintendo', 'playstation', 'local'];
 
 export const PLATFORM_LOGO: Record<PlatformId, string> = {
   steam:       '/platforms/steam_logo.png',

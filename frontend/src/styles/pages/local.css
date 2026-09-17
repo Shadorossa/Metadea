@@ -1147,6 +1147,31 @@
   gap: 0.5rem;
 }
 
+.local-media-neighbors-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: auto 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--anim-fast, 120ms);
+}
+
+.local-media-neighbors-arrow:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.local-media-neighbors-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* Cover-forward, no box — a plain vertical stack (label, cover, title)
    instead of a bordered card, so it reads as "here's the related work"
    rather than another clickable panel section of its own. */
@@ -1696,6 +1721,13 @@
   gap: 0.3rem;
 }
 
+.igdb-picker-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
 .igdb-picker-name {
   font-size: 0.74rem;
   font-weight: 600;
@@ -1706,11 +1738,56 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Reserves space for a full 2-line title regardless of how long this
-     particular one actually is — a 1-line title used to leave the meta row
-     right underneath it while a 2-line neighbor pushed its own meta row
-     down, so the grid read as uneven instead of aligned. */
   min-height: calc(0.74rem * 1.35 * 2);
+  flex: 1;
+}
+
+.igdb-picker-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.igdb-picker-badge.vn {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.igdb-picker-badge.bundle {
+  background: rgba(234, 179, 8, 0.18);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+}
+
+.igdb-picker-badge.port {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.igdb-picker-badge.remake,
+.igdb-picker-badge.remaster,
+.igdb-picker-badge.expanded {
+  background: rgba(20, 184, 166, 0.18);
+  color: #2dd4bf;
+  border: 1px solid rgba(20, 184, 166, 0.35);
+}
+
+.igdb-picker-badge.db {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.igdb-picker-cover-placeholder {
+  background: var(--bg-surface, #1e293b);
 }
 
 .igdb-picker-meta {

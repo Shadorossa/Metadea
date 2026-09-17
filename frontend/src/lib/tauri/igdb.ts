@@ -82,11 +82,15 @@ export async function igdbGetCoverBySteamId(appId: string, gameName: string, lau
 }
 
 export interface IgdbCandidate {
-  id:        number;
-  name:      string;
-  year:      number;
-  cover_url: string;
-  developer: string;
+  id:          number;
+  name:        string;
+  year:        number;
+  cover_url:   string;
+  developer:   string;
+  category?:   number | null;
+  externalId?: string;
+  type?:       string;
+  source?:     'database' | 'igdb';
 }
 
 export async function igdbSearchCandidates(gameName: string): Promise<IgdbCandidate[]> {

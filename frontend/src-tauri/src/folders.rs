@@ -220,62 +220,79 @@ pub async fn launch_game(
     external_id: Option<String>,
 ) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
-    if let Some(platform_id) = rom_platform {
-        use tauri::Manager;
-        use tauri::Emitter;
-        let rom_path = install_path.ok_or("No ROM path for emulator game")?;
-        let db = app_handle.state::<crate::db::MetadeaDb>();
-        let (executable_path, launch_args) = {
-            let conn = db.conn.lock().str_err()?;
-            conn.query_row(
-                "SELECT executable_path, launch_args FROM emulator_configs WHERE platform_id = ?1",
-                [&platform_id],
-                |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
-            )
-            .map_err(|_| format!("No emulator configured for {}", platform_id))?
-        };
-        if executable_path.is_empty() {
-            return Err(format!("No emulator executable configured for {}", platform_id));
-        }
-        let args = build_emulator_args(&launch_args, &rom_path);
-        let mut child = std::process::Command::new(&executable_path)
-            .args(&args)
-            .spawn()
-            .map_err(|e| format!("Failed to launch emulator: {}", e))?;
+    let is_direct_exe = install_path
+        .as_deref()
+        .map(|p| p.to_lowercase().ends_with(".exe"))
+        .unwrap_or(false);
 
-        let handle = app_handle.clone();
-        let ext_id = external_id.unwrap_or_default();
-        let exe_path_buf = PathBuf::from(&executable_path);
-        let root_filename = exe_path_buf.file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-        let start = std::time::Instant::now();
+    if !is_direct_exe {
+        if let Some(platform_id) = rom_platform {
+            use tauri::Manager;
+            use tauri::Emitter;
+            let rom_path = install_path.ok_or("No ROM path for emulator game")?;
+            let db = app_handle.state::<crate::db::MetadeaDb>();
+            let (executable_path, launch_args) = {
+                let conn = db.conn.lock().str_err()?;
+                conn.query_row(
+                    "SELECT executable_path, launch_args FROM emulator_configs WHERE platform_id = ?1",
+                    [&platform_id],
+                    |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+                )
+                .map_err(|_| format!("No emulator configured for {}", platform_id))?
+            };
+            if executable_path.is_empty() {
+                return Err(format!("No emulator executable configured for {}", platform_id));
+            }
+            let args = build_emulator_args(&launch_args, &rom_path);
+            let mut child = std::process::Command::new(&executable_path)
+                .args(&args)
+                .spawn()
+                .map_err(|e| format!("Failed to launch emulator: {}", e))?;
 
-        tokio::spawn(async move {
-            let _ = tokio::task::spawn_blocking(move || {
-                let _ = child.wait();
-            }).await;
+            let handle = app_handle.clone();
+            let ext_id = external_id.unwrap_or_default();
+            let exe_path_buf = PathBuf::from(&executable_path);
+            let root_filename = exe_path_buf.file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let start = std::time::Instant::now();
 
-            if !root_filename.is_empty() {
-                use sysinfo::System;
-                let mut sys = System::new();
-                loop {
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                    sys.refresh_all();
-                    let still_running = sys.processes().values().any(|p| {
-                        p.name().to_string_lossy().eq_ignore_ascii_case(&root_filename)
-                    });
-                    if !still_running {
-                        break;
+            tokio::spawn(async move {
+                let _ = tokio::task::spawn_blocking(move || {
+                    let _ = child.wait();
+                }).await;
+
+                if !root_filename.is_empty() {
+                    use sysinfo::System;
+                    let mut sys = System::new();
+                    let timeout = std::time::Duration::from_secs(30);
+                    let poll = std::time::Duration::from_millis(500);
+                    let mut elapsed = std::time::Duration::ZERO;
+                    loop {
+                        tokio::time::sleep(poll).await;
+                        elapsed += poll;
+                        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+                        let running = sys.processes().values().any(|p| {
+                            p.name().to_string_lossy().eq_ignore_ascii_case(&root_filename)
+                        });
+                        if !running || elapsed >= timeout {
+                            break;
+                        }
                     }
                 }
-            }
 
-            let hours = start.elapsed().as_secs_f64() / 3600.0;
-            let _ = handle.emit("game-session-ended", SessionEndedPayload { external_id: ext_id, hours });
-        });
+                let total_secs = start.elapsed().as_secs_f64();
+                let hours = total_secs / 3600.0;
+                if hours >= 0.01 && !ext_id.is_empty() {
+                    let _ = handle.emit("game-session-ended", SessionEndedPayload {
+                        external_id: ext_id,
+                        hours,
+                    });
+                }
+            });
 
-        return Ok(());
+            return Ok(());
+        }
     }
     match launcher.as_str() {
         "steam" => {
@@ -355,7 +372,9 @@ async fn track_playtime_session(
     use sysinfo::System;
     use tauri::Emitter;
 
-    let watch_target: Option<PathBuf> = if let Some(platform_id) = &rom_platform {
+    let is_direct_exe = install_path.to_lowercase().ends_with(".exe");
+    let watch_target: Option<PathBuf> = if !is_direct_exe && rom_platform.is_some() {
+        let platform_id = rom_platform.as_ref().unwrap();
         use tauri::Manager;
         let db = app_handle.state::<crate::db::MetadeaDb>();
         let exe = {
@@ -371,7 +390,7 @@ async fn track_playtime_session(
         Some(PathBuf::from(&install_path))
     };
     let Some(root) = watch_target else { return };
-    let is_rom = rom_platform.is_some();
+    let is_rom = !is_direct_exe && rom_platform.is_some();
     let root_filename = root.file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_default();

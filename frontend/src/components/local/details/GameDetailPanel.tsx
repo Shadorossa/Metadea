@@ -95,15 +95,17 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     return () => { cancelled = true; };
   }, [launchTarget.app_id, launchTarget.launcher]);
 
+  const isExe = !!launchTarget.install_path?.toLowerCase().endsWith('.exe');
+
   useEffect(() => {
     setEmulatorConfigured(null);
-    if (!launchTarget.rom_platform) return;
+    if (!launchTarget.rom_platform || isExe) return;
     let cancelled = false;
     readEmulatorsConfig()
       .then(configs => { if (!cancelled) setEmulatorConfigured(!!configs[launchTarget.rom_platform!]?.executable_path); })
       .catch(() => { if (!cancelled) setEmulatorConfigured(false); });
     return () => { cancelled = true; };
-  }, [launchTarget.rom_platform]);
+  }, [launchTarget.rom_platform, isExe]);
 
   // A "Pendiente" entry with no scanned install anywhere might still be
   // buyable/viewable on some storefront — IGDB's own external_games links
@@ -300,7 +302,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // its own platform — same "show it, but disabled with an explanation"
   // treatment as canLaunch itself, instead of the button silently doing
   // nothing (launch_game's own error was only ever logged to the console).
-  const emulatorMissing = !!launchTarget.rom_platform && emulatorConfigured === false;
+  const emulatorMissing = !isExe && !!launchTarget.rom_platform && emulatorConfigured === false;
   // Same "own identity, not the source's" reasoning as the banner above —
   // the catalog entry's own release date/genres/synopsis (this identity's
   // real data) win over gameInfo (which is actually launchTarget's cached
@@ -474,7 +476,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                     launchTarget.launcher,
                     launchTarget.app_id,
                     launchTarget.install_path,
-                    launchTarget.rom_platform,
+                    isExe ? undefined : launchTarget.rom_platform,
                     effectiveExternalId,
                   )
                     .then(() => {
@@ -492,8 +494,8 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                         externalId: effectiveExternalId,
                       });
 
-                      if (launchTarget.install_path && !launchTarget.rom_platform) {
-                        startPlaytimeSession(launchTarget.install_path, effectiveExternalId, null).catch(() => {});
+                      if (launchTarget.install_path && (isExe || !launchTarget.rom_platform)) {
+                        startPlaytimeSession(launchTarget.install_path, effectiveExternalId, isExe ? null : launchTarget.rom_platform).catch(() => {});
                       }
                     })
                     .catch(console.error);
@@ -515,7 +517,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                   </svg>
                   <span>{formatPlaytime(
-                    launchTarget.rom_platform || launchTarget.playtime_minutes === undefined || launchTarget.playtime_minutes === null
+                    (!isExe && launchTarget.rom_platform) || launchTarget.playtime_minutes === undefined || launchTarget.playtime_minutes === null
                       ? (romLibraryEntry?.minutes_spent ?? (romLibraryEntry?.progress ? Math.round(romLibraryEntry.progress * 60) : undefined))
                       : launchTarget.playtime_minutes
                   )}</span>

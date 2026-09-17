@@ -2,6 +2,7 @@ import {
   Monitor, Folder, File as FileIcon, RefreshCw, Download, Plus, X, SquarePen, Eye, ExternalLink, Trash2,
   LayoutGrid, BookOpen, Bookmark, Gamepad2, MessageSquare, Film, MonitorPlay, Book, BookImage, User, IdCard,
   CirclePlay, CircleCheckBig, CirclePause, CircleX, Check, CircleAlert, Layers, Heart, Award, Hourglass, Play, Pause,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 // Every icon below used to be its own hand-drawn <svg> (duplicated, in several
@@ -70,6 +71,14 @@ export function IconGithub({ size = 16, strokeWidth = 2 }: { size?: number; stro
 
 export function IconTrash({ size = 14, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
   return <Trash2 size={size} strokeWidth={strokeWidth} />;
+}
+
+export function IconChevronLeft({ size = 16, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
+  return <ChevronLeft size={size} strokeWidth={strokeWidth} />;
+}
+
+export function IconChevronRight({ size = 16, strokeWidth = 2 }: { size?: number; strokeWidth?: number } = {}) {
+  return <ChevronRight size={size} strokeWidth={strokeWidth} />;
 }
 
 // ── Media type icons (search tabs, etc.) ──────────────────────────────────────

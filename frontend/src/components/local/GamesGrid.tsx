@@ -6,7 +6,7 @@ import { getT } from '../../i18n/client';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
-import { type StatusEntry } from './utils/catalogGameLinking';
+import { type StatusEntry, type SortMode, sortEntries, entryKey } from './utils/catalogGameLinking';
 import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, type PlatformId } from './utils/constants';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
@@ -32,56 +32,8 @@ interface StatusSection { key: string; title: string; entries: StatusEntry[]; se
 // large-list perf/viewport-culling concern to worry about here.
 const LAUNCHER_LINE_TRANSITION = { duration: 0.3, ease: [0.25, 0, 0.15, 1] as const };
 
-// How a launcher section's mixed installed+pendiente entries are ordered —
-// "biblioteca de Steam" (kind:'game', installed) and "perfil de usuario"
-// (kind:'catalog', a library-tracked pendiente) are just two different
-// SOURCES of the same kind of thing, so they're always merged into one list
-// and sorted together instead of installed games trailing every pendiente
-// (or vice versa) regardless of what the user actually asked to sort by.
-type SortMode = 'alpha' | 'lastPlayed' | 'playtime';
-
-function entryDisplayName(entry: StatusEntry, displayNameFor: (g: LocalGame) => string | undefined): string {
-  return entry.kind === 'game' ? (displayNameFor(entry.game) ?? entry.game.name) : entry.item.title;
-}
-
-// last_played (installed) is a unix-seconds timestamp; a catalog-only
-// pendiente has no such field (it's never actually been launched through
-// here), so its library entry's own updated_at — bumped whenever its
-// progress/status changes — is the closest available proxy.
-function entryLastPlayedMs(entry: StatusEntry): number {
-  if (entry.kind === 'game') return (entry.game.last_played ?? 0) * 1000;
-  return Date.parse(entry.item.libraryEntry.updated_at ?? '') || 0;
-}
-
-// playtime_minutes (installed) and the library entry's minutes_spent
-// (pendiente) are already the same unit, so these compare directly.
-function entryPlaytimeMinutes(entry: StatusEntry): number {
-  if (entry.kind === 'game') return entry.game.playtime_minutes ?? 0;
-  return entry.item.libraryEntry.minutes_spent ?? 0;
-}
-
-function sortEntries(entries: StatusEntry[], mode: SortMode, displayNameFor: (g: LocalGame) => string | undefined): StatusEntry[] {
-  const sorted = [...entries];
-  if (mode === 'alpha') {
-    sorted.sort((a, b) => entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor)));
-  } else if (mode === 'lastPlayed') {
-    sorted.sort((a, b) => entryLastPlayedMs(b) - entryLastPlayedMs(a));
-  } else {
-    sorted.sort((a, b) => entryPlaytimeMinutes(b) - entryPlaytimeMinutes(a));
-  }
-  return sorted;
-}
-
-// No index baked into either branch — sortEntries below reorders this same
-// list every time the sort mode/search filter changes, and a key that
-// shifts when an item's INDEX does (instead of staying tied to the item
-// itself) makes React tear down and remount it as a brand new element
-// rather than recognizing it as the same one that just moved, losing
-// Motion's own layout-animation tracking for it (a hard, un-animated pop to
-// its new spot instead of easing there).
-function entryKey(entry: StatusEntry): string {
-  return entry.kind === 'game' ? `g-${entry.game.app_id ?? entry.game.install_path ?? entry.game.name}` : `c-${entry.item.externalId}`;
-}
+// sortEntries/entryKey/SortMode now live in catalogGameLinking.ts, shared
+// with LocalMediaSection's own Steam-backed platform sections.
 
 interface GamesGridProps {
   gamesState:    GamesState;
@@ -181,22 +133,8 @@ export function GamesGrid({
     setDeleteMenu(null);
   };
 
-  // "En progreso" always stays one general list (see usePendingLaunchers'
-  // own comment) — only Planeando entries get filtered out here, for the
-  // ones that have a launcher (they go ONLY to their launcher section) or
-  // are still being checked for one, so a game that WILL end up in
-  // Nintendo/Steam never renders here first and jumps later.
-  const statusEntriesCurrently = currentlyEntries;
-  const statusEntriesPlanning = planningEntries.filter(e =>
-    !(e.kind === 'catalog' && (pendingWithLauncherIds.has(e.item.externalId) || pendingResolutionIds.has(e.item.externalId))));
-
-  // The four status buckets share one section shell (title + grid, mixing
-  // GameCard/LocalMediaCard by entry.kind) — same {title,entries}[] + one
-  // .map() pattern LocalMediaSection already uses for its own sections,
-  // instead of four hand-rolled, near-identical JSX blocks.
   const statusSections: StatusSection[] = [
-    ...(statusEntriesCurrently.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: statusEntriesCurrently, sectionStatus: 'playing' }] : []),
-    ...(statusEntriesPlanning.length > 0 ? [{ key: 'planning', title: t.profile.section_planning, entries: statusEntriesPlanning, sectionStatus: 'planning' }] : []),
+    ...(currentlyEntries.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: currentlyEntries, sectionStatus: 'playing' }] : []),
   ];
 
   return (

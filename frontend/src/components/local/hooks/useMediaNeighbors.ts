@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri';
 import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { normalizeForMatch } from '../utils/folderMatch';
+import { extractEpisodeNumberFromTitle } from '../../../lib/media/media-relations';
 
 export interface NeighborInfo {
   externalId: string;
@@ -46,7 +47,23 @@ export function useMediaNeighbors(relationsExternalId: string | undefined, selfT
     let cancelled = false;
     getMediaRelationsForEditor(relationsExternalId).then(async relations => {
       if (cancelled) return;
-      const children = relations.filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
+      // NeighborsRow labels these purely by array position ("Part I", "Part
+      // II", ...), so getting this order right isn't just cosmetic — an
+      // unsorted list mislabels which cover is actually "Part I". An
+      // EPISODE relation's own title almost always carries its real number
+      // ("Episode 8 - Twilight of the Golden Witch"), far more reliable
+      // than release date (often never populated for this relation type at
+      // all — see media-relations.ts's own sort, which has the same issue
+      // for the media page's Relacionados tab).
+      const unsortedChildren = relations.filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
+      const children = [...unsortedChildren].sort((a, b) => {
+        const epA = extractEpisodeNumberFromTitle(a.title);
+        const epB = extractEpisodeNumberFromTitle(b.title);
+        if (epA !== null && epB !== null && epA !== epB) return epA - epB;
+        const dateA = (a.release_year ?? 9999) * 10000 + (a.release_month ?? 12) * 100 + (a.release_day ?? 31);
+        const dateB = (b.release_year ?? 9999) * 10000 + (b.release_month ?? 12) * 100 + (b.release_day ?? 31);
+        return dateA - dateB;
+      });
       if (children.length > 0) {
         const formats = await Promise.all(children.map(c => getCatalogEntry(c.related_media_external_id).then(e => e?.format ?? null).catch(() => null)));
         if (cancelled) return;

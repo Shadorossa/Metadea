@@ -14,8 +14,8 @@ import { useActivePlatform }    from './hooks/useActivePlatform';
 import { usePendingLaunchers }  from './hooks/usePendingLaunchers';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
-import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame, matchGameStatusByName, type StatusEntry } from './utils/catalogGameLinking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, matchGameStatusByName, type StatusEntry } from './utils/catalogGameLinking';
+import { normalizeForMatch } from './utils/folderMatch';
 import { readLocalUrlState } from './utils/urlState';
 import {
   useLocalPanelSelection, resolveCatalogSelection, resolveGameSelection,
@@ -231,15 +231,36 @@ export default function LocalLibrary() {
     return new Set(mediaRaw.catalog.filter(c => c.type === 'vnovel' || c.format === 'VISUAL_NOVEL').map(c => c.external_id));
   }, [mediaRaw]);
 
+  // Same titles, normalized for a name match — catches a Steam VN that's
+  // neither identity-linked NOR had its IGDB metadata fetched yet (both of
+  // which is_vn/vnovelExternalIds below require), which otherwise stayed
+  // classified as a plain game until one of those happened to occur:
+  // scanned straight into Videojuegos while its own library "Pendiente"
+  // row (added via the VN search tab) sat orphaned in the Visual Novel tab
+  // with no installed match at all — exactly the "Steam VN shows up in
+  // Pendientes instead of Steam" report this closes.
+  const vnovelTitles = React.useMemo(() => {
+    if (!mediaRaw) return new Set<string>();
+    return new Set(
+      mediaRaw.catalog
+        .filter(c => c.type === 'vnovel' || c.format === 'VISUAL_NOVEL')
+        .flatMap(c => [c.title_main, c.title_romaji, c.title_native])
+        .filter((t): t is string => !!t)
+        .map(normalizeForMatch),
+    );
+  }, [mediaRaw]);
+
   // Catches VN games nobody's manually catalogued yet — is_vn comes from
   // the game's own cached IGDB metadata genre (see read_metadata_index),
   // so this works for any Steam game once its metadata has been fetched at
   // least once, without the user having to log it in their library first.
   const isSteamVN = React.useCallback(
     (g: (typeof games)[number]) =>
+      g.rom_platform === 'vnovel' ||
       (!!g.external_id && vnovelExternalIds.has(g.external_id)) ||
-      (!!g.app_id && !!pathCache[g.app_id]?.is_vn),
-    [vnovelExternalIds, pathCache],
+      (!!g.app_id && !!pathCache[g.app_id]?.is_vn) ||
+      vnovelTitles.has(normalizeForMatch(g.name)),
+    [vnovelExternalIds, pathCache, vnovelTitles],
   );
 
   // Names picked via "editar metadatos" (IgdbPickerModal) before there's
@@ -286,37 +307,25 @@ export default function LocalLibrary() {
     if (!mediaRaw) return result;
     const byExternalId = new Map(mediaRaw.entries.map(e => [e.external_id, e]));
     const gameLibraryEntries = mediaRaw.entries
-      .filter(e => e.type === 'game')
+      .filter(e => e.type === 'game' || e.type === 'vnovel')
       .map(e => {
         const meta = catalogMapById.get(e.external_id);
         const titles = [meta?.title_main, meta?.title_romaji, meta?.title_native].filter((s): s is string => !!s);
         return { titles, entry: e };
       })
       .filter(x => x.titles.length > 0);
-    // A BUNDLE catalog entry can never have a library row of its own
-    // anymore (see save_library_entry's own guard — it's just a display
-    // grouping over its real contents, never a separately-playable work),
-    // so a scanned install linked to one (e.g. a combined "Final Fantasy
-    // VII Remake Intergrade" purchase) always showed completely untracked
-    // here even once every one of its actual parts was finished on its
-    // own. Derived instead, only as a fallback (a real status always wins,
-    // though nothing can ever set one directly on a bundle id itself
-    // now): every CONTAINS/EPISODE child (see sagaTypes) completed makes
-    // the bundle itself read as completed too.
-    const bundleCompletionStatus = (bundleId: string): string | undefined => {
-      if (catalogMapById.get(bundleId)?.format !== 'BUNDLE') return undefined;
-      const childIds = mediaRaw.relations
-        .filter(r => r.media_external_id === bundleId && CONTAINS_RELATION_TYPES.includes(r.relation_type))
-        .map(r => r.related_media_external_id);
-      if (childIds.length === 0) return undefined;
-      return childIds.every(id => byExternalId.get(id)?.status === 'completed') ? 'completed' : undefined;
-    };
     for (const g of Array.isArray(games) ? games : []) {
       const candidateIds = candidateExternalIdsForGame(g, pathCache);
+      const completedBundleId = candidateIds.find(id => computeBundleCompletionStatus(id, mediaRaw.relations, byExternalId) === 'completed');
+      if (completedBundleId) {
+        result.set(g, 'completed');
+        continue;
+      }
       const matched = candidateIds.map(id => byExternalId.get(id)).find(Boolean);
-      const status = matched?.status
-        ?? matchGameStatusByName(g, gameLibraryEntries)
-        ?? candidateIds.map(bundleCompletionStatus).find(Boolean);
+      const bundleStatus = matched ? computeBundleCompletionStatus(matched.external_id, mediaRaw.relations, byExternalId) : undefined;
+      const status = bundleStatus
+        ?? matched?.status
+        ?? matchGameStatusByName(g, gameLibraryEntries);
       result.set(g, status);
     }
     return result;
@@ -433,8 +442,8 @@ export default function LocalLibrary() {
     });
     const q = filterName.trim().toLowerCase();
     const filtered = q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
-    return buildLibraryStatusEntries(filtered, Array.isArray(games) ? games : [], catalogMapById, pathCache);
-  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, games, catalogMapById, pathCache]);
+    return buildLibraryStatusEntries(filtered, Array.isArray(games) ? games : [], catalogMapById, pathCache, mediaRaw?.relations ?? []);
+  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, games, catalogMapById, pathCache, mediaRaw]);
   // Both halves can independently resolve to the SAME installed game — an
   // ID-matched one already sits in statusBuckets.currently, and a catalog
   // Pendiente row with no external_id of its own can separately NAME-match
@@ -611,6 +620,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 catalogMapById={catalogMapById}
                 onRemoveGame={removeGame}
                 onDeleteLibraryItem={handleDeleteLibraryItem}
+                onRefreshScan={activeCategory === 'visual-novel' ? loadGames : undefined}
               />
             ) : (
               /* ── Games view (Videojuegos only — LOCAL_MEDIA_TYPE_BY_CATEGORY

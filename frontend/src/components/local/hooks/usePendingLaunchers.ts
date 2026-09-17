@@ -42,9 +42,6 @@ function getLauncherFromShopLinks(shopLinksCsv?: string | null): string | undefi
 // local-DB read, since shop_links_csv/companies only ever get persisted
 // locally once the user has actually opened this entry's own /media page at
 // least once (see mediaService.ts's persistToCatalog). Most "Pendiente"
-// entries never had that happen, so relying on local data alone left them
-// stuck without a launcher (e.g. a Steam-only game staying in "Pendientes"
-// instead of moving into the Steam section) even though IGDB has the answer.
 function launcherFromIgdbDetail(detail: Record<string, unknown> | null): string | undefined {
   if (!detail) return undefined;
   const links = detail.store_links as { platform?: string }[] | undefined;
@@ -59,6 +56,13 @@ function launcherFromIgdbDetail(detail: Record<string, unknown> | null): string 
     const name = c.company?.name?.toLowerCase() ?? '';
     if (name.includes('nintendo')) return 'nintendo';
     if (name.includes('playstation') || name.includes('sony')) return 'playstation';
+  }
+  const platforms = detail.platforms as { name?: string }[] | undefined;
+  if (platforms?.some(p => {
+    const n = p.name?.toLowerCase() ?? '';
+    return n.includes('pc') || n.includes('windows') || n.includes('steam');
+  })) {
+    return 'steam';
   }
   return undefined;
 }
@@ -140,18 +144,27 @@ export function usePendingLaunchers(planningEntries: StatusEntry[]) {
 
     for (const entry of planningEntries) {
       if (entry.kind !== 'catalog') continue;
-      const launcher = entry.launchGame?.launcher
+      const resolved = entry.launchGame?.launcher
         ?? getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv)
         ?? remoteByExternalId[entry.item.externalId];
-      if (launcher) {
-        if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
-        pendingByLauncher.get(launcher)!.push(entry);
+
+      if (resolved) {
+        if (!pendingByLauncher.has(resolved)) pendingByLauncher.set(resolved, []);
+        pendingByLauncher.get(resolved)!.push(entry);
         pendingWithLauncherIds.add(entry.item.externalId);
         continue;
       }
+
       if (idsStillChecking.has(entry.item.externalId) && !checkedIds.has(entry.item.externalId)) {
         pendingResolutionIds.add(entry.item.externalId);
+        continue;
       }
+
+      // Si no pertenece a otra plataforma específica, se asigna a Steam
+      const fallbackLauncher = 'steam';
+      if (!pendingByLauncher.has(fallbackLauncher)) pendingByLauncher.set(fallbackLauncher, []);
+      pendingByLauncher.get(fallbackLauncher)!.push(entry);
+      pendingWithLauncherIds.add(entry.item.externalId);
     }
 
     return { pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds };

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   igdbSearchCandidates, igdbForceByIgdbId, saveGameLink, getCatalogEntry, saveCatalogEntry,
+  searchCatalog,
   type LocalGame, type IgdbCandidate, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
@@ -10,14 +11,32 @@ import { useDebouncedCallback } from '../../../lib/shared/useDebouncedCallback';
 interface IgdbPickerModalProps {
   game:     LocalGame;
   onClose:  () => void;
-  // Carries the pick back up (not just "something changed") so callers can
-  // optimistically reflect the new name/external_id everywhere this game
-  // shows up (grid cards, sections, ...) immediately — saveGameLink only
-  // ever touches local_game_links, and a freshly-picked IGDB game usually
-  // has no media_catalog row yet at all (that only gets created by visiting
-  // its own /media page), so there's nothing a plain "refetch the catalog"
-  // would actually find.
   onPicked: (result: { externalId: string; name: string }) => void;
+}
+
+function getCandidateBadge(c: IgdbCandidate): { label: string; className: string } | null {
+  if (c.type === 'vnovel' || c.externalId?.startsWith('vnovel:')) {
+    return { label: 'VN', className: 'vn' };
+  }
+  if (c.category === 3) {
+    return { label: 'Bundle', className: 'bundle' };
+  }
+  if (c.category === 11) {
+    return { label: 'Port', className: 'port' };
+  }
+  if (c.category === 8) {
+    return { label: 'Remake', className: 'remake' };
+  }
+  if (c.category === 9) {
+    return { label: 'Remaster', className: 'remaster' };
+  }
+  if (c.category === 10) {
+    return { label: 'Expanded', className: 'expanded' };
+  }
+  if (c.source === 'database') {
+    return { label: 'DB', className: 'db' };
+  }
+  return null;
 }
 
 export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProps) {
@@ -27,20 +46,88 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
   const [error,      setError]      = useState<string | null>(null);
   const [applying,   setApplying]   = useState<number | null>(null);
   const [searchText, setSearchText] = useState('');
-  // Closing the modal mid-search (or mid-debounce) shouldn't setState on an
-  // unmounted component — every other async flow in this codebase guards
-  // with a cancellation flag/cleanup, this one didn't.
   const cancelledRef                = useRef(false);
+
   useEffect(() => {
     return () => { cancelledRef.current = true; };
   }, []);
 
   const runSearch = useCallback((query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setCandidates([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
-    igdbSearchCandidates(query)
-      .then(r  => { if (!cancelledRef.current) { setCandidates(r); setLoading(false); } })
-      .catch(e => { if (!cancelledRef.current) { setError(String(e)); setLoading(false); } });
+
+    Promise.allSettled([
+      igdbSearchCandidates(trimmed),
+      searchCatalog(trimmed),
+    ]).then(([igdbRes, catalogRes]) => {
+      if (cancelledRef.current) return;
+
+      const igdbItems: IgdbCandidate[] = igdbRes.status === 'fulfilled' ? igdbRes.value : [];
+      const catalogRaw: MediaCatalogEntry[] = catalogRes.status === 'fulfilled' ? catalogRes.value : [];
+
+      const catalogItems: IgdbCandidate[] = catalogRaw
+        .filter(c => c.type === 'vnovel' || c.type === 'game')
+        .map(c => {
+          const numId = Number(c.external_id?.split(':')[1]) || 0;
+          return {
+            id: numId,
+            name: c.title_main,
+            year: c.release_year || 0,
+            cover_url: c.cover_url || '',
+            developer: c.type === 'vnovel' ? 'Visual Novel' : 'Base de datos',
+            category: null,
+            externalId: c.external_id,
+            type: c.type,
+            source: 'database' as const,
+          };
+        });
+
+      const combined: IgdbCandidate[] = [];
+      const seenKeys = new Set<string>();
+
+      for (const item of catalogItems) {
+        const key = item.externalId || (item.id ? `${item.type || 'vnovel'}:${item.id}` : item.name);
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          if (item.id) seenKeys.add(`id:${item.id}`);
+          combined.push(item);
+        }
+      }
+
+      for (const item of igdbItems) {
+        const idKey = `id:${item.id}`;
+        const gameKey = `game:${item.id}`;
+        const vnKey = `vnovel:${item.id}`;
+        if (seenKeys.has(idKey) || seenKeys.has(gameKey) || seenKeys.has(vnKey)) {
+          if (item.developer) {
+            const existing = combined.find(c => c.id === item.id);
+            if (existing && (!existing.developer || existing.developer === 'Visual Novel' || existing.developer === 'Base de datos')) {
+              existing.developer = item.developer;
+            }
+          }
+          continue;
+        }
+
+        seenKeys.add(idKey);
+        combined.push({
+          ...item,
+          source: 'igdb',
+        });
+      }
+
+      setCandidates(combined);
+      setLoading(false);
+
+      if (igdbRes.status === 'rejected' && combined.length === 0) {
+        setError(String(igdbRes.reason));
+      }
+    });
   }, []);
 
   useEffect(() => { runSearch(game.name); }, [game.name, runSearch]);
@@ -55,44 +142,37 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
   const handlePick = async (candidate: IgdbCandidate) => {
     setApplying(candidate.id);
     try {
-      // Only meaningful for an actual install — re-downloads/caches the
-      // local info.json this game's OWN readGameInfo(app_id) reads. A
-      // "Pendiente" with nothing installed (no app_id at all — this modal
-      // used to just refuse to pick anything at all for one, via an early
-      // `if (!game.app_id) return`) has no such cache to refresh; the
-      // linking below already falls back to game.name as its key for
-      // exactly this case.
-      if (game.app_id) {
+      if (game.app_id && candidate.id > 0) {
         await igdbForceByIgdbId(game.app_id, game.name, candidate.id);
       }
-      // Persists the pick as the permanent match for this game — without
-      // this, igdbForceByIgdbId only re-downloads the cached cover/banner;
-      // the catalog link itself (external_id, used by "Ver en catálogo" and
-      // the library) would still resolve through automatic Steam-ID/fuzzy
-      // matching on the next scan, which could re-guess wrong again.
-      // linkKey must match scan_all_games' own derivation exactly (see
-      // platform_scanning.rs): app_id ?? install_path ?? name.
       const linkKey = game.app_id ?? game.install_path ?? game.name;
-      const externalId = `game:${candidate.id}`;
+
+      let externalId = candidate.externalId;
+      if (!externalId) {
+        const vnId = `vnovel:${candidate.id}`;
+        const existingVn = await getCatalogEntry(vnId).catch(() => null);
+        if (existingVn || candidate.type === 'vnovel') {
+          externalId = vnId;
+        } else {
+          externalId = `game:${candidate.id}`;
+        }
+      }
+
       await saveGameLink(game.launcher, linkKey, externalId).catch(console.error);
-      // Without this, the corrected name only ever lived in memory
-      // (LocalLibrary's own pickedNames override) — a real reload re-read
-      // media_catalog from scratch, found no row for this external_id (one
-      // only ever gets created by visiting the game's own /media page), and
-      // every card fell straight back to the raw scanned name (a ROM's own
-      // messy filename, most visibly). Fetches whatever's already on file
-      // for this id first and overlays just the identity fields this pick
-      // actually determines — a blind save here would otherwise blow away
-      // synposis/genres/etc. an existing row already has (save_catalog_entry
-      // does a full row REPLACE, not a merge).
+
       const existing = await getCatalogEntry(externalId).catch(() => null);
+      const isVn = externalId.startsWith('vnovel:');
       const catalogEntry: MediaCatalogEntry = existing
         ? { ...existing, title_main: candidate.name, cover_url: candidate.cover_url || existing.cover_url }
         : {
-            id: '', external_id: externalId, type: 'game',
-            title_main: candidate.name, cover_url: candidate.cover_url || null,
+            id: '',
+            external_id: externalId,
+            type: isVn ? 'vnovel' : 'game',
+            title_main: candidate.name,
+            cover_url: candidate.cover_url || null,
             release_year: candidate.year > 0 ? candidate.year : null,
-            created_at: '', updated_at: '',
+            created_at: '',
+            updated_at: '',
           };
       await saveCatalogEntry(catalogEntry).catch(console.error);
       onPicked({ externalId, name: candidate.name });
@@ -134,22 +214,37 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
           <div className="igdb-picker-loading">{t.local.no_results}</div>
         ) : (
           <div className="igdb-picker-grid">
-            {candidates.map(c => (
-              <button
-                key={c.id}
-                className={`igdb-picker-card${applying === c.id ? ' loading' : ''}`}
-                onClick={() => handlePick(c)}
-                disabled={applying !== null}
-              >
-                <img src={c.cover_url} alt={c.name} className="igdb-picker-cover" />
-                <div className="igdb-picker-info">
-                  <span className="igdb-picker-name">{c.name}</span>
-                  <span className="igdb-picker-meta">
-                    {c.year > 0 ? c.year : '—'}{c.developer ? ` · ${c.developer}` : ''}
-                  </span>
-                </div>
-              </button>
-            ))}
+            {candidates.map(c => {
+              const badge = getCandidateBadge(c);
+              const cardKey = c.externalId || `${c.id}-${c.name}`;
+              return (
+                <button
+                  key={cardKey}
+                  className={`igdb-picker-card${applying === c.id ? ' loading' : ''}`}
+                  onClick={() => handlePick(c)}
+                  disabled={applying !== null}
+                >
+                  {c.cover_url ? (
+                    <img src={c.cover_url} alt={c.name} className="igdb-picker-cover" />
+                  ) : (
+                    <div className="igdb-picker-cover igdb-picker-cover-placeholder" />
+                  )}
+                  <div className="igdb-picker-info">
+                    <div className="igdb-picker-name-row">
+                      <span className="igdb-picker-name">{c.name}</span>
+                      {badge && (
+                        <span className={`igdb-picker-badge ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      )}
+                    </div>
+                    <span className="igdb-picker-meta">
+                      {c.year > 0 ? c.year : '—'}{c.developer ? ` · ${c.developer}` : ''}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
