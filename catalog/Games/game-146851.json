@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "37aea6b225c37f1737aea6b225c37f17",
+    "external_id": "game:146851",
+    "type": "game",
+    "title_main": "Lost Judgment",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:146851",
+      "related_media_external_id": "game:109274",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Judgment",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1rqt.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Judgment"
+}
