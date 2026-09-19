@@ -2286,6 +2286,7 @@
 }
 
 .me-header-cover-slot {
+  position: relative;
   width: 32px;
   height: 44px;
   flex-shrink: 0;
@@ -2372,6 +2373,16 @@
   color: var(--text-muted);
   white-space: nowrap;
   order: 2;
+}
+
+.me-header-field--hours .me-header-field-row {
+  order: 1;
+  justify-content: center;
+}
+
+.me-header-field--hours .me-header-field-label {
+  align-self: center;
+  text-align: center;
 }
 
 .me-header-field-input {
@@ -6377,4 +6388,85 @@
   font-size: 0.7rem;
   color: var(--text-muted, #a1a09a);
   margin-top: 0.1rem;
+}
+
+.me-header-cover-slot--selectable {
+  cursor: pointer;
+}
+
+.me-header-cover-picker-btn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 0.05rem;
+  border: 0;
+  background: linear-gradient(transparent 35%, rgba(0, 0, 0, 0.78));
+  color: #fff;
+  font-size: 1rem;
+  line-height: 0.7;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.me-header-cover-slot--selectable:hover .me-header-cover-picker-btn,
+.me-header-cover-picker-btn:focus-visible {
+  opacity: 1;
+}
+
+.me-header-cover-picker-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.me-header-cover-picker {
+  position: relative;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.9rem;
+  overflow-x: auto;
+  background: var(--bg-elevated, #1a1a24);
+  border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 40%, transparent);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.35);
+}
+
+.me-header-cover-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 150px;
+  height: 220px;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.me-header-cover-option:hover,
+.me-header-cover-option.active {
+  border-color: var(--accent, #7c6af7);
+  background: color-mix(in srgb, var(--accent, #7c6af7) 12%, transparent);
+}
+
+.me-header-cover-option img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 1px solid color-mix(in srgb, var(--text-main, #e3e1db) 38%, transparent);
+  box-sizing: border-box;
 }

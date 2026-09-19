@@ -463,7 +463,11 @@ async function enrichLocalData(rawId: string, catalog: MediaCatalogEntry, localD
     const companyLine = companyMetaLine(localData.companies);
     if (companyLine) localData.metaLines = [companyLine, ...localData.metaLines];
   }
-  if (parentEntry) {
+  const hasExplicitBaseEditionRelation = !!catalog.parent_id && dbRels.some(
+    relation => relation.relation_type === 'BASE_EDITION'
+      && relation.related_media_external_id === catalog.parent_id,
+  );
+  if (parentEntry && hasExplicitBaseEditionRelation) {
     localData.parentGame = {
       externalId: parentEntry.external_id,
       title: parentEntry.title_main || parentEntry.external_id,

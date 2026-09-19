@@ -253,7 +253,14 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   };
 
   // Same self-reference guard as addRelations().
-  const rawParentSub = game.parent_game || game.version_parent;
+  // `version_parent` is IGDB's broad franchise/edition family pointer. It
+  // can point at a saga predecessor without there being a curated edition
+  // relation in Metadea (e.g. Final Fantasy VII Remake -> Final Fantasy VII).
+  // Even `parent_game` is only meaningful here for DLC/expansion records;
+  // remakes/remasters are linked by their actual relation arrays/reverse
+  // lookup instead of being promoted to a parent just because IGDB groups
+  // them under the same family.
+  const rawParentSub = [1, 2, 4].includes(gameType) ? game.parent_game : undefined;
   const parentSub = rawParentSub && rawParentSub.id !== game.id
     ? rawParentSub
     : undefined;

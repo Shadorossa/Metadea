@@ -137,7 +137,7 @@ const t    = useTranslations(lang);
       <div id="tab-pane-friends" class="profile-tab-pane" hidden></div>
     </div>
 
-    <ProfileLibraryEditor client:idle i18n={t.media} />
+    <ProfileLibraryEditor client:load i18n={t.media} />
 
   </main>
 </BaseLayout>
@@ -172,6 +172,8 @@ const t    = useTranslations(lang);
   let cachedItems: Awaited<ReturnType<typeof getAllLibraryEntries>> = [];
   let cachedCatalog: Awaited<ReturnType<typeof getAllCatalogEntries>> = [];
   let activeTab: Tab = getTabFromHash();
+  let initGeneration = 0;
+  let cleanupProfileInit: (() => void) | null = null;
 
   function getPanes(): Record<Tab, HTMLElement | null> {
     return {
@@ -208,6 +210,10 @@ const t    = useTranslations(lang);
   }
 
   async function init() {
+    const generation = ++initGeneration;
+    cleanupProfileInit?.();
+    cleanupProfileInit = null;
+
     // Bail out if profile tab content is not present
     if (!document.getElementById('profile-tab-content')) return;
 
@@ -235,6 +241,7 @@ const t    = useTranslations(lang);
     sessionStorage.removeItem(STORAGE_KEYS.searchState);
 
     const session = await getAuthToken().catch(() => null);
+    if (generation !== initGeneration) return;
     if (!session?.token) { window.location.replace('/login'); return; }
 
     const payload  = decodeJwtPayload(session.token);
@@ -251,6 +258,7 @@ const t    = useTranslations(lang);
       getImage(STORAGE_KEYS.profileBannerCustom),
       getImage(STORAGE_KEYS.profileAvatarCustom),
     ]);
+    if (generation !== initGeneration) return;
     const username = (userInfo.display_name as string | undefined)?.trim() || session.username;
 
     // Custom banner image
@@ -302,6 +310,7 @@ const t    = useTranslations(lang);
     }
 
     ({ items: cachedItems, catalog: cachedCatalog } = await getCachedLibraryAndCatalog());
+    if (generation !== initGeneration) return;
 
     // Only render the active tab on initial load; lazy-load others on demand.
     // Avoids heavy computations (stats, reviews, lists) for tabs user won't visit.
@@ -337,10 +346,12 @@ const t    = useTranslations(lang);
       panes[activeTab],
       renderMap[activeTab]
     );
+    if (generation !== initGeneration) return;
 
     // Lazy-load other tabs when clicked
-    document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
-      btn.addEventListener('click', async () => {
+    const profileTabButtons = [...document.querySelectorAll<HTMLButtonElement>('.profile-tab')];
+    const tabClickHandlers = profileTabButtons.map(btn => {
+      const handler = async () => {
         const tab = btn.dataset.tab as Tab;
         switchTab(tab);
         // Render tab if not already rendered
@@ -348,11 +359,14 @@ const t    = useTranslations(lang);
           renderedTabs.add(tab);
           await fadeInWhenReady(panes[tab], renderMap[tab]);
         }
-      });
+      };
+      btn.addEventListener('click', handler);
+      return { btn, handler };
     });
 
     // Delegate clicks: card body → open editor in modal, cover <a> handles its own navigation
-    document.getElementById('profile-tab-content')?.addEventListener('click', async (e) => {
+    const profileTabContent = document.getElementById('profile-tab-content');
+    const handleProfileContentClick = async (e: Event) => {
       if ((e.target as HTMLElement).closest('.library-card-thumb')) return;
 
       const card = (e.target as HTMLElement).closest<HTMLElement>('.library-card[data-id]');
@@ -384,7 +398,8 @@ const t    = useTranslations(lang);
           }
         }));
       }
-    });
+    };
+    profileTabContent?.addEventListener('click', handleProfileContentClick);
 
     // LibrarySection listens for this same event itself and re-fetches in
     // place — re-rendering it from here too used to unmount/remount the
@@ -392,7 +407,7 @@ const t    = useTranslations(lang);
     // flashing the whole grid. Still refreshed here since cachedItems feeds
     // the click-to-open-editor lookup below, independent of which tab (if
     // any) is currently showing the library.
-    window.addEventListener('refresh-profile-library', async () => {
+    const handleLibraryRefresh = async () => {
       // library-data-cache.ts's own listener (registered on import, above
       // this one) already invalidated the shared cache by the time this
       // runs, so this repopulates it with a fresh fetch rather than issuing
@@ -405,7 +420,14 @@ const t    = useTranslations(lang);
       // the rest of the session after any library edit made elsewhere.
       const overviewPane = document.getElementById('tab-pane-overview');
       if (overviewPane) await renderOverview(overviewPane, cachedItems, cachedCatalog);
-    });
+    };
+    window.addEventListener('refresh-profile-library', handleLibraryRefresh);
+
+    cleanupProfileInit = () => {
+      tabClickHandlers.forEach(({ btn, handler }) => btn.removeEventListener('click', handler));
+      profileTabContent?.removeEventListener('click', handleProfileContentClick);
+      window.removeEventListener('refresh-profile-library', handleLibraryRefresh);
+    };
   }
 
   document.addEventListener('astro:page-load', init);

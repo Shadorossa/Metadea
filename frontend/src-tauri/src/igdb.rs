@@ -11,6 +11,7 @@ pub(crate) const IGDB_API_GAMES: &str = "https://api.igdb.com/v4/games";
 pub(crate) const IGDB_API_EXTERNAL_GAMES: &str = "https://api.igdb.com/v4/external_games";
 const IGDB_API_ARTWORKS: &str = "https://api.igdb.com/v4/artworks";
 const IGDB_API_SCREENSHOTS: &str = "https://api.igdb.com/v4/screenshots";
+const IGDB_API_COVERS: &str = "https://api.igdb.com/v4/covers";
 const IGDB_IMAGE_COVER_BIG: &str = "https://images.igdb.com/igdb/image/upload/t_cover_big";
 const IGDB_IMAGE_1080P: &str = "https://images.igdb.com/igdb/image/upload/t_1080p";
 
@@ -1243,6 +1244,31 @@ pub async fn igdb_get_game_detail(
     }
 
     Ok(game)
+}
+
+/// Returns every cover variant IGDB has for a game. The covers endpoint is
+/// separate from `games.cover`, which only exposes the single canonical cover.
+#[tauri::command]
+pub async fn igdb_get_localized_covers(
+    app_handle: tauri::AppHandle,
+    igdb_id: u64,
+) -> Result<Vec<String>, String> {
+    let cfg = load_env_config(&app_handle)?;
+    let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token = get_twitch_token(&client_id, &client_secret).await?;
+    let query = format!(
+        "fields image_id; where game = {} & image_id != null; limit 50;",
+        igdb_id
+    );
+    let covers = igdb_query(&get_http_client(), &client_id, &token, IGDB_API_COVERS, &query).await?;
+    Ok(covers
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|cover| cover["image_id"].as_str())
+        .map(|image_id| format!("{}/{}.jpg", IGDB_IMAGE_COVER_BIG, image_id))
+        .collect())
 }
 
 // Reverse lookup for remakes/remasters: IGDB only exposes the forward

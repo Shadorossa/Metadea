@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, saveImageFile } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, getMediaRelationsForEditor, saveImageFile } from '../../lib/tauri';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
 import { getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { generateShareImage } from '../../lib/media/share-image';
@@ -25,6 +25,9 @@ import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnify
 import { loadSagaChain } from '../../lib/media/sagaData';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mapper-utils';
+import { getCoverPreference, setCoverPreference } from '../../lib/media/cover-preferences';
+import { igdbGetLocalizedCovers } from '../../lib/tauri/igdb';
+import { toLargeCover } from '../../lib/shared/small-cover';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +46,13 @@ interface Props {
   // open-profile-editor dispatch). Every other entry point (media page,
   // local library, search) always means the primary rating.
   activeRatingSlot?: RatingSlot;
+}
+
+interface CoverCandidate {
+  externalId: string;
+  title: string;
+  cover?: string;
+  blocked: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -112,9 +122,9 @@ function editionTabLabel(editionTitle: string, defaultLabel: string = 'Edition')
 
 // ── Small header-field building blocks ───────────────────────────────────────
 
-function HeaderField({ label, children }: { label: string; children: React.ReactNode }) {
+function HeaderField({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className="me-header-field">
+    <div className={`me-header-field${className ? ` ${className}` : ''}`}>
       <label className="me-header-field-label">{label}</label>
       {children}
     </div>
@@ -170,7 +180,7 @@ function HoursField({ label, value, max, onChange }: {
   }
 
   return (
-    <HeaderField label={label}>
+    <HeaderField label={label} className="me-header-field--hours">
       <div className="me-header-field-row">
         <input type="text" inputMode="numeric" className="me-header-field-input me-header-field-input--number"
           value={text}
@@ -267,8 +277,9 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: initialActiveLogId || id }));
   const [ui,    dispatchUi]    = useReducer(uiReducer, {
-    // If we already have the entry from the caller, skip loading state entirely
-    loading: !initialEntry, saving: false, isClosing: false,
+    // Version tabs and the editor shell can render from `data` immediately;
+    // the caller's saved log is hydrated asynchronously below.
+    loading: false, saving: false, isClosing: false,
     tagInput: '', anilistStatus: 'idle', anilistError: null,
     anilistImportStatus: 'idle', anilistImportError: null,
   });
@@ -303,6 +314,80 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   const baseId = data.parentGame?.externalId || externalId;
   const baseSelectedVersion = entry.logs[baseId]?.selectedVersion || '';
+  const [coverCandidates, setCoverCandidates] = useState<CoverCandidate[]>([]);
+  const [coverPreferenceId, setCoverPreferenceId] = useState<string | null>(() => getCoverPreference(baseId));
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+
+  useEffect(() => {
+    setCoverPreferenceId(getCoverPreference(baseId));
+    setCoverPickerOpen(false);
+    let cancelled = false;
+
+    async function loadCoverCandidates() {
+      const candidates = new Map<string, CoverCandidate>();
+      const add = (candidate: CoverCandidate) => {
+        if (candidate.cover || candidate.externalId === baseId) candidates.set(candidate.externalId, candidate);
+      };
+
+      // The current game is always eligible. Other game entries are only
+      // added when they are blocked remasters; expanded editions, ports and
+      // ordinary base-edition relations must not leak into this picker.
+      const relationRows = await Promise.all([...new Set([baseId, externalId])].map(id =>
+        getMediaRelationsForEditor(id).catch(() => [])
+      ));
+      const blockedRemasterIds = new Set<string>();
+      for (const rows of relationRows) {
+        for (const rel of rows) {
+          if (rel.relation_type !== 'REMASTER') continue;
+          const related = await getCatalogEntry(rel.related_media_external_id).catch(() => null);
+          if (related?.blocked_at) blockedRemasterIds.add(related.external_id);
+        }
+      }
+
+      const currentCatalog = await getCatalogEntry(externalId).catch(() => null);
+      add({ externalId, title: data.titleMain, cover: data.cover, blocked: !!currentCatalog?.blocked_at });
+
+      // When the editor is opened on the blocked remaster, include its OG as
+      // the other selectable game. The parent is not added for normal games
+      // or expanded editions.
+      if (currentCatalog?.blocked_at && data.parentGame) {
+        add({ externalId: data.parentGame.externalId, title: data.parentGame.title, cover: data.parentGame.cover, blocked: false });
+      }
+
+      const remasterEntries = await Promise.all([...blockedRemasterIds].map(id => getCatalogEntry(id).catch(() => null)));
+      for (const entry of remasterEntries) {
+        if (!entry) continue;
+        add({
+          externalId: entry.external_id,
+          title: entry.title_main || entry.external_id,
+          cover: entry.cover_url ?? undefined,
+          blocked: true,
+        });
+      }
+
+      if (data.type === 'game') {
+        const gameIds = [...new Set([...candidates.keys()])].filter(id => /^game:\d+$/.test(id));
+        const localizedByGame = await Promise.all(gameIds.map(async id => ({
+          id,
+          covers: await igdbGetLocalizedCovers(Number(id.slice('game:'.length))).catch(() => []),
+        })));
+        for (const { id, covers } of localizedByGame) {
+          const owner = candidates.get(id);
+          covers.forEach((cover, index) => add({
+            externalId: `${id}:localized-cover:${index}`,
+            title: `${owner?.title || id} cover ${index + 1}`,
+            cover,
+            blocked: !!owner?.blocked,
+          }));
+        }
+      }
+
+      if (!cancelled) setCoverCandidates([...candidates.values()]);
+    }
+
+    loadCoverCandidates().catch(() => {});
+    return () => { cancelled = true; };
+  }, [baseId, externalId, data.parentGame, data.titleMain, data.cover]);
 
   // "Unificar temporadas" (Settings > Preferencias) — every other season in
   // the chain gets its own tab here too, same as the edition/version tabs
@@ -313,7 +398,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   const [animeSeasonChain, setAnimeSeasonChain] = useState<SagaEntry[]>([]);
   const [seasonMetaMap, setSeasonMetaMap] = useState<Record<string, { title: string; cover?: string; totalCount?: number | null }>>({});
 
-  const isUnifiedAnime = data.type === 'anime' && isUnifySeasonsEnabled() && animeSeasonChain.length > 1;
+  const sagaUsesOnlySeasonMedia = animeSeasonChain.length <= 1 || animeSeasonChain.every(
+    season => season.mediaType === 'anime' || season.mediaType === 'series',
+  );
+  const isUnifiedAnime = data.type === 'anime' && isUnifySeasonsEnabled()
+    && animeSeasonChain.length > 1 && sagaUsesOnlySeasonMedia;
   const GENERAL_LOG_ID = isUnifiedAnime && animeSeasonChain[0] ? `general:${animeSeasonChain[0].externalId}` : '';
   const isGeneralTab = isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID;
 
@@ -450,6 +539,10 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
     if (initialEntry) dispatchEntry({ type: 'LOAD_LOG', id: externalId, entry: initialEntry });
     loadAllVersions(baseId);
+    // The version tabs are derived from `data.relations` and do not need to
+    // wait for the user's saved logs. Let the editor render immediately while
+    // the IPC reads below hydrate the individual version fields in place.
+    dispatchUi({ type: 'SET_LOADING', value: false });
 
     readMonthlyHistory()
       .then(history => {
@@ -787,10 +880,20 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   const allAvailableEditions = useMemo(() => {
     const list: { externalId: string; label: string; cover?: string; relationType?: string; isBundleChild?: boolean; isSeasonTab?: boolean }[] = [];
+    // A saga edge is authoritative for chronology. Some IGDB records also
+    // expose the same work through a broad remakes/remasters array, which
+    // must not turn a PREQUEL/SEQUEL into an edition tab (FFVII Rebirth and
+    // Revelation are examples of this false overlap).
+    const sagaRelatedIds = new Set(
+      (data.relations || [])
+        .filter(rel => rel.relationType === 'PREQUEL' || rel.relationType === 'SEQUEL')
+        .map(rel => rel.relatedExternalId ?? extractExternalIdFromRelationUrl(rel.url))
+        .filter((id): id is string => !!id),
+    );
     for (const rel of (data.relations || [])) {
       if (rel.relationType && ['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK', 'PORT'].includes(rel.relationType)) {
         const relExternalId = rel.relatedExternalId ?? extractExternalIdFromRelationUrl(rel.url);
-        if (relExternalId && relExternalId !== baseId && !list.some(item => item.externalId === relExternalId)) {
+        if (relExternalId && !sagaRelatedIds.has(relExternalId) && relExternalId !== baseId && !list.some(item => item.externalId === relExternalId)) {
           list.push({ externalId: relExternalId, label: rel.title, cover: rel.cover, relationType: rel.relationType });
         }
       }
@@ -821,7 +924,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     // of which season this editor happens to be open on. The one this editor
     // IS already open on is the "Original" tab (baseId === externalId here,
     // since anime has no parentGame), so it's excluded from this list.
-    if (!isUnifiedAnime) {
+    if (!isUnifiedAnime && sagaUsesOnlySeasonMedia) {
       animeSeasonChain.forEach((seasonEntry, i) => {
         if (seasonEntry.externalId === baseId || seasonEntry.externalId === externalId) return;
         list.push({ externalId: seasonEntry.externalId, label: `T${i + 1}`, cover: seasonEntry.cover ?? undefined, isSeasonTab: true });
@@ -1009,9 +1112,10 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return pickAggregateStatus(animeSeasonChain.map(s => entry.logs[s.externalId]?.status));
   }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
 
-  // Header cover/title/year follow whichever log tab is active — the base game's
+  // Header cover/title/year follow whichever log tab is active - the base game's
   // own title/cover, the current version's, or another linked edition's.
   const activeLogDisplay = useMemo(() => {
+    const preferredCover = coverPreferenceId;
     if (isGeneralTab) {
       return {
         title: generalBaseTitle,
@@ -1038,15 +1142,19 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     if (entry.activeLogId === baseId) {
       return {
         title: data.parentGame ? data.parentGame.title : data.titleMain,
-        cover: data.parentGame ? data.parentGame.cover : data.cover,
+        cover: preferredCover || (data.parentGame ? data.parentGame.cover : data.cover),
         year: data.releaseYear,
       };
     }
     const found = allAvailableEditions.find(ed => ed.externalId === entry.activeLogId);
     return found
-      ? { title: found.label, cover: found.cover, year: data.releaseYear }
-      : { title: data.titleMain, cover: data.cover, year: data.releaseYear };
-  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo]);
+      ? { title: found.label, cover: preferredCover || found.cover, year: data.releaseYear }
+      : { title: data.titleMain, cover: preferredCover || data.cover, year: data.releaseYear };
+  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo, coverCandidates, coverPreferenceId]);
+
+  const hasCoverCandidates = coverCandidates.length > 1 && (
+    data.type === 'game' || coverCandidates.some(c => c.blocked)
+  );
 
   const handleShare = useCallback(async () => {
     setSharing(true);
@@ -1091,8 +1199,47 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
             {/* Always reserves its slot (even with no cover yet for this
                 tab/season) — switching to a tab whose cover hasn't loaded
                 must never shift the title text sideways. */}
-            <div className="me-header-cover-slot">
+            <div className={`me-header-cover-slot${hasCoverCandidates ? ' me-header-cover-slot--selectable' : ''}`}>
               {activeLogDisplay.cover && <img src={activeLogDisplay.cover} alt="" className="me-header-cover" />}
+              {hasCoverCandidates && (
+                <>
+                  <button
+                    type="button"
+                    className="me-header-cover-picker-btn"
+                    aria-label={te.editions}
+                    title={te.editions}
+                    onClick={() => setCoverPickerOpen(open => !open)}
+                  >
+                    ⋯
+                  </button>
+                  {coverPickerOpen && (
+                    <div className="me-header-cover-picker-overlay" role="presentation" onClick={() => setCoverPickerOpen(false)}>
+                      <div className="me-header-cover-picker" role="dialog" aria-label={te.editions} onClick={e => e.stopPropagation()}>
+                        {coverCandidates.filter(candidate => candidate.cover).map(candidate => (
+                          <button
+                            key={candidate.externalId}
+                            type="button"
+                            className={`me-header-cover-option${coverPreferenceId === candidate.cover ? ' active' : ''}`}
+                            aria-label={candidate.title}
+                            title={candidate.title}
+                            onClick={() => {
+                              if (!candidate.cover) return;
+                              const aliases = coverCandidates
+                                .filter(c => c.cover && !c.externalId.includes(':localized-cover:'))
+                                .map(c => c.externalId);
+                              setCoverPreference(baseId, candidate.cover, aliases);
+                              setCoverPreferenceId(candidate.cover);
+                              setCoverPickerOpen(false);
+                            }}
+                          >
+                            <img src={toLargeCover(candidate.cover)} alt="" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div className="me-header-col">
               <span className="me-header-title">{activeLogDisplay.title}</span>

@@ -69,6 +69,11 @@ export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, 
   return tauriTry<Record<string, unknown> | null>('igdb_get_game_detail', null, { igdbId });
 }
 
+/** All IGDB cover variants, including localized covers, for one game. */
+export async function igdbGetLocalizedCovers(igdbId: number): Promise<string[]> {
+  return tauriCmd<string[]>('igdb_get_localized_covers', [], { igdbId });
+}
+
 export async function igdbGetBaseGames(igdbId: number, relationField: 'remakes' | 'remasters'): Promise<unknown[] | null> {
   return tauriTry<unknown[] | null>('igdb_get_base_games', null, { igdbId, relationField });
 }

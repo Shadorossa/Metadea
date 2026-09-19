@@ -1,4 +1,5 @@
 import { invoke, tauriCmd, tauriRun, isTauri } from './core';
+import { getPreferredCover } from '../media/cover-preferences';
 
 export interface MediaCatalogEntry {
   id:                   string;
@@ -66,7 +67,8 @@ export async function saveCatalogEntry(entry: MediaCatalogEntry): Promise<MediaC
 }
 
 export async function getCatalogEntry(externalId: string): Promise<MediaCatalogEntry | null> {
-  return tauriCmd<MediaCatalogEntry | null>('get_catalog_entry', null, { externalId });
+  const entry = await tauriCmd<MediaCatalogEntry | null>('get_catalog_entry', null, { externalId });
+  return entry ? { ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) } : null;
 }
 
 // Used to filter a live API fetch's raw relations/recommendations — the
@@ -97,7 +99,8 @@ export async function updateCatalogTotalCount(externalId: string, totalCount: nu
 }
 
 export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
-  return tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries', []);
+  const entries = await tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries', []);
+  return entries.map(entry => ({ ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) }));
 }
 
 export interface CatalogHealthEntry {

@@ -116,6 +116,7 @@ pub fn run() {
             igdb::igdb_search_unfiltered,
             igdb::igdb_upcoming_releases,
             igdb::igdb_get_game_detail,
+            igdb::igdb_get_localized_covers,
             igdb::igdb_get_base_games,
             igdb::igdb_get_relation_graph,
             igdb::igdb_get_cover_by_steam_id,

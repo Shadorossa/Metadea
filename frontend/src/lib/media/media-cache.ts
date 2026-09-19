@@ -3,7 +3,9 @@
 // readable on its own, separate from provider dispatch/fetch orchestration.
 import type { MediaPageData } from './types';
 
-export const CACHE_PREFIX = 'media_cache_v3:';
+// Bumped after tightening IGDB parent/version handling so entries cached with
+// the old false parentGame relation cannot keep rendering stale version tabs.
+export const CACHE_PREFIX = 'media_cache_v4:';
 // Title/cover/genres/relations barely ever change, and this is already
 // scoped to sessionStorage (cleared on tab close) — 5 min meant revisiting
 // the same media page a few minutes later during one session re-fetched

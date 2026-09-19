@@ -45,4 +45,5 @@ export const STORAGE_KEYS = {
   emulatorsConfig: 'emulators_config',
   unifySeasonsEnabled: 'metadea_unify_seasons_enabled',
   unifySeasonsHighestRatedCover: 'metadea_unify_seasons_highest_rated_cover',
+  mediaCoverPreferences: 'metadea_media_cover_preferences',
 } as const;

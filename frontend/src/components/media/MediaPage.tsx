@@ -33,6 +33,7 @@ import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/
 import { mergePlatformVersions, stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { sanitizeHtml } from '../../lib/shared/sanitize-html';
 import { ANILIST_TYPES } from '../../lib/constants/media';
+import { getPreferredCover } from '../../lib/media/cover-preferences';
 
 function splitTitleAfterColon(title: string): ReactNode {
   const colonIdx = title.indexOf(':');
@@ -399,6 +400,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const titleRef = useAutoShrinkTitle(data?.titleMain);
   const descriptionRef = useRef<HTMLDivElement>(null);
   const [descriptionOverflows, setDescriptionOverflows] = useState(false);
+  const [, refreshCoverPreference] = useState(0);
+  useEffect(() => {
+    const handleCoverPreferenceChange = () => refreshCoverPreference(value => value + 1);
+    window.addEventListener('media-cover-preference-changed', handleCoverPreferenceChange);
+    return () => window.removeEventListener('media-cover-preference-changed', handleCoverPreferenceChange);
+  }, []);
+  const displayCover = data ? getPreferredCover(data.externalId, data.cover) : null;
 
   const {
     entry: libEntry,
@@ -453,7 +461,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     if (previewMode || !currentId || data?.type !== 'anime') return;
     let cancelled = false;
 
-    if (!isUnifySeasonsEnabled() || animeSeasonChain.length <= 1) {
+    const canUnifySeasonChain = isUnifySeasonsEnabled()
+      && animeSeasonChain.length > 1
+      && animeSeasonChain.every(entry => entry.mediaType === 'anime' || entry.mediaType === 'series');
+    if (!canUnifySeasonChain) {
       // Single-season mode: load only current anime's episodes and themes
       fetchMediaEpisodes(currentId, false).then(eps => {
         if (!cancelled && eps.length > 0) setEpisodes(eps);
@@ -1230,7 +1241,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   // rows move to the Temporadas tab instead of sitting in Relacionados —
   // with it off (or for every other media type), Relacionados is untouched,
   // exactly as it's always been.
-  const showsSeasonsTab = data.type === 'anime' && isUnifySeasonsEnabled();
+  const sagaUsesOnlySeasonMedia = animeSeasonChain.length <= 1 || animeSeasonChain.every(
+    entry => entry.mediaType === 'anime' || entry.mediaType === 'series',
+  );
+  const showsSeasonsTab = data.type === 'anime' && isUnifySeasonsEnabled() && sagaUsesOnlySeasonMedia;
   const isFirstSeasonInChain = !showsSeasonsTab || animeSeasonChain.length <= 1 || currentId === animeSeasonChain[0].externalId;
   const relatedRelations = showsSeasonsTab
     ? relatedRelationsRaw.filter(r => r.relationType !== 'PREQUEL' && r.relationType !== 'SEQUEL')
@@ -1638,8 +1652,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                   : handleCoverClick()
               )}
             >
-              {data.cover && (
-                <img className="media-cover-img" src={data.cover} alt={data.titleMain} />
+              {displayCover && (
+                <img className="media-cover-img" src={displayCover} alt={data.titleMain} />
               )}
               <div className="media-cover-overlay">
                 <div className="media-cover-overlay-inner">
@@ -1785,7 +1799,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         key={`${t.external_id || currentId}-${t.theme_type}-${t.sequence}-${t.slug}`}
                         theme={t}
                         onPlay={() => setPlayingTheme(t)}
-                        fallbackUrl={data.bannerImage || data.cover}
+                        fallbackUrl={data.bannerImage || displayCover || undefined}
                       />
                     ))}
                 </div>
