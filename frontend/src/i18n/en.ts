@@ -640,6 +640,8 @@ export const en = {
     activity_batch_episodes_hint: "Groups episodes watched on the same day into a single activity entry.",
     unify_seasons_enabled: "Unify anime seasons",
     unify_seasons_hint: "Shows each AniList anime chained by seasons as a single work in your library, with a Seasons tab on its page.",
+    unify_seasons_highest_rated_cover: "Highest rated season cover",
+    unify_seasons_highest_rated_cover_hint: "Shows the cover of your highest rated season in the library instead of the base season cover (only when the work is completed).",
     activity_adult_content: "Show +18 content",
     activity_adult_content_hint: "Enables adult content search on AniList (anime and manga).",
     clear_notes_btn: "Delete ratings",

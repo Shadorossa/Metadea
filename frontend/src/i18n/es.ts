@@ -640,6 +640,8 @@ export const es = {
     activity_batch_episodes_hint: "Agrupa los episodios vistos el mismo día en una única entrada de actividad.",
     unify_seasons_enabled: "Unificar temporadas de anime",
     unify_seasons_hint: "Muestra cada anime encadenado por temporadas (AniList) como una sola obra en tu biblioteca, con una pestaña de Temporadas en su página.",
+    unify_seasons_highest_rated_cover: "Portada de la temporada mejor calificada",
+    unify_seasons_highest_rated_cover_hint: "Muestra en la biblioteca la portada de la temporada mejor calificada por ti en lugar de la primera temporada (solo cuando la obra esté completada).",
     activity_adult_content: "Mostrar contenido +18",
     activity_adult_content_hint: "Activa la búsqueda de contenido adulto en AniList (anime y manga).",
     clear_notes_btn: "Eliminar calificaciones",

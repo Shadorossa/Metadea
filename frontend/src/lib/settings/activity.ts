@@ -1,4 +1,11 @@
-import { isAdultContentEnabled, setAdultContentEnabled, isUnifySeasonsEnabled, setUnifySeasonsEnabled } from './preferences';
+import {
+  isAdultContentEnabled,
+  setAdultContentEnabled,
+  isUnifySeasonsEnabled,
+  setUnifySeasonsEnabled,
+  isUnifySeasonsHighestRatedCoverEnabled,
+  setUnifySeasonsHighestRatedCoverEnabled,
+} from './preferences';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { byId } from '../shared/dom';
 import { clearAllRatings } from '../tauri/library';
@@ -19,6 +26,15 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
     unifySeasonsCheckbox.checked = isUnifySeasonsEnabled();
     unifySeasonsCheckbox.addEventListener('change', () => {
       setUnifySeasonsEnabled(unifySeasonsCheckbox.checked);
+      showToast();
+    });
+  }
+
+  const highestRatedCoverCheckbox = byId<HTMLInputElement>('unify-seasons-highest-rated-cover');
+  if (highestRatedCoverCheckbox) {
+    highestRatedCoverCheckbox.checked = isUnifySeasonsHighestRatedCoverEnabled();
+    highestRatedCoverCheckbox.addEventListener('change', () => {
+      setUnifySeasonsHighestRatedCoverEnabled(highestRatedCoverCheckbox.checked);
       showToast();
     });
   }

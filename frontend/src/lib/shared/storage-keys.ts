@@ -44,4 +44,5 @@ export const STORAGE_KEYS = {
   libraryActiveRatingSlot: 'metadea_library_active_rating_slot',
   emulatorsConfig: 'emulators_config',
   unifySeasonsEnabled: 'metadea_unify_seasons_enabled',
+  unifySeasonsHighestRatedCover: 'metadea_unify_seasons_highest_rated_cover',
 } as const;

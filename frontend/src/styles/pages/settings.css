@@ -1034,6 +1034,12 @@
   text-align: center;
 }
 
+.settings-checkbox-label-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .settings-checkbox-label {
   display: flex;
   align-items: center;

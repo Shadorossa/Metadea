@@ -4,7 +4,7 @@
 //   groupBundles    -> collapses a container's owned parts into one card
 //   refineSagaGroups -> merges standalone groups belonging to the same saga
 import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib/tauri';
-import { compareByReleaseDate } from '../../lib/media/mapper-utils';
+import { compareByReleaseDate, stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
 import { SEASON_STATUS_PRIORITY } from '../../lib/constants/media';
@@ -553,9 +553,14 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
       if (priority < bestPriority) { bestPriority = priority; statusSourceItem = m; }
     }
 
-    const sagaName = sorted.map(m => sagaNames[m.external_id]).find(Boolean);
+    const rawSagaName = sorted.map(m => sagaNames[m.external_id]).find(Boolean);
+    const repTitle = catalogMap.get(rep.external_id)?.title_main;
+    const cleanRepTitle = repTitle ? stripSeasonSuffix(repTitle) : undefined;
+    const isSagaNameFromMember = rawSagaName && sorted.some(m => catalogMap.get(m.external_id)?.title_main === rawSagaName);
+    const titleOverride = (rawSagaName && !isSagaNameFromMember) ? rawSagaName : cleanRepTitle;
+
     for (const m of sorted) consumedIds.add(m.external_id);
-    groups.push({ item: rep, grouped: rest, titleOverride: sagaName, statusSourceItem });
+    groups.push({ item: rep, grouped: rest, titleOverride, statusSourceItem });
   }
 
   return { consumedIds, groups };

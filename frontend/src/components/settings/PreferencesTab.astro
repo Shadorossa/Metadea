@@ -1,5 +1,5 @@
 ---
-import { ICON_STAR, ICON_RATING_FACES } from "../../lib/shared/icon-strings";
+import { ICON_STAR, ICON_RATING_FACES, ICON_HELP_CIRCLE } from "../../lib/shared/icon-strings";
 import type { Translations } from "../../i18n/index";
 import { LOCALES } from "../../i18n/index";
 
@@ -191,34 +191,70 @@ const LANGUAGE_NAMES: Record<string, string> = {
       </h3>
       <div class="settings-checkbox-row">
         <div class="settings-checkbox-group">
-          <label class="settings-checkbox-label">
-            <input
-              type="checkbox"
-              id="activity-batch-episodes"
-              class="settings-checkbox"
-            />
-            <span class="checkbox-label-text" data-i18n="settings.activity_batch_episodes"
-              >{t.settings.activity_batch_episodes}</span
+          <div class="settings-checkbox-label-wrapper">
+            <label class="settings-checkbox-label">
+              <input
+                type="checkbox"
+                id="activity-batch-episodes"
+                class="settings-checkbox"
+              />
+              <span class="checkbox-label-text" data-i18n="settings.activity_batch_episodes"
+                >{t.settings.activity_batch_episodes}</span
+              >
+            </label>
+            <button
+              type="button"
+              class="settings-help-btn"
+              data-i18n-title="settings.activity_batch_episodes_hint"
+              title={t.settings.activity_batch_episodes_hint}
             >
-          </label>
-          <p class="settings-hint" data-i18n="settings.activity_batch_episodes_hint">
-            {t.settings.activity_batch_episodes_hint}
-          </p>
+              <Fragment set:html={ICON_HELP_CIRCLE} />
+            </button>
+          </div>
         </div>
         <div class="settings-checkbox-group">
-          <label class="settings-checkbox-label">
-            <input
-              type="checkbox"
-              id="unify-seasons-enabled"
-              class="settings-checkbox"
-            />
-            <span class="checkbox-label-text" data-i18n="settings.unify_seasons_enabled"
-              >{t.settings.unify_seasons_enabled}</span
+          <div class="settings-checkbox-label-wrapper">
+            <label class="settings-checkbox-label">
+              <input
+                type="checkbox"
+                id="unify-seasons-enabled"
+                class="settings-checkbox"
+              />
+              <span class="checkbox-label-text" data-i18n="settings.unify_seasons_enabled"
+                >{t.settings.unify_seasons_enabled}</span
+              >
+            </label>
+            <button
+              type="button"
+              class="settings-help-btn"
+              data-i18n-title="settings.unify_seasons_hint"
+              title={t.settings.unify_seasons_hint}
             >
-          </label>
-          <p class="settings-hint" data-i18n="settings.unify_seasons_hint">
-            {t.settings.unify_seasons_hint}
-          </p>
+              <Fragment set:html={ICON_HELP_CIRCLE} />
+            </button>
+          </div>
+        </div>
+        <div class="settings-checkbox-group">
+          <div class="settings-checkbox-label-wrapper">
+            <label class="settings-checkbox-label">
+              <input
+                type="checkbox"
+                id="unify-seasons-highest-rated-cover"
+                class="settings-checkbox"
+              />
+              <span class="checkbox-label-text" data-i18n="settings.unify_seasons_highest_rated_cover"
+                >{t.settings.unify_seasons_highest_rated_cover}</span
+              >
+            </label>
+            <button
+              type="button"
+              class="settings-help-btn"
+              data-i18n-title="settings.unify_seasons_highest_rated_cover_hint"
+              title={t.settings.unify_seasons_highest_rated_cover_hint}
+            >
+              <Fragment set:html={ICON_HELP_CIRCLE} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -229,32 +265,46 @@ const LANGUAGE_NAMES: Record<string, string> = {
       </h3>
       <div class="settings-checkbox-row">
         <div class="settings-checkbox-group">
-          <label class="settings-checkbox-label">
-            <input
-              type="checkbox"
-              id="activity-adult-content"
-              class="settings-checkbox"
-            />
-            <span class="checkbox-label-text" data-i18n="settings.activity_adult_content"
-              >{t.settings.activity_adult_content}</span
+          <div class="settings-checkbox-label-wrapper">
+            <label class="settings-checkbox-label">
+              <input
+                type="checkbox"
+                id="activity-adult-content"
+                class="settings-checkbox"
+              />
+              <span class="checkbox-label-text" data-i18n="settings.activity_adult_content"
+                >{t.settings.activity_adult_content}</span
+              >
+            </label>
+            <button
+              type="button"
+              class="settings-help-btn"
+              data-i18n-title="settings.activity_adult_content_hint"
+              title={t.settings.activity_adult_content_hint}
             >
-          </label>
-          <p class="settings-hint" data-i18n="settings.activity_adult_content_hint">
-            {t.settings.activity_adult_content_hint}
-          </p>
+              <Fragment set:html={ICON_HELP_CIRCLE} />
+            </button>
+          </div>
         </div>
         <div class="settings-checkbox-group">
-          <button
-            type="button"
-            id="clear-all-notes-btn"
-            class="settings-danger-btn"
-            data-i18n="settings.clear_notes_btn"
-          >
-            {t.settings.clear_notes_btn}
-          </button>
-          <p class="settings-hint" data-i18n="settings.clear_notes_hint">
-            {t.settings.clear_notes_hint}
-          </p>
+          <div class="settings-checkbox-label-wrapper">
+            <button
+              type="button"
+              id="clear-all-notes-btn"
+              class="settings-danger-btn"
+              data-i18n="settings.clear_notes_btn"
+            >
+              {t.settings.clear_notes_btn}
+            </button>
+            <button
+              type="button"
+              class="settings-help-btn"
+              data-i18n-title="settings.clear_notes_hint"
+              title={t.settings.clear_notes_hint}
+            >
+              <Fragment set:html={ICON_HELP_CIRCLE} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

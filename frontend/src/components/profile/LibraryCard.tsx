@@ -3,13 +3,13 @@ import { useEffect, useRef, useState, useMemo, memo } from 'react';
 import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
-import { getRating2System, getRating2Max, type RatingSlot } from '../../lib/settings/preferences';
+import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled } from '../../lib/settings/preferences';
 import { typeIconMap, CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating } from './library-grouping';
 import { toMediumCover } from '../../lib/shared/small-cover';
 import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
-import { isInProgressStatus } from '../../lib/constants/media';
+import { isInProgressStatus, pickAggregateStatus } from '../../lib/constants/media';
 
 export const TYPE_ICON = typeIconMap(16);
 
@@ -77,33 +77,55 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     [bundleMeta, orderedGrouped, item]
   );
 
-  const [inProgressCover, setInProgressCover] = useState<string | null>(null);
+  const [dynamicCover, setDynamicCover] = useState<string | null>(null);
   useEffect(() => {
     if (!hideGroupingUi) {
-      setInProgressCover(null);
+      setDynamicCover(null);
       return;
     }
-    const inProgressMembers = aggregateMembers.filter(m => isInProgressStatus(m.status) || m.status === 'in_progress');
-    if (inProgressMembers.length === 0) {
-      setInProgressCover(null);
+
+    const overallStatus = pickAggregateStatus(aggregateMembers.map(m => m.status));
+    let targetMember: LibraryEntry | null = null;
+
+    if (overallStatus === 'completed' && isUnifySeasonsHighestRatedCoverEnabled()) {
+      let highestScore = -Infinity;
+      for (const m of aggregateMembers) {
+        const score = m.rating ?? -Infinity;
+        if (score > highestScore) {
+          highestScore = score;
+          targetMember = m;
+        }
+      }
+    }
+
+    if (!targetMember) {
+      const inProgressMembers = aggregateMembers.filter(m => isInProgressStatus(m.status) || m.status === 'in_progress');
+      if (inProgressMembers.length > 0) {
+        targetMember = inProgressMembers[inProgressMembers.length - 1];
+      }
+    }
+
+    if (!targetMember) {
+      setDynamicCover(null);
       return;
     }
-    const activeMember = inProgressMembers[inProgressMembers.length - 1];
-    const cachedCover = catalogMap.get(activeMember.external_id)?.cover_url;
+
+    const cachedCover = catalogMap.get(targetMember.external_id)?.cover_url;
     if (cachedCover) {
-      setInProgressCover(cachedCover);
+      setDynamicCover(cachedCover);
       return;
     }
+
     let cancelled = false;
-    getCatalogEntry(activeMember.external_id).then(entry => {
+    getCatalogEntry(targetMember.external_id).then(entry => {
       if (!cancelled && entry?.cover_url) {
-        setInProgressCover(entry.cover_url);
+        setDynamicCover(entry.cover_url);
       }
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [hideGroupingUi, aggregateMembers, catalogMap]);
 
-  const cover = toMediumCover(inProgressCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
+  const cover = toMediumCover(dynamicCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
 
   // Same "which season is actually active" pick as inProgressCover above —
   // the card's own `item` is always the earliest-release season (see

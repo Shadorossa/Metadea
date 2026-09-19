@@ -120,3 +120,11 @@ export function isUnifySeasonsEnabled(): boolean {
 export function setUnifySeasonsEnabled(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.unifySeasonsEnabled, enabled.toString());
 }
+
+export function isUnifySeasonsHighestRatedCoverEnabled(): boolean {
+  return localStorage.getItem(STORAGE_KEYS.unifySeasonsHighestRatedCover) === 'true';
+}
+
+export function setUnifySeasonsHighestRatedCoverEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.unifySeasonsHighestRatedCover, enabled.toString());
+}

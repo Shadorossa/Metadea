@@ -1177,6 +1177,53 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_theme ADD COLUMN versions TEXT", []);
         mark_migration(conn, 62)?;
     }
+    if v < 63 {
+        // Fix any saga whose name matches one of its member entries' title,
+        // ensuring it uses the chronologically earliest member's title.
+        let saga_ids: Vec<String> = {
+            let mut stmt = conn.prepare("SELECT id FROM sagas")?;
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+            rows.filter_map(|r| r.ok()).collect()
+        };
+
+        for saga_id in saga_ids {
+            let members: Vec<(String, Option<i64>, Option<i64>, Option<i64>)> = {
+                let mut stmt = conn.prepare(
+                    "SELECT mc.title_main, mc.release_year, mc.release_month, mc.release_day
+                     FROM saga_relations sr JOIN media_catalog mc ON mc.external_id = sr.media_external_id
+                     WHERE sr.saga_id = ?1",
+                )?;
+                let rows = stmt.query_map([&saga_id], |r| {
+                    Ok((r.get::<_, String>(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+                })?;
+                rows.filter_map(|r| r.ok()).collect()
+            };
+            if members.is_empty() { continue; }
+
+            let current_name: String = match conn.query_row(
+                "SELECT name FROM sagas WHERE id = ?1", [&saga_id], |r| r.get(0),
+            ).optional()? {
+                Some(n) => n,
+                None => continue,
+            };
+            if !members.iter().any(|(title, ..)| *title == current_name) {
+                continue;
+            }
+
+            let earliest = members.iter().min_by_key(|(_, y, m, d)| {
+                (y.unwrap_or(9999), m.unwrap_or(12), d.unwrap_or(31))
+            });
+            if let Some((earliest_title, ..)) = earliest {
+                if *earliest_title != current_name {
+                    conn.execute(
+                        "UPDATE sagas SET name = ?1 WHERE id = ?2",
+                        rusqlite::params![earliest_title, &saga_id],
+                    )?;
+                }
+            }
+        }
+        mark_migration(conn, 63)?;
+    }
 
     Ok(())
 }
