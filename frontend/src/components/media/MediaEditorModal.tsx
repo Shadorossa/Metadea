@@ -715,24 +715,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // shares it themselves. Only enabled once finished/rated (see the button
   // below) since "just started watching" has nothing worth sharing yet.
   const [sharing, setSharing] = useState(false);
-  const handleShare = useCallback(async () => {
-    setSharing(true);
-    try {
-      const dataUrl = await generateShareImage({
-        title:        data.titleMain,
-        cover:        data.cover ?? null,
-        rating:       activeLog.rating,
-        ratingSystem: getActiveRatingSystem(),
-        year:         data.releaseYear,
-      });
-      const fileName = `${data.titleMain.replace(/[\\/:*?"<>|]/g, '')}.png`;
-      await saveImageFile(dataUrl, fileName);
-    } catch (e) {
-      console.error('Failed to generate share image', e);
-    } finally {
-      setSharing(false);
-    }
-  }, [data.titleMain, data.cover, activeLog.rating]);
 
   const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
@@ -1027,13 +1009,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return pickAggregateStatus(animeSeasonChain.map(s => entry.logs[s.externalId]?.status));
   }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
 
-  // Header cover/title follow whichever log tab is active — the base game's
+  // Header cover/title/year follow whichever log tab is active — the base game's
   // own title/cover, the current version's, or another linked edition's.
   const activeLogDisplay = useMemo(() => {
     if (isGeneralTab) {
       return {
         title: generalBaseTitle,
         cover: animeSeasonChain[0]?.cover || data.cover,
+        year: animeSeasonChain[0]?.year ?? data.releaseYear,
       };
     }
     if (isUnifiedAnime && seasonMetaMap[entry.activeLogId]) {
@@ -1041,25 +1024,48 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       return {
         title: meta.title,
         cover: meta.cover || data.cover,
+        year: activeAnimeSeasonEntry?.year ?? data.releaseYear,
       };
     }
     if (activeSeriesSeasonInfo) {
+      const sYear = activeSeriesSeasonInfo.airDate ? new Date(activeSeriesSeasonInfo.airDate).getFullYear() : undefined;
       return {
         title: activeSeriesSeasonInfo.name || `T${activeSeriesSeasonInfo.seasonNumber}`,
         cover: activeSeriesSeasonInfo.coverUrl || data.cover,
+        year: !isNaN(sYear as number) ? sYear : data.releaseYear,
       };
     }
     if (entry.activeLogId === baseId) {
       return {
         title: data.parentGame ? data.parentGame.title : data.titleMain,
         cover: data.parentGame ? data.parentGame.cover : data.cover,
+        year: data.releaseYear,
       };
     }
     const found = allAvailableEditions.find(ed => ed.externalId === entry.activeLogId);
     return found
-      ? { title: found.label, cover: found.cover }
-      : { title: data.titleMain, cover: data.cover };
-  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, seasonMetaMap, entry.activeLogId, baseId, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo]);
+      ? { title: found.label, cover: found.cover, year: data.releaseYear }
+      : { title: data.titleMain, cover: data.cover, year: data.releaseYear };
+  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo]);
+
+  const handleShare = useCallback(async () => {
+    setSharing(true);
+    try {
+      const dataUrl = await generateShareImage({
+        title:        activeLogDisplay.title,
+        cover:        activeLogDisplay.cover ?? null,
+        rating:       activeLog.rating,
+        ratingSystem: getActiveRatingSystem(),
+        year:         activeLogDisplay.year,
+      });
+      const fileName = `${activeLogDisplay.title.replace(/[\\/:*?"<>|]/g, '')}.png`;
+      await saveImageFile(dataUrl, fileName);
+    } catch (e) {
+      console.error('Failed to generate share image', e);
+    } finally {
+      setSharing(false);
+    }
+  }, [activeLogDisplay.title, activeLogDisplay.cover, activeLogDisplay.year, activeLog.rating]);
 
   const modal = (
     <motion.div

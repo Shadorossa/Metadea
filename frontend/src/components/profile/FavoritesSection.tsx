@@ -14,6 +14,7 @@ import { openFavoriteImageEditor } from '../../lib/profile/favorite-image-editor
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
 import { IconCharacter, IconX } from '../local/ui/icons';
+import { toMediumCover } from '../../lib/shared/small-cover';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type FavData = Record<string, string[]>;
@@ -43,7 +44,7 @@ function resolveFavCardDisplay(
     : (catalogMap.get(item.external_id)?.title_main ?? item.external_id);
   const rawCover = item.type === 'character'
     ? (characterMap.get(item.external_id)?.image_url ?? '')
-    : (catalogMap.get(item.external_id)?.cover_url ?? '');
+    : toMediumCover(catalogMap.get(item.external_id)?.cover_url ?? '');
   const mediaUrl = item.type === 'character'
     ? `/character?id=${item.external_id.replace('character:', '')}`
     : `/media?id=${encodeURIComponent(item.external_id)}`;
