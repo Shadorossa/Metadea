@@ -104,17 +104,14 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     () => candidateTitles.reduce<number | null>((found, t) => found ?? extractTitleSeason(t), null),
     [candidateTitles],
   );
-  // Some sequels' titles give no season number at all to extract (roman
-  // numerals, a year suffix like "(2003)" instead of a season word) — starts
-  // with the instant title-based guess, then upgrades asynchronously via a
-  // PREQUEL-chain walk (see resolveOwnSeasonNumber) when that guess is null.
+  // The title gives an instant guess, then the PREQUEL chain can correct it
+  // when installment numbering differs from the actual season order.
   const [itemSeason, setItemSeason] = useState<number | null>(itemSeasonFromTitle);
   useEffect(() => {
     setItemSeason(itemSeasonFromTitle);
-    if (itemSeasonFromTitle != null) return;
     let cancelled = false;
     resolveOwnSeasonNumber(item.externalId, item.title).then(resolved => {
-      if (!cancelled && resolved != null) setItemSeason(resolved);
+      if (!cancelled && resolved != null && resolved !== itemSeasonFromTitle) setItemSeason(resolved);
     });
     return () => { cancelled = true; };
   }, [itemSeasonFromTitle, item.externalId, item.title]);
@@ -216,7 +213,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
   const fetchChainHistory = useCallback(async () => {
     try {
-      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
+      const resolvedSeason = await resolveOwnSeasonNumber(item.externalId, item.title) ?? itemSeason;
+      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, resolvedSeason);
       const seasonEntries = Object.entries(seasonMap);
       if (seasonEntries.length === 0) {
         const direct = await getEpisodeHistory(item.externalId);
@@ -595,12 +593,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         setLocateError('Esa carpeta no tiene archivos de vídeo/lectura directamente dentro.');
         return;
       }
-      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
+      const resolvedSeason = await resolveOwnSeasonNumber(item.externalId, item.title) ?? itemSeason;
+      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, resolvedSeason);
       const [episodeNamesByExternalId, seasonEpisodeCounts] = await Promise.all([
         fetchEpisodeNamesForSeasonMap(item.externalId, seasonMap),
         fetchSeasonEpisodeCounts(seasonMap),
       ]);
-      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, itemSeason, seasonMap, item.libraryEntry.type, episodeNamesByExternalId, seasonEpisodeCounts);
+      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, resolvedSeason, seasonMap, item.libraryEntry.type, episodeNamesByExternalId, seasonEpisodeCounts);
       const relatedMatches = await findRelatedSiblingMatches(parent, normalizedPicked);
       setLocatePreview({ pickedPath: normalizedPicked, parentDir: parent, plan, relatedMatches });
     } catch (err) {

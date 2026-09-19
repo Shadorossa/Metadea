@@ -14,6 +14,8 @@ export interface SeasonInfo {
   externalId: string;
   title: string;
   aliases?: string[];
+  format?: string;
+  totalCount?: number;
 }
 
 const SEASON_RELATIONS_QUERY = `
@@ -24,6 +26,8 @@ query($id: Int) {
         relationType
         node {
           id
+          format
+          episodes
           title { romaji english }
         }
       }
@@ -36,13 +40,27 @@ interface AniListRelationsResponse {
     relations: {
       edges: Array<{
         relationType: string;
-        node: { id: number; title: { romaji: string | null; english: string | null } };
+        node: { id: number; format: string | null; episodes: number | null; title: { romaji: string | null; english: string | null } };
       }>;
     };
   };
 }
 
 type RelationEdge = AniListRelationsResponse['Media']['relations']['edges'][number];
+
+function contributesToSeasonOrder(info: Pick<SeasonInfo, 'format' | 'totalCount'>): boolean {
+  const format = info.format?.toUpperCase();
+  return format !== 'MOVIE' && !(format === 'SPECIAL' && (info.totalCount ?? 0) <= 1);
+}
+
+async function enrichSeasonInfo(info: SeasonInfo): Promise<SeasonInfo> {
+  const entry = await getCatalogEntry(info.externalId).catch(() => null);
+  return {
+    ...info,
+    format: entry?.format ?? info.format,
+    totalCount: entry?.total_count ?? info.totalCount,
+  };
+}
 
 // resolveSeasonExternalIds and resolveOwnSeasonNumber both walk backward
 // through findChainNeighbor for the same id whenever the local
@@ -107,7 +125,7 @@ async function findChainNeighbor(externalId: string, relationType: 'PREQUEL' | '
   try {
     const relations = await getMediaRelationsForEditor(externalId);
     const rel = relations.find(r => r.relation_type === relationType);
-    if (rel) return { externalId: rel.related_media_external_id, title: rel.title };
+    if (rel) return enrichSeasonInfo({ externalId: rel.related_media_external_id, title: rel.title });
   } catch {
     // Fall through to the AniList check below.
   }
@@ -124,6 +142,8 @@ async function findChainNeighbor(externalId: string, relationType: 'PREQUEL' | '
   return {
     externalId: `${type}:${edge.node.id}`,
     title: edge.node.title.romaji ?? edge.node.title.english ?? '',
+    format: edge.node.format ?? undefined,
+    totalCount: edge.node.episodes ?? undefined,
   };
 }
 
@@ -139,25 +159,34 @@ export async function resolveSeasonExternalIds(
   title: string,
   season: number | null,
 ): Promise<Record<number, SeasonInfo>> {
-  const map: Record<number, SeasonInfo> = { [season ?? 1]: { externalId, title } };
+  // A trailing installment number in the catalog title can differ from the
+  // actual position in its PREQUEL chain. Prefer the relation-derived
+  // ordinal whenever the chain supplies enough evidence.
+  const resolvedOrdinal = await resolveOwnSeasonNumber(externalId, title);
+  const map: Record<number, SeasonInfo> = { [resolvedOrdinal ?? season ?? 1]: { externalId, title } };
 
-  let currentSeason = season ?? 1;
+  let currentSeason = resolvedOrdinal ?? season ?? 1;
   let currentId = externalId;
-  for (let i = 0; i < 6 && currentSeason > 1; i++) {
+  for (let i = 0; i < 6; i++) {
     const prequel = await findChainNeighbor(currentId, 'PREQUEL');
     if (!prequel || Object.values(map).some(s => s.externalId === prequel.externalId)) break;
-    currentSeason -= 1;
-    map[currentSeason] = prequel;
+    if (contributesToSeasonOrder(prequel)) {
+      if (currentSeason <= 1) break;
+      currentSeason -= 1;
+      map[currentSeason] = prequel;
+    }
     currentId = prequel.externalId;
   }
 
-  let forwardSeason = season ?? 1;
+  let forwardSeason = resolvedOrdinal ?? season ?? 1;
   let forwardId = externalId;
   for (let i = 0; i < 6; i++) {
     const sequel = await findChainNeighbor(forwardId, 'SEQUEL');
     if (!sequel || Object.values(map).some(s => s.externalId === sequel.externalId)) break;
-    forwardSeason += 1;
-    if (!(forwardSeason in map)) map[forwardSeason] = sequel;
+    if (contributesToSeasonOrder(sequel)) {
+      forwardSeason += 1;
+      if (!(forwardSeason in map)) map[forwardSeason] = sequel;
+    }
     forwardId = sequel.externalId;
   }
 
@@ -174,7 +203,12 @@ export async function resolveSeasonExternalIds(
       catalog?.title_romaji,
       catalog?.title_native,
     ].filter((value): value is string => !!value?.trim()))];
-    return [seasonNumber, { ...info, aliases }] as const;
+    return [seasonNumber, {
+      ...info,
+      format: catalog?.format ?? info.format,
+      totalCount: catalog?.total_count ?? info.totalCount,
+      aliases,
+    }] as const;
   }));
 
   return Object.fromEntries(enriched);
@@ -188,15 +222,18 @@ export async function resolveSeasonExternalIds(
 // can cost, not because a real franchise is expected to hit it.
 export async function resolveOwnSeasonNumber(externalId: string, title: string): Promise<number | null> {
   const fromTitle = extractTitleSeason(title);
-  if (fromTitle != null) return fromTitle;
-
-  let hops = 0;
+  let priorSeasonCount = 0;
+  let foundPrequel = false;
   let currentId = externalId;
+  const visited = new Set([externalId]);
   for (let i = 0; i < 6; i++) {
     const prequel = await findChainNeighbor(currentId, 'PREQUEL');
-    if (!prequel) break;
-    hops++;
+    if (!prequel || visited.has(prequel.externalId)) break;
+    foundPrequel = true;
+    visited.add(prequel.externalId);
+    if (contributesToSeasonOrder(prequel)) priorSeasonCount++;
     currentId = prequel.externalId;
   }
-  return hops > 0 ? hops + 1 : null;
+  if (foundPrequel && priorSeasonCount > 0) return priorSeasonCount + 1;
+  return fromTitle;
 }
