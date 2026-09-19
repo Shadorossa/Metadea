@@ -9,7 +9,7 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { GameCard } from './cards/GameCard';
 import { type CoverCache } from './details/GameDetailPanel';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, sortEntries, type SortMode, type StatusEntry } from './utils/catalogGameLinking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, displayNameFor, sortEntries, type SortMode, type StatusEntry } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
@@ -108,9 +108,6 @@ interface LocalMediaSectionProps {
 export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem, onRefreshScan }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
-
-  const displayNameFor = (g: LocalGame): string | undefined =>
-    g.external_id ? catalogMapById?.get(g.external_id)?.title_main ?? undefined : undefined;
 
   const t = getT();
   const p = t.profile;
@@ -305,7 +302,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
             ]
           : [];
         const merged = [...platformBacklogGames, ...additionalPlatformEntries];
-        const sorted = sortEntries(merged, sortMode, displayNameFor);
+        const sorted = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById));
         const entries: SectionEntry[] = sorted.map(e => e.kind === 'game'
           ? { kind: 'steam' as const, game: e.game, libraryStatus: e.libraryStatus }
           : { kind: 'catalog' as const, item: e.item, launchGame: e.launchGame }
@@ -315,7 +312,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
       .filter(id => backlogByPlatform.has(id))
       .map(id => {
         const asStatusEntries: StatusEntry[] = backlogByPlatform.get(id)!.map(game => ({ kind: 'game', game }));
-        const sorted = sortEntries(asStatusEntries, sortMode, displayNameFor);
+        const sorted = sortEntries(asStatusEntries, sortMode, g => displayNameFor(g, catalogMapById));
         const entries: SectionEntry[] = sorted.map(e => ({ kind: 'steam' as const, game: (e as { kind: 'game'; game: LocalGame }).game }));
         return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries };
       });
@@ -437,7 +434,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         game={entry.game}
                         coverCache={coverCache ?? {}}
                         onClick={onSetGameSelection}
-                        displayName={displayNameFor(entry.game)}
+                        displayName={displayNameFor(entry.game, catalogMapById)}
                         status={steamGameMatch.get(entry.game)?.status ?? entry.libraryStatus}
                         onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
                       />

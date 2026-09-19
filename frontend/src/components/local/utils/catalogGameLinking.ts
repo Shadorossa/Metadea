@@ -117,7 +117,11 @@ export type StatusEntry =
   | { kind: 'game'; game: LocalGame; libraryStatus?: string }
   | { kind: 'catalog'; item: LocalMediaItem; launchGame?: LocalGame };
 
-// Shared "how a mixed installed+pendiente list gets ordered" logic —
+export function displayNameFor(g: LocalGame, catalogMapById?: Map<string, MediaCatalogEntry>): string | undefined {
+  return g.external_id ? catalogMapById?.get(g.external_id)?.title_main ?? undefined : undefined;
+}
+
+// Shared "how a mixed installed+pendiente list gets ordered" logic -
 // "biblioteca de Steam" (kind:'game', installed) and "perfil de usuario"
 // (kind:'catalog', a library-tracked pendiente) are just two different
 // SOURCES of the same kind of thing, so they're always merged into one list

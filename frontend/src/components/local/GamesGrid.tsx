@@ -6,7 +6,7 @@ import { getT } from '../../i18n/client';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
-import { type StatusEntry, type SortMode, sortEntries, entryKey } from './utils/catalogGameLinking';
+import { displayNameFor, type StatusEntry, type SortMode, sortEntries, entryKey } from './utils/catalogGameLinking';
 import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, type PlatformId } from './utils/constants';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
@@ -106,9 +106,6 @@ export function GamesGrid({
 }: GamesGridProps) {
   const t = getT();
   const tLocal = t.local;
-  const displayNameFor = (g: LocalGame): string | undefined =>
-    g.external_id ? catalogMapById.get(g.external_id)?.title_main ?? undefined : undefined;
-
   // One shared sort preference across every launcher section (Steam,
   // Nintendo, ...) rather than a separate one per platform — simpler to
   // reason about, and there's no real case for browsing one platform
@@ -164,7 +161,7 @@ export function GamesGrid({
                 onClick={onSelectGame}
                 status={sec.sectionStatus}
                 onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
-                displayName={displayNameFor(entry.game)}
+                displayName={displayNameFor(entry.game, catalogMapById)}
               />
             ) : (
               <LocalMediaCard
@@ -224,7 +221,7 @@ export function GamesGrid({
             ...list.map((g): StatusEntry => ({ kind: 'game', game: g })),
             ...pendingForLauncher,
           ];
-          const sortedEntries = sortEntries(merged, sortMode, displayNameFor);
+          const sortedEntries = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById));
           const totalCount = merged.length;
           return (
             <section
@@ -292,7 +289,7 @@ export function GamesGrid({
                     onClick={onSelectGame}
                     status={gameStatusMatch.get(entry.game)}
                     onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
-                    displayName={displayNameFor(entry.game)}
+                    displayName={displayNameFor(entry.game, catalogMapById)}
                   />
                 ) : (
                   <LocalMediaCard
