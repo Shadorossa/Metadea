@@ -1,0 +1,331 @@
+{
+  "media_catalog": {
+    "id": "58f333c5e3fe9ffb58f333c5e3fe9ffb",
+    "external_id": "anime:1520",
+    "type": "anime",
+    "title_main": "Black Jack",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "manga:31600",
+      "relation_type": "SOURCE",
+      "type_label": "Source Material",
+      "title": "Black Jack",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/nx31600-CCA5TUKJBQJh.jpg",
+      "media_external_id": "anime:1520"
+    },
+    {
+      "related_media_external_id": "anime:7229",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Black Jack ONA",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n7229-uUMPtWuTH8Et.png",
+      "media_external_id": "anime:1520"
+    },
+    {
+      "related_media_external_id": "anime:1521",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Black Jack Movie",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b1521-maDvpcEJAbQi.jpg",
+      "media_external_id": "anime:1520"
+    },
+    {
+      "related_media_external_id": "anime:205676",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Black Jack Yanen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx205676-VlzcdwHYdJCe.png",
+      "media_external_id": "anime:1520"
+    },
+    {
+      "media_external_id": "anime:1520",
+      "related_media_external_id": "anime:108339",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Black Jack FINAL",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b108339-mwoK8DF2nCYC.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:1344",
+      "name": "Kuroo Hazama",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b1344-2Dhub0ahIUXp.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44064",
+      "name": "Andrew",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b44064-amckGX0RObOT.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:45119",
+      "name": "Koichiro Tsuzuki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b45119-6TnQahNqz6MT.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1345",
+      "name": "Pinoko",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b1345-l6HJcjsCMlby.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:33515",
+      "name": "Acetylene Lamp",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b33515-RPVcsJyvaDIr.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:11356",
+      "name": "Kiriko",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b11356-Jd53kj24g81s.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:56875",
+      "name": "Rie Fujinami",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b56875-9mUJy8HJOqG6.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:23610",
+      "name": "Leslie Harris",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b23610-v6veEEGTfvib.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:43997",
+      "name": "Catherine",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b43997-Gtms2oFGvxky.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:59093",
+      "name": "Ernesto",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b59093-7OTgrieuWNtp.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:43998",
+      "name": "Stanfield",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b43998-AEHSUzglbjso.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44004",
+      "name": "Abumaru",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/44004.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44067",
+      "name": "Jones",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b44067-5faWCG0MMR6x.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:59087",
+      "name": "Taxi Untenshu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b59087-NJFW20P2ifaX.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44003",
+      "name": "Saburo Taneda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b44003-nT2tJleCGGIF.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:45123",
+      "name": "Mariko",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b45123-97F2VGOFcrnJ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:57663",
+      "name": "Tachibana",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b57663-5qR7GKhJJ1LS.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44066",
+      "name": "Armando",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b44066-bSVrxHzWxShg.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:45125",
+      "name": "Taneda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b45125-rlYKVaUCA4OP.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:59099",
+      "name": "Bokushi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b59099-NC8uKzEXMee9.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:23625",
+      "name": "Tsukiko",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b23625-V4O54jgBWX6h.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:50247",
+      "name": "Maria Carnera",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b50247-yNqdVoQHtkd6.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:43999",
+      "name": "Patterson",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b43999-RQuDJbVZKHof.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:32428",
+      "name": "Yasuhiko Shirabyoshi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b32428-rrAYO8n7eVTq.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44006",
+      "name": "Rokujoji",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/44006.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:56889",
+      "name": "Michele Rochasse",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b56889-wLdEIHA7x2GM.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:59097",
+      "name": "Sandra",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b59097-j07f3NRPDLrj.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44000",
+      "name": "Karen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b44000-zNNTodLijj1M.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:45121",
+      "name": "Machiko Tsuzuki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b45121-pIP6iClPRBkk.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:23466",
+      "name": "Sayuri",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b23466-B4oeDVKrMi98.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44002",
+      "name": "Ikehata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/44002.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:23465",
+      "name": "Crossword",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b23465-O3q9HI5CeQVV.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44001",
+      "name": "Saranda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b44001-0ifxPkBTTqrl.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44065",
+      "name": "Lawrence",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b44065-AHOWyEwkSpbG.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:44005",
+      "name": "Kaoru",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/44005.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:56879",
+      "name": "Katina Aleko",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b56879-ORL90pcthoD8.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:56891",
+      "name": "Alex Rey",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b56891-yvAkjDVCtm8s.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:a96938",
+      "name": "Osamu Tezuka",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/large/n96938-6i6jed9aM1cX.png",
+      "role": "Original Creator",
+      "url": "/author?id=person:a96938",
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "saga_name": "Black Jack",
+  "story_arcs": []
+}

@@ -1,0 +1,26 @@
+{
+  "media_catalog": {
+    "id": "fe2c4752d7b35f1bfe2c4752d7b35f1b",
+    "external_id": "game:1399",
+    "type": "game",
+    "title_main": "Professor Layton and the Unwound Future",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null,
+    "banners_csv": "https://images4.alphacoders.com/593/thumb-1920-593243.jpg"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:141948",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "Professor Layton and the Unwound Future HD for Mobile",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2td7.jpg",
+      "media_external_id": "game:1399"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
