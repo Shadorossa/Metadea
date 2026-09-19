@@ -108,6 +108,7 @@ pub fn run() {
             game_links::get_hidden_local_games,
             folders::launch_game,
             folders::start_playtime_session,
+            folders::stop_game_process,
             folders::open_external_url,
             folders::play_file_with_vlc,
             backup::export_backup,

@@ -243,6 +243,61 @@ fn scan_epic_games() -> Vec<LocalGame> {
 // picked themselves, or really any path other than those 3). Same registry-
 // based approach scan_steam_games already relies on instead of guessing
 // folders.
+#[cfg(windows)]
+fn gog_playtimes() -> std::collections::HashMap<String, u64> {
+    use rusqlite::{Connection, OpenFlags};
+
+    let database = std::env::var_os("PROGRAMDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
+        .join(r"GOG.com\Galaxy\storage\galaxy-2.0.db");
+    let Ok(conn) = Connection::open_with_flags(database, OpenFlags::SQLITE_OPEN_READ_ONLY) else {
+        return Default::default();
+    };
+
+    // Galaxy's local database is not a public API and has changed over time.
+    // Inspect its table before querying so a missing/renamed column simply
+    // means “playtime unavailable”, rather than breaking game discovery.
+    let Ok(mut columns) = conn.prepare("PRAGMA table_info(GameTimes)") else {
+        return Default::default();
+    };
+    let names: std::collections::HashSet<String> = columns
+        .query_map([], |row| row.get::<_, String>(1))
+        .ok()
+        .into_iter()
+        .flatten()
+        .flatten()
+        .collect();
+    if !names.contains("releaseKey") || !names.contains("minutesInGame") {
+        return Default::default();
+    }
+
+    let Ok(mut statement) = conn.prepare(
+        "SELECT CAST(releaseKey AS TEXT), minutesInGame FROM GameTimes WHERE minutesInGame > 0",
+    ) else {
+        return Default::default();
+    };
+    let rows: Vec<(String, u64)> = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, u64>(1)?))
+        })
+        .map(|rows| rows.flatten().collect())
+        .unwrap_or_default();
+    let mut playtimes = std::collections::HashMap::new();
+    for (release_key, minutes) in rows {
+        playtimes.insert(release_key.clone(), minutes);
+        if let Some(gog_id) = release_key.strip_prefix("gog_") {
+            playtimes.insert(gog_id.to_string(), minutes);
+        }
+    }
+    playtimes
+}
+
+#[cfg(not(windows))]
+fn gog_playtimes() -> std::collections::HashMap<String, u64> {
+    Default::default()
+}
+
 fn scan_gog_games_registry() -> Vec<LocalGame> {
     use winreg::enums::*;
     use winreg::RegKey;
@@ -252,6 +307,7 @@ fn scan_gog_games_registry() -> Vec<LocalGame> {
         return games;
     };
 
+    let playtimes = gog_playtimes();
     for game_id in parent.enum_keys().flatten() {
         let Ok(key) = parent.open_subkey(&game_id) else { continue };
         let name: String = key.get_value("gameName").unwrap_or_default();
@@ -262,10 +318,10 @@ fn scan_gog_games_registry() -> Vec<LocalGame> {
         games.push(LocalGame {
             name,
             launcher: "gog".to_string(),
+            playtime_minutes: playtimes.get(&game_id).copied(),
             app_id: Some(game_id),
             external_id: None,
             install_path: path,
-            playtime_minutes: None,
             last_played: None,
             installed: Some(true),
             rom_platform: None,

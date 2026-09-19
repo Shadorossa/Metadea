@@ -1,16 +1,28 @@
 import { usePlaybackState, pausePlayback, resumePlayback, skipToNext, stopPlayback } from '../../lib/local/playback-service';
 import { AnimatePresence } from 'motion/react';
-import { wrapAssetUrl } from '../../lib/tauri';
+import { stopGameProcess, wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { isReadingType } from '../../lib/constants/media';
 import { formatPlaybackTime } from './utils/formatters';
 import { NowMediaBar } from '../shared/NowMediaBar';
 import { IconX } from './ui/icons';
 import { getT } from '../../i18n/client';
+import { clearGamePresence, useGamePresence } from '../../lib/discord/presence-manager';
+import { useEffect, useState } from 'react';
 
 export function NowPlayingBar() {
   const t = getT().local;
+  const profileT = getT().profile;
   const playback = usePlaybackState();
+  const game = useGamePresence();
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    if (!game || playback) return;
+    setNow(Math.floor(Date.now() / 1000));
+    const timer = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [game, playback]);
 
   const current = playback ? playback.queue[playback.queueIndex] : null;
   const hasNext = playback ? playback.queueIndex < playback.queue.length - 1 : false;
@@ -18,11 +30,15 @@ export function NowPlayingBar() {
   const cover = playback?.cover ? wrapAssetUrl(toSmallCover(playback.cover)) : null;
   const episodeLabel = playback ? (isReadingType(playback.type) ? 'Cap.' : 'Ep.') : '';
   const mediaUrl = playback ? `/media?id=${encodeURIComponent(playback.externalId)}` : '#';
+  const gameUrl = game?.externalId ? `/media?id=${encodeURIComponent(game.externalId)}` : '#';
+  const gameCover = game?.coverUrl ? wrapAssetUrl(toSmallCover(game.coverUrl)) : null;
+  const gameElapsed = game ? Math.max(0, now - game.startTime) : 0;
 
   return (
     <AnimatePresence>
       {playback && (
         <NowMediaBar
+          key="video-playback"
           className="now-playing-bar"
           progressTrackClassName="now-playing-progress-track"
           progressFillClassName="now-playing-progress-fill"
@@ -66,6 +82,32 @@ export function NowPlayingBar() {
               </button>
             </>
           }
+        />
+      )}
+      {!playback && game && (
+        <NowMediaBar
+          key="game-session"
+          className="now-playing-bar now-playing-bar--game"
+          progressTrackClassName="now-playing-progress-track now-playing-progress-track--game"
+          progressFillClassName="now-playing-progress-fill"
+          progressPct={0}
+          mediaUrl={gameUrl}
+          cover={gameCover}
+          title={game.title}
+          subtitle={`${profileT.status_playing} · ${formatPlaybackTime(gameElapsed)}`}
+          controls={game.installPath ? (
+            <button
+              type="button"
+              className="now-playing-btn now-playing-btn--close"
+              aria-label={t.stop}
+              title={t.stop}
+              onClick={() => stopGameProcess(game.installPath!, game.romPlatform)
+                .then(() => clearGamePresence())
+                .catch(console.error)}
+            >
+              <IconX size={14} />
+            </button>
+          ) : null}
         />
       )}
     </AnimatePresence>

@@ -493,10 +493,18 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                         startTime,
                         coverUrl,
                         externalId: effectiveExternalId,
+                        installPath: launchTarget.install_path || undefined,
+                        romPlatform: isExe ? undefined : launchTarget.rom_platform ?? undefined,
                       });
 
                       if (launchTarget.install_path && (isExe || !launchTarget.rom_platform)) {
-                        startPlaytimeSession(launchTarget.install_path, effectiveExternalId, isExe ? null : launchTarget.rom_platform).catch(() => {});
+                        startPlaytimeSession(
+                          launchTarget.install_path,
+                          effectiveExternalId,
+                          isExe ? null : launchTarget.rom_platform,
+                          launchTarget.launcher,
+                          launchTarget.app_id,
+                        ).catch(() => {});
                       }
                     })
                     .catch(console.error);

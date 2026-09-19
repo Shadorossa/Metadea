@@ -1,4 +1,4 @@
-import { tauriCmd, tauriRun, isTauri } from './core';
+import { tauriCmd, tauriRun, isTauri, waitForTauriBridge } from './core';
 
 export async function debugScanInfo(): Promise<string> {
   return tauriCmd<string>('debug_scan_info', 'Tauri not available - using fallback');
@@ -24,8 +24,30 @@ export async function launchGame(
 // Steam/Epic/GOG install) vs the platform's own configured emulator
 // executable (installPath is just the ROM file for those, not a folder
 // anything runs from) — see track_playtime_session's own comment.
-export async function startPlaytimeSession(installPath: string, externalId: string, romPlatform?: string | null): Promise<void> {
-  return tauriRun('start_playtime_session', { installPath, externalId, romPlatform: romPlatform ?? null });
+export async function startPlaytimeSession(
+  installPath: string,
+  externalId: string,
+  romPlatform?: string | null,
+  launcher?: string | null,
+  appId?: string | null,
+): Promise<void> {
+  return tauriRun('start_playtime_session', {
+    installPath,
+    externalId,
+    romPlatform: romPlatform ?? null,
+    launcher: launcher ?? null,
+    appId: appId ?? null,
+  });
+}
+
+export async function stopGameProcess(
+  installPath: string,
+  romPlatform?: string | null,
+): Promise<number> {
+  return tauriCmd<number>('stop_game_process', 0, {
+    installPath,
+    romPlatform: romPlatform ?? null,
+  });
 }
 
 export interface GameSessionEndedPayload {
@@ -41,7 +63,7 @@ export interface GameSessionEndedPayload {
 export async function listenGameSessionEnded(
   callback: (payload: GameSessionEndedPayload) => void,
 ): Promise<() => void> {
-  if (!isTauri()) return () => {};
+  if (!isTauri() && !(await waitForTauriBridge())) return () => {};
   const { listen } = await import(/* @vite-ignore */ '@tauri-apps/api/event');
   return listen<GameSessionEndedPayload>('game-session-ended', event => callback(event.payload));
 }

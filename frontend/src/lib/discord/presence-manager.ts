@@ -1,12 +1,15 @@
 import { updateDiscordPresence, resetDiscordPresence } from '../tauri/misc-commands';
 import { toMediumCover } from '../shared/small-cover';
 import { listenGameSessionEnded, addPlaytimeHours } from '../tauri';
+import { createExternalStore } from '../shared/external-store';
 
 export interface GamePresence {
   title: string;
   coverUrl?: string;
   startTime: number;
   externalId?: string;
+  installPath?: string;
+  romPlatform?: string;
 }
 
 export interface PlaybackPresence {
@@ -30,38 +33,26 @@ export interface MediaPagePresence {
   coverUrl?: string;
 }
 
-const GAME_STORAGE_KEY = 'metadea_active_game_presence_v1';
-
 let activeGame: GamePresence | null = null;
 let activePlayback: PlaybackPresence | null = null;
 let activeReading: ReadingPresence | null = null;
 let activeMediaPage: MediaPagePresence | null = null;
 let listenerInitialized = false;
+const gamePresenceStore = createExternalStore<GamePresence | null>(null);
 
-function loadStoredGame(): GamePresence | null {
-  try {
-    const raw = sessionStorage.getItem(GAME_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveStoredGame(game: GamePresence | null) {
-  try {
-    if (game) sessionStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(game));
-    else sessionStorage.removeItem(GAME_STORAGE_KEY);
-  } catch {}
-}
-
-activeGame = loadStoredGame();
+export const useGamePresence = gamePresenceStore.use;
 
 function initSessionListener() {
   if (listenerInitialized || typeof window === 'undefined') return;
   listenerInitialized = true;
   listenGameSessionEnded(() => {
     clearGamePresence();
-  }).catch(() => {});
+  }).catch(() => {
+    // If WebView/Tauri event setup was temporarily unavailable, retry instead
+    // of leaving the game presence permanently uncleared for this page life.
+    listenerInitialized = false;
+    setTimeout(initSessionListener, 1000);
+  });
 }
 
 initSessionListener();
@@ -138,13 +129,13 @@ function applyCurrentPresence() {
 
 export function setGamePresence(game: GamePresence) {
   activeGame = game;
-  saveStoredGame(game);
+  gamePresenceStore.set(game);
   applyCurrentPresence();
 }
 
 export function clearGamePresence() {
   activeGame = null;
-  saveStoredGame(null);
+  gamePresenceStore.set(null);
   applyCurrentPresence();
 }
 

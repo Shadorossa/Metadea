@@ -335,15 +335,7 @@ pub async fn launch_game(
             }
         }
         "gog" => {
-            if let Some(id) = app_id {
-                app_handle.opener()
-                    .open_url(format!("goggalaxy://openGame/{}", id), None::<String>)
-                    .str_err()
-            } else if let Some(path) = install_path {
-                app_handle.opener().open_path(path, None::<String>).str_err()
-            } else {
-                Err("No launch target for GOG game".into())
-            }
+            launch_gog_game(app_id, install_path)
         }
         _ => {
             if let Some(path) = install_path {
@@ -353,6 +345,51 @@ pub async fn launch_game(
             }
         }
     }
+}
+
+#[cfg(windows)]
+fn find_gog_galaxy_client() -> Option<PathBuf> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let subkey = "SOFTWARE\\GOG.com\\GalaxyClient\\paths";
+    for hive in [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE] {
+        for view in [KEY_WOW64_64KEY, KEY_WOW64_32KEY] {
+            if let Ok(key) = RegKey::predef(hive).open_subkey_with_flags(subkey, KEY_READ | view) {
+                if let Ok(client) = key.get_value::<String, _>("client") {
+                    let path = PathBuf::from(client.trim_matches('"'));
+                    if path.is_file() {
+                        return Some(path);
+                    }
+                }
+            }
+        }
+    }
+
+    [
+        r"C:\Program Files (x86)\GOG Galaxy\GalaxyClient.exe",
+        r"C:\Program Files\GOG Galaxy\GalaxyClient.exe",
+    ]
+    .iter()
+    .map(PathBuf::from)
+    .find(|path| path.is_file())
+}
+
+#[cfg(windows)]
+fn launch_gog_game(app_id: Option<String>, install_path: Option<String>) -> Result<(), String> {
+    let id = app_id.ok_or("No GOG game ID")?;
+    let client = find_gog_galaxy_client().ok_or("No se encontró GOG Galaxy (GalaxyClient.exe)")?;
+    let mut command = std::process::Command::new(client);
+    command.arg("/command=runGame").arg(format!("/gameId={}", id));
+    if let Some(path) = install_path {
+        command.arg(format!("/path={}", path));
+    }
+    command.spawn().map(|_| ()).map_err(|e| format!("No se pudo iniciar el juego de GOG: {}", e))
+}
+
+#[cfg(not(windows))]
+fn launch_gog_game(_app_id: Option<String>, _install_path: Option<String>) -> Result<(), String> {
+    Err("El inicio de juegos de GOG solo está disponible en Windows".into())
 }
 
 // Steam/GOG/Epic all intercept launch_game's URL scheme and start the actual
@@ -374,8 +411,10 @@ pub async fn start_playtime_session(
     install_path: String,
     external_id: String,
     rom_platform: Option<String>,
+    launcher: Option<String>,
+    app_id: Option<String>,
 ) -> Result<(), String> {
-    tokio::spawn(track_playtime_session(app_handle, install_path, external_id, rom_platform));
+    tokio::spawn(track_playtime_session(app_handle, install_path, external_id, rom_platform, launcher, app_id));
     Ok(())
 }
 
@@ -385,11 +424,101 @@ fn normalize_path_for_compare(p: &std::path::Path) -> String {
     trimmed.replace('/', "\\").to_lowercase()
 }
 
+fn gog_primary_executable(install_dir: &std::path::Path, app_id: &str) -> Option<PathBuf> {
+    let info = install_dir.join(format!("goggame-{}.info", app_id));
+    let content = std::fs::read_to_string(info).ok()?;
+    let manifest: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let tasks = manifest.get("playTasks")?.as_array()?;
+    let primary = tasks.iter().find(|task| {
+        task.get("isPrimary").and_then(serde_json::Value::as_bool) == Some(true)
+            && task.get("type").and_then(serde_json::Value::as_str)
+                .map(|kind| kind.eq_ignore_ascii_case("FileTask"))
+                .unwrap_or(true)
+    })?;
+    let relative_path = primary.get("path")?.as_str()?;
+    let executable = install_dir.join(relative_path);
+    executable.is_file().then_some(executable)
+}
+
+#[tauri::command]
+pub fn stop_game_process(
+    app_handle: tauri::AppHandle,
+    install_path: String,
+    rom_platform: Option<String>,
+) -> Result<usize, String> {
+    use sysinfo::System;
+
+    if install_path.trim().is_empty() {
+        return Err("No se conoce la ruta de instalación del juego".into());
+    }
+
+    let is_direct_exe = install_path.to_lowercase().ends_with(".exe");
+    let (root, is_rom) = if !is_direct_exe {
+        if let Some(platform_id) = rom_platform.as_deref() {
+            use tauri::Manager;
+            let db = app_handle.state::<crate::db::MetadeaDb>();
+            let executable = {
+                let conn = db.conn.lock().str_err()?;
+                conn.query_row(
+                    "SELECT executable_path FROM emulator_configs WHERE platform_id = ?1",
+                    [platform_id],
+                    |row| row.get::<_, String>(0),
+                )
+                .map_err(|_| format!("No emulator configured for {}", platform_id))?
+            };
+            (PathBuf::from(executable), true)
+        } else {
+            (PathBuf::from(&install_path), false)
+        }
+    } else {
+        (PathBuf::from(&install_path), false)
+    };
+
+    let root_filename = root.file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let norm_root = normalize_path_for_compare(&root);
+
+    let mut system = System::new();
+    system.refresh_all();
+    let mut stopped = 0;
+    for process in system.processes().values() {
+        let matches_session = if is_rom {
+            if !root_filename.is_empty() && process.name().to_string_lossy().eq_ignore_ascii_case(&root_filename) {
+                true
+            } else {
+                process.exe().map(|exe| {
+                    let exe = normalize_path_for_compare(exe);
+                    exe == norm_root || exe.ends_with(&norm_root) || norm_root.ends_with(&exe)
+                }).unwrap_or(false)
+            }
+        } else {
+                process.exe().map(|exe| {
+                    let exe = normalize_path_for_compare(exe);
+                    if is_direct_exe {
+                        exe == norm_root
+                    } else if norm_root.ends_with('\\') {
+                        exe.starts_with(&norm_root)
+                    } else {
+                        exe.starts_with(&format!("{}\\", norm_root))
+                    }
+                }).unwrap_or(false)
+        };
+        if matches_session && process.kill() {
+            stopped += 1;
+        }
+    }
+
+    Ok(stopped)
+}
+
 async fn track_playtime_session(
     app_handle: tauri::AppHandle,
     install_path: String,
     external_id: String,
     rom_platform: Option<String>,
+    launcher: Option<String>,
+    app_id: Option<String>,
 ) {
     use std::time::{Duration, Instant};
     use sysinfo::System;
@@ -414,6 +543,11 @@ async fn track_playtime_session(
     };
     let Some(root) = watch_target else { return };
     let is_rom = !is_direct_exe && rom_platform.is_some();
+    let gog_executable = if launcher.as_deref() == Some("gog") {
+        app_id.as_deref().and_then(|id| gog_primary_executable(&root, id))
+    } else {
+        None
+    };
     let root_filename = root.file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_default();
@@ -444,7 +578,11 @@ async fn track_playtime_session(
             } else {
                 if let Some(exe) = p.exe() {
                     let norm_exe = normalize_path_for_compare(exe);
-                    norm_exe.starts_with(&norm_root)
+                    if let Some(target) = &gog_executable {
+                        norm_exe == normalize_path_for_compare(target)
+                    } else {
+                        norm_exe.starts_with(&norm_root)
+                    }
                 } else {
                     false
                 }

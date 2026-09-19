@@ -134,6 +134,7 @@ commands.allow = [
   "save_game_link",
   "launch_game",
   "start_playtime_session",
+  "stop_game_process",
   "open_external_url",
   "play_file_with_vlc",
   "get_vlc_playback_status",

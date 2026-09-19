@@ -25,6 +25,11 @@
   transition: transform 1s linear;
 }
 
+.now-playing-progress-track--game {
+  background: var(--accent);
+  opacity: 0.7;
+}
+
 .now-playing-content {
   display: flex;
   align-items: center;
@@ -152,4 +157,3 @@
   background: var(--accent);
   transition: width 0.5s ease;
 }
-
