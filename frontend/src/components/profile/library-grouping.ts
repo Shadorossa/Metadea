@@ -5,8 +5,14 @@
 //   refineSagaGroups -> merges standalone groups belonging to the same saga
 import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib/tauri';
 import { compareByReleaseDate, stripSeasonSuffix } from '../../lib/media/mapper-utils';
-import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
+import {
+  CONTAINS_RELATION_TYPES,
+  isSagaComponentRelationType,
+  isSequelRelationType,
+  SAGA_GROUPABLE_TYPES,
+} from '../../lib/media/sagaTypes';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
+import { createUnionFind } from '../../lib/shared/union-find';
 import { SEASON_STATUS_PRIORITY } from '../../lib/constants/media';
 import { reconstructSagaOrder } from '../../lib/media/sagaGrouping';
 
@@ -279,8 +285,6 @@ export function groupBundles<T extends { external_id: string; started_at: string
 // Games (IGDB) carry real SEQUEL/PREQUEL rows too, not just AniList types —
 // and so can movies/series (TMDB), curated manually since TMDB itself has
 // no equivalent field this app maps automatically (unlike AniList/IGDB).
-const SAGA_GROUPABLE_TYPES = new Set(['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series']);
-
 // Third pass: merges standalone groups belonging to the same saga, walking
 // the WHOLE catalog's PREQUEL/SEQUEL graph (not just relations between owned
 // entries) so a gap (owning 1,2,3,5 but not 4) doesn't strand 5 on its own.
@@ -296,27 +300,13 @@ export function refineSagaGroups<T extends { external_id: string }>(
   // paused/in-progress ones; each stays its own individual entry instead.
   suppressIfCompletedElsewhere?: Set<string>,
 ): Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> {
-  const parent = new Map<string, string>();
-  const find = (id: string): string => {
-    let cur = id;
-    while (parent.get(cur) !== cur) cur = parent.get(cur)!;
-    return cur;
-  };
-  const union = (a: string, b: string) => {
-    if (!parent.has(a)) parent.set(a, a);
-    if (!parent.has(b)) parent.set(b, b);
-    const ra = find(a), rb = find(b);
-    if (ra !== rb) parent.set(ra, rb);
-  };
+  const sagaGraph = createUnionFind<string>();
 
   const directSagaIds = new Set<string>();
   for (const rel of relations) {
     // SECUELA/PRECUELA: pre-fix Spanish labels some libraries still have on disk.
     // ALTERNATIVE: classifySagaChain's Concept Group edge — a saga step without an order.
-    const isSequel  = rel.relation_type === 'SEQUEL'  || rel.relation_type === 'SECUELA';
-    const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
-    const isAlternative = rel.relation_type === 'ALTERNATIVE';
-    if (!isSequel && !isPrequel && !isAlternative) continue;
+    if (!isSagaComponentRelationType(rel.relation_type)) continue;
     if (!rel.media_external_id) continue;
     const a = rel.media_external_id;
     const b = rel.related_media_external_id;
@@ -324,7 +314,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
     const typeB = catalogMap.get(b)?.type;
     if (typeA && !SAGA_GROUPABLE_TYPES.has(typeA)) continue;
     if (typeB && !SAGA_GROUPABLE_TYPES.has(typeB)) continue;
-    union(a, b);
+    sagaGraph.union(a, b);
     directSagaIds.add(a);
     directSagaIds.add(b);
   }
@@ -357,7 +347,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
     if (memberIds.some(id => bundleParticipantIds.has(id))) return;
     for (const id of memberIds) {
       const slot = sagaIdentityOfHere(id);
-      if (slot && parent.has(slot)) {
+      if (slot && sagaGraph.has(slot)) {
         slotOf.set(i, slot);
         return;
       }
@@ -394,7 +384,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
   const byComponent = new Map<string, number[]>();
   for (const [slot, i] of representativeForSlot) {
     idxToSlot.set(i, slot);
-    const comp = find(slot);
+    const comp = sagaGraph.find(slot);
     const list = byComponent.get(comp) ?? [];
     list.push(i);
     byComponent.set(comp, list);
@@ -406,7 +396,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
   const completedComponents = new Set<string>();
   if (suppressIfCompletedElsewhere) {
     for (const id of suppressIfCompletedElsewhere) {
-      if (parent.has(id)) completedComponents.add(find(id));
+      if (sagaGraph.has(id)) completedComponents.add(sagaGraph.find(id));
     }
   }
 
@@ -487,38 +477,25 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
   relations: DbMediaRelation[],
   sagaNames: Record<string, string>,
 ): { consumedIds: Set<string>; groups: Array<UnifiedSeasonGroup<T>> } {
-  const parent = new Map<string, string>();
-  const find = (id: string): string => {
-    let cur = id;
-    while (parent.get(cur) !== cur) cur = parent.get(cur)!;
-    return cur;
-  };
-  const union = (a: string, b: string) => {
-    if (!parent.has(a)) parent.set(a, a);
-    if (!parent.has(b)) parent.set(b, b);
-    const ra = find(a), rb = find(b);
-    if (ra !== rb) parent.set(ra, rb);
-  };
+  const sagaGraph = createUnionFind<string>();
 
   // Anime-only on both sides — deliberately narrower than refineSagaGroups'
   // own SAGA_GROUPABLE_TYPES (games/movies/series too), since those already
   // have their own, separately-toggled grouping story; this setting is
   // specifically about AniList's per-season entries.
   for (const rel of relations) {
-    const isSequel  = rel.relation_type === 'SEQUEL'  || rel.relation_type === 'SECUELA';
-    const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
-    if (!isSequel && !isPrequel) continue;
+    if (!isSequelRelationType(rel.relation_type)) continue;
     if (!rel.media_external_id) continue;
     const a = rel.media_external_id, b = rel.related_media_external_id;
     if (catalogMap.get(a)?.type !== 'anime' || catalogMap.get(b)?.type !== 'anime') continue;
-    union(a, b);
+    sagaGraph.union(a, b);
   }
 
   const byComponent = new Map<string, T[]>();
   for (const item of ownedItems) {
     if (catalogMap.get(item.external_id)?.type !== 'anime') continue;
-    if (!parent.has(item.external_id)) continue; // not part of any chain
-    const comp = find(item.external_id);
+    if (!sagaGraph.has(item.external_id)) continue; // not part of any chain
+    const comp = sagaGraph.find(item.external_id);
     const list = byComponent.get(comp) ?? [];
     list.push(item);
     byComponent.set(comp, list);

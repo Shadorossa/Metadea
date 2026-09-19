@@ -16,6 +16,8 @@ import { getTypeLabel, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/con
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
+import { isSagaComponentRelationType } from '../../lib/media/sagaTypes';
+import { createUnionFind } from '../../lib/shared/union-find';
 import { groupEditions, groupBundles, refineSagaGroups, averageRating, unifyAnimeSeasons } from './library-grouping';
 import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
@@ -210,27 +212,13 @@ export function LibrarySection({
   // chains) but just to answer "are these two the same saga" for the date-sort
   // tiebreaker below — grouping stays a separate, opt-in concern.
   const sagaComponentOf = useMemo(() => {
-    const parent = new Map<string, string>();
-    const find = (id: string): string => {
-      let cur = id;
-      while (parent.get(cur) !== cur) cur = parent.get(cur)!;
-      return cur;
-    };
-    const union = (a: string, b: string) => {
-      if (!parent.has(a)) parent.set(a, a);
-      if (!parent.has(b)) parent.set(b, b);
-      const ra = find(a), rb = find(b);
-      if (ra !== rb) parent.set(ra, rb);
-    };
+    const sagaGraph = createUnionFind<string>();
     for (const rel of sagaRelations) {
-      const isSequel = rel.relation_type === 'SEQUEL' || rel.relation_type === 'SECUELA';
-      const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
-      const isAlternative = rel.relation_type === 'ALTERNATIVE';
-      if (!isSequel && !isPrequel && !isAlternative) continue;
+      if (!isSagaComponentRelationType(rel.relation_type)) continue;
       if (!rel.media_external_id) continue;
-      union(rel.media_external_id, rel.related_media_external_id);
+      sagaGraph.union(rel.media_external_id, rel.related_media_external_id);
     }
-    return (id: string) => (parent.has(id) ? find(id) : null);
+    return (id: string) => (sagaGraph.has(id) ? sagaGraph.find(id) : null);
   }, [sagaRelations]);
 
   const sections = useMemo(() => {

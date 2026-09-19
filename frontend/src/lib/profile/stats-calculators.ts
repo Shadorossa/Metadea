@@ -2,6 +2,8 @@ import type { getAllLibraryEntries, MediaCatalogEntry, DbMediaRelation } from '.
 import { isInProgressStatus, ALL_MEDIA_TYPES, SUB_WORK_FORMATS } from '../constants/media';
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 import { buildEditionMaps, sagaIdentityOf } from '../../components/profile/library-grouping';
+import { isSagaComponentRelationType, SAGA_GROUPABLE_TYPES } from '../media/sagaTypes';
+import { createUnionFind } from '../shared/union-find';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -82,9 +84,6 @@ export function getEditionItems(items: Items, catalogMap?: Map<string, MediaCata
 
 // Same types library-grouping.ts's refineSagaGroups groups on the library
 // grid (games/movies/series get real or curated SEQUEL/PREQUEL rows too).
-const SAGA_GROUPABLE_TYPES = new Set(['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series']);
-const SAGA_RELATION_TYPES = new Set(['SEQUEL', 'SECUELA', 'PREQUEL', 'PRECUELA', 'ALTERNATIVE']);
-
 // Anime/series seasons are SUB_WORK_FORMATS' one real gap: AniList/TMDB have
 // no "this is season N of X" format tag the way IGDB's SEASON/ISSUE-style
 // values give getNonEditionItems for games/comics — every season is just its
@@ -108,29 +107,18 @@ export function groupSagaChains(
   relations: DbMediaRelation[],
   catalogMap: Map<string, MediaCatalogEntry>,
 ): Map<string, string[]> {
-  const parent = new Map<string, string>();
-  const find = (id: string): string => {
-    let cur = id;
-    while (parent.get(cur) !== cur) cur = parent.get(cur)!;
-    return cur;
-  };
-  const union = (a: string, b: string) => {
-    if (!parent.has(a)) parent.set(a, a);
-    if (!parent.has(b)) parent.set(b, b);
-    const ra = find(a), rb = find(b);
-    if (ra !== rb) parent.set(ra, rb);
-  };
+  const sagaGraph = createUnionFind<string>();
 
   const directSagaIds = new Set<string>();
   for (const rel of relations) {
-    if (!rel.media_external_id || !SAGA_RELATION_TYPES.has(rel.relation_type)) continue;
+    if (!rel.media_external_id || !isSagaComponentRelationType(rel.relation_type)) continue;
     const a = rel.media_external_id;
     const b = rel.related_media_external_id;
     const typeA = catalogMap.get(a)?.type;
     const typeB = catalogMap.get(b)?.type;
     if (typeA && !SAGA_GROUPABLE_TYPES.has(typeA)) continue;
     if (typeB && !SAGA_GROUPABLE_TYPES.has(typeB)) continue;
-    union(a, b);
+    sagaGraph.union(a, b);
     directSagaIds.add(a);
     directSagaIds.add(b);
   }
@@ -143,16 +131,16 @@ export function groupSagaChains(
   const { ultimateOriginalOf, familyOf } = buildEditionMaps(relations);
   for (const item of items) {
     const id = item.external_id;
-    if (parent.has(id)) continue; // already directly part of a chain
+    if (sagaGraph.has(id)) continue; // already directly part of a chain
     const slot = sagaIdentityOf(id, directSagaIds, ultimateOriginalOf, familyOf);
-    if (slot && parent.has(slot)) union(id, slot);
+    if (slot && sagaGraph.has(slot)) sagaGraph.union(id, slot);
   }
 
   const groups = new Map<string, string[]>();
   for (const item of items) {
     const id = item.external_id;
-    if (!parent.has(id)) continue;
-    const root = find(id);
+    if (!sagaGraph.has(id)) continue;
+    const root = sagaGraph.find(id);
     const list = groups.get(root) ?? [];
     list.push(id);
     groups.set(root, list);

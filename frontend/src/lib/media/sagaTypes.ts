@@ -15,6 +15,27 @@ export const BUNDLE_RELATION_TYPES: string[] = ['EPISODE', 'UPDATE', 'PART_OF'];
 export const PART_OF_RELATION_TYPES: string[] = ['PART_OF', 'UPDATE'];
 export const CONTAINS_RELATION_TYPES: string[] = ['EPISODE'];
 
+// Relations that define chronological saga chains. ALTERNATIVE belongs to
+// the broader conceptual component graph but does not impose an order.
+export const SEQUEL_RELATION_TYPES: ReadonlySet<string> = new Set([
+  'PREQUEL', 'SEQUEL', 'PRECUELA', 'SECUELA',
+]);
+export const SAGA_COMPONENT_RELATION_TYPES: ReadonlySet<string> = new Set([
+  ...SEQUEL_RELATION_TYPES, 'ALTERNATIVE',
+]);
+
+export const SAGA_GROUPABLE_TYPES: ReadonlySet<string> = new Set([
+  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series',
+]);
+
+export function isSequelRelationType(value: string): boolean {
+  return SEQUEL_RELATION_TYPES.has(value);
+}
+
+export function isSagaComponentRelationType(value: string): boolean {
+  return SAGA_COMPONENT_RELATION_TYPES.has(value);
+}
+
 // Todos los relation_type que la saga-chain puede generar o leer.
 // Más amplio que los tipos que hacen a una obra miembro de saga
 // (el walker Rust solo recorre PREQUEL/SEQUEL) porque un miembro
