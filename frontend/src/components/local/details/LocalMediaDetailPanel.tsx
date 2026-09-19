@@ -744,13 +744,29 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     if (!playPath || !nextFile) return;
     setPlayError(null);
 
-    const queue: PlaybackQueueItem[] = [{ episodeNumber: nextNumber, filePath: playPath }];
+    const playbackEpisodeTitle = (episodeNumber: number, fileName: string): string | undefined => {
+      const fetchedName = episodeNames.get(`${item.externalId}|${episodeNumber}`);
+      if (fetchedName && !isRedundantEpisodeName(fetchedName, item.title)) return fetchedName;
+      const parsedName = extractEpisodeInfo(fileName)?.episodeTitle;
+      return parsedName && !isRedundantEpisodeName(parsedName, item.title) ? parsedName : undefined;
+    };
+    const queue: PlaybackQueueItem[] = [{
+      episodeNumber: nextNumber,
+      filePath: playPath,
+      seasonNumber: itemSeason ?? 1,
+      episodeTitle: playbackEpisodeTitle(nextNumber, nextFile.name),
+    }];
     if (subEntries && subContainerPath && !deepFileMatch && !rootFileMatch) {
       let n = nextNumber + 1;
       while (totalCount == null || totalCount <= 0 || n <= totalCount) {
         const file = findMatchingEpisodeFile(subEntries, n + seasonOffset, itemSeason);
         if (!file) break;
-        queue.push({ episodeNumber: n, filePath: `${subContainerPath}/${file.name}` });
+        queue.push({
+          episodeNumber: n,
+          filePath: `${subContainerPath}/${file.name}`,
+          seasonNumber: itemSeason ?? 1,
+          episodeTitle: playbackEpisodeTitle(n, file.name),
+        });
         n++;
         if (queue.length >= 500) break; // sanity guard against a runaway loop
       }
@@ -784,6 +800,16 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const readerTitle = isSingleEpisode
     ? item.title
     : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)}`;
+  const activePlaybackItem = isThisPlaying ? playback!.queue[playback!.queueIndex] : null;
+  const activePlaybackCode = activePlaybackItem
+    ? formatEpisodeLabel(activePlaybackItem.seasonNumber ?? itemSeason, activePlaybackItem.episodeNumber, item.libraryEntry.type)
+    : '';
+  const activePlaybackTitle = activePlaybackItem
+    ? activePlaybackItem.episodeTitle ?? episodeNames.get(`${item.externalId}|${activePlaybackItem.episodeNumber}`)
+    : undefined;
+  const playingButtonLabel = activePlaybackCode
+    ? `Reproduciendo ${activePlaybackCode}${activePlaybackTitle ? ` - ${activePlaybackTitle}` : ''}`
+    : 'Reproduciendo';
 
   return (
     <>
@@ -882,7 +908,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                       <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
                   )}
-                  {playState === 'playing' ? 'Reproduciendo' : playState === 'paused' ? 'En pausa' : isUnreleased ? releaseLabel : (resumeSeconds && resumeSeconds > 5 ? `Seguir viendo en ${formatPlaybackTime(resumeSeconds)}` : 'Reproducir')}
+                  <span className="local-game-detail-play-label">
+                    {playState === 'playing' ? playingButtonLabel : playState === 'paused' ? 'En pausa' : isUnreleased ? releaseLabel : (resumeSeconds && resumeSeconds > 5 ? `Seguir viendo en ${formatPlaybackTime(resumeSeconds)}` : 'Reproducir')}
+                  </span>
                 </button>
               )}
               <div className="local-media-divider-line" />
@@ -940,19 +968,26 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                       {nextFile ? (
                         <>
                           {isReading ? t.local.next_volume_label : t.local.next_episode_label} <strong>
-                            {isSingleEpisode
-                              ? (isBookOrNovel ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type) : (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)))
-                              : isBookOrNovel
-                              ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)
-                              : nextFileEpisodeTitle
-                              ? `${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)} - ${nextFileEpisodeTitle}`
-                              : (() => {
-                                  const fetchedName = episodeNames.get(`${item.externalId}|${nextNumber}`);
-                                  const code = formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type);
-                                  return fetchedName && !isRedundantEpisodeName(fetchedName, item.title)
-                                    ? `${code} - "${fetchedName}" - ${cleanFilenameForDisplay(nextFile.name)}`
-                                    : `${code} - ${cleanFilenameForDisplay(nextFile.name)}`;
-                                })()}
+                            {(() => {
+                              const code = formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type);
+                              const cleanFileName = cleanFilenameForDisplay(nextFile.name);
+                              if (isSingleEpisode) return isBookOrNovel ? code : (nextFileEpisodeTitle || cleanFileName);
+                              if (isBookOrNovel) return code;
+
+                              // The manual locator writes the canonical
+                              // "SxxExx - episode - work" form. Its cleaned
+                              // filename already contains everything this
+                              // label needs, so adding the fetched title again
+                              // would duplicate it before the same text.
+                              const canonicalPrefix = new RegExp(`^${code}\\s*-`, 'i');
+                              if (canonicalPrefix.test(nextFile.name)) return `${code} - ${cleanFileName}`;
+                              if (nextFileEpisodeTitle) return `${code} - ${nextFileEpisodeTitle}`;
+
+                              const fetchedName = episodeNames.get(`${item.externalId}|${nextNumber}`);
+                              return fetchedName && !isRedundantEpisodeName(fetchedName, item.title)
+                                ? `${code} - "${fetchedName}" - ${cleanFileName}`
+                                : `${code} - ${cleanFileName}`;
+                            })()}
                           </strong>
                         </>
                       ) : (

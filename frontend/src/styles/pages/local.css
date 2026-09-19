@@ -1952,6 +1952,13 @@
   border-width: 2px;
 }
 
+.local-game-detail-play-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .local-game-detail-play:disabled {
   background: var(--bg-elevated);
   border-color: var(--border-color);

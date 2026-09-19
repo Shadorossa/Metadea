@@ -19,6 +19,8 @@ import { createExternalStore } from '../shared/external-store';
 export interface PlaybackQueueItem {
   episodeNumber: number;
   filePath: string;
+  seasonNumber?: number;
+  episodeTitle?: string;
 }
 
 export type PlaybackStatus = 'playing' | 'paused';
