@@ -998,12 +998,15 @@
 .hof-card-bg {
   display: block;
   position: absolute;
-  /* Slight overscan (not inset: 0) so no subpixel rounding gap between this
-     layer and .hof-card's own edge can ever reveal the fallback gradient
-     set on the card behind it. */
-  inset: -1px;
-  width: calc(100% + 2px);
-  height: calc(100% + 2px);
+  /* Render every raw cover at the expanded card's dimensions from the
+     start. The closed card clips this fixed-size layer, so object-fit does
+     not recalculate its crop halfway through the hover-width transition. */
+  top: -1px;
+  /* Keep the expanded image centered while the card grows, instead of
+     pinning it to the left edge and revealing it in one direction only. */
+  left: calc((100% - var(--hof-card-w-hover)) / 2 - 1px);
+  width: calc(var(--hof-card-w-hover) + 2px);
+  height: calc(var(--hof-card-h) + 2px);
   object-fit: cover;
   object-position: center;
   z-index: 0;
