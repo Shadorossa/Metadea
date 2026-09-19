@@ -22,6 +22,7 @@ import {
   resolvePendingSelection, resolvePendingLaunchGame,
 } from './hooks/useLocalPanelSelection';
 import { useEvenPanelWidth } from './hooks/useEvenPanelWidth';
+import { useNavSlot } from '../../lib/shared/useNavSlot';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameDetailPanel }  from './details/GameDetailPanel';
@@ -45,39 +46,7 @@ export default function LocalLibrary() {
   // remembered selection resolves to), so this doesn't need to write
   // anything else itself.
   const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
-  // Starts null unconditionally (not a lazy initializer reading the DOM) so
-  // the client's very first hydration render matches what the server
-  // produced (always null, no document there) — reading document.getElementById
-  // synchronously in the initializer used to return non-null on that first
-  // client render whenever the Navbar's #nav-center-slot was already
-  // painted before hydration (the common case), which is exactly what a
-  // React hydration mismatch is: the same render producing different output
-  // server vs. client. useLayoutEffect below still finds it and commits
-  // before the browser paints, so there's no visible flash either way — it
-  // just runs strictly after the hydration comparison instead of racing it.
-  const [navSlot, setNavSlot] = useState<HTMLElement | null>(null);
-  useLayoutEffect(() => {
-    const el = document.getElementById('nav-center-slot');
-    if (el) setNavSlot(el);
-  }, []);
-  // Backup for the rarer case where this island mounts before the Navbar
-  // has (re)created that node at all — most visibly right after the app's
-  // own auto-updater relaunches it, where startup is slower than usual
-  // (same fix already applied to SearchIsland.tsx).
-  useEffect(() => {
-    let rafId: number;
-    let attempts = 0;
-    const findSlot = () => {
-      const el = document.getElementById('nav-center-slot');
-      if (el) {
-        setNavSlot(el);
-      } else if (attempts++ < 60) {
-        rafId = requestAnimationFrame(findSlot);
-      }
-    };
-    findSlot();
-    return () => cancelAnimationFrame(rafId);
-  }, []);
+  const navSlot = useNavSlot();
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 

@@ -1236,21 +1236,26 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 /* Scrollbars */
-[data-theme="newspaper-dark"] ::-webkit-scrollbar {
+[data-theme="newspaper-dark"]::-webkit-scrollbar,
+[data-theme="newspaper-dark"] *::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-[data-theme="newspaper-dark"] ::-webkit-scrollbar-track {
+[data-theme="newspaper-dark"]::-webkit-scrollbar-track,
+[data-theme="newspaper-dark"] *::-webkit-scrollbar-track {
   background: var(--bg-primary, #12110f) !important;
 }
-[data-theme="newspaper-dark"] ::-webkit-scrollbar-thumb {
+[data-theme="newspaper-dark"]::-webkit-scrollbar-thumb,
+[data-theme="newspaper-dark"] *::-webkit-scrollbar-thumb {
   background: #353028 !important;
   border: 1px solid var(--border-color, #4a4237) !important;
   border-radius: 0px !important;
 }
-[data-theme="newspaper-dark"] ::-webkit-scrollbar-thumb:hover {
+[data-theme="newspaper-dark"]::-webkit-scrollbar-thumb:hover,
+[data-theme="newspaper-dark"] *::-webkit-scrollbar-thumb:hover {
   background: var(--accent, #a69a7d) !important;
 }
+[data-theme="newspaper-dark"],
 [data-theme="newspaper-dark"] * {
   scrollbar-width: thin;
   scrollbar-color: #353028 var(--bg-primary, #12110f);

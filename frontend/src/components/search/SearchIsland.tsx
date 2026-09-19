@@ -17,6 +17,7 @@ import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { useDebouncedCallback } from '../../lib/shared/useDebouncedCallback';
 import { interpolate } from '../../lib/shared/interpolate';
+import { useNavSlot } from '../../lib/shared/useNavSlot';
 
 type SearchTranslations = Translations['search'];
 
@@ -155,7 +156,7 @@ function getResultsGridColumns(): number {
 
 export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
   const [isMounted, setIsMounted] = useState(false);
-  const [navSlot, setNavSlot]     = useState<HTMLElement | null>(null);
+  const navSlot = useNavSlot();
   const [query, setQuery]         = useState(initialQuery);
   const [mediaType, setMediaType] = useState<MediaType>(initialType);
   const [results, setResults]     = useState<SearchResult[]>([]);
@@ -213,25 +214,6 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
   useEffect(() => {
     setIsMounted(true);
-
-    // On a full page load the Navbar's #nav-center-slot is already painted
-    // before React hydrates, so this resolves on the first check. But on an
-    // Astro view-transition navigation to /search, this island can mount
-    // before the Navbar has (re)created that node — a one-time getElementById
-    // check would miss it forever, leaving the type tabs blank until F5.
-    // Poll a few frames until the node shows up.
-    let rafId: number;
-    let attempts = 0;
-    const findSlot = () => {
-      const el = document.getElementById('nav-center-slot');
-      if (el) {
-        setNavSlot(el);
-      } else if (attempts++ < 60) {
-        rafId = requestAnimationFrame(findSlot);
-      }
-    };
-    findSlot();
-    return () => cancelAnimationFrame(rafId);
   }, []);
 
 

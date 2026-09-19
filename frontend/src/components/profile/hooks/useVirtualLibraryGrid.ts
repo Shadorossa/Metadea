@@ -74,8 +74,14 @@ export function useVirtualLibraryGrid(itemCount: number, enabled: boolean, getIt
     // its own per-card hover/flyout state that must reset on a genuinely
     // different entry, not survive across one at the same index).
     getItemKey,
-    estimateSize: () => layout.cardHeight + layout.gap,
-    measureElement: () => layout.cardHeight + layout.gap,
+    // Keep the card size separate from the inter-row gap. Including the gap
+    // in every item's measured size also reserves one extra gap after the
+    // final row, unlike the normal CSS grid, which only places gaps between
+    // rows and therefore made the spacing before the next library section
+    // depend on whether this section was virtualized.
+    estimateSize: () => layout.cardHeight,
+    measureElement: () => layout.cardHeight,
+    gap: layout.gap,
     lanes: layout.columns,
     overscan: layout.columns * 2,
     scrollMargin,
