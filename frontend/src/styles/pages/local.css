@@ -573,33 +573,6 @@
    jugado) — plain text + caret, no bordered box, so it reads as another
    piece of the title line (like .local-launcher-count) instead of a form
    control sitting on top of it. */
-.local-sort-select {
-  height: 28px;
-  padding: 0 1.25rem 0 0.25rem;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color var(--anim-base) var(--anim-ease);
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right center;
-}
-
-.local-sort-select:hover,
-.local-sort-select:focus {
-  outline: none;
-  color: var(--accent);
-}
-
-.local-sort-select option {
-  background: var(--bg-primary, #0c0820);
-  color: var(--text-main);
-}
-
 /* ── State placeholder ───────────────────────────────────────────────────────── */
 
 .local-state-placeholder {

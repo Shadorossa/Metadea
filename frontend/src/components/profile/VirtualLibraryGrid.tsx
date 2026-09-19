@@ -26,7 +26,7 @@ export function VirtualLibraryGrid<T>({ entries, getKey, renderItem, minToVirtua
 
   if (!shouldVirtualize) {
     return (
-      <div className="library-grid">
+      <div key="static" className="library-grid" style={{ height: 'auto' }}>
         {entries.map(entry => <React.Fragment key={getKey(entry)}>{renderItem(entry)}</React.Fragment>)}
       </div>
     );
@@ -34,6 +34,7 @@ export function VirtualLibraryGrid<T>({ entries, getKey, renderItem, minToVirtua
 
   return (
     <div
+      key="virtual"
       // directDomUpdates (see useVirtualLibraryGrid) writes this container's
       // own height directly through virtualizer.containerRef instead of a
       // style prop React would have to reconcile — containerRef (ours, for

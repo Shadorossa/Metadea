@@ -192,6 +192,31 @@ function ListsGrid({ customLists, catalogMap, charactersMap, customImagesMap, p,
 
 interface ListItemDisplay { cover: string; isEpItem: boolean; url: string; epBadge: string | null; title: string }
 
+type ListSortMode = 'custom' | 'alphabetical' | 'release';
+
+function sortListItems(
+  items: ListItemFull[],
+  mode: ListSortMode,
+  catalogMap: Map<string, MediaCatalogEntry>,
+): ListItemFull[] {
+  if (mode === 'custom') return items;
+  return [...items].sort((a, b) => {
+    if (mode === 'alphabetical') {
+      return (a.title_main ?? a.external_id).localeCompare(b.title_main ?? b.external_id);
+    }
+
+    const aMeta = catalogMap.get(a.external_id);
+    const bMeta = catalogMap.get(b.external_id);
+    const aDate = aMeta?.release_year
+      ? aMeta.release_year * 10000 + (aMeta.release_month ?? 1) * 100 + (aMeta.release_day ?? 1)
+      : Number.POSITIVE_INFINITY;
+    const bDate = bMeta?.release_year
+      ? bMeta.release_year * 10000 + (bMeta.release_month ?? 1) * 100 + (bMeta.release_day ?? 1)
+      : Number.POSITIVE_INFINITY;
+    return aDate - bDate || a.position - b.position;
+  });
+}
+
 // Pure derivation from an item + the list's own type/custom-cover overrides
 // — used identically by the sortable grid card and its DragOverlay preview,
 // so a dragged card doesn't need its own separate "what does this look like"
@@ -322,6 +347,14 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
   fetchItems?: (listKey: string) => Promise<ListItemFull[]>;
 }) {
   const [listItems, setListItems] = useState<ListItemFull[]>([]);
+  const [sortMode, setSortMode] = useState<ListSortMode>(() => {
+    try {
+      const saved = localStorage.getItem(`metadea_list_sort_${list.key}`);
+      return saved === 'alphabetical' || saved === 'release' ? saved : 'custom';
+    } catch {
+      return 'custom';
+    }
+  });
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [listType, setListType] = useState(list.list_type || 'media');
   const [isRanked, setIsRanked] = useState<boolean>(() => {
@@ -368,6 +401,10 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
   }, [list.key, fetchItems]);
 
   const currentIds = useMemo(() => new Set(listItems.map(i => i.external_id)), [listItems]);
+  const visibleListItems = useMemo(
+    () => sortListItems(listItems, sortMode, catalogMap),
+    [listItems, sortMode, catalogMap],
+  );
   const isCharacters = listType === 'characters';
   const isEpisodes = listType === 'episodes';
   const canChangeType = listItems.length === 0;
@@ -429,6 +466,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
   const handleDragStart = (e: DragStartEvent) => setActiveDragId(String(e.active.id));
 
   const handleDragEnd = (e: DragEndEvent) => {
+    if (sortMode !== 'custom') return;
     setActiveDragId(null);
     const { active, over } = e;
     if (!over || active.id === over.id) return;
@@ -438,6 +476,13 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
     const updated = arrayMove(listItemsRef.current, oldIndex, newIndex).map((item, idx) => ({ ...item, position: idx }));
     setListItems(updated);
     reorderListItems(list.key, updated.map(i => i.external_id)).catch(err => console.error('Failed to save list order:', err));
+  };
+
+  const handleSortChange = (next: ListSortMode) => {
+    setSortMode(next);
+    try {
+      localStorage.setItem(`metadea_list_sort_${list.key}`, next);
+    } catch {}
   };
 
   const handleAddMediaFromSearch = async (result: ApiSearchResult) => {
@@ -614,7 +659,22 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
             </span>
           </div>
 
-          {!readOnly && (
+          <div className="list-detail-actions">
+            <label className="list-sort-control">
+              <span className="sr-only">{p.lists_sort}</span>
+              <select
+                value={sortMode}
+                onChange={e => handleSortChange(e.target.value as ListSortMode)}
+                title={p.lists_sort}
+                aria-label={p.lists_sort}
+                className="local-sort-select"
+              >
+                <option value="custom">{p.lists_sort_custom}</option>
+                <option value="alphabetical">{p.lists_sort_alphabetical}</option>
+                <option value="release">{p.lists_sort_release}</option>
+              </select>
+            </label>
+            {!readOnly && (
             <div className="list-settings-menu-wrapper">
               <button
                 ref={settingsRefs.setReference}
@@ -729,7 +789,8 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
                 </div>
               )}
             </div>
-          )}
+            )}
+          </div>
         </div>
 
         {!readOnly && editingDesc ? (
@@ -787,16 +848,16 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
             onDragEnd={handleDragEnd}
             onDragCancel={() => setActiveDragId(null)}
           >
-            <SortableContext items={listItems.map(i => i.external_id)} strategy={rectSortingStrategy}>
+            <SortableContext items={visibleListItems.map(i => i.external_id)} strategy={rectSortingStrategy}>
               <div className="list-items-grid">
-                {listItems.map((item, index) => (
+                {visibleListItems.map((item, index) => (
                   <SortableListItemCard
                     key={item.external_id}
                     item={item}
                     display={resolveListItemDisplay(item, isCharacters, isEpisodes, customImagesMap)}
                     index={index}
                     isRanked={isRanked}
-                    readOnly={readOnly}
+                    readOnly={readOnly || sortMode !== 'custom'}
                     p={p}
                     onRemove={handleRemove}
                   />
@@ -809,7 +870,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
                   <ListItemCardBody
                     item={activeDragItem}
                     display={resolveListItemDisplay(activeDragItem, isCharacters, isEpisodes, customImagesMap)}
-                    index={listItems.findIndex(i => i.external_id === activeDragItem.external_id)}
+                    index={visibleListItems.findIndex(i => i.external_id === activeDragItem.external_id)}
                     isRanked={isRanked}
                     readOnly={readOnly}
                     p={p}
