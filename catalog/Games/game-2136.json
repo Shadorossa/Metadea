@@ -7,7 +7,8 @@
     "source": "igdb",
     "created_at": "",
     "updated_at": "",
-    "blocked_at": null
+    "blocked_at": null,
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8nf4.jpg"
   },
   "media_relations": [
     {
@@ -27,7 +28,16 @@
       "media_external_id": "game:2136"
     }
   ],
-  "characters": [],
+  "characters": [
+    {
+      "external_id": "character:a:87496",
+      "name": "Bayonetta",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b87496-pBhFLnxrCi7y.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    }
+  ],
   "media_authors": [],
-  "saga_name": "Bayonetta"
+  "saga_name": "Bayonetta",
+  "story_arcs": []
 }
