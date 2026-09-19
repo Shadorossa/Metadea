@@ -100,12 +100,31 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
     if (dateA !== dateB) return dateA - dateB;
     return 0;
   });
-  // relation_type is the only source of truth for the label — r.type_label
+  const seenRelatedIds = new Set<string>();
+  const seenEditionVisuals = new Set<string>();
+  const editionTypes = new Set(['BASE_EDITION', 'REMASTER', 'REMAKE', 'EXPANDED_GAME', 'PORT', 'FORK']);
+  const deduped = sorted.filter(relation => {
+    if (seenRelatedIds.has(relation.related_media_external_id)) return false;
+    seenRelatedIds.add(relation.related_media_external_id);
+
+    // IGDB can expose several edition records for the same product family,
+    // especially on a remaster page. When they resolve to the same relation
+    // type/title/cover, showing every row produces three identical cards.
+    // Keep the first row because the sort above already puts the most useful
+    // relation type first.
+    if (editionTypes.has(relation.relation_type)) {
+      const visualKey = `${relation.title.trim().toLocaleLowerCase()}|${relation.cover ?? ''}`;
+      if (seenEditionVisuals.has(visualKey)) return false;
+      seenEditionVisuals.add(visualKey);
+    }
+    return true;
+  });
+  // relation_type is the only source of truth for the label - r.type_label
   // (persisted, locale-frozen at save time) is never read, since trusting it
   // would drift from the current locale after a language switch.
   const tm = getT().media;
   return {
-    relations: sorted.map(r => ({
+    relations: deduped.map(r => ({
       typeLabel: lookupLabel(tm.relations, r.relation_type, canonicalRelationLabels[r.relation_type] ?? r.relation_type),
       relationType: r.relation_type,
       title: r.title,

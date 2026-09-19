@@ -817,6 +817,20 @@
   transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
 }
 
+.settings-backup-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.settings-backup-status {
+  min-height: 1.2rem;
+}
+
+.settings-backup-status--error {
+  color: var(--color-error);
+}
+
 .rating-system-btn:hover,
 .rating-system-btn-2:hover {
   border-color: var(--accent);

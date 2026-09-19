@@ -1,5 +1,6 @@
 mod actors;
 mod auth;
+mod backup;
 mod characters;
 mod companies;
 mod staff;
@@ -55,6 +56,7 @@ pub fn run() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir().expect("no app data dir");
             std::fs::create_dir_all(&data_dir).ok();
+            backup::apply_pending_restore(&data_dir).expect("failed to apply pending restore");
 
             let metadea_db = db::MetadeaDb::open(&data_dir.join("metadea.db"))
                 .expect("failed to open metadea.db");
@@ -94,6 +96,8 @@ pub fn run() {
             platform_scanning::debug_scan_info,
             folders::pick_folder,
             folders::pick_file,
+            folders::pick_backup_file,
+            folders::pick_save_file,
             folders::scan_folder_contents,
             folders::rename_path,
             folders::read_routes,
@@ -106,6 +110,8 @@ pub fn run() {
             folders::start_playtime_session,
             folders::open_external_url,
             folders::play_file_with_vlc,
+            backup::export_backup,
+            backup::prepare_restore,
             folders::get_vlc_playback_status,
             folders::send_vlc_command,
             share_image::fetch_image_data_url,
@@ -178,6 +184,7 @@ pub fn run() {
             media_themes::delete_cached_theme_video,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
+            media_catalog::get_catalog_entry_for_editor,
             media_catalog::get_blocked_external_ids,
             media_catalog::get_reclassified_external_ids,
             media_catalog::update_catalog_genres,

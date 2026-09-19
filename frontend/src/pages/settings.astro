@@ -18,6 +18,7 @@ import ConnectionsTab from "../components/settings/ConnectionsTab.astro";
 import NovedadesTab from "../components/settings/NovedadesTab.astro";
 import EmulatorsTab from "../components/settings/EmulatorsTab.astro";
 import HelpModals from "../components/settings/HelpModals.astro";
+import BackupRestoreTab from "../components/settings/BackupRestoreTab.astro";
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -81,6 +82,12 @@ const version = pkg.version;
           <Fragment set:html={ICON_SETTINGS_ADMIN} />
           <span data-i18n="settings.tab_admin">{t.settings.tab_admin}</span>
         </a>
+        <button class="settings-tab" data-tab="backup">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 4h16v16H4z"/><path d="M8 4v4h8V4M8 14h8M8 17h5"/>
+          </svg>
+          <span data-i18n="settings.tab_backup">{t.settings.tab_backup}</span>
+        </button>
       </aside>
 
       <!-- Contenido -->
@@ -91,6 +98,7 @@ const version = pkg.version;
         <EmulatorsTab t={t} />
         <ConnectionsTab t={t} />
         <NovedadesTab t={t} version={version} />
+        <BackupRestoreTab t={t} />
       </div>
     </div>
   </div>
@@ -127,6 +135,7 @@ const version = pkg.version;
   import { initCatalogHealthCheck } from "../lib/settings/catalog-health";
   import { initSettingsTabs } from "../lib/settings/tabs";
   import { getT } from "../i18n/client";
+  import { initBackupRestore } from "../lib/settings/backup-restore";
 
   function showToast(msg?: string) {
     const clientT = getT();
@@ -322,6 +331,7 @@ const version = pkg.version;
     initFixCharacterIds();
     initCatalogHealthCheck();
     initSettingsTabs();
+    initBackupRestore();
 
     // Re-setup help modals on SPA navigation
     setupHelpModals();

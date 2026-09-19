@@ -28,6 +28,29 @@ pub async fn pick_file(app_handle: tauri::AppHandle) -> Result<Option<String>, S
     Ok(file.map(|p| p.to_string()))
 }
 
+#[tauri::command]
+pub async fn pick_backup_file(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let file = app_handle
+        .dialog()
+        .file()
+        .add_filter("Metadea backup", &["zip"])
+        .blocking_pick_file();
+    Ok(file.map(|p| p.to_string()))
+}
+
+#[tauri::command]
+pub async fn pick_save_file(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let file = app_handle
+        .dialog()
+        .file()
+        .add_filter("ZIP backup", &["zip"])
+        .set_file_name("metadea-backup.zip")
+        .blocking_save_file();
+    Ok(file.map(|p| p.to_string()))
+}
+
 // Used by the "Localizar" flow (LocalMediaDetailPanel) to rename a picked
 // folder and its episode files into a format the automatic matcher (see
 // folderMatch.ts) can always recognize afterward. Refuses to clobber an

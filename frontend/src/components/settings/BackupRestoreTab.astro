@@ -1,0 +1,24 @@
+---
+import type { Translations } from "../../i18n/index";
+
+interface Props {
+  t: Translations;
+}
+const { t } = Astro.props;
+---
+
+<div class="settings-panel hidden" id="panel-backup">
+  <div class="settings-section">
+    <h3 class="settings-section-title">{t.settings.backup_title}</h3>
+    <p class="settings-hint">{t.settings.backup_hint}</p>
+    <div class="settings-backup-actions">
+      <button type="button" class="settings-save-btn" id="settings-backup-export-btn">
+        {t.settings.backup_export}
+      </button>
+      <button type="button" class="settings-save-btn" id="settings-backup-import-btn">
+        {t.settings.backup_import}
+      </button>
+    </div>
+    <p class="settings-hint settings-backup-status" id="settings-backup-status" aria-live="polite"></p>
+  </div>
+</div>

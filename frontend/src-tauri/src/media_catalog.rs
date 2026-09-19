@@ -489,6 +489,25 @@ pub async fn get_catalog_entry(
     }
 }
 
+// Editor-only counterpart of get_catalog_entry. The normal lookup uses the
+// visible catalog view so blocked works disappear from the application, but
+// the Media Editor's cover selector must still be able to inspect a blocked
+// remaster and use its cover as an explicit alternative.
+#[tauri::command]
+pub async fn get_catalog_entry_for_editor(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+) -> Result<Option<MediaCatalogEntry>, String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.query_row(
+        &format!("{} WHERE external_id = ?1", SELECT_ALL),
+        [&external_id],
+        row_to_entry,
+    )
+    .optional()
+    .str_err()
+}
+
 #[tauri::command]
 pub async fn delete_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,

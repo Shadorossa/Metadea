@@ -33,3 +33,4 @@ export * from './resume-position';
 export * from './comic-reader';
 export * from './share';
 export * from './emulators';
+export * from './backup';

@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, getMediaRelationsForEditor, saveImageFile } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, getCatalogEntryForEditor, getBlockedExternalIds, getMediaRelationsForEditor, saveImageFile } from '../../lib/tauri';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
 import { getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { generateShareImage } from '../../lib/media/share-image';
@@ -269,12 +269,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // harmless (5-star/3-emoji never read these props).
   const rating2Min = useMemo(() => getRating2Min(), []);
   const rating2Max = useMemo(() => getRating2Max(), []);
-  // Any work whose whole "total" is a single unit (a movie, an anime movie,
-  // an OVA/special with just one episode, etc.) gets the same one-shot
-  // "viewing date" field as a movie instead of a started/finished range —
-  // a range makes no sense when there's nothing to span.
-  const isMovie = data.type === 'movie' || (data.type === 'anime' && data.format === 'MOVIE') || data.totalCount === 1;
-
   const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: initialActiveLogId || id }));
   const [ui,    dispatchUi]    = useReducer(uiReducer, {
     // Version tabs and the editor shell can render from `data` immediately;
@@ -312,7 +306,19 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     [entry.logs, entry.activeLogId],
   );
 
-  const baseId = data.parentGame?.externalId || externalId;
+  // A remaster/remake can be a fully editable entry without a parentGame
+  // object. In that case its persisted BASE_EDITION relation is the source of
+  // truth for the root log; otherwise the editor incorrectly treated the
+  // remaster itself as the base and had no Original/version tabs.
+  const relationBaseId = data.relations?.find(rel =>
+    rel.relationType === 'BASE_EDITION' &&
+    rel.relatedExternalId &&
+    rel.relatedExternalId !== externalId,
+  )?.relatedExternalId;
+  const baseId = data.parentGame?.externalId || relationBaseId || externalId;
+  const baseRelation = data.relations?.find(rel =>
+    rel.relationType === 'BASE_EDITION' && rel.relatedExternalId === baseId,
+  );
   const baseSelectedVersion = entry.logs[baseId]?.selectedVersion || '';
   const [coverCandidates, setCoverCandidates] = useState<CoverCandidate[]>([]);
   const [coverPreferenceId, setCoverPreferenceId] = useState<string | null>(() => getCoverPreference(baseId));
@@ -332,19 +338,27 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       // The current game is always eligible. Other game entries are only
       // added when they are blocked remasters; expanded editions, ports and
       // ordinary base-edition relations must not leak into this picker.
-      const relationRows = await Promise.all([...new Set([baseId, externalId])].map(id =>
+      const [relationRows, blockedExternalIds] = await Promise.all([
+        Promise.all([...new Set([baseId, externalId])].map(id =>
         getMediaRelationsForEditor(id).catch(() => [])
-      ));
-      const blockedRemasterIds = new Set<string>();
+        )),
+        getBlockedExternalIds().catch(() => [] as string[]),
+      ]);
+      const blockedRemasters = new Map<string, { title: string; cover?: string | null }>();
       for (const rows of relationRows) {
         for (const rel of rows) {
           if (rel.relation_type !== 'REMASTER') continue;
-          const related = await getCatalogEntry(rel.related_media_external_id).catch(() => null);
-          if (related?.blocked_at) blockedRemasterIds.add(related.external_id);
+          const related = await getCatalogEntryForEditor(rel.related_media_external_id).catch(() => null);
+          if (related?.blocked_at || blockedExternalIds.includes(rel.related_media_external_id)) {
+            blockedRemasters.set(rel.related_media_external_id, {
+              title: related?.title_main || rel.title,
+              cover: related?.cover_url || rel.cover,
+            });
+          }
         }
       }
 
-      const currentCatalog = await getCatalogEntry(externalId).catch(() => null);
+      const currentCatalog = await getCatalogEntryForEditor(externalId).catch(() => null);
       add({ externalId, title: data.titleMain, cover: data.cover, blocked: !!currentCatalog?.blocked_at });
 
       // When the editor is opened on the blocked remaster, include its OG as
@@ -354,13 +368,12 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         add({ externalId: data.parentGame.externalId, title: data.parentGame.title, cover: data.parentGame.cover, blocked: false });
       }
 
-      const remasterEntries = await Promise.all([...blockedRemasterIds].map(id => getCatalogEntry(id).catch(() => null)));
-      for (const entry of remasterEntries) {
-        if (!entry) continue;
+      for (const [id, relation] of blockedRemasters) {
+        const entry = await getCatalogEntryForEditor(id).catch(() => null);
         add({
-          externalId: entry.external_id,
-          title: entry.title_main || entry.external_id,
-          cover: entry.cover_url ?? undefined,
+          externalId: id,
+          title: entry?.title_main || relation.title || id,
+          cover: entry?.cover_url ?? relation.cover ?? undefined,
           blocked: true,
         });
       }
@@ -405,6 +418,16 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     && animeSeasonChain.length > 1 && sagaUsesOnlySeasonMedia;
   const GENERAL_LOG_ID = isUnifiedAnime && animeSeasonChain[0] ? `general:${animeSeasonChain[0].externalId}` : '';
   const isGeneralTab = isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID;
+
+  // A standalone movie (or a one-unit work) has one viewing date. The
+  // synthetic general tab of a unified season chain is different: it
+  // represents the whole chain, so it must always expose the aggregate start
+  // and end dates, even when every member of that chain is a movie.
+  const isMovie = !isGeneralTab && (
+    data.type === 'movie' ||
+    (data.type === 'anime' && data.format === 'MOVIE') ||
+    data.totalCount === 1
+  );
 
   useEffect(() => {
     if (data.type !== 'anime' || !isUnifySeasonsEnabled()) {
@@ -644,13 +667,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   const handleSave = useCallback(async () => {
     dispatchUi({ type: 'SET_SAVING', value: true });
     try {
-      const baseId = data.parentGame?.externalId || externalId;
-
-      // Editing a version's own page IS the intent to link it to its base —
+      // Editing a version's own page IS the intent to link it to its base -
       // don't require the user to have clicked through the Log tab switcher
       // for that link to actually get persisted.
       let logsToSave = entry.logs;
-      if (data.parentGame && externalId !== baseId) {
+      if (externalId !== baseId) {
         const baseLog = logsToSave[baseId] || createDefaultLog();
         const linkedIds = baseLog.selectedVersion ? baseLog.selectedVersion.split(',') : [];
         if (!linkedIds.includes(externalId)) {
@@ -785,7 +806,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     } finally {
       dispatchUi({ type: 'SET_SAVING', value: false });
     }
-  }, [entry, activeLog, externalId, data.type, data.parentGame, data.totalCount, onSaved, handleClose]);
+  }, [entry, activeLog, externalId, baseId, data.type, data.parentGame, data.totalCount, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
     const activeId = entry.activeLogId || externalId;
@@ -914,7 +935,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     // Viewing a version's own page: IGDB relations aren't symmetric, so this
     // version rarely lists its own siblings back — add its own tab explicitly
     // so the log switcher looks the same as it does from the base's page.
-    if (data.parentGame && !list.some(item => item.externalId === externalId)) {
+    if (baseId !== externalId && !list.some(item => item.externalId === externalId)) {
       list.push({ externalId, label: data.titleMain, cover: data.cover });
     }
     // Every OTHER season in the chain — "T{n}" (not the season's own title:
@@ -1141,16 +1162,16 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     }
     if (entry.activeLogId === baseId) {
       return {
-        title: data.parentGame ? data.parentGame.title : data.titleMain,
-        cover: preferredCover || (data.parentGame ? data.parentGame.cover : data.cover),
-        year: data.releaseYear,
+        title: data.parentGame?.title || baseRelation?.title || data.titleMain,
+        cover: preferredCover || data.parentGame?.cover || baseRelation?.cover || data.cover,
+        year: data.parentGame ? data.releaseYear : (baseRelation?.releaseYear ?? data.releaseYear),
       };
     }
     const found = allAvailableEditions.find(ed => ed.externalId === entry.activeLogId);
     return found
       ? { title: found.label, cover: preferredCover || found.cover, year: data.releaseYear }
       : { title: data.titleMain, cover: preferredCover || data.cover, year: data.releaseYear };
-  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo, coverCandidates, coverPreferenceId]);
+  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, baseRelation, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo, coverCandidates, coverPreferenceId]);
 
   const hasCoverCandidates = coverCandidates.length > 1 && (
     data.type === 'game' || coverCandidates.some(c => c.blocked)
