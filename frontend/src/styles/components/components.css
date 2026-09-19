@@ -587,3 +587,12 @@
   background: var(--bg-primary, #0c0820);
   color: var(--text-main);
 }
+.rating-system-btn,
+.rating-system-btn-2 {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+}

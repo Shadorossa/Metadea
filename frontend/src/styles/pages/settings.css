@@ -810,16 +810,10 @@
 
 .rating-system-btn,
 .rating-system-btn-2 {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 56px;
   height: 56px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
   background: var(--bg-card);
-  color: var(--text-muted);
-  cursor: pointer;
   transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
 }
 

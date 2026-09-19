@@ -3,6 +3,21 @@
    Used in: Home page activity feed, Profile page activity section.
 */
 
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.act-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+}
+
 .act-card {
   position: relative;
   display: flex;

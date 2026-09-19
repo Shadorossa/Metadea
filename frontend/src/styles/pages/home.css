@@ -264,23 +264,7 @@
   color: var(--accent);
 }
 
-/* Activity card component now imported from activity-card.css */
 /* Home-specific overrides for activity card layout */
-.activity-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.act-empty {
-  padding: 2rem 1rem;
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  border: 1px dashed var(--border-color);
-  border-radius: var(--radius-md);
-}
-
 /* Home-specific: larger cover with shadow, different fallback styling */
 .act-card-cover {
   width: clamp(24px, 4vw, 32px);
@@ -294,14 +278,9 @@
 .act-card-cover-fallback {
   width: clamp(24px, 4vw, 32px);
   height: clamp(32px, 5.5vw, 44px);
-  border-radius: var(--radius-sm, 4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: #fff;
   font-weight: 700;
   font-size: clamp(0.65rem, 1vw, 0.85rem);
-  flex-shrink: 0;
 }
 
 /* Home-specific: user avatar badge */
@@ -323,10 +302,6 @@
 
 /* Home-specific: activity content with tighter gap */
 .act-card-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
   gap: 0.15rem;
 }
 
@@ -346,16 +321,9 @@
   font-weight: 700;
 }
 
-.act-card:hover .act-card-bold-title {
-  color: var(--accent);
-}
-
 .act-card-meta {
-  display: flex;
-  align-items: center;
   gap: clamp(0.2rem, 0.3vw, 0.3rem);
   font-size: clamp(0.55rem, 0.65vw, 0.65rem);
-  color: var(--text-dim);
 }
 
 .act-card-type-icon {
@@ -371,7 +339,6 @@
 
 .act-card-date {
   margin-left: auto;
-  color: var(--text-dim);
 }
 
 .home-activity-text {
