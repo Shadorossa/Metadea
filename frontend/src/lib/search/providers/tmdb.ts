@@ -420,38 +420,83 @@ export interface TmdbEpisodeSummary {
   cover_url:              string | null;
 }
 
+function isInformativeEpisodeName(name?: string | null): boolean {
+  const value = name?.trim();
+  return !!value && !/^(?:episode|episodio|ep)\s*#?\d+(?:\s*\/\s*\d+)?$/i.test(value);
+}
+
 // One request per season (TMDB has no single "all episodes" endpoint) — runs
 // in parallel since each season's fetch is independent.
-export async function fetchTmdbEpisodesForSeasons(tmdbId: number, seasonNumbers: number[]): Promise<TmdbEpisodeSummary[]> {
+export async function fetchTmdbEpisodesForSeasons(
+  tmdbId: number,
+  seasonNumbers: number[],
+  fallbackLanguages: string[] = [],
+): Promise<TmdbEpisodeSummary[]> {
   const auth = await getTmdbAuth();
   if (!auth || seasonNumbers.length === 0) return [];
 
   const headers: Record<string, string> = {};
   if (auth.accessToken) headers['Authorization'] = `Bearer ${auth.accessToken}`;
 
-  const buildUrl = (seasonNumber: number) => {
-    let url = `${API_ENDPOINTS.TMDB}/tv/${tmdbId}/season/${seasonNumber}?language=${tmdbLocale()}`;
+  const buildUrl = (seasonNumber: number, language = tmdbLocale()) => {
+    let url = `${API_ENDPOINTS.TMDB}/tv/${tmdbId}/season/${seasonNumber}?language=${language}`;
     if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
     return url;
   };
 
-  const seasons = await Promise.all(
-    seasonNumbers.map(seasonNumber =>
-      fetchJson<TmdbSeasonResponse>(buildUrl(seasonNumber), { headers })
+  const fetchSeasons = (numbers: number[], language: string) => Promise.all(
+    numbers.map(seasonNumber =>
+      fetchJson<TmdbSeasonResponse>(buildUrl(seasonNumber, language), { headers })
         .then(season => ({ seasonNumber, season }))
         .catch(() => ({ seasonNumber, season: null as TmdbSeasonResponse | null })),
     ),
   );
 
+  const seasons = await fetchSeasons(seasonNumbers, tmdbLocale());
+  const namesBySeason = new Map(seasons.map(({ seasonNumber, season }) => [
+    seasonNumber,
+    new Map((season?.episodes ?? []).map(ep => [ep.episode_number, ep.name?.trim() || null])),
+  ]));
+
+  // Names use this precedence: English, application language, then the
+  // source series' original language. Later translations only fill titles
+  // still missing or generic after earlier fallbacks.
+  for (const language of [...new Set(fallbackLanguages)]) {
+    if (!language || language === tmdbLocale()) continue;
+    const missingSeasonNumbers = seasons
+      .filter(({ seasonNumber, season }) => {
+        const names = namesBySeason.get(seasonNumber);
+        return season?.episodes?.some(ep => !isInformativeEpisodeName(names?.get(ep.episode_number)));
+      })
+      .map(({ seasonNumber }) => seasonNumber);
+    if (missingSeasonNumbers.length === 0) break;
+
+    const translatedSeasons = await fetchSeasons(missingSeasonNumbers, language);
+    for (const { seasonNumber, season } of translatedSeasons) {
+      const preferredNames = namesBySeason.get(seasonNumber);
+      if (!preferredNames) continue;
+      for (const episode of season?.episodes ?? []) {
+        const translatedName = episode.name?.trim();
+        const currentName = preferredNames.get(episode.episode_number);
+        if (!isInformativeEpisodeName(currentName) && isInformativeEpisodeName(translatedName)) {
+          preferredNames.set(episode.episode_number, translatedName!);
+        }
+      }
+    }
+  }
+
+  /* Keep preferred-language titles and use subsequent locales only where
+   * that episode still has no informative title. */
   const episodes: TmdbEpisodeSummary[] = [];
   for (const { seasonNumber, season } of seasons) {
     const list = season?.episodes ?? [];
+    const names = namesBySeason.get(seasonNumber);
     list.forEach((ep, idx) => {
       episodes.push({
         season_number:         seasonNumber,
         episode_number:        ep.episode_number,
         season_episode_number: idx + 1,
-        name:                  ep.name?.trim() || null,
+        name:                  names?.get(ep.episode_number) ?? null,
         cover_url:             buildPosterUrl(ep.still_path),
       });
     });

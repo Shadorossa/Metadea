@@ -29,7 +29,9 @@ import { parseExternalId } from './mapper-utils';
 export interface AnimeChainEntry {
   externalId: string;
   title: string;
+  titles: string[];
   totalCount: number;
+  format?: string;
   releaseYear?: number;
 }
 
@@ -42,6 +44,7 @@ export interface TmdbEpisodeSlice {
 
 export interface TmdbSeasonMatch {
   tmdbId: number;
+  originalLanguage?: string;
   /** One or more (season, episode-range) slices, in airing order, whose
    *  concatenation is this one AniList entry's full episode list. Usually a
    *  single slice covering a whole season; several slices when a chain
@@ -54,12 +57,22 @@ export interface TmdbSeasonMatch {
 const MAX_CHAIN_LENGTH = 25;
 
 function toChainEntry(e: MediaCatalogEntry): AnimeChainEntry {
+  const titles = [e.title_romaji, e.title_main, e.title_english, e.title_native]
+    .filter((title): title is string => !!title?.trim())
+    .filter((title, index, all) => all.findIndex(candidate => candidate.toLowerCase() === title.toLowerCase()) === index);
   return {
     externalId: e.external_id,
-    title: e.title_romaji || e.title_main || e.title_english || '',
+    title: titles[0] ?? '',
+    titles,
     totalCount: e.total_count ?? 0,
+    format: e.format ?? undefined,
     releaseYear: e.release_year ?? undefined,
   };
+}
+
+function contributesToTvEpisodeStream(entry: AnimeChainEntry): boolean {
+  const format = entry.format?.toUpperCase();
+  return format !== 'MOVIE' && !(format === 'SPECIAL' && entry.totalCount <= 1);
 }
 
 // Walks PREQUEL/SEQUEL relations both ways from rawId, entirely off the
@@ -86,6 +99,7 @@ export async function buildAnimeChain(rawId: string): Promise<AnimeChainEntry[]>
     backward.unshift(entry ? toChainEntry(entry) : {
       externalId: prequel.related_media_external_id,
       title: '',
+      titles: [],
       totalCount: 0,
     });
     visited.add(prequel.related_media_external_id);
@@ -104,6 +118,7 @@ export async function buildAnimeChain(rawId: string): Promise<AnimeChainEntry[]>
     forward.push(entry ? toChainEntry(entry) : {
       externalId: sequel.related_media_external_id,
       title: '',
+      titles: [],
       totalCount: 0,
     });
     visited.add(sequel.related_media_external_id);
@@ -117,7 +132,10 @@ export async function getAnimePrequelEpisodeOffset(rawId: string): Promise<numbe
   const chain = await buildAnimeChain(rawId);
   const selfIdx = chain.findIndex(e => e.externalId === rawId);
   if (selfIdx <= 0) return 0;
-  return chain.slice(0, selfIdx).reduce((sum, e) => sum + (e.totalCount || 0), 0);
+  return chain.slice(0, selfIdx).reduce(
+    (sum, entry) => sum + (contributesToTvEpisodeStream(entry) ? entry.totalCount || 0 : 0),
+    0,
+  );
 }
 
 interface TmdbSeasonCount {
@@ -166,6 +184,10 @@ function matchChainAgainstSeasons(chain: AnimeChainEntry[], seasons: TmdbSeasonC
   let matchedCount = 0;
 
   for (const entry of chain) {
+    // Movies and one-off specials exist in AniList's PREQUEL/SEQUEL graph,
+    // but not in TMDB's numbered TV seasons. They are inserted separately
+    // by MediaPage when the unified episode view is enabled.
+    if (!contributesToTvEpisodeStream(entry)) continue;
     if (!entry.totalCount) break;
     const end = consumed + entry.totalCount;
     if (end > totalAvailable) break;
@@ -184,64 +206,132 @@ function matchChainAgainstSeasons(chain: AnimeChainEntry[], seasons: TmdbSeasonC
 // Cached per chain-head external id (not per rawId) — every entry in the
 // same saga shares one search+candidate-picking pass, so visiting several
 // pages of the same anime within a session only does this once.
-const chainMatchCache = new Map<string, Promise<{ tmdbId: number; mapping: Map<string, TmdbEpisodeSlice[]> } | null>>();
+const chainMatchCache = new Map<string, { signature: string; result: Promise<{ tmdbId: number; originalLanguage?: string; mapping: Map<string, TmdbEpisodeSlice[]> } | null> }>();
 
-async function resolveChainMatch(chain: AnimeChainEntry[]): Promise<{ tmdbId: number; mapping: Map<string, TmdbEpisodeSlice[]> } | null> {
+async function resolveChainMatch(chain: AnimeChainEntry[]): Promise<{ tmdbId: number; originalLanguage?: string; mapping: Map<string, TmdbEpisodeSlice[]> } | null> {
   const headId = chain[0].externalId;
+  const signature = chain.map(entry => `${entry.externalId}:${entry.totalCount}:${entry.releaseYear ?? ''}:${entry.titles.join(',')}`).join('|');
   let cached = chainMatchCache.get(headId);
-  if (!cached) {
-    cached = computeChainMatch(chain);
+  if (!cached || cached.signature !== signature) {
+    cached = { signature, result: computeChainMatch(chain) };
     chainMatchCache.set(headId, cached);
   }
-  return cached;
+  return cached.result;
 }
 
-async function computeChainMatch(chain: AnimeChainEntry[]): Promise<{ tmdbId: number; mapping: Map<string, TmdbEpisodeSlice[]> } | null> {
-  const searchTitle = chain[0].title;
-  if (!searchTitle) return null;
+async function computeChainMatch(chain: AnimeChainEntry[]): Promise<{ tmdbId: number; originalLanguage?: string; mapping: Map<string, TmdbEpisodeSlice[]> } | null> {
+  // A sequel chain can begin with a movie or one-off special which TMDB
+  // doesn't include in the TV episode stream. Search using its first actual
+  // TV entry, while still matching the candidate against the whole chain.
+  const firstTvEntry = chain.find(entry => contributesToTvEpisodeStream(entry) && entry.totalCount > 0);
+  if (!firstTvEntry) return null;
 
-  const controller = new AbortController();
-  const hits = await searchTvIncludingAnime(searchTitle, controller.signal).catch(() => []);
-  if (!hits.length) return null;
+  const candidates = await searchEntryCandidates(firstTvEntry);
+  if (!candidates.length) return null;
+  const chainStartYear = firstTvEntry.releaseYear;
 
-  // TMDB's own relevance ranking rarely needs more than a handful of
-  // candidates checked before the per-entry episode-count matching below
-  // picks the right one out.
-  const candidates = hits.slice(0, 5);
-  const chainStartYear = chain[0].releaseYear;
-
-  let best: { tmdbId: number; mapping: Map<string, TmdbEpisodeSlice[]>; matchedCount: number } | null = null;
-
-  for (const candidate of candidates) {
-    const id = candidate.id;
-    if (!id) continue;
-    const detail = await fetchTmdbDetail(id, 'series').catch(() => null) as TmdbTvDetail | null;
-    if (!detail?.seasons?.length) continue;
+  const evaluated = await Promise.all(candidates.map(async candidate => {
+    const detail = await fetchTmdbDetail(candidate.id, 'series').catch(() => null) as TmdbTvDetail | null;
+    if (!detail?.seasons?.length) return null;
 
     // A loose year check just to skip obviously-wrong candidates (a
     // same-named unrelated show, a remaster/remake) — the real validation
     // is the per-entry episode-count matching below, not this.
     if (chainStartYear && detail.first_air_date) {
       const tmdbYear = parseInt(detail.first_air_date.slice(0, 4), 10);
-      if (Number.isFinite(tmdbYear) && Math.abs(tmdbYear - chainStartYear) > 1) continue;
+      if (Number.isFinite(tmdbYear) && Math.abs(tmdbYear - chainStartYear) > 2) return null;
     }
 
     const realSeasons: TmdbSeasonCount[] = detail.seasons
       .filter((s): s is TmdbSeasonSummary & { episode_count: number } => s.season_number > 0 && !!s.episode_count)
       .map(s => ({ season_number: s.season_number, episode_count: s.episode_count }))
       .sort((a, b) => a.season_number - b.season_number);
-    if (realSeasons.length === 0) continue;
+    if (realSeasons.length === 0) return null;
 
     const { mapping, matchedCount } = matchChainAgainstSeasons(chain, realSeasons);
-    if (matchedCount === 0) continue;
+    if (matchedCount === 0) return null;
+    const availableCount = realSeasons.reduce((sum, season) => sum + season.episode_count, 0);
+    const expectedCount = chain.reduce((sum, entry) => sum + (contributesToTvEpisodeStream(entry) ? entry.totalCount : 0), 0);
+    return {
+      tmdbId: candidate.id,
+      originalLanguage: detail.original_language,
+      mapping,
+      matchedCount,
+      yearDelta: chainStartYear && detail.first_air_date ? Math.abs(Number(detail.first_air_date.slice(0, 4)) - chainStartYear) : 99,
+      countDelta: Math.abs(availableCount - expectedCount),
+    };
+  }));
 
-    // Prefer whichever candidate explains more of the chain.
-    if (!best || matchedCount > best.matchedCount) {
-      best = { tmdbId: id, mapping, matchedCount };
-    }
+  const best = evaluated.filter((candidate): candidate is NonNullable<typeof candidate> => !!candidate)
+    .sort((a, b) => b.matchedCount - a.matchedCount || a.yearDelta - b.yearDelta || a.countDelta - b.countDelta)[0];
+  // Keep every validated leading slice even when a later entry lives in a
+  // separate TMDB show. Requiring one candidate to cover the entire saga
+  // would discard the correct long-running stream and make all entries fall
+  // back to ambiguous standalone title searches.
+  return best ? { tmdbId: best.tmdbId, originalLanguage: best.originalLanguage, mapping: best.mapping } : null;
+}
+
+const standaloneMatchCache = new Map<string, { signature: string; result: Promise<TmdbSeasonMatch | null> }>();
+
+async function searchEntryCandidates(entry: AnimeChainEntry) {
+  const controller = new AbortController();
+  const aliases = entry.titles.length ? entry.titles : [entry.title];
+  const searches = await Promise.all(aliases.slice(0, 4).filter(Boolean).map(title =>
+    searchTvIncludingAnime(title, controller.signal).catch(() => [])
+  ));
+  return [...new Map(searches.flat().filter(hit => !!hit.id).map(hit => [hit.id, hit])).values()].slice(0, 12);
+}
+
+async function matchStandaloneEntry(entry: AnimeChainEntry): Promise<TmdbSeasonMatch | null> {
+  const signature = `${entry.totalCount}:${entry.releaseYear ?? ''}:${entry.titles.join(',')}`;
+  let cached = standaloneMatchCache.get(entry.externalId);
+  if (!cached || cached.signature !== signature) {
+    cached = { signature, result: computeStandaloneMatch(entry) };
+    standaloneMatchCache.set(entry.externalId, cached);
   }
+  return cached.result;
+}
 
-  return best ? { tmdbId: best.tmdbId, mapping: best.mapping } : null;
+async function computeStandaloneMatch(entry: AnimeChainEntry): Promise<TmdbSeasonMatch | null> {
+  // In a franchise chain, a bare title such as "Gintama" is not sufficient
+  // evidence for a separate TMDB show: search will commonly return the 2006
+  // parent series. A release year is required to distinguish that result
+  // from a genuinely independent sequel listing.
+  if (!entry.totalCount || !entry.releaseYear) return null;
+  const candidates = await searchEntryCandidates(entry);
+  if (!candidates.length) return null;
+  const evaluated = await Promise.all(candidates.map(async candidate => {
+    const detail = await fetchTmdbDetail(candidate.id, 'series').catch(() => null) as TmdbTvDetail | null;
+    if (!detail?.seasons?.length) return null;
+    const year = Number(detail.first_air_date?.slice(0, 4));
+    const yearDelta = Number.isFinite(year) ? Math.abs(year - entry.releaseYear!) : 99;
+    // Title hits can include a predecessor's long-running show. Release year
+    // and episode count distinguish a separate sequel record automatically.
+    if (!Number.isFinite(year) || yearDelta > 2) return null;
+    const matchedTitle = [candidate.name, detail.name, detail.original_name]
+      .filter((title): title is string => !!title?.trim())
+      .some(title => entry.titles.some(alias => normalizeTitle(title) === normalizeTitle(alias)));
+    if (!matchedTitle) return null;
+    const seasons = detail.seasons
+      .filter((season): season is TmdbSeasonSummary & { episode_count: number } => season.season_number > 0 && !!season.episode_count)
+      .map(season => ({ season_number: season.season_number, episode_count: season.episode_count }))
+      .sort((a, b) => a.season_number - b.season_number);
+    const availableCount = seasons.reduce((sum, season) => sum + season.episode_count, 0);
+    if (availableCount < entry.totalCount) return null;
+    const slices = flatRangeToSlices(seasons, 0, entry.totalCount);
+    if (!slices.length) return null;
+    return {
+      match: { tmdbId: candidate.id, originalLanguage: detail.original_language, slices } satisfies TmdbSeasonMatch,
+      yearDelta,
+      countDelta: availableCount - entry.totalCount,
+    };
+  }));
+  return evaluated.filter((candidate): candidate is NonNullable<typeof candidate> => !!candidate)
+    .sort((a, b) => a.yearDelta - b.yearDelta || a.countDelta - b.countDelta)[0]?.match ?? null;
+}
+
+function normalizeTitle(value: string): string {
+  return value.normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 }
 
 export async function matchTmdbSeasonsForAnime(rawId: string): Promise<TmdbSeasonMatch | null> {
@@ -251,53 +341,34 @@ export async function matchTmdbSeasonsForAnime(rawId: string): Promise<TmdbSeaso
   const chain = await buildAnimeChain(rawId);
   if (chain.length > 0) {
     const chainMatch = await resolveChainMatch(chain);
+    const ownEntry = chain.find(entry => entry.externalId === rawId);
+    // Some sequels are separate TMDB shows even when an episode-count split
+    // could place them plausibly inside the predecessor's long-running show.
+    // Prefer a title/year/count-validated distinct record over that positional
+    // slice (e.g. a short sequel with its own TV listing).
+    if (ownEntry && chainMatch?.mapping.has(rawId)) {
+      const standaloneMatch = await matchStandaloneEntry(ownEntry);
+      if (standaloneMatch && standaloneMatch.tmdbId !== chainMatch.tmdbId) return standaloneMatch;
+    }
     if (chainMatch) {
       const slices = chainMatch.mapping.get(rawId);
       if (slices?.length) {
-        return { tmdbId: chainMatch.tmdbId, slices };
+        return { tmdbId: chainMatch.tmdbId, originalLanguage: chainMatch.originalLanguage, slices };
       }
     }
+
+    if (ownEntry) {
+      const standaloneMatch = await matchStandaloneEntry(ownEntry);
+      if (standaloneMatch) return standaloneMatch;
+    }
+    // Never assign a predecessor's episode stream to a sequel just because
+    // a standalone match could not be established.
+    if (chain.length > 1) return null;
   }
 
   // Fallback: standalone search on TMDB by the entry's own titles if not covered by the main saga
   const self = await getCatalogEntry(rawId).catch(() => null);
   if (!self) return null;
 
-  const candidateTitles = [self.title_english, self.title_romaji, self.title_main]
-    .filter((t): t is string => !!t && t.trim().length > 0);
-
-  const controller = new AbortController();
-  for (const title of candidateTitles) {
-    const hits = await searchTvIncludingAnime(title, controller.signal).catch(() => []);
-    for (const hit of hits.slice(0, 5)) {
-      if (!hit.id) continue;
-      const detail = await fetchTmdbDetail(hit.id, 'series').catch(() => null) as TmdbTvDetail | null;
-      if (!detail?.seasons?.length) continue;
-
-      const realSeasons = detail.seasons
-        .filter(s => s.season_number > 0 && !!s.episode_count)
-        .sort((a, b) => a.season_number - b.season_number);
-      if (realSeasons.length === 0) continue;
-
-      const slices: TmdbEpisodeSlice[] = [];
-      let remaining = self.total_count || Infinity;
-      for (const s of realSeasons) {
-        if (remaining <= 0) break;
-        const count = s.episode_count ?? 0;
-        const take = Math.min(remaining, count);
-        slices.push({
-          season_number: s.season_number,
-          episodeStart: 1,
-          episodeEnd: take,
-        });
-        remaining -= take;
-      }
-
-      if (slices.length > 0) {
-        return { tmdbId: hit.id, slices };
-      }
-    }
-  }
-
-  return null;
+  return matchStandaloneEntry(toChainEntry(self));
 }

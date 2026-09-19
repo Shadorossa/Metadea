@@ -7,11 +7,13 @@
 import { getMediaRelationsForEditor, getAnilistPreSequelChecked, markAnilistPreSequelChecked } from '../../../lib/tauri';
 import { graphqlPost } from '../../../lib/api/client';
 import { API_ENDPOINTS } from '../../../lib/api/endpoints';
+import { getCatalogEntry } from '../../../lib/tauri/catalog';
 import { extractTitleSeason } from './folderMatch';
 
 export interface SeasonInfo {
   externalId: string;
   title: string;
+  aliases?: string[];
 }
 
 const SEASON_RELATIONS_QUERY = `
@@ -159,7 +161,23 @@ export async function resolveSeasonExternalIds(
     forwardId = sequel.externalId;
   }
 
-  return map;
+  // Keep the provider's native title aliases alongside the relation title.
+  // File names often use the original Japanese title (for example
+  // エースをねらえ！２), which is what lets the localizer distinguish a
+  // season whose episode numbers restart at 1 from the previous season.
+  const enriched = await Promise.all(Object.entries(map).map(async ([seasonNumber, info]) => {
+    const catalog = await getCatalogEntry(info.externalId).catch(() => null);
+    const aliases = [...new Set([
+      info.title,
+      catalog?.title_main,
+      catalog?.title_english,
+      catalog?.title_romaji,
+      catalog?.title_native,
+    ].filter((value): value is string => !!value?.trim()))];
+    return [seasonNumber, { ...info, aliases }] as const;
+  }));
+
+  return Object.fromEntries(enriched);
 }
 
 // Some sequels never get a title AniList/extractTitleSeason can read a

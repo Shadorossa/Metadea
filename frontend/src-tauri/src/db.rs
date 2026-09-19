@@ -1224,6 +1224,18 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         }
         mark_migration(conn, 63)?;
     }
+    if v < 64 {
+        // Episode provenance makes the cache self-validating: a TMDB episode
+        // can belong to one stored work only, while mapping_key invalidates
+        // rows made with an older prequel/sequel chain layout.
+        let _ = conn.execute("ALTER TABLE media_episode ADD COLUMN source_key TEXT", []);
+        let _ = conn.execute("ALTER TABLE media_episode ADD COLUMN mapping_key TEXT", []);
+        conn.execute_batch(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_media_episode_source_key
+             ON media_episode(source_key) WHERE source_key IS NOT NULL;",
+        )?;
+        mark_migration(conn, 64)?;
+    }
 
     Ok(())
 }

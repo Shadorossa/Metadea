@@ -44,12 +44,16 @@ const TITLE_SEASON_PATTERNS = [
   /\bseason\s+(\d{1,2})\b/i,
   /\b(\d{1,2})(?:st|nd|rd|th)\s+gig\b/i,
   /\bs(\d{1,2})\b/i,
+  // Some catalog entries use only a trailing installment number, including
+  // full-width digits in Japanese titles (e.g. エースをねらえ！２).
+  /(?:^|[.!?:\s-])(\d{1,2})\s*$/,
 ];
 
 export function extractTitleSeason(title: string | null | undefined): number | null {
   if (!title) return null;
+  const normalizedTitle = title.normalize('NFKC');
   for (const pattern of TITLE_SEASON_PATTERNS) {
-    const match = title.match(pattern);
+    const match = normalizedTitle.match(pattern);
     if (match) {
       const n = parseInt(match[1], 10);
       if (n > 0) return n;
@@ -153,6 +157,13 @@ export const MEDIA_EXTENSIONS = /\.(mkv|mp4|avi|mov|flv|webm|mp3|m4a|aac|flac|wa
 
 export function hasMediaFiles(entries: LocalFolderEntry[]): boolean {
   return entries.some(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name));
+}
+
+// Opening/ending songs and their creditless variants are commonly named OP,
+// ED, NCOP or NCED. They are video files, but not episodes to include in a
+// season's numbered run or rename plan.
+function isOpeningOrEndingFile(filename: string): boolean {
+  return /(?:^|[^a-z0-9])(?:(?:nc)?(?:op|ed)\d*|opening|ending)(?=$|[^a-z0-9])/i.test(filename);
 }
 
 // Single-episode works (movies, one-shot OVAs/specials) are often the only
@@ -311,9 +322,18 @@ function textAroundMatch(base: string, match: RegExpMatchArray): string | null {
 // that as "season 1 or unknown", not as a mismatch.
 export function extractEpisodeInfo(filename: string): EpisodeInfo | null {
   const cleaned = filename
+    // Keep standalone bracketed numbers used by releases such as
+    // "[Shin Ace o Nerae!][01][BDRIP]..."; all other bracketed groups are
+    // release metadata and should not participate in episode parsing.
+    .replace(/\[(\d{1,4})\]/g, ' $1 ')
     .replace(/\[[^\]]*\]/g, ' ')
     .replace(/\([^)]*\)/g, ' ');
-  const base = cleaned.replace(/\.[a-z0-9]+$/i, '');
+  // Release revisions such as S01E04v2 are not episode titles. Remove the
+  // revision marker before parsing; otherwise the separator in the season-
+  // episode regex consumes the `v` and textAroundMatch returns just `2`.
+  const base = cleaned
+    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/(S\d{1,2}[.\s_-]?E(?:p(?:isode)?)?[.\s_-]?\d{1,4})v\d+\b/gi, '$1');
 
   for (const marker of SEASON_EPISODE_MARKERS) {
     const match = base.match(marker);
@@ -434,7 +454,41 @@ export interface LocateRenamePlan {
 // seasonResolve.ts's resolveSeasonExternalIds, which builds this from saved
 // relations (or AniList directly, if nothing's saved yet).
 export interface SeasonExternalIdMap {
-  [season: number]: { externalId: string; title: string };
+  [season: number]: { externalId: string; title: string; aliases?: string[] };
+}
+
+function normalizeSeasonAlias(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/\bwo\b/g, 'o')
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function findSeasonFromFilename(
+  filename: string,
+  workTitle: string,
+  externalId: string,
+  fallbackSeason: number | null,
+  seasonMap?: SeasonExternalIdMap,
+): number | null {
+  if (!seasonMap) return null;
+  const normalizedFilename = normalizeSeasonAlias(filename);
+  const candidates = Object.entries(seasonMap).flatMap(([seasonKey, info]) => {
+    const seasonNumber = Number(seasonKey);
+    const titles = [...(info.aliases ?? []), info.title, ...(info.externalId === externalId ? [workTitle] : [])];
+    return titles.map(title => ({ seasonNumber, alias: normalizeSeasonAlias(title) }))
+      .filter(candidate => candidate.alias.length >= 5 && normalizedFilename.includes(candidate.alias));
+  });
+  if (candidates.length === 0) return null;
+
+  // Prefer the most specific alias: a sequel's full title also contains the
+  // base title, but its Japanese name (e.g. エースをねらえ！２) is longer.
+  candidates.sort((a, b) => b.alias.length - a.alias.length);
+  const best = candidates[0];
+  const sameLengthMatches = candidates.filter(candidate => candidate.alias.length === best.alias.length);
+  if (new Set(sameLengthMatches.map(candidate => candidate.seasonNumber)).size > 1) return fallbackSeason;
+  return best.seasonNumber;
 }
 
 // Season number -> that season's own total episode count, when known (see
@@ -504,7 +558,7 @@ export function buildLocateRenamePlan(
   seasonEpisodeCounts?: SeasonEpisodeCounts,
 ): LocateRenamePlan {
   const mediaFiles = entries
-    .filter(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name))
+    .filter(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name) && !isOpeningOrEndingFile(e.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
   const titleSanitized = sanitizeForFilename(workTitle);
@@ -516,9 +570,14 @@ export function buildLocateRenamePlan(
     .filter((p): p is { entry: LocalFolderEntry; info: EpisodeInfo } => p.info !== null);
 
   const anySeasonMarked = parsed.some(p => p.info.season !== null);
+  const seasonByFilename = new Map<LocalFolderEntry, number>();
+  for (const { entry } of parsed) {
+    const matchedSeason = findSeasonFromFilename(entry.name, workTitle, externalId, season, seasonMap);
+    if (matchedSeason !== null) seasonByFilename.set(entry, matchedSeason);
+  }
 
   const seasonBoundaries: { season: number; start: number; end: number }[] = [];
-  if (!anySeasonMarked && seasonEpisodeCounts) {
+  if (!anySeasonMarked && seasonByFilename.size === 0 && seasonEpisodeCounts) {
     let cursor = 0;
     for (const s of Object.keys(seasonEpisodeCounts).map(Number).sort((a, b) => a - b)) {
       const count = seasonEpisodeCounts[s];
@@ -532,10 +591,12 @@ export function buildLocateRenamePlan(
 
   for (const { entry, info } of parsed) {
     const rawEpisode = Math.round(info.episode);
-    let fileSeason = info.season ?? season;
+    // An explicit Sxx marker is stronger evidence than a title alias; use
+    // catalog aliases only for files whose season is not encoded in the name.
+    let fileSeason = info.season ?? seasonByFilename.get(entry) ?? season;
     let episode = rawEpisode;
 
-    if (seasonBoundaries.length > 0) {
+    if (seasonBoundaries.length > 0 && !seasonByFilename.has(entry)) {
       const boundary = seasonBoundaries.find(b => rawEpisode >= b.start && rawEpisode <= b.end);
       if (!boundary) continue;
       fileSeason = boundary.season;
@@ -553,15 +614,14 @@ export function buildLocateRenamePlan(
     const fileType = mediaType ?? fileExternalId.split(':')[0] ?? null;
     const ext = entry.name.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
     const fetchedName = episodeNamesByExternalId?.[fileExternalId]?.get(episode);
-    // info.episodeTitle can itself just be the show's own name again — its
-    // "nothing meaningful follows the number" fallback grabs whatever text
-    // sits BEFORE it instead (see textAroundMatch), which for the ubiquitous
-    // "Show Name - 14 (quality tags)" naming convention is always just the
-    // show's own title. Redundancy-checked the same as a fetched name would
-    // be, so a real embedded title still wins but junk falls through to it.
+    // Prefer the provider/database title whenever one exists. The text before
+    // the marker is often an alternate title of the show itself (for example
+    // "Witch Hat Atelier" for "Tongari Boushi no Atelier"), so checking only
+    // against the catalog title cannot reliably identify it as redundant.
+    // The filename text remains a fallback for works with no episode data.
     const rawEpisodeTitle = (fileType === 'lnovel' || fileType === 'book')
       ? ''
-      : (info.episodeTitle && !isRedundantEpisodeName(info.episodeTitle, fileTitleSanitized, titleSanitized) ? info.episodeTitle : fetchedName) || '';
+      : fetchedName || (info.episodeTitle && !isRedundantEpisodeName(info.episodeTitle, fileTitleSanitized, titleSanitized) ? info.episodeTitle : '') || '';
     const episodeTitle = rawEpisodeTitle && !isRedundantEpisodeName(rawEpisodeTitle, fileTitleSanitized, titleSanitized)
       ? sanitizeForFilename(rawEpisodeTitle)
       : '';

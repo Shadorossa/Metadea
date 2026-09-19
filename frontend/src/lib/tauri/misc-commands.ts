@@ -75,6 +75,12 @@ export interface MediaEpisode {
   episode_number: number;
   name:           string | null;
   cover_url:      string | null;
+  /** Provider-specific identity, e.g. TMDB series/season/episode. */
+  source_key?:     string | null;
+  /** Chain signature used to invalidate cache when its season mapping changes. */
+  mapping_key?:    string | null;
+  /** Display-only label used by synthetic unified-chain entries (e.g. M01). */
+  display_label?: string;
 }
 
 export interface MediaEpisodeGroup {

@@ -8,6 +8,8 @@ pub struct MediaEpisode {
     pub episode_number: f64,
     pub name:           Option<String>,
     pub cover_url:      Option<String>,
+    pub source_key:     Option<String>,
+    pub mapping_key:    Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -47,7 +49,7 @@ pub async fn get_media_episodes(
 ) -> Result<Vec<MediaEpisode>, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
-        "SELECT external_id, season_number, episode_number, name, cover_url
+        "SELECT external_id, season_number, episode_number, name, cover_url, source_key, mapping_key
          FROM media_episode
          WHERE external_id = ?1
          ORDER BY CASE WHEN episode_number > 0 THEN 0 ELSE 1 END,
@@ -60,6 +62,8 @@ pub async fn get_media_episodes(
             episode_number: r.get(2)?,
             name:           r.get(3)?,
             cover_url:      r.get(4)?,
+            source_key:     r.get(5)?,
+            mapping_key:    r.get(6)?,
         })
     }).str_err()?;
     Ok(rows.filter_map(|r| r.ok()).collect())
@@ -80,9 +84,11 @@ pub async fn save_media_episodes(
     tx.execute("DELETE FROM media_episode WHERE external_id = ?1", [&external_id]).str_err()?;
     for ep in &episodes {
         tx.execute(
-            "INSERT OR REPLACE INTO media_episode (external_id, season_number, episode_number, name, cover_url)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            rusqlite::params![external_id, ep.season_number, ep.episode_number, ep.name, ep.cover_url],
+            // source_key has a partial unique index. IGNORE deliberately
+            // refuses to assign one provider episode to a second work.
+            "INSERT OR IGNORE INTO media_episode (external_id, season_number, episode_number, name, cover_url, source_key, mapping_key)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            rusqlite::params![external_id, ep.season_number, ep.episode_number, ep.name, ep.cover_url, ep.source_key, ep.mapping_key],
         ).str_err()?;
     }
     tx.commit().str_err()?;

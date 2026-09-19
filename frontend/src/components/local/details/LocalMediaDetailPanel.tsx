@@ -692,14 +692,15 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     const tag = encodeExternalIdForFilename(item.externalId);
     const titleSanitized = sanitizeForFilename(item.title);
     const isBookOrNovel = item.libraryEntry.type === 'lnovel' || item.libraryEntry.type === 'book';
-    // info.episodeTitle can itself just be the work's own name again (see
-    // buildLocateRenamePlan's own comment on the same issue) — checked for
-    // redundancy before trusting it, so junk falls through to the fetched
-    // provider name instead of blocking it.
-    let rawEpisodeTitle = (!isBookOrNovel && info?.episodeTitle && !isRedundantEpisodeName(info.episodeTitle, titleSanitized)) ? info.episodeTitle : '';
-    if (!rawEpisodeTitle && !isBookOrNovel) {
+    // Prefer the provider/database title: the text before the marker can be
+    // an alternate title of the work, not the episode title.
+    let rawEpisodeTitle = '';
+    if (!isBookOrNovel) {
       const fetchedNames = await fetchLocalSeasonEpisodeNames(item.externalId, true).catch(() => new Map<number, string>());
       rawEpisodeTitle = fetchedNames.get(episode) ?? '';
+      if (!rawEpisodeTitle && info?.episodeTitle && !isRedundantEpisodeName(info.episodeTitle, titleSanitized)) {
+        rawEpisodeTitle = info.episodeTitle;
+      }
     }
     const episodeTitle = rawEpisodeTitle && !isRedundantEpisodeName(rawEpisodeTitle, titleSanitized)
       ? sanitizeForFilename(rawEpisodeTitle)
