@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "d25020c8bf0afc27d25020c8bf0afc27",
+    "external_id": "game:384241",
+    "type": "game",
+    "title_main": "Ace Attorney Investigations: Miles Edgeworth",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-19T12:21:15.556Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:1430",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "Ace Attorney Investigations: Miles Edgeworth",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5z8q.jpg",
+      "media_external_id": "game:384241"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
