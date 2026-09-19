@@ -173,6 +173,8 @@ const t = useTranslations(lang);
       let communityCatalogSynced = false;
       const COMMUNITY_CATALOG_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 1/day
       let socialSynced = false;
+      let socialSyncInFlight = false;
+      let socialSyncTimer: ReturnType<typeof setTimeout> | undefined;
 
       function isTauriRuntime() {
         return typeof window !== 'undefined' &&
@@ -210,6 +212,50 @@ const t = useTranslations(lang);
       function hideGlobalToast() {
         document.getElementById('global-toast')?.classList.remove('visible');
       }
+
+      function scheduleAutomaticProfileSync(delayMs: number) {
+        if (socialSyncTimer !== undefined) clearTimeout(socialSyncTimer);
+        socialSyncTimer = setTimeout(() => {
+          socialSyncTimer = undefined;
+          runAutomaticProfileSync();
+        }, Math.max(1000, delayMs));
+      }
+
+      async function runAutomaticProfileSync() {
+        if (socialSyncInFlight) return;
+        socialSyncInFlight = true;
+        try {
+          const {
+            syncProfileToServer,
+            getLastSyncAttempt,
+            PROFILE_SYNC_INTERVAL_MS,
+          } = await import(/* @vite-ignore */ '../lib/social/profile-sync');
+          const ok = await syncProfileToServer();
+          const attempt = getLastSyncAttempt();
+
+          if (attempt?.result === 'success') {
+            // Keep the automatic sync alive while the app remains open; it
+            // no longer depends on a later page navigation to run again.
+            scheduleAutomaticProfileSync(PROFILE_SYNC_INTERVAL_MS + 1000);
+          } else if (attempt?.result === 'skipped_gate') {
+            const lastSync = parseInt(localStorage.getItem(STORAGE_KEYS.profileSyncLastSync) || '', 10);
+            if (Number.isFinite(lastSync)) {
+              scheduleAutomaticProfileSync(PROFILE_SYNC_INTERVAL_MS - (Date.now() - lastSync) + 1000);
+            }
+          } else if (!ok && (attempt?.result === 'failed_response' || attempt?.result === 'failed_error' || attempt?.result === 'skipped_offline')) {
+            // Temporary network/server failures get a retry without creating
+            // a tight loop. A later online event also triggers it immediately.
+            scheduleAutomaticProfileSync(30_000);
+          }
+        } catch (error) {
+          console.warn('[ProfileSync] Automatic sync could not start:', error);
+          scheduleAutomaticProfileSync(30_000);
+        } finally {
+          socialSyncInFlight = false;
+        }
+      }
+
+      window.addEventListener('online', () => runAutomaticProfileSync());
 
       // Global bottom loading bar (lib/shared/global-loading.ts) — ref
       // counted so e.g. two tabs loading at once don't hide it as soon as
@@ -330,9 +376,8 @@ const t = useTranslations(lang);
         if (!socialSynced) {
           socialSynced = true;
           setTimeout(async () => {
-            const { syncProfileToServer } = await import(/* @vite-ignore */ '../lib/social/profile-sync');
             const { refreshActivityFeed, refreshGeneralActivityFeed } = await import(/* @vite-ignore */ '../lib/social/activity-feed');
-            syncProfileToServer().catch(() => {});
+            runAutomaticProfileSync().catch(() => {});
             refreshActivityFeed().catch(() => {});
             refreshGeneralActivityFeed().catch(() => {});
           }, 4000);

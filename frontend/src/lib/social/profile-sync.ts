@@ -10,7 +10,7 @@ import { STORAGE_KEYS } from '../shared/storage-keys';
 import { getImage } from '../storage/images';
 import { decodeJwtPayload } from '../profile/utils';
 
-const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
+export const PROFILE_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_ACTIVITY_ENTRIES = 30;
 
 export interface SyncAttemptRecord {
@@ -120,7 +120,7 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
   }
 
   const lastSync = localStorage.getItem(STORAGE_KEYS.profileSyncLastSync);
-  if (!force && lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) {
+  if (!force && lastSync && Date.now() - parseInt(lastSync, 10) < PROFILE_SYNC_INTERVAL_MS) {
     recordAttempt({ at: Date.now(), result: 'skipped_gate', detail: `last success ${new Date(parseInt(lastSync, 10)).toISOString()}` });
     return false;
   }
