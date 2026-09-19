@@ -1,4 +1,4 @@
-import { formatUnixTimestampShort, formatDateLong } from '../../../lib/shared/formatDate';
+import { formatUnixTimestampShort, formatDateTimeShort } from '../../../lib/shared/formatDate';
 
 export function formatPlaytime(minutes?: number): string {
   if (minutes === undefined || minutes === null || isNaN(minutes) || minutes < 0) return '—';
@@ -12,23 +12,13 @@ export function formatLastPlayed(ts?: number): string {
   return formatUnixTimestampShort(ts) ?? '—';
 }
 
-// Named for the unix-seconds input it actually takes (not just "a date") —
-// distinct from lib/shared/formatDate.ts's own same-named module, which
-// this used to collide with by both exporting a plain `formatDate`.
-export function formatUnixDateLong(timestamp?: number): string | null {
-  if (!timestamp) return null;
-  try {
-    return formatDateLong(new Date(timestamp * 1000));
-  } catch { return null; }
-}
-
-// SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, no offset) —
+// SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, no offset) -
 // the space instead of "T" makes most JS engines parse it as local time
 // instead of UTC, so normalize it first.
 export function formatWatchedAt(sqliteTimestamp: string): string {
   const d = new Date(sqliteTimestamp.replace(' ', 'T') + 'Z');
   if (isNaN(d.getTime())) return sqliteTimestamp;
-  return d.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return formatDateTimeShort(d);
 }
 
 // A playback position in seconds -> "M:SS", or "H:MM:SS" past the first

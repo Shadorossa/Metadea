@@ -290,7 +290,7 @@ const version = pkg.version;
         el.textContent = "Sin intentos de sincronización registrados todavía.";
         return;
       }
-      const when = new Date(attempt.at).toLocaleString();
+      const when = new Date(attempt.at).toLocaleString(document.documentElement.lang || undefined);
       const label = RESULT_LABEL[attempt.result] ?? attempt.result;
       el.textContent = `Último intento: ${when} — ${label}${attempt.detail ? ` (${attempt.detail})` : ""}`;
     }

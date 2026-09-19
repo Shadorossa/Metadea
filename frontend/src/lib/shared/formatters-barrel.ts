@@ -9,7 +9,10 @@ export {
   formatDateLong,
   formatDateNumeric,
   formatUnixTimestampShort,
+  formatUnixDateLong,
+  formatDateTimeShort,
   formatLocalDateLong,
+  formatMonthName,
   getLocaleCode,
 } from './formatDate';
 
@@ -17,7 +20,6 @@ export {
 export {
   formatPlaytime,
   formatLastPlayed,
-  formatUnixDateLong,
   formatWatchedAt,
   formatPlaybackTime,
   formatBytes,

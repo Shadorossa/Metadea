@@ -32,6 +32,17 @@ export function formatUnixTimestampShort(unixSeconds?: number): string | null {
   return formatDateShort(new Date(unixSeconds * 1000));
 }
 
+export function formatUnixDateLong(unixSeconds?: number): string | null {
+  if (!unixSeconds) return null;
+  return formatDateLong(new Date(unixSeconds * 1000));
+}
+
+export function formatDateTimeShort(date: Date): string {
+  return date.toLocaleString(getLocaleCode(), {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+}
+
 // Parses a "YYYY-MM-DD" date string as LOCAL date components — not passed
 // straight to `new Date(dateStr)`, which parses as UTC and can shift a day
 // depending on the viewer's timezone offset — then formats it long-form.
@@ -52,4 +63,8 @@ export function formatMonthLabel(year: number, month: number): string {
     .toLocaleDateString(getLocaleCode(), { month: 'short' })
     .toUpperCase()
     .replace('.', '');
+}
+
+export function formatMonthName(date: Date): string {
+  return date.toLocaleDateString(getLocaleCode(), { month: 'long' }).replace(/^./, c => c.toUpperCase());
 }
