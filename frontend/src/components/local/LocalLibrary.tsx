@@ -586,12 +586,12 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
       )}
 
       <div className="local-library">
-        {activeCategory === 'videojuegos' && (
+        {(activeCategory === 'videojuegos' || activeCategory === 'visual-novel') && (
           <PlatformSidebar
             activePlatform={activePlatform}
-            availablePlatforms={availablePlatforms}
+            availablePlatforms={activeCategory === 'videojuegos' ? availablePlatforms : new Set(vnSteamGames.map(game => game.launcher))}
             onSelect={scrollTo}
-            onFetchMetadata={() => setMetaSelector(true)}
+            onFetchMetadata={activeCategory === 'videojuegos' ? () => setMetaSelector(true) : undefined}
           />
         )}
 
@@ -633,6 +633,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 onRemoveGame={removeGame}
                 onDeleteLibraryItem={handleDeleteLibraryItem}
                 onRefreshScan={activeCategory === 'visual-novel' ? loadGames : undefined}
+                sectionRefs={activeCategory === 'visual-novel' ? sectionRefs : undefined}
               />
             ) : (
               /* ── Games view (Videojuegos only — LOCAL_MEDIA_TYPE_BY_CATEGORY

@@ -7,7 +7,8 @@ export function useActivePlatform(games: LocalGame[], activeCategory: CategoryId
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
 
   useEffect(() => {
-    if (activeCategory !== 'videojuegos' || gamesState !== 'done') return;
+    if (activeCategory !== 'videojuegos' && activeCategory !== 'visual-novel') return;
+    if (activeCategory === 'videojuegos' && gamesState !== 'done') return;
     const observer = new IntersectionObserver(
       entries => {
         const visible = entries
@@ -29,8 +30,15 @@ export function useActivePlatform(games: LocalGame[], activeCategory: CategoryId
   }, [activeCategory, gamesState, games.length]);
 
   const scrollTo = useCallback((id: PlatformId) => {
-    sectionRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+    const section = sectionRefs.current.get(id);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (activeCategory === 'visual-novel') {
+      document.querySelector<HTMLElement>('.local-games-container .library-section')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    setActivePlatform(id);
+  }, [activeCategory]);
 
   return { activePlatform, sectionRefs, scrollTo };
 }

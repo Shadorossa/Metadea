@@ -227,7 +227,10 @@ export function GamesGrid({
             <section
               key={launcher}
               id={`launcher-${launcher}`}
-              ref={el => { if (el) sectionRefs.current.set(launcher, el); }}
+              ref={el => {
+                if (el) sectionRefs.current.set(launcher, el);
+                else sectionRefs.current.delete(launcher);
+              }}
               className="local-launcher-section"
             >
               <h2 className="local-launcher-title">

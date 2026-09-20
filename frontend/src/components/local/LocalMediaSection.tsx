@@ -103,9 +103,10 @@ interface LocalMediaSectionProps {
   onRemoveGame?: (launcher: string, linkKey: string) => void;
   onDeleteLibraryItem?: (externalId: string) => void;
   onRefreshScan?: () => void;
+  sectionRefs?: React.MutableRefObject<Map<string, HTMLElement>>;
 }
 
-export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem, onRefreshScan }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem, onRefreshScan, sectionRefs }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -307,19 +308,19 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
           ? { kind: 'steam' as const, game: e.game, libraryStatus: e.libraryStatus }
           : { kind: 'catalog' as const, item: e.item, launchGame: e.launchGame }
         );
-        return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries };
+        return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries, platformId: id };
       }) : LAUNCHER_ORDER
       .filter(id => backlogByPlatform.has(id))
       .map(id => {
         const asStatusEntries: StatusEntry[] = backlogByPlatform.get(id)!.map(game => ({ kind: 'game', game }));
         const sorted = sortEntries(asStatusEntries, sortMode, g => displayNameFor(g, catalogMapById));
         const entries: SectionEntry[] = sorted.map(e => ({ kind: 'steam' as const, game: (e as { kind: 'game'; game: LocalGame }).game }));
-        return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries };
+        return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries, platformId: id };
       });
     const rawSections = [
-      { title: p.section_in_progress, icon: undefined, entries: toEntries(inProgress, steamInProgress) },
-      ...(isGameLike ? [] : [{ title: p.section_planning, icon: undefined, entries: toEntries(planning, steamPlanning) }]),
-      { title: 'Sin estrenar', icon: undefined, entries: toEntries(unreleased, []) },
+      { title: p.section_in_progress, icon: undefined, entries: toEntries(inProgress, steamInProgress), platformId: undefined },
+      ...(isGameLike ? [] : [{ title: p.section_planning, icon: undefined, entries: toEntries(planning, steamPlanning), platformId: undefined }]),
+      { title: 'Sin estrenar', icon: undefined, entries: toEntries(unreleased, []), platformId: undefined },
       ...platformSections,
     ];
     // toEntries' own name-matching (see buildLibraryStatusEntries' chapter-
@@ -390,7 +391,15 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
           ) : (
             <div className="library-sections-list">
               {sections.map(sec => (
-                <div className="library-section" key={sec.title}>
+                <div
+                  className="library-section"
+                  key={sec.title}
+                  id={sec.platformId ? `launcher-${sec.platformId}` : undefined}
+                  ref={sec.platformId && sectionRefs ? el => {
+                    if (el) sectionRefs.current.set(sec.platformId!, el);
+                    else sectionRefs.current.delete(sec.platformId!);
+                  } : undefined}
+                >
                   <h3 className="library-section-title">
                     <div className="local-launcher-title-label">
                       {sec.icon && (

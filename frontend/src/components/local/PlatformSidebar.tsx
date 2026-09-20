@@ -7,7 +7,7 @@ interface PlatformSidebarProps {
   activePlatform:     PlatformId | null;
   availablePlatforms: Set<string>;
   onSelect:           (id: PlatformId) => void;
-  onFetchMetadata:    () => void;
+  onFetchMetadata?:   () => void;
 }
 
 export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, onFetchMetadata }: PlatformSidebarProps) {
@@ -38,22 +38,25 @@ export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, 
         </button>
       ))}
 
-      <div className="local-platform-divider" />
-
-      <button
-        type="button"
-        className="local-platform-btn local-metadata-btn"
-        onClick={onFetchMetadata}
-        title={t.local.fetch_igdb_metadata}
-      >
-        <span className="local-platform-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2v13M5 9l7 7 7-7"/>
-            <line x1="5" y1="21" x2="19" y2="21"/>
-          </svg>
-        </span>
-        <span className="local-platform-label">{t.local.metadata_label}</span>
-      </button>
+      {onFetchMetadata && (
+        <>
+          <div className="local-platform-divider" />
+          <button
+            type="button"
+            className="local-platform-btn local-metadata-btn"
+            onClick={onFetchMetadata}
+            title={t.local.fetch_igdb_metadata}
+          >
+            <span className="local-platform-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v13M5 9l7 7 7-7"/>
+                <line x1="5" y1="21" x2="19" y2="21"/>
+              </svg>
+            </span>
+            <span className="local-platform-label">{t.local.metadata_label}</span>
+          </button>
+        </>
+      )}
     </aside>
   );
 }
