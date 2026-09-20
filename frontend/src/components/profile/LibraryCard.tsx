@@ -1,10 +1,14 @@
 // Split out of LibrarySection.tsx: a single library grid cell, plus its private emoji-tag helper.
 import { useEffect, useRef, useState, useMemo, memo, type MouseEvent } from 'react';
+import {
+  BookImage, BookMarked, BookOpen, BookText, Clapperboard, Gamepad2,
+  MessageSquareText, Tv, TvMinimalPlay, type LucideIcon,
+} from 'lucide-react';
 import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
 import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled } from '../../lib/settings/preferences';
-import { typeIconMap, CALENDAR_ICON } from '../../lib/shared/icon-strings';
+import { CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating, latestInProgressMember } from './library-grouping';
 import { toMediumCover } from '../../lib/shared/small-cover';
@@ -12,7 +16,23 @@ import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { isInProgressStatus, pickAggregateStatus } from '../../lib/constants/media';
 import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../local/utils/constants';
 
-export const TYPE_ICON = typeIconMap(16);
+const LIBRARY_MEDIA_ICONS: Record<string, LucideIcon> = {
+  game: Gamepad2,
+  anime: TvMinimalPlay,
+  manga: BookOpen,
+  lnovel: BookMarked,
+  vnovel: MessageSquareText,
+  series: Tv,
+  movie: Clapperboard,
+  book: BookText,
+  comic: BookImage,
+};
+
+export function LibraryTypeIcon({ type, size = 16 }: { type: string; size?: number }) {
+  const baseType = type.split('_')[0] || 'book';
+  const Icon = LIBRARY_MEDIA_ICONS[baseType] ?? BookText;
+  return <Icon size={size} strokeWidth={2} aria-hidden="true" />;
+}
 
 // Leading emoji + optional variation selector, e.g. "🎨Arte" → "🎨" / "Arte". Plain-text tags are skipped.
 const TAG_EMOJI_RE = /^(\p{Extended_Pictographic}️?)(.*)$/u;
@@ -65,7 +85,6 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   // trailing "2nd Season"/"The Final Season" from whichever season happened
   // to become the representative would misleadingly label the fused card.
   const title = hideGroupingUi ? stripSeasonSuffix(rawTitle) : rawTitle;
-  const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
   const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
   const badges = tagBadges(item.tags);
   const orderedGrouped = useMemo(() =>
@@ -273,7 +292,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
             <span dangerouslySetInnerHTML={{ __html: ratingHtml }} />
             <div className="library-card-footer">
               {dateStr && <span className="library-card-date" dangerouslySetInnerHTML={{ __html: CALENDAR_ICON + dateStr }} />}
-              <span className="library-card-type" dangerouslySetInnerHTML={{ __html: typeIc }} />
+              <span className="library-card-type"><LibraryTypeIcon type={item.type} size={20} /></span>
             </div>
           </div>
         </div>

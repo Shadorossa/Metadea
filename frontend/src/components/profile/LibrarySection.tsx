@@ -21,7 +21,7 @@ import { createUnionFind } from '../../lib/shared/union-find';
 import { groupEditions, groupBundles, refineSagaGroups, averageRating, unifyAnimeSeasons } from './library-grouping';
 import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
-import { LibraryCard, TYPE_ICON } from './LibraryCard';
+import { LibraryCard, LibraryTypeIcon } from './LibraryCard';
 import { VirtualLibraryGrid } from './VirtualLibraryGrid';
 import { buildLibraryStatusEntries } from '../local/utils/catalogGameLinking';
 import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../local/utils/constants';
@@ -608,7 +608,7 @@ export function LibrarySection({
                 className={`library-type-tab ${activeTypeTab === type ? 'active' : ''}`}
                 onClick={() => setActiveTypeTab(type)}
               >
-                <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[type] }} />
+                <LibraryTypeIcon type={type} />
                 {typeLabels[type as keyof typeof typeLabels] || getTypeLabel(type)}
               </button>
             ))}
