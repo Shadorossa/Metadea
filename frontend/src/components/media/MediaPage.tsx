@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes, fetchMediaThemes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
-import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
+import { getCatalogEntry, getLibraryEntry, saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
 import type { LibraryEntry, MediaEpisode, MediaTheme } from '../../lib/tauri';
-import type { MediaPageData } from '../../lib/media/types';
+import type { MediaPageData, MediaSeasonInfo } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
 import { AnimatePresence } from 'motion/react';
@@ -25,15 +25,16 @@ import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { parseStatSectionLabel, StatSectionTracker } from '../../lib/shared/stat-sections';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
-import { saveStaffSkeleton, getThemeVideoPath, cacheThemeVideo } from '../../lib/tauri/misc-commands';
+import { getApiSportsEventMatches, getApiSportsEventSeasons, saveStaffSkeleton, getThemeVideoPath, cacheThemeVideo } from '../../lib/tauri/misc-commands';
 import { getAnimePrequelEpisodeOffset } from '../../lib/media/anime-tmdb-match';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
 import { mergePlatformVersions, stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { sanitizeHtml } from '../../lib/shared/sanitize-html';
-import { ANILIST_TYPES } from '../../lib/constants/media';
+import { ANILIST_TYPES, pickAggregateStatus } from '../../lib/constants/media';
 import { getPreferredCover } from '../../lib/media/cover-preferences';
+import { fetchApiSportsSeasonMatches, type EventMatch } from '../../lib/search/providers/apisports';
 
 function splitTitleAfterColon(title: string): ReactNode {
   const colonIdx = title.indexOf(':');
@@ -121,6 +122,36 @@ async function fetchUnifiedAnimeEpisodes(chain: SagaEntry[], force = false): Pro
     return a.episode_number > 0 ? -1 : 1;
   });
 }
+
+function formatMatchDate(date: string | null | undefined, time: string | null | undefined): string {
+  if (!date) return time || '';
+  const parsed = new Date(`${date}T${time || '00:00:00'}`);
+  if (Number.isNaN(parsed.getTime())) return [date, time].filter(Boolean).join(' ');
+  const dateLabel = parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  return time ? `${dateLabel} · ${time.slice(0, 5)}` : dateLabel;
+}
+
+const MatchCard = memo(function MatchCard({ match }: { match: EventMatch }) {
+  const home = match.home || '-';
+  const away = match.away || '-';
+  const hasScore = match.homeScore != null && match.awayScore != null;
+  return (
+    <div className="media-relation-card media-relation-card--static media-match-card">
+      <div className="media-relation-bg-layer">
+        {match.image && <img src={match.image} alt="" loading="lazy" />}
+      </div>
+      <div className="media-relation-card-overlay" />
+      <span className="media-relation-type">{formatMatchDate(match.date, match.time)}</span>
+      <div className="media-relation-card-content">
+        <div className="media-relation-info">
+          <span className="media-relation-title">{home} – {away}</span>
+          <span className="media-match-score">{hasScore ? `${match.homeScore} - ${match.awayScore}` : (match.status || 'vs')}</span>
+          {match.venue && <span className="media-match-venue">{match.venue}</span>}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const RelationCard = memo(function RelationCard({ relation, changeKind }: { relation: any; changeKind?: 'added' | 'updated' }) {
   const Wrapper = relation.url ? 'a' : 'div';
@@ -416,8 +447,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const [showSaga,           setShowSaga]           = useState(false);
   const [showPrEditor,       setShowPrEditor]       = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
-  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes' | 'seasons' | 'themes'>('related');
+  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes' | 'matches' | 'seasons' | 'themes'>('related');
   const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
+  const [matches,            setMatches]            = useState<EventMatch[]>([]);
+  const [eventSeasonEntries, setEventSeasonEntries] = useState<Record<string, LibraryEntry | null>>({});
   const [themes,             setThemes]             = useState<MediaTheme[]>([]);
   // Anime's own season list — the live/cached PREQUEL/SEQUEL chain from
   // sagaData.ts, same source SagaViewerModal already uses. TMDB series don't
@@ -464,6 +497,115 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     applyDeleted,
     rollback,
   } = useLibraryEntry(currentId, data?.type);
+  const isEventCompetition = data?.type === 'event'
+    && /^event:apisports:(football|basketball):\d+$/.test(currentId);
+  // localStorage is unavailable during Astro's server render.
+  const unifySeasonsEnabled = typeof window !== 'undefined' && isUnifySeasonsEnabled();
+
+  // Season relationships are stored locally after the first successful
+  // provider fetch. Load them independently of the API response so an
+  // already-synced competition still has its season tabs when offline.
+  useEffect(() => {
+    if (previewMode || !isEventCompetition) return;
+    let cancelled = false;
+    getApiSportsEventSeasons(currentId).then(storedRows => {
+      if (cancelled || storedRows.length === 0) return;
+      const storedSeasons: MediaSeasonInfo[] = storedRows.map(row => ({
+        externalId: row.externalId,
+        seasonNumber: row.seasonNumber,
+        name: row.name,
+        coverUrl: row.coverUrl,
+        airDate: row.airDate,
+      }));
+      setData(previous => {
+        if (!previous || previous.externalId !== currentId || previous.type !== 'event') return previous;
+        const byId = new Map<string, MediaSeasonInfo>();
+        for (const season of storedSeasons) {
+          if (season.externalId) byId.set(season.externalId, season);
+        }
+        for (const season of previous.seasons ?? []) {
+          if (season.externalId) byId.set(season.externalId, season);
+        }
+        const seasons = [...byId.values()].sort((a, b) => {
+          const year = (season: MediaSeasonInfo) => Number(
+            season.airDate?.slice(0, 4) || season.name?.match(/\b(?:19|20|21)\d{2}\b/)?.[0] || 0,
+          );
+          return year(b) - year(a) || b.seasonNumber - a.seasonNumber;
+        });
+        return { ...previous, seasons };
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [previewMode, isEventCompetition, currentId]);
+
+  useEffect(() => {
+    if (previewMode || !isEventCompetition || !unifySeasonsEnabled) {
+      setEventSeasonEntries({});
+      return;
+    }
+    let cancelled = false;
+    const seasons = data?.seasons ?? [];
+    Promise.all(seasons.map(async season => {
+      if (!season.externalId) return null;
+      const entry = await getLibraryEntry(season.externalId).catch(() => null);
+      return [season.externalId, entry] as const;
+    })).then(rows => {
+      if (cancelled) return;
+      setEventSeasonEntries(Object.fromEntries(rows.filter((row): row is readonly [string, LibraryEntry | null] => !!row)));
+    });
+    return () => { cancelled = true; };
+  }, [previewMode, isEventCompetition, unifySeasonsEnabled, data?.seasons, showEditor]);
+
+  const eventSeasonIds = (data?.seasons ?? []).map(season => season.externalId).filter((id): id is string => !!id);
+  const eventSeasonEntriesLoaded = eventSeasonIds.length > 0 && eventSeasonIds.every(id => id in eventSeasonEntries);
+  const currentEventSeasonEntries = eventSeasonIds.map(id => eventSeasonEntries[id] ?? null);
+  const eventAggregateStatus = isEventCompetition && unifySeasonsEnabled
+    ? (pickAggregateStatus(currentEventSeasonEntries.map(entry => entry?.status)) || (eventSeasonEntriesLoaded ? '' : libStatus))
+    : libStatus;
+  const eventSeasonRatings = isEventCompetition && unifySeasonsEnabled
+    ? currentEventSeasonEntries.map(entry => entry?.rating ?? 0).filter(rating => rating > 0)
+    : [];
+  const eventAggregateRating = eventSeasonRatings.length > 0
+    ? eventSeasonRatings.reduce((sum, rating) => sum + rating, 0) / eventSeasonRatings.length
+    : (isEventCompetition && unifySeasonsEnabled && eventSeasonEntriesLoaded ? 0 : libRating);
+  const mediaInLibrary = (isEventCompetition && unifySeasonsEnabled
+    && currentEventSeasonEntries.some(entry => !!entry?.status)) || inLibrary;
+
+  const saveEventSeasonUpdates = useCallback(async (updates: Partial<LibraryEntry>) => {
+    if (!isEventCompetition || !unifySeasonsEnabled) return false;
+    const seasons = (data?.seasons ?? []).filter(season => !!season.externalId);
+    const rows: Array<readonly [string, LibraryEntry]> = [];
+    for (const season of seasons) {
+      const id = season.externalId!;
+      const existing = eventSeasonEntries[id] ?? await getLibraryEntry(id).catch(() => null);
+      const seasonUpdates = { ...updates };
+      if (seasonUpdates.status === 'completed') {
+        const [catalog, matchCache] = await Promise.all([
+          getCatalogEntry(id).catch(() => null),
+          getApiSportsEventMatches(id).catch(() => ({ syncedAt: null, matches: [] })),
+        ]);
+        let totalCount = matchCache.syncedAt ? matchCache.matches.length : (catalog?.total_count ?? 0);
+        if (!matchCache.syncedAt && totalCount <= 0) {
+          totalCount = (await fetchApiSportsSeasonMatches(id).catch(() => [])).length;
+        }
+        if (totalCount > 0) seasonUpdates.progress = totalCount;
+      }
+      const draft: LibraryEntry = {
+        id: '', user_id: 'local', external_id: id, type: 'event',
+        status: null, rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
+        is_favorite: 0, is_platinum: 0, tags: null, notes: null,
+        added_at: null, updated_at: null, selected_platform: null, selected_version: null,
+        started_at: null, finished_at: null,
+        ...existing,
+        ...seasonUpdates,
+        external_id: id,
+        type: 'event',
+      };
+      rows.push([id, await saveLibraryEntry(draft)]);
+    }
+    setEventSeasonEntries(previous => ({ ...previous, ...Object.fromEntries(rows) }));
+    return true;
+  }, [isEventCompetition, unifySeasonsEnabled, data?.seasons, eventSeasonEntries]);
 
   // Warms SagaViewerModal's saga-chain + story-arcs caches (lib/media/sagaData.ts)
   // as soon as the page is known to have a saga, instead of only starting
@@ -489,7 +631,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   // loadSagaChain the effect above already warmed, so this is normally an
   // instant cache hit, not a second fetch.
   useEffect(() => {
-    if (previewMode || !currentId || data?.type !== 'anime' || !isUnifySeasonsEnabled()) {
+    if (previewMode || !currentId || data?.type !== 'anime' || !unifySeasonsEnabled) {
       setAnimeSeasonChain([]);
       return;
     }
@@ -499,7 +641,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       setAnimeSeasonChain(chain.ok && chain.entries.length > 1 ? chain.entries : []);
     }).catch(() => { if (!cancelled) setAnimeSeasonChain([]); });
     return () => { cancelled = true; };
-  }, [previewMode, currentId, data?.type]);
+  }, [previewMode, currentId, data?.type, unifySeasonsEnabled]);
 
   // When "Unificar temporadas" is on, combine the chain's own episodes in
   // watch order. A movie/single-episode special contributes one display-only
@@ -508,7 +650,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     if (previewMode || !currentId || data?.type !== 'anime') return;
     let cancelled = false;
 
-    const canUnifySeasonChain = isUnifySeasonsEnabled()
+    const canUnifySeasonChain = unifySeasonsEnabled
       && animeSeasonChain.length > 1
       && animeSeasonChain.every(entry => entry.mediaType === 'anime' || entry.mediaType === 'series');
     if (!canUnifySeasonChain) {
@@ -556,7 +698,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     }).catch(() => {});
 
     return () => { cancelled = true; };
-  }, [previewMode, currentId, data?.type, animeSeasonChain]);
+  }, [previewMode, currentId, data?.type, animeSeasonChain, unifySeasonsEnabled]);
+
+  useEffect(() => {
+    if (previewMode || data?.type !== 'event' || !currentId) {
+      setMatches([]);
+      return;
+    }
+    let cancelled = false;
+    setMatches([]);
+    fetchApiSportsSeasonMatches(currentId)
+      .then(rows => { if (!cancelled) setMatches(rows); })
+      .catch(() => { if (!cancelled) setMatches([]); });
+    return () => { cancelled = true; };
+  }, [previewMode, currentId, data?.type]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1152,7 +1307,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       // refreshes one that's already had episodes fetched but has since
       // aired new ones, which a plain revisit wouldn't do on its own.
       const shouldUnifyAnime = fresh?.type === 'anime'
-        && isUnifySeasonsEnabled()
+        && unifySeasonsEnabled
         && animeSeasonChain.length > 1
         && currentId === animeSeasonChain[0].externalId;
       const episodeRefresh = shouldUnifyAnime
@@ -1167,7 +1322,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         }).catch(console.error);
       }
     }).finally(() => setRetryingSync(false));
-  }, [currentId, retryingSync]);
+  }, [currentId, retryingSync, unifySeasonsEnabled]);
 
   // Closing without saving: roll back any optimistic quick-click draft to
   // the last confirmed DB state, so a re-open (or the hero widget) doesn't
@@ -1185,6 +1340,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   // nothing. saveLibraryEntry writes the same merged draft updateLocal
   // already builds, so no other field on the entry is touched.
   const handleStatusChange = useCallback(async (next: string) => {
+    if (isEventCompetition && unifySeasonsEnabled) {
+      try {
+        await saveEventSeasonUpdates({ status: next || null });
+      } catch (e) {
+        console.error('Failed to save event season status:', e);
+      }
+      return;
+    }
     const draft = updateLocal({ status: next || null });
     try {
       const saved = await saveLibraryEntry(draft);
@@ -1193,11 +1356,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       console.error('Failed to save status:', e);
       rollback();
     }
-  }, [updateLocal, applySaved, rollback]);
+  }, [isEventCompetition, unifySeasonsEnabled, saveEventSeasonUpdates, updateLocal, applySaved, rollback]);
 
   const handleRate = useCallback(async (stars: number) => {
     const dbRating = stars * 2;
-    const nextRating = libRating === dbRating ? 0 : dbRating;
+    const currentRating = isEventCompetition && unifySeasonsEnabled ? eventAggregateRating : libRating;
+    const nextRating = currentRating === dbRating ? 0 : dbRating;
+    if (isEventCompetition && unifySeasonsEnabled) {
+      try {
+        await saveEventSeasonUpdates({ rating: nextRating || null });
+      } catch (e) {
+        console.error('Failed to save event season rating:', e);
+      }
+      return;
+    }
     const draft = updateLocal({ rating: nextRating || null });
     try {
       const saved = await saveLibraryEntry(draft);
@@ -1206,7 +1378,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       console.error('Failed to save rating:', e);
       rollback();
     }
-  }, [libRating, updateLocal, applySaved, rollback]);
+  }, [isEventCompetition, unifySeasonsEnabled, eventAggregateRating, libRating, saveEventSeasonUpdates, updateLocal, applySaved, rollback]);
 
   // Cover heart — same quick-edit pattern as handleStatusChange/handleRate,
   // but favorite is the one field MediaEditorModal persists in two places at
@@ -1245,6 +1417,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   // from being logged separately. Expansions are allowed as independent entries
   // since they're typically sold and played separately (e.g., RE4 Separate Ways).
   const isBlockedEdition = !!data.parentGame && data.format !== 'EXPANSION';
+  // API-Sports competitions have their own base entry and child season pages.
+  // Each season keeps its own matches and progress entry.
   // A bundle (e.g. "The Great Ace Attorney Chronicles") isn't a playable
   // title on its own — its contained works are — so it gets the same
   // "can't be logged/edited here" treatment as a blocked edition, just with
@@ -1275,7 +1449,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const sagaUsesOnlySeasonMedia = animeSeasonChain.length <= 1 || animeSeasonChain.every(
     entry => entry.mediaType === 'anime' || entry.mediaType === 'series',
   );
-  const showsSeasonsTab = data.type === 'anime' && isUnifySeasonsEnabled() && sagaUsesOnlySeasonMedia;
+  const showsSeasonsTab = data.type === 'anime' && unifySeasonsEnabled && sagaUsesOnlySeasonMedia;
   const isFirstSeasonInChain = !showsSeasonsTab || animeSeasonChain.length <= 1 || currentId === animeSeasonChain[0].externalId;
   const relatedRelations = showsSeasonsTab
     ? relatedRelationsRaw.filter(r => r.relationType !== 'PREQUEL' && r.relationType !== 'SEQUEL')
@@ -1283,10 +1457,16 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
   const hasEpisodes             = isFirstSeasonInChain && episodes.length > 0;
+  const hasMatches              = data.type === 'event' && matches.length > 0;
   const hasThemes               = isFirstSeasonInChain && themes.length > 0;
   const tmdbSeasons             = data.type === 'series' ? (data.seasons ?? []) : [];
-  const hasSeasonsTab            = showsSeasonsTab ? animeSeasonChain.length > 1 : tmdbSeasons.length > 0;
-  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasSeasonsTab || hasThemes;
+  const eventSeasons            = isEventCompetition ? (data.seasons ?? []) : [];
+  const hasSeasonsTab            = showsSeasonsTab
+    ? animeSeasonChain.length > 1
+    : isEventCompetition
+    ? eventSeasons.length > 0
+    : tmdbSeasons.length > 0;
+  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasMatches || hasSeasonsTab || hasThemes;
   const visibleRelations = relationsTab === 'recommended'
     ? recommendedRelations
     : relationsTab === 'editions'
@@ -1658,7 +1838,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
             )}
             <div className="media-cover-frame">
             <div
-              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${isUneditable ? ' is-edition' : ''}${previewMode ? ' is-preview' : ''}`}
+              className={`media-cover-wrap${mediaInLibrary ? ' in-library' : ''}${isUneditable ? ' is-edition' : ''}${previewMode ? ' is-preview' : ''}`}
               role={previewMode ? undefined : 'button'}
               tabIndex={previewMode ? undefined : 0}
               aria-label={isBlockedEdition
@@ -1697,12 +1877,12 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
                   ) : (
                     <>
                       <span className="media-cover-overlay-icon">
-                        {inLibrary ? <IconCheck size={22} strokeWidth={2.5} /> : <IconPlus size={22} strokeWidth={2.5} />}
+                        {mediaInLibrary ? <IconCheck size={22} strokeWidth={2.5} /> : <IconPlus size={22} strokeWidth={2.5} />}
                       </span>
                       <span
                         className="media-cover-overlay-label"
                         dangerouslySetInnerHTML={{
-                          __html: (inLibrary ? tm.in_library : tm.add_to_library).replace('\n', '<br>'),
+                          __html: (mediaInLibrary ? tm.in_library : tm.add_to_library).replace('\n', '<br>'),
                         }}
                       />
                     </>
@@ -1743,13 +1923,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
             <div className="media-library-widget-box">
               <div className="media-library-row-horizontal">
                 <StatusDropdown
-                  status={libStatus}
+                  status={eventAggregateStatus}
                   progressStatus={data.progressStatus}
                   progressLabel={data.progressLabel}
                   onChange={handleStatusChange}
                   t={tm}
                 />
-                <StarRating rating={libRating} onRate={handleRate} />
+                <StarRating rating={eventAggregateRating} onRate={handleRate} />
               </div>
             </div>
             )}
@@ -1812,6 +1992,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
                 ...(hasRecommendedRelations ? [{ key: 'recommended', label: tm.relations.RECOMMENDATION, active: relationsTab === 'recommended', onClick: () => { setRelationsTab('recommended'); setRelationPage(1); } }] : []),
                 ...(hasSeasonsTab ? [{ key: 'seasons', label: tm.stat_seasons, active: relationsTab === 'seasons', onClick: () => { setRelationsTab('seasons'); setRelationPage(1); } }] : []),
                 ...(hasEpisodes ? [{ key: 'episodes', label: tm.stat_episodes, active: relationsTab === 'episodes', onClick: () => { setRelationsTab('episodes'); setRelationPage(1); } }] : []),
+                ...(hasMatches ? [{ key: 'matches', label: tm.stat_matches, active: relationsTab === 'matches', onClick: () => { setRelationsTab('matches'); setRelationPage(1); } }] : []),
                 ...(hasThemes ? [{ key: 'themes', label: tm.section_themes, active: relationsTab === 'themes', onClick: () => { setRelationsTab('themes'); setRelationPage(1); } }] : []),
               ] : []}
             />
@@ -1843,41 +2024,85 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
                 )}
               </>
             )
+          ) : relationsTab === 'matches' ? (
+            matches.length > 0 && (
+              <>
+                <div className="media-relations-grid">
+                  {matches
+                    .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
+                    .map(match => <MatchCard key={match.id} match={match} />)}
+                </div>
+                {matches.length > EPISODE_PAGE_SIZE && (
+                  <Pagination
+                    currentPage={relationPage}
+                    totalPages={Math.ceil(matches.length / EPISODE_PAGE_SIZE)}
+                    onChange={setRelationPage}
+                  />
+                )}
+              </>
+            )
           ) : relationsTab === 'seasons' ? (
             // Reuses RelationCard (cover + title + a small top label) for both
             // sources — an anime's own chain member gets "T{n}" (or "Estás
             // aquí" on whichever one is the page currently open, same label
             // SagaViewerModal already uses), a TMDB season gets its own
             // TMDB-provided poster instead of the series' main cover.
-            (showsSeasonsTab ? animeSeasonChain.length > 0 : tmdbSeasons.length > 0) && (
-              <div className="media-relations-grid">
-                {showsSeasonsTab
-                  ? animeSeasonChain.map((entry, i) => (
-                      <RelationCard
-                        key={entry.externalId}
-                        relation={{
-                          url: `/media?id=${encodeURIComponent(entry.externalId)}`,
-                          cover: entry.cover,
-                          typeLabel: `${tm.stat_season} ${i + 1}`,
-                          // The badge above already says which season this
-                          // is — stripSeasonSuffix hides "2nd Season"/"The
-                          // Final Season" wording from the title itself
-                          // instead of showing it twice.
-                          title: stripSeasonSuffix(entry.title),
-                        }}
-                      />
-                    ))
-                  : tmdbSeasons.map(season => (
-                      <RelationCard
-                        key={season.seasonNumber}
-                        relation={{
-                          cover: season.coverUrl,
-                          typeLabel: `${tm.stat_season} ${season.seasonNumber}`,
-                          title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
-                        }}
-                      />
-                    ))}
-              </div>
+            (showsSeasonsTab ? animeSeasonChain.length > 0 : isEventCompetition ? eventSeasons.length > 0 : tmdbSeasons.length > 0) && (
+              isEventCompetition ? (
+                <>
+                  <div className="media-relations-grid">
+                    {eventSeasons
+                      .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
+                      .map(season => (
+                        <RelationCard
+                          key={season.externalId ?? season.seasonNumber}
+                          relation={{
+                            url: season.externalId ? `/media?id=${encodeURIComponent(season.externalId)}` : undefined,
+                            cover: season.coverUrl,
+                            typeLabel: tm.stat_season,
+                            title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
+                          }}
+                        />
+                      ))}
+                  </div>
+                  {eventSeasons.length > EPISODE_PAGE_SIZE && (
+                    <Pagination
+                      currentPage={relationPage}
+                      totalPages={Math.ceil(eventSeasons.length / EPISODE_PAGE_SIZE)}
+                      onChange={setRelationPage}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="media-relations-grid">
+                  {showsSeasonsTab
+                    ? animeSeasonChain.map((entry, i) => (
+                        <RelationCard
+                          key={entry.externalId}
+                          relation={{
+                            url: `/media?id=${encodeURIComponent(entry.externalId)}`,
+                            cover: entry.cover,
+                            typeLabel: `${tm.stat_season} ${i + 1}`,
+                            // The badge above already says which season this
+                            // is - stripSeasonSuffix hides "2nd Season"/"The
+                            // Final Season" wording from the title itself
+                            // instead of showing it twice.
+                            title: stripSeasonSuffix(entry.title),
+                          }}
+                        />
+                      ))
+                    : tmdbSeasons.map(season => (
+                        <RelationCard
+                          key={season.seasonNumber}
+                          relation={{
+                            cover: season.coverUrl,
+                            typeLabel: `${tm.stat_season} ${season.seasonNumber}`,
+                            title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
+                          }}
+                        />
+                      ))}
+                </div>
+              )
             )
           ) : relationsTab === 'episodes' ? (
             episodes.length > 0 && (() => {

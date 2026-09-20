@@ -28,6 +28,8 @@ import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mappe
 import { getCoverPreference, setCoverPreference } from '../../lib/media/cover-preferences';
 import { igdbGetLocalizedCovers } from '../../lib/tauri/igdb';
 import { toLargeCover } from '../../lib/shared/small-cover';
+import { fetchApiSportsSeasonMatches } from '../../lib/search/providers/apisports';
+import { getApiSportsEventMatches } from '../../lib/tauri/misc-commands';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,6 +73,7 @@ function getProgressConfig(type: string, format: string | undefined, tm: Transla
   // book's progress fell through to the generic label below and its
   // total (page count) was never wired up at all.
   else if (type === 'book')                            label = tm.progress_pages;
+  else if (type === 'event')                           label = tm.stat_matches;
   else                                                 label = tm.editor.progress;
 
   // A movie is a single sitting, not a run of seasons — even though it's
@@ -79,6 +82,7 @@ function getProgressConfig(type: string, format: string | undefined, tm: Transla
   const label2 =
     isMovie ? null :
     base === 'anime' || base === 'series'      ? tm.progress_seasons :
+    base === 'event'                           ? tm.progress_seasons :
     base === 'manga' || base === 'lnovel'      ? tm.progress_volumes : null;
 
   const step = base === 'game' || base === 'vnovel' ? 0.5 : 1;
@@ -416,8 +420,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   );
   const isUnifiedAnime = data.type === 'anime' && isUnifySeasonsEnabled()
     && animeSeasonChain.length > 1 && sagaUsesOnlySeasonMedia;
+  const isUnifiedEvent = data.type === 'event'
+    && isUnifySeasonsEnabled()
+    && /^event:apisports:(football|basketball):\d+$/.test(externalId)
+    && (data.seasons?.length ?? 0) > 0;
+  const eventSeasons = isUnifiedEvent ? data.seasons ?? [] : [];
   const GENERAL_LOG_ID = isUnifiedAnime && animeSeasonChain[0] ? `general:${animeSeasonChain[0].externalId}` : '';
-  const isGeneralTab = isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID;
+  const isGeneralTab = (isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID)
+    || (isUnifiedEvent && entry.activeLogId === externalId);
 
   // A standalone movie (or a one-unit work) has one viewing date. The
   // synthetic general tab of a unified season chain is different: it
@@ -480,6 +490,53 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     });
     return () => { cancelled = true; };
   }, [animeSeasonChain]);
+
+  // API-Sports competitions use a distinct catalog entry as their general
+  // page, while each season has its own real entry and its own match list.
+  // Load those season logs into the same editor session so the general tab
+  // can aggregate progress/status/ratings without merging the match entries.
+  useEffect(() => {
+    if (!isUnifiedEvent) return;
+    let cancelled = false;
+    const seasons = data.seasons ?? [];
+    Promise.all(seasons.map(async season => {
+      const id = season.externalId;
+      if (!id) return null;
+      const [lib, cat, matchCache] = await Promise.all([
+        getLibraryEntry(id).catch(() => null),
+        getCatalogEntry(id).catch(() => null),
+        getApiSportsEventMatches(id).catch(() => ({ syncedAt: null, matches: [] })),
+      ]);
+      const matchCount = matchCache.syncedAt
+        ? matchCache.matches.length
+        : cat?.total_count && cat.total_count > 0
+          ? cat.total_count
+          : (await fetchApiSportsSeasonMatches(id).catch(() => [])).length;
+      return {
+        id,
+        title: cat?.title_main || season.name || id,
+        cover: cat?.cover_url || season.coverUrl || undefined,
+        totalCount: matchCount,
+        lib,
+      };
+    })).then(results => {
+      if (cancelled) return;
+      const meta: Record<string, { title: string; cover?: string; totalCount?: number | null }> = {};
+      for (const result of results) {
+        if (!result) continue;
+        meta[result.id] = { title: result.title, cover: result.cover, totalCount: result.totalCount };
+        dispatchEntry({
+          type: 'LOAD_LOG',
+          id: result.id,
+          entry: result.lib ?? createEmptyVersionEntry(result.id, 'event'),
+        });
+      }
+      setSeasonMetaMap(meta);
+    }).catch(() => {
+      if (!cancelled) setSeasonMetaMap({});
+    });
+    return () => { cancelled = true; };
+  }, [isUnifiedEvent, data.seasons]);
 
   // Same "Unificar temporadas" toggle, for TMDB series — but unlike anime,
   // a series' own base entry already covers "the whole show" exactly like
@@ -1012,6 +1069,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return seriesSeasons.find(s => seriesSeasonExternalId(externalId, s.seasonNumber) === entry.activeLogId);
   }, [isUnifiedSeries, seriesSeasons, externalId, entry.activeLogId]);
 
+  const activeEventSeasonInfo = useMemo(() => {
+    if (!isUnifiedEvent) return undefined;
+    return eventSeasons.find(season => season.externalId === entry.activeLogId);
+  }, [isUnifiedEvent, eventSeasons, entry.activeLogId]);
+
   // Same "which season (if any) is the active tab" lookup as
   // activeSeriesSeasonInfo above, for anime's own unified season tabs —
   // animeSeasonChain's own SagaEntry already carries its own year/month/day
@@ -1047,23 +1109,36 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       const d = new Date(activeSeriesSeasonInfo.airDate);
       return !isNaN(d.getTime()) && d.getTime() > Date.now();
     }
+    if (activeEventSeasonInfo?.airDate) {
+      const d = new Date(activeEventSeasonInfo.airDate);
+      return !isNaN(d.getTime()) && d.getTime() > Date.now();
+    }
     return data.status === 'NOT_YET_RELEASED' || isFutureDate(data.releaseYear, data.releaseMonth, data.releaseDay);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeAnimeSeasonEntry, activeSeriesSeasonInfo, data.status, data.releaseYear, data.releaseMonth, data.releaseDay]);
+  }, [activeAnimeSeasonEntry, activeSeriesSeasonInfo, activeEventSeasonInfo, data.status, data.releaseYear, data.releaseMonth, data.releaseDay]);
 
   const generalBaseTitle = useMemo(() => {
+    if (isUnifiedEvent) return data.titleMain;
     return stripSeasonSuffix(animeSeasonChain[0]?.title || data.titleMain);
-  }, [animeSeasonChain, data.titleMain]);
+  }, [isUnifiedEvent, animeSeasonChain, data.titleMain]);
+
+  const unifiedSeasonIds = useMemo(() => {
+    if (isUnifiedAnime) return animeSeasonChain.map(season => season.externalId);
+    if (isUnifiedEvent) return eventSeasons.map(season => season.externalId).filter((id): id is string => !!id);
+    return [];
+  }, [isUnifiedAnime, isUnifiedEvent, animeSeasonChain, eventSeasons]);
 
   const generalTotalCount = useMemo(() => {
-    if (!isUnifiedAnime) return data.totalCount;
-    return animeSeasonChain.reduce((sum, s) => sum + (seasonMetaMap[s.externalId]?.totalCount ?? 0), 0);
-  }, [isUnifiedAnime, animeSeasonChain, seasonMetaMap, data.totalCount]);
+    if (!isUnifiedAnime && !isUnifiedEvent) return data.totalCount;
+    return unifiedSeasonIds.reduce((sum, id) => sum + (seasonMetaMap[id]?.totalCount ?? 0), 0);
+  }, [isUnifiedAnime, isUnifiedEvent, unifiedSeasonIds, seasonMetaMap, data.totalCount]);
 
   const generalProgress = useMemo(() => {
-    if (!isUnifiedAnime) return activeLog.progress;
-    return animeSeasonChain.reduce((sum, s) => sum + (entry.logs[s.externalId]?.progress ?? 0), 0);
-  }, [isUnifiedAnime, animeSeasonChain, entry.logs, activeLog.progress]);
+    if (!isUnifiedAnime && !isUnifiedEvent) return activeLog.progress;
+    const seasonsProgress = unifiedSeasonIds.reduce((sum, id) => sum + (entry.logs[id]?.progress ?? 0), 0);
+    const hasSeasonLogs = unifiedSeasonIds.some(id => !!entry.logs[id]);
+    return seasonsProgress || (isUnifiedEvent && !hasSeasonLogs ? entry.logs[externalId]?.progress ?? 0 : 0);
+  }, [isUnifiedAnime, isUnifiedEvent, unifiedSeasonIds, entry.logs, activeLog.progress, externalId]);
 
   // The general tab's own "seasons watched" count — auto-derived from how
   // many chain members are actually marked completed, same read-only
@@ -1072,12 +1147,12 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // (data.totalCount_2 stays empty for anime), so animeSeasonChain.length
   // is the real total here instead.
   const generalSeasonsCompleted = useMemo(() => {
-    if (!isUnifiedAnime) return 0;
-    return animeSeasonChain.filter(s => entry.logs[s.externalId]?.status === 'completed').length;
-  }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
+    if (!isUnifiedAnime && !isUnifiedEvent) return 0;
+    return unifiedSeasonIds.filter(id => entry.logs[id]?.status === 'completed').length;
+  }, [isUnifiedAnime, isUnifiedEvent, unifiedSeasonIds, entry.logs]);
 
   const activeTotalCount = useMemo(() => {
-    if (isUnifiedAnime) {
+    if (isUnifiedAnime || isUnifiedEvent) {
       if (isGeneralTab) return (generalTotalCount ?? 0) > 0 ? generalTotalCount : null;
       return seasonMetaMap[entry.activeLogId]?.totalCount ?? null;
     }
@@ -1086,7 +1161,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     // episodeCount instead.
     if (activeSeriesSeasonInfo) return activeSeriesSeasonInfo.episodeCount ?? null;
     return data.totalCount;
-  }, [isUnifiedAnime, isGeneralTab, generalTotalCount, seasonMetaMap, entry.activeLogId, data.totalCount, activeSeriesSeasonInfo]);
+  }, [isUnifiedAnime, isUnifiedEvent, isGeneralTab, generalTotalCount, seasonMetaMap, entry.activeLogId, data.totalCount, activeSeriesSeasonInfo]);
 
   const generalStartDate = useMemo(() => {
     if (!isUnifiedAnime) return '';
@@ -1106,20 +1181,26 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
 
   const generalAverageRating = useMemo(() => {
-    const ratings = animeSeasonChain
-      .map(s => entry.logs[s.externalId]?.rating)
+    const ratings = unifiedSeasonIds
+      .map(id => entry.logs[id]?.rating)
       .filter((r): r is number => typeof r === 'number' && r > 0);
-    if (ratings.length === 0) return 0;
+    if (ratings.length === 0) {
+      const hasSeasonLogs = unifiedSeasonIds.some(id => !!entry.logs[id]);
+      return isUnifiedEvent && !hasSeasonLogs ? entry.logs[externalId]?.rating ?? 0 : 0;
+    }
     return ratings.reduce((a, b) => a + b, 0) / ratings.length;
-  }, [animeSeasonChain, entry.logs]);
+  }, [isUnifiedEvent, externalId, unifiedSeasonIds, entry.logs]);
 
   const generalAverageRating2 = useMemo(() => {
-    const ratings = animeSeasonChain
-      .map(s => entry.logs[s.externalId]?.rating2)
+    const ratings = unifiedSeasonIds
+      .map(id => entry.logs[id]?.rating2)
       .filter((r): r is number => typeof r === 'number' && r > 0);
-    if (ratings.length === 0) return 0;
+    if (ratings.length === 0) {
+      const hasSeasonLogs = unifiedSeasonIds.some(id => !!entry.logs[id]);
+      return isUnifiedEvent && !hasSeasonLogs ? entry.logs[externalId]?.rating2 ?? 0 : 0;
+    }
     return ratings.reduce((a, b) => a + b, 0) / ratings.length;
-  }, [animeSeasonChain, entry.logs]);
+  }, [isUnifiedEvent, externalId, unifiedSeasonIds, entry.logs]);
 
   // Auto-derived, never persisted onto any single season's own row — a
   // season's real status stays whatever the user actually set it to (you may
@@ -1129,9 +1210,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // handler below), because "I finished the whole thing" really does mean
   // every season is done.
   const generalStatus = useMemo(() => {
-    if (!isUnifiedAnime) return '';
-    return pickAggregateStatus(animeSeasonChain.map(s => entry.logs[s.externalId]?.status));
-  }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
+    if (!isUnifiedAnime && !isUnifiedEvent) return '';
+    const aggregate = pickAggregateStatus(unifiedSeasonIds.map(id => entry.logs[id]?.status));
+    if (aggregate || !isUnifiedEvent || unifiedSeasonIds.some(id => !!entry.logs[id])) return aggregate;
+    return entry.logs[externalId]?.status ?? '';
+  }, [isUnifiedAnime, isUnifiedEvent, unifiedSeasonIds, entry.logs, externalId]);
 
   // Header cover/title/year follow whichever log tab is active - the base game's
   // own title/cover, the current version's, or another linked edition's.
@@ -1167,11 +1250,19 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         year: data.parentGame ? data.releaseYear : (baseRelation?.releaseYear ?? data.releaseYear),
       };
     }
+    if (activeEventSeasonInfo) {
+      const meta = seasonMetaMap[entry.activeLogId];
+      return {
+        title: meta?.title || activeEventSeasonInfo.name || data.titleMain,
+        cover: meta?.cover || activeEventSeasonInfo.coverUrl || data.cover,
+        year: activeEventSeasonInfo.airDate ? new Date(activeEventSeasonInfo.airDate).getFullYear() : data.releaseYear,
+      };
+    }
     const found = allAvailableEditions.find(ed => ed.externalId === entry.activeLogId);
     return found
       ? { title: found.label, cover: preferredCover || found.cover, year: data.releaseYear }
       : { title: data.titleMain, cover: preferredCover || data.cover, year: data.releaseYear };
-  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, baseRelation, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo, coverCandidates, coverPreferenceId]);
+  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, baseRelation, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo, activeEventSeasonInfo, coverCandidates, coverPreferenceId]);
 
   const hasCoverCandidates = coverCandidates.length > 1 && (
     data.type === 'game' || coverCandidates.some(c => c.blocked)
@@ -1272,7 +1363,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       type="button"
                       className={`me-header-status-icon${(isGeneralTab ? generalStatus : activeLog.status) === value ? ' active' : ''}`}
                       // The general tab's status is always the auto-derived
-                      // aggregate (see generalStatus) — every button except
+                      // aggregate (see generalStatus) - every button except
                       // "completed" is inert there, since only "I finished
                       // the whole thing" is a real bulk action; the other
                       // four states already come from whichever season
@@ -1287,11 +1378,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         if (isGeneralTab) {
                           if (value !== 'completed') return;
                           const updatesById: Record<string, Partial<LogState>> = {};
-                          for (const s of animeSeasonChain) {
-                            const seasonTotal = seasonMetaMap[s.externalId]?.totalCount;
+                          for (const id of unifiedSeasonIds) {
+                            const seasonTotal = seasonMetaMap[id]?.totalCount;
                             const su: Partial<LogState> = { status: 'completed' };
                             if (seasonTotal && seasonTotal > 0) su.progress = seasonTotal;
-                            updatesById[s.externalId] = su;
+                            updatesById[id] = su;
                           }
                           dispatchEntry({ type: 'UPDATE_LOGS_BULK', updatesById });
                           return;
@@ -1361,23 +1452,21 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         }
                       }} />
                     )}
-                    {/* Anime's general tab shows the chain's own season
-                        count here instead of data.totalCount_2 (AniList has
-                        no such field), auto-equal to however many seasons
-                        are actually marked completed — same read-only
-                        aggregate treatment as episodes/status above. Never
-                        shown while rating one specific series season: "how
-                        many seasons" makes no sense from inside just one of
-                        them, only from the series' own general entry. */}
+                    {/* Unified anime/event general tabs show how many of the
+                        available seasons are completed. For Events this is
+                        the competition's season count; match progress stays
+                        independent and is aggregated from each season. */}
                     {label2 && !activeSeriesSeasonInfo && (
                       isGeneralTab
-                        ? animeSeasonChain.length > 0
+                        ? (isUnifiedEvent ? eventSeasons.length : animeSeasonChain.length) > 0
                         : (data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0)
                     ) && (
                       <NumberField label={label2}
                         value={isGeneralTab ? generalSeasonsCompleted : activeLog.progressCount2}
                         step={1}
-                        max={isGeneralTab ? animeSeasonChain.length : (data.totalCount_2 ?? undefined)}
+                        max={isGeneralTab
+                          ? (isUnifiedEvent ? eventSeasons.length : animeSeasonChain.length)
+                          : (data.totalCount_2 ?? undefined)}
                         disabled={isGeneralTab}
                         onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progressCount2: v } })} />
                     )}
@@ -1390,11 +1479,25 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     primary rating. */}
                 <HeaderField label={ratingLabel}>
                   {isSecondaryRating ? (
-                    <RatingInput rating={isGeneralTab ? (activeLog.rating2 > 0 ? activeLog.rating2 : generalAverageRating2) : activeLog.rating2} system={rating2System} min={rating2Min} max={rating2Max}
-                      onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating2: v } })} />
+                    <RatingInput rating={isGeneralTab ? (isUnifiedEvent ? generalAverageRating2 : activeLog.rating2 > 0 ? activeLog.rating2 : generalAverageRating2) : activeLog.rating2} system={rating2System} min={rating2Min} max={rating2Max}
+                      onChange={v => {
+                        if (isUnifiedEvent && isGeneralTab) {
+                          const updatesById = Object.fromEntries(unifiedSeasonIds.map(id => [id, { rating2: v }])) as Record<string, Partial<LogState>>;
+                          dispatchEntry({ type: 'UPDATE_LOGS_BULK', updatesById });
+                        } else {
+                          dispatchEntry({ type: 'UPDATE_LOG', updates: { rating2: v } });
+                        }
+                      }} />
                   ) : (
-                    <RatingInput rating={isGeneralTab ? (activeLog.rating > 0 ? activeLog.rating : generalAverageRating) : activeLog.rating}
-                      onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating: v } })} />
+                    <RatingInput rating={isGeneralTab ? (isUnifiedEvent ? generalAverageRating : activeLog.rating > 0 ? activeLog.rating : generalAverageRating) : activeLog.rating}
+                      onChange={v => {
+                        if (isUnifiedEvent && isGeneralTab) {
+                          const updatesById = Object.fromEntries(unifiedSeasonIds.map(id => [id, { rating: v }])) as Record<string, Partial<LogState>>;
+                          dispatchEntry({ type: 'UPDATE_LOGS_BULK', updatesById });
+                        } else {
+                          dispatchEntry({ type: 'UPDATE_LOG', updates: { rating: v } });
+                        }
+                      }} />
                   )}
                 </HeaderField>
 
@@ -1488,7 +1591,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           </div>
         </div>
 
-        {(isUnifiedAnime || isUnifiedSeries || data.parentGame || allAvailableEditions.length > 0) && (
+        {(isUnifiedAnime || isUnifiedEvent || isUnifiedSeries || data.parentGame || allAvailableEditions.length > 0) && (
           <div className="me-versions-tabs">
             {isUnifiedAnime ? (
               <>
@@ -1516,6 +1619,40 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                           dispatchEntry({ type: 'LOAD_LOG', id: seasonEntry.externalId, entry: createEmptyVersionEntry(seasonEntry.externalId, 'anime') });
                         }
                         dispatchEntry({ type: 'SWITCH_LOG', id: seasonEntry.externalId });
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </>
+            ) : isUnifiedEvent ? (
+              <>
+                <button
+                  type="button"
+                  className={`me-version-tab-btn${entry.activeLogId === externalId ? ' active' : ''}`}
+                  title={data.titleMain}
+                  onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: externalId })}
+                >
+                  {data.titleMain}
+                </button>
+                <span className="me-version-tab-separator">|</span>
+                {eventSeasons.map((season, index) => {
+                  const seasonId = season.externalId;
+                  if (!seasonId) return null;
+                  const isActive = entry.activeLogId === seasonId;
+                  const label = season.name || `T${eventSeasons.length - index}`;
+                  return (
+                    <button
+                      key={seasonId}
+                      type="button"
+                      className={`me-version-tab-btn${isActive ? ' active' : ''}`}
+                      title={label}
+                      onClick={() => {
+                        if (!entry.logs[seasonId]) {
+                          dispatchEntry({ type: 'LOAD_LOG', id: seasonId, entry: createEmptyVersionEntry(seasonId, 'event') });
+                        }
+                        dispatchEntry({ type: 'SWITCH_LOG', id: seasonId });
                       }}
                     >
                       {label}

@@ -30,6 +30,7 @@ export async function isLocalMediaItemPlayable(
   rootPath: string,
   rootEntries: LocalFolderEntry[],
 ): Promise<boolean> {
+  if (item.libraryEntry.type === 'event') return false;
   if (!isInProgressStatus(item.status)) return false;
 
   const candidateTitles = [item.title, item.titleRomaji, item.titleNative].filter((value): value is string => !!value);

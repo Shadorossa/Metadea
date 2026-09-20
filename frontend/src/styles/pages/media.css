@@ -1493,6 +1493,29 @@
   box-shadow: none;
 }
 
+.media-match-card .media-relation-card-content {
+  align-items: flex-end;
+}
+
+.media-match-card .media-relation-info {
+  gap: 0.2rem;
+}
+
+.media-match-score {
+  color: var(--accent, #c084fc);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.media-match-venue {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .media-relation-card--added,
 .media-relation-card--added:hover,
 .media-relation-card--added.media-relation-card--static:hover {
@@ -2387,6 +2410,13 @@
   color: var(--text-muted);
   white-space: nowrap;
   order: 2;
+}
+
+.media-source-link-text {
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
 }
 
 .me-header-field--hours .me-header-field-row {

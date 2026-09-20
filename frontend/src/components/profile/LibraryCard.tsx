@@ -49,7 +49,7 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, catalogMap, p, readOnly, ratingSlot = 'rating', showResumeAction, playableResumeIds }: {
+export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, mediaExternalId, catalogMap, p, readOnly, ratingSlot = 'rating', showResumeAction, playableResumeIds }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
@@ -57,11 +57,14 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   titleOverride?: string;
   /** Saga-chain merge (see refineSagaGroups) — aggregate stats without swapping the cover. */
   aggregateStats?: boolean;
-  /** "Unificar temporadas" cards (unifyAnimeSeasons) — the card is still an
+  /** "Unificar temporadas" cards (unifyAnimeSeasons) - the card is still an
    *  aggregate (averaged rating, unified status) but should read as one
    *  clean card, not as an N-items stack: no "+N" badge, no stacked-shadow
    *  look, no hover flyout revealing the merged seasons underneath. */
   hideGroupingUi?: boolean;
+  /** Unified event leagues retain individual season logs, while the card
+   *  opens the competition container where those seasons can be explored. */
+  mediaExternalId?: string;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: ReturnType<typeof getT>['profile'];
   /** Someone else's profile (LibrarySection, fed via UserProfileView) — `item` is a synthesized
@@ -85,7 +88,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   // trailing "2nd Season"/"The Final Season" from whichever season happened
   // to become the representative would misleadingly label the fused card.
   const title = hideGroupingUi ? stripSeasonSuffix(rawTitle) : rawTitle;
-  const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
+  const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? mediaExternalId ?? item.external_id)}`;
   const badges = tagBadges(item.tags);
   const orderedGrouped = useMemo(() =>
     [...grouped].sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? '')),
@@ -243,7 +246,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   };
 
   const openEditor = () => {
-    if (bundleMeta || readOnly) {
+    if (bundleMeta || mediaExternalId || readOnly) {
       // A bundle has no library log of its own, and read-only (someone
       // else's profile) has no local log to open — go to the media page.
       window.location.href = mediaUrl;
