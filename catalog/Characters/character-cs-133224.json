@@ -1,0 +1,95 @@
+{
+  "character": {
+    "external_id": "character:cs:133224",
+    "name": "Maria",
+    "biography": "<b>Full Name::</b> Maria<br>\n<b>Gender::</b> Female<br>\n<b>Age::</b> 25<br>\n<b>Occupation::</b> Dancer at Heaven's Night<br>\n<b>Status::</b> Determinant<br>\n<b>Affiliations::</b> James Sunderland<br>\n<b>Debut::</b> <i>Silent Hill 2</i><br>\n<br>\n<p>This article requires cleanup to meet quality standards. Please help Silent Hill Wiki by improving this article if you can.</p>\n<p>Maria is a major character and arguably the primary antagonist of Silent Hill 2, while she serves as the protagonist of Silent Hill 2: Born from a Wish.</p>\n<p>In Silent Hill 2: Letter from Silent Heaven, she meets James Sunderland in Rosewater Park in Silent Hill, Maine, and stays with him sporadically after that. James must protect her, as Maria does not have any weapons to defend herself with, and it is game over if she dies.</p>\n<p>In Silent Hill 2: Born from a Wish, Maria is the playable character on a mission to find someone else in the cursed town. She meets an apparent agoraphobe named Ernest Baldwin and helps him look for an item.</p>\n<p>Maria is a young woman with shoulder-length blonde hair and blue eyes. Her hair has some pink dyed tips at the ends. She wears pink eyeshadow, seems to wear magenta lipstick, and pink nail polish. She wears a dark red cardigan, a leopard print pink skirt, and knee-high dark boots that have red soles. She has a pink leopard print choker with a coin on it which matches her skirt, and she also has some coins around her waist. She has a tattoo of a pink butterfly on her mid-riff.</p>\n<p>Maria is a manifestation, mental construct, or figment of James's seemingly delusional imagination. She was produced by James's delusions as a result of his inability to bear the weight of the crime of killing his wife, Mary Shepherd-Sunderland. Similar to a dream character, she is seen defying death and questions James's perceptions of whether or not her death actually occurred.</p>\n<p>In Born from a Wish, if Maria examines a teddy bear, she comments that Laura would love it, suggesting she has Mary's memories or some part of Mary within her. Maria then wonders, \"Laura...? Who am I talking about?\" Considering her uncertainty, however, it is likely that these memories are blotchy.</p>\n<p>She is physically virtually identical to James's late wife Mary. Physically, Mary and Maria have the same face and voice according to James, but their \"hair and clothes are different\" – James is shocked by their eerie resemblance, initially mistaking Maria for his deceased wife. However, Maria's personality is more sexually extroverted than Mary's, which is reflected in her apparel. Despite this, both Maria and Mary are seen wearing long-sleeved shirts, skirts and necklaces. Maria's necklace, however, is a choker which have been known to have a sexual connotation. Both of their hair partings are on the same side.</p>",
+    "image_url": "https://static.wikia.nocookie.net/silent/images/2/2d/Maria_SH_2.png/revision/latest?cb=20181009144357"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:481",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:222341",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "va:Monica Taylor Horgan",
+      "name": "Monica Taylor Horgan",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a95269",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Amy O’ Grady",
+      "name": "Amy O’ Grady",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Salóme Gunnarsdóttir (SH2)",
+      "name": "Salóme Gunnarsdóttir (SH2)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Shizuka Itō (SH2)",
+      "name": "Shizuka Itō (SH2)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Monica Taylor Horgan",
+      "name": "Monica Taylor Horgan",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a95269",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "va:Amy O’ Grady",
+      "name": "Amy O’ Grady",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "va:Salóme Gunnarsdóttir (SH2)",
+      "name": "Salóme Gunnarsdóttir (SH2)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "va:Shizuka Itō (SH2)",
+      "name": "Shizuka Itō (SH2)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    }
+  ]
+}
