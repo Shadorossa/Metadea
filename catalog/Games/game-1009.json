@@ -47,11 +47,28 @@
       "relation_type": "REL_ADAPTATION",
       "type_label": "Adaptation",
       "title": "The Last of Us",
-      "cover": "https://image.tmdb.org/t/p/w300/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg",
+      "cover": "https://image.tmdb.org/t/p/w780/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg",
       "media_external_id": "game:1009"
     }
   ],
-  "characters": [],
+  "characters": [
+    {
+      "external_id": "character:cs:79000",
+      "name": "Ellie Williams",
+      "image_url": "https://static.wikia.nocookie.net/thelastofus/images/3/34/Part_II_Ellie_infobox.png/revision/latest?cb=20250711183842",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:cs:522822",
+      "name": "Joel Miller",
+      "image_url": "https://static.wikia.nocookie.net/thelastofus/images/a/af/Part_II_Joel_infobox.png/revision/latest?cb=20230215221156",
+      "relation_type": "MAIN",
+      "character_name": null
+    }
+  ],
   "media_authors": [],
+  "saga_name": "The Last of Us",
   "story_arcs": []
 }
