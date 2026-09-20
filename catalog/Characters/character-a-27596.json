@@ -1,0 +1,116 @@
+{
+  "character": {
+    "external_id": "character:a:27596"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:72298",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:57642",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:41406",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:41405",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:5259",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132638",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132639",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132645",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132655",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132656",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:37138",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "lnovel:177036",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "manga:46844",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132709",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132689",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "manga:172566",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "manga:172567",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "manga:129960",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132708",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:60726",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:20783",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:132710",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:97403",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "manga:172037",
+      "relation_type": "MAIN"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "person:a136285",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a95131",
+      "role": "voice",
+      "language": "Japanese"
+    }
+  ]
+}
