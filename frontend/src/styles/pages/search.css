@@ -106,11 +106,25 @@
   color: var(--text-main) !important;
 }
 .search-tab:hover svg { opacity: 1 !important; }
+.search-tab:disabled {
+  color: var(--text-muted) !important;
+  opacity: 0.38 !important;
+  cursor: not-allowed !important;
+}
+.search-tab:disabled:hover {
+  color: var(--text-muted) !important;
+}
+.search-tab:disabled:hover svg { opacity: 0.7 !important; }
 .search-tab.active {
   color: var(--accent) !important;
   background: none !important;
 }
 .search-tab.active svg { opacity: 1 !important; }
+.search-tab:disabled.active {
+  color: var(--text-muted) !important;
+}
+.search-tab:disabled.active::after { display: none; }
+.search-tab:disabled.active svg { opacity: 0.7 !important; }
 
 /* Active indicator line under the tab */
 .search-tab.active::after {

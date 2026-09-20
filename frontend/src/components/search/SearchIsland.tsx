@@ -685,6 +685,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
               {MEDIA_TYPE_IDS.map(typeId => (
                 <button
                   key={typeId}
+                  type="button"
+                  disabled={typeId === 'event'}
                   onClick={() => handleMediaTypeChange(typeId)}
                   className={`search-tab${mediaType === typeId ? ' active' : ''}`}
                 >

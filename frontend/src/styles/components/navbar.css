@@ -167,8 +167,13 @@
   opacity: 1;
 }
 
-.nav-text-link:hover {
+.nav-text-link:not(.nav-text-link--disabled):hover {
   color: var(--accent);
+}
+
+.nav-text-link--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
 }
 
 .nav-text-link + .nav-text-link {

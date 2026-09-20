@@ -61,7 +61,11 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
         <svg class="nav-symbol nav-symbol--small" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-back" /></svg>
       </button>
       <div id="nav-center-default" class={`nav-center-text${activePage === 'local' || activePage === 'search' ? ' nav-hidden' : ''}`}>
-        {LIBRARY_TYPES.map(type => (
+        {LIBRARY_TYPES.map(type => type === 'event' ? (
+          <span class="nav-text-link nav-text-link--disabled" aria-disabled="true">
+            {typeLabels[type as keyof typeof typeLabels] ?? type}
+          </span>
+        ) : (
           <a href={`/profile?libtype=${type}#library`} class="nav-text-link">
             {typeLabels[type as keyof typeof typeLabels] ?? type}
           </a>
