@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "bc31ebe6963fd6c7bc31ebe6963fd6c7",
+    "external_id": "game:5503",
+    "type": "game",
+    "title_main": "Batman: Arkham Knight",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:5503",
+      "related_media_external_id": "game:501",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Batman: Arkham City",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1voh.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Arkham"
+}
