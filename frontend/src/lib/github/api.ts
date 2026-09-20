@@ -15,6 +15,12 @@ export interface GitHubPull {
   created_at: string;
 }
 
+export interface GitHubPullFile {
+  filename: string;
+  status: 'added' | 'modified' | 'removed' | 'renamed' | 'copied' | 'changed' | 'unchanged';
+  previous_filename?: string;
+}
+
 async function githubFetch<T>(token: string, path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`https://api.github.com${path}`, {
     ...init,
@@ -39,6 +45,21 @@ export async function listOpenProposalPulls(token: string): Promise<GitHubPull[]
     `/repos/${REPO_OWNER}/${REPO_NAME}/pulls?state=open&per_page=100`,
   );
   return pulls.filter(pr => pr.head.ref.startsWith('proposal-'));
+}
+
+// Returns every file changed by a PR. The REST endpoint is paginated even
+// when a proposal touches several catalog works, so continue until the last
+// (short) page instead of silently previewing only its primary JSON.
+export async function listPullRequestFiles(token: string, number: number): Promise<GitHubPullFile[]> {
+  const files: GitHubPullFile[] = [];
+  for (let page = 1; ; page += 1) {
+    const batch = await githubFetch<GitHubPullFile[]>(
+      token,
+      `/repos/${REPO_OWNER}/${REPO_NAME}/pulls/${number}/files?per_page=100&page=${page}`,
+    );
+    files.push(...batch);
+    if (batch.length < 100) return files;
+  }
 }
 
 // repoFullName defaults to the base repo — pass a PR's own head.repo.full_name

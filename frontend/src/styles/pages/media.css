@@ -1493,6 +1493,20 @@
   box-shadow: none;
 }
 
+.media-relation-card--added,
+.media-relation-card--added:hover,
+.media-relation-card--added.media-relation-card--static:hover {
+  border-color: #d8b44f;
+  box-shadow: inset 0 0 0 1px rgba(216, 180, 79, 0.35);
+}
+
+.media-relation-card--updated,
+.media-relation-card--updated:hover,
+.media-relation-card--updated.media-relation-card--static:hover {
+  border-color: #b477f2;
+  box-shadow: inset 0 0 0 1px rgba(180, 119, 242, 0.38);
+}
+
 .media-relation-card--static:hover .media-relation-bg-layer img {
   transform: translateZ(0);
   opacity: 0.08;

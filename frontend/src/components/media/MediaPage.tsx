@@ -122,12 +122,12 @@ async function fetchUnifiedAnimeEpisodes(chain: SagaEntry[], force = false): Pro
   });
 }
 
-const RelationCard = memo(function RelationCard({ relation }: { relation: any }) {
+const RelationCard = memo(function RelationCard({ relation, changeKind }: { relation: any; changeKind?: 'added' | 'updated' }) {
   const Wrapper = relation.url ? 'a' : 'div';
   return (
     <Wrapper
       href={relation.url}
-      className={`media-relation-card${relation.url ? '' : ' media-relation-card--static'}`}
+      className={`media-relation-card${relation.url ? '' : ' media-relation-card--static'}${changeKind ? ` media-relation-card--${changeKind}` : ''}`}
     >
       <div className="media-relation-bg-layer">
         {relation.cover && <img src={relation.cover} alt="" loading="lazy" />}
@@ -397,9 +397,12 @@ interface Props {
   // hides every write-triggering control (rating, status, edit/PR buttons).
   previewData?: MediaPageData;
   previewMode?: boolean;
+  /** Relation ids changed by the open proposal; only used in preview mode. */
+  previewAddedRelationIds?: string[];
+  previewUpdatedRelationIds?: string[];
 }
 
-export default function MediaPage({ i18n, previewData, previewMode = false }: Props) {
+export default function MediaPage({ i18n, previewData, previewMode = false, previewAddedRelationIds = [], previewUpdatedRelationIds = [] }: Props) {
   const t  = i18n;
   const tm = t.media;
 
@@ -1925,7 +1928,15 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 {visibleRelations
                   .slice((relationPage - 1) * pageSize, relationPage * pageSize)
                   .map((r, i) => (
-                    <RelationCard key={r.url ?? `${r.typeLabel}-${r.title}-${i}`} relation={r} />
+                    <RelationCard
+                      key={r.url ?? `${r.typeLabel}-${r.title}-${i}`}
+                      relation={r}
+                      changeKind={previewMode && r.relatedExternalId
+                        ? previewAddedRelationIds.includes(r.relatedExternalId)
+                          ? 'added'
+                          : previewUpdatedRelationIds.includes(r.relatedExternalId) ? 'updated' : undefined
+                        : undefined}
+                    />
                   ))}
               </div>
               {visibleRelations.length > pageSize && (
