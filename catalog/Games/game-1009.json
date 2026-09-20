@@ -29,7 +29,7 @@
     {
       "related_media_external_id": "game:11790",
       "relation_type": "STANDALONE",
-      "type_label": "Standalone Expansion",
+      "type_label": "Standalone",
       "title": "The Last of Us: Left Behind",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5xg8.jpg",
       "media_external_id": "game:1009"
@@ -40,10 +40,18 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "The Last of Us Part II",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ziw.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5ziw.jpg"
+    },
+    {
+      "related_media_external_id": "series:100088",
+      "relation_type": "REL_ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "The Last of Us",
+      "cover": "https://image.tmdb.org/t/p/w300/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg",
+      "media_external_id": "game:1009"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {}
+  "story_arcs": []
 }
