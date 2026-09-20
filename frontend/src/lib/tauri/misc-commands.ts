@@ -110,6 +110,54 @@ export async function deleteMediaEpisode(externalId: string, seasonNumber: numbe
   return tauriRun('delete_media_episode', { externalId, seasonNumber, episodeNumber });
 }
 
+// API-Sports competition structure and match results are persisted separately
+// from media_catalog, so event pages keep their season/match tabs offline.
+export interface ApiSportsEventSeasonRow {
+  externalId: string;
+  competitionExternalId: string;
+  seasonKey: string;
+  seasonNumber: number;
+  name: string;
+  coverUrl: string | null;
+  airDate: string | null;
+  isCurrent: boolean;
+  matchesSyncedAt: string | null;
+}
+
+export interface ApiSportsEventMatchRow {
+  id: string;
+  date: string | null;
+  time: string | null;
+  home: string | null;
+  away: string | null;
+  homeScore: string | null;
+  awayScore: string | null;
+  image: string | null;
+  venue: string | null;
+  status: string | null;
+}
+
+export interface ApiSportsEventMatchCache {
+  syncedAt: string | null;
+  matches: ApiSportsEventMatchRow[];
+}
+
+export async function getApiSportsEventSeasons(competitionExternalId: string): Promise<ApiSportsEventSeasonRow[]> {
+  return tauriCmd<ApiSportsEventSeasonRow[]>('get_api_sports_event_seasons', [], { competitionExternalId });
+}
+
+export async function saveApiSportsEventSeasons(seasons: ApiSportsEventSeasonRow[]): Promise<void> {
+  return tauriRun('save_api_sports_event_seasons', { seasons });
+}
+
+export async function getApiSportsEventMatches(seasonExternalId: string): Promise<ApiSportsEventMatchCache> {
+  return tauriCmd<ApiSportsEventMatchCache>('get_api_sports_event_matches', { syncedAt: null, matches: [] }, { seasonExternalId });
+}
+
+export async function saveApiSportsEventMatches(seasonExternalId: string, matches: ApiSportsEventMatchRow[]): Promise<void> {
+  return tauriRun('save_api_sports_event_matches', { seasonExternalId, matches });
+}
+
 // ── Anime openings/endings, animethemes.moe (media page's "Temas" tab) ──────
 
 export interface MediaTheme {

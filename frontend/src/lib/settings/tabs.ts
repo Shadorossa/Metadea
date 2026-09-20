@@ -25,6 +25,6 @@ export function initSettingsTabs() {
     // means the user doesn't have this configured yet — open its guide
     // straight away instead of making them hunt for the (?) button.
     const modal = document.getElementById(`${platform}-help-modal`) as HTMLElement | null;
-    if (modal) modal.style.display = 'flex';
+    if (modal) modal.classList.remove('hidden');
   }
 }

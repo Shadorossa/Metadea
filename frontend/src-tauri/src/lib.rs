@@ -21,6 +21,7 @@ mod community_sync;
 mod media_authors;
 mod media_catalog;
 mod media_episodes;
+mod media_events;
 mod media_relations;
 mod media_themes;
 mod platform_scanning;
@@ -179,6 +180,10 @@ pub fn run() {
             media_episodes::save_media_episodes,
             media_episodes::delete_all_media_episodes,
             media_episodes::delete_media_episode,
+            media_events::get_api_sports_event_seasons,
+            media_events::save_api_sports_event_seasons,
+            media_events::get_api_sports_event_matches,
+            media_events::save_api_sports_event_matches,
             media_themes::get_media_themes,
             media_themes::save_media_themes,
             media_themes::save_theme_preview_frame,

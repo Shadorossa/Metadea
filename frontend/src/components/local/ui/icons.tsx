@@ -1,7 +1,7 @@
 import {
   Monitor, Folder, File as FileIcon, RefreshCw, Download, Plus, X, SquarePen, Eye, ExternalLink, Trash2,
   LayoutGrid, BookOpen, Bookmark, Gamepad2, MessageSquare, Film, MonitorPlay, Book, BookImage, User, IdCard,
-  CirclePlay, CircleCheckBig, CirclePause, CircleX, Check, CircleAlert, Layers, Heart, Award, Hourglass, Play, Pause,
+  CirclePlay, CircleCheckBig, CirclePause, CircleX, Check, CircleAlert, Layers, Heart, Award, Hourglass, Play, Pause, CalendarDays,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
@@ -131,6 +131,10 @@ export function IconBook(p: SvgProps) {
 
 export function IconComic(p: SvgProps) {
   return <BookImage {...p} />;
+}
+
+export function IconEvent(p: SvgProps) {
+  return <CalendarDays {...p} />;
 }
 
 export function IconCharacter(p: SvgProps) {

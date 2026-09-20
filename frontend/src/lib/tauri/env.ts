@@ -9,6 +9,7 @@ export interface EnvConfig {
   tmdb_api_key?:       string;
   anilist_client_id?:  string;
   comicvine_api_key?:  string;
+  apisports_api_key?:  string;
 }
 
 export async function readEnvConfig(): Promise<EnvConfig> {

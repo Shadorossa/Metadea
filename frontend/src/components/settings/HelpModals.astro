@@ -153,6 +153,26 @@ const { t } = Astro.props;
   </div>
 </div>
 
+<!-- API-Sports -->
+<div id="apisports-help-modal" class="settings-help-modal hidden">
+  <div class="settings-help-modal-overlay"></div>
+  <div class="settings-help-modal-content">
+    <div class="settings-help-modal-header">
+      <h3>{t.help.apisports_title}</h3>
+      <button class="settings-help-modal-close" data-modal="apisports-help-modal">&times;</button>
+    </div>
+    <div class="settings-help-modal-body">
+      <p set:html={t.help.apisports_body1} />
+      <ol class="settings-help-steps">
+        <li set:html={t.help.apisports_step1} />
+        <li set:html={t.help.apisports_step2} />
+        <li set:html={t.help.apisports_step3} />
+      </ol>
+      <p class="settings-help-muted" set:html={t.help.apisports_body2} />
+    </div>
+  </div>
+</div>
+
 <!-- Steam -->
 <div id="steam-help-modal" class="settings-help-modal hidden">
   <div class="settings-help-modal-overlay"></div>

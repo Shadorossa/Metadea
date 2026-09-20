@@ -51,6 +51,14 @@ const { t, onboarding = false } = Astro.props;
         </button>
         <span class="api-platform-label" data-i18n="settings.env_platform_comics_label">{t.settings.env_platform_comics_label}</span>
       </div>
+      <div class="api-platform-item">
+        <button type="button" class="api-platform-tab-btn" data-platform="apisports" data-i18n-title="settings.env_platform_apisports_title" title={t.settings.env_platform_apisports_title}>
+          <svg class="api-platform-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M7 14h3m4 0h3m-10 4h3"/>
+          </svg>
+        </button>
+        <span class="api-platform-label" data-i18n="settings.env_platform_events_label">Espectáculo</span>
+      </div>
     </div>
 
     <!-- API Keys Safe Content Viewport -->
@@ -190,6 +198,22 @@ const { t, onboarding = false } = Astro.props;
               placeholder="••••••••••••••••••••••••••••••••"
               autocomplete="off"
             />
+          </div>
+        </div>
+      </div>
+
+      <!-- Form: API-Sports -->
+      <div class="api-platform-form-block hidden" id="api-form-apisports">
+        <div class="env-service-header env-service-header--api">
+          <span class="api-form-service-title">API-Sports</span>
+          <button type="button" class="settings-help-btn api-help-btn" data-help="apisports" title={t.settings.env_apisports_help_title}>
+            <span class="api-help-indicator" aria-hidden="true">i</span>
+          </button>
+        </div>
+        <div class="env-fields">
+          <div class="env-field">
+            <label class="env-label" for="apisports-api-key">{t.settings.env_apisports_api_key}</label>
+            <input class="env-input" type="password" id="apisports-api-key" placeholder="API key" autocomplete="off" />
           </div>
         </div>
       </div>

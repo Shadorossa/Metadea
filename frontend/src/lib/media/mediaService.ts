@@ -2,6 +2,7 @@ import { fetchAniListDetail, fetchAniListRemainingCharacters } from '../search/p
 import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { fetchComicVineVolume, fetchComicVineIssue } from '../search/providers/comicvine';
+import { fetchApiSportsEvent } from '../search/providers/apisports';
 import { mapAniListToMedia, mapAniListCharacterEdges } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapComicVineToMedia, mapComicVineIssueToMedia } from './comicvine-mapper';
@@ -18,6 +19,7 @@ import { parseExternalId, firstCsvUrl, isRecompilationFilm } from './mapper-util
 import { getPublisherNames } from '../shared/string-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
+import { API_SPORTS_EVENT_BANNER_COLOR } from './constants';
 
 import { getCachedMediaData, setCachedMediaData, patchCachedRelations, patchCachedCharacters, invalidateCachedMediaData, CACHE_PREFIX } from './media-cache';
 import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
@@ -43,6 +45,14 @@ export {
   fetchMediaThemes, getAnimePrequelThemeOffsets,
 };
 export type { ComicIssuesResult } from './comic-issues';
+
+function normalizeCachedApiSportsCompetition(rawId: string, data: MediaPageData): MediaPageData {
+  if (!/^event:apisports:(?:football|basketball):\d+$/.test(rawId) || !Array.isArray(data.seasons) || data.seasons.length === 0) return data;
+  if (data.format === 'Season' && data.bannerColor === API_SPORTS_EVENT_BANNER_COLOR) return data;
+  const normalized = { ...data, format: 'Season', bannerColor: API_SPORTS_EVENT_BANNER_COLOR };
+  setCachedMediaData(rawId, normalized);
+  return normalized;
+}
 
 // ── Fetch interno ─────────────────────────────────────────────────────────
 
@@ -86,6 +96,10 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
     if (!numericId) return null;
     const raw = await fetchTmdbDetail(numericId, type);
     return raw ? mapTmdbToMedia(raw, type, rawId) : null;
+  }
+
+  if (type === 'event') {
+    return fetchApiSportsEvent(rawId);
   }
 
   if (type === 'comic') {
@@ -244,7 +258,9 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       type: existing?.type || data.type,
       // Sticky: only the collaborative editor changes format again after
       // it's set (`||` not `??`: a legacy row can have format stored as '').
-      format: existing?.format || data.format || null,
+      format: data.type === 'event' && /^event:apisports:(?:football|basketball):\d+$/.test(data.externalId)
+        ? 'Season'
+        : existing?.format || data.format || null,
       source: data.source || 'igdb',
       ...contentFields,
       banners_csv: existing?.banners_csv || data.bannerImage || null,
@@ -294,7 +310,9 @@ function applyStickyLocalFields(data: MediaPageData, existing: MediaCatalogEntry
   if (!existing) return;
 
   if (existing.type) data.type = existing.type;
-  if (existing.format) data.format = existing.format;
+  if (existing.format && !(data.type === 'event' && /^event:apisports:(?:football|basketball):\d+$/.test(data.externalId))) {
+    data.format = existing.format;
+  }
   if (existing.title_main) data.titleMain = existing.title_main;
   if (existing.title_romaji) data.titleRomaji = existing.title_romaji;
   if (existing.title_native) data.titleNative = existing.title_native;
@@ -352,7 +370,11 @@ export async function fetchMediaData(
   opts?: { refreshAniListTotalCount?: boolean; refreshSourceAdaptation?: boolean },
 ): Promise<MediaPageData | null> {
   const cached = getCachedMediaData(rawId);
-  if (cached) return cached;
+  const isApiSportsCompetition = /^event:apisports:(?:football|basketball):\d+$/.test(rawId);
+  if (cached && (!isApiSportsCompetition || (Array.isArray(cached.seasons) && cached.seasons.length > 0))) {
+    return normalizeCachedApiSportsCompetition(rawId, cached);
+  }
+  if (cached && isApiSportsCompetition) invalidateCachedMediaData(rawId);
 
   const data = await fetchMediaDataInternal(rawId);
   if (!data) {
@@ -519,11 +541,13 @@ export function fetchMediaDataWithFallback(
   // Lets the caller skip the background refresh once the user has navigated away.
   isCancelled: () => boolean = () => false,
 ): void {
+  const isApiSportsCompetition = /^event:apisports:(?:football|basketball):\d+$/.test(rawId);
   const cached = getCachedMediaData(rawId);
-  if (cached) {
-    onFull(cached, true);
+  if (cached && (!isApiSportsCompetition || (Array.isArray(cached.seasons) && cached.seasons.length > 0))) {
+    onFull(normalizeCachedApiSportsCompetition(rawId, cached), true);
     return;
   }
+  if (cached && isApiSportsCompetition) invalidateCachedMediaData(rawId);
 
   let fullArrived = false;
   let hasLocalData = false;
@@ -544,14 +568,30 @@ export function fetchMediaDataWithFallback(
           console.error("Failed to load local media relations, authors or characters", e);
         }
 
-        if (!fullArrived) {
+        if (!fullArrived && !isApiSportsCompetition) {
           onPartial(localData);
         }
       }
     })
     .catch(() => {})
     .finally(async () => {
-      // Catalog data is the final answer for this render — a resync (if due) only refreshes in the background.
+      // Competition seasons are provider data, not catalog columns. A local
+      // catalog hit cannot be considered complete for this container, so
+      // refresh the provider payload on each page load (the session cache
+      // above still avoids duplicate calls during its cache lifetime).
+      if (isApiSportsCompetition) {
+        fetchMediaData(rawId).then(fresh => {
+          if (!isCancelled() && fresh) onFull(fresh, true);
+          else if (!isCancelled() && localData) onFull(localData, true);
+          else if (!isCancelled()) onError();
+        }).catch(() => {
+          if (!isCancelled() && localData) onFull(localData, true);
+          else if (!isCancelled()) onError();
+        });
+        return;
+      }
+
+      // Catalog data is the final answer for this render - a resync (if due) only refreshes in the background.
       if (hasLocalData && localData) {
         fullArrived = true;
         const syncState = await syncStatePromise;

@@ -36,6 +36,9 @@ export interface MediaCharacter {
  *  its own to summarize here. */
 export interface MediaSeasonInfo {
   seasonNumber: number;
+  /** Provider-specific destination for a season card. TMDB seasons are
+   * displayed in place, while API-Sports seasons open their own event page. */
+  externalId?: string;
   name?: string;
   episodeCount?: number;
   coverUrl: string | null;
@@ -162,7 +165,7 @@ export interface MediaPageData {
   status?: string;
   totalCount?: number;
   totalCount_2?: number;
-  seasons?: MediaSeasonInfo[];  // TMDB series only — powers the media page's "Temporadas" tab
+  seasons?: MediaSeasonInfo[];  // TMDB series and API-Sports competition seasons
   countryOfOrigin?: string;    // ISO-ish country code (AniList/TMDB) — persisted to media_catalog.country_code so the catalog-only fast path can show "País de origen" without a live fetch
   authors?: MediaAuthor[];     // author objects (books, anime creators) — persisted to media_author table
   // Developer/publisher (games), studio (anime), production company (movies/

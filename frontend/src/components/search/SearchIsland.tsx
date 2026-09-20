@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
+import { ChevronDown, Database } from 'lucide-react';
 import { search, topRated, type MediaType, type SearchResult, type SeasonId, type SearchFilters, MissingApiKeyError } from '../../lib/search/index';
+import type { ApiSportsDiscipline } from '../../lib/search/providers/apisports';
 import { getCachedBrowsePage, setCachedBrowsePage } from '../../lib/search/browse-cache';
 import { filterValidAnimeCovers } from '../../lib/search/cover-filter';
 import { ANILIST_GENRES } from '../../lib/search/providers/anilist';
@@ -10,9 +12,10 @@ import { prefetchMediaData } from '../../lib/media/mediaService';
 import { compareByReleaseDate, compareByReleaseDateDesc } from '../../lib/media/mapper-utils';
 import { getT } from '../../i18n/client';
 import type { Translations } from '../../i18n/index';
-import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter, IconStaff } from '../local/ui/icons';
+import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconEvent, IconCharacter, IconStaff } from '../local/ui/icons';
 import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
 import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
+import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { useDebouncedCallback } from '../../lib/shared/useDebouncedCallback';
@@ -20,6 +23,28 @@ import { interpolate } from '../../lib/shared/interpolate';
 import { useNavSlot } from '../../lib/shared/useNavSlot';
 
 type SearchTranslations = Translations['search'];
+
+function EventDisciplineIcon({ discipline }: { discipline: ApiSportsDiscipline | '' }) {
+  if (discipline === 'football') {
+    return (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="m9.2 8.4 2.8-1.7 2.8 1.7-.9 3.2h-3.8zM9.2 8.4 6 7.1m8.8 1.3L18 7.1m-8.8 4.5-2.1 3.2m8-3.2 2.1 3.2m-8.3 0L8 19m8.2-3.2L16 19m-4-4.1v6.1" />
+      </svg>
+    );
+  }
+
+  if (discipline === 'basketball') {
+    return (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 3v18M3 12h18M5.7 5.7c3.4 3.2 3.4 9.4 0 12.6m12.6-12.6c-3.4 3.2-3.4 9.4 0 12.6" />
+      </svg>
+    );
+  }
+
+  return <Database size={15} strokeWidth={1.8} aria-hidden="true" />;
+}
 
 // ── Tab icons ────────────────────────────────────────────────────────────────
 
@@ -34,6 +59,7 @@ const TAB_ICONS: Record<MediaType, JSX.Element> = {
   series:    <IconSeries />,
   book:      <IconBook />,
   comic:     <IconComic />,
+  event:     <IconEvent />,
   character: <IconCharacter />,
   staff:     <IconStaff />,
 };
@@ -61,6 +87,7 @@ const PROVIDER_SETTINGS_LINK: Record<string, string> = {
   igdb: '/settings?tab=environment&platform=igdb',
   tmdb: '/settings?tab=environment&platform=tmdb',
   comicvine: '/settings?tab=environment&platform=comicvine',
+  apisports: '/settings?tab=environment&platform=apisports',
 };
 
 // ── In-flight request de-duplication ────────────────────────────────────────
@@ -99,6 +126,8 @@ interface Props {
 interface PersistedSearchState {
   query: string;
   mediaType: MediaType;
+  eventDiscipline?: ApiSportsDiscipline | '';
+  eventSeasonsUnified?: boolean;
   results: SearchResult[];
   status: SearchStatus;
   page: number;
@@ -129,13 +158,15 @@ function loadPersistedSearchState(): PersistedSearchState | null {
 // read in a mount effect instead (after hydration), matching SSR on the
 // first render and correcting it a tick later, same as the existing
 // persisted-search-state restore just below it.
-function getUrlSearchParams(): { query: string; mediaType: MediaType } | null {
+function getUrlSearchParams(): { query: string; mediaType: MediaType; eventDiscipline: ApiSportsDiscipline | '' } | null {
   const params = new URLSearchParams(window.location.search);
   const q = params.get('q');
   if (!q) return null;
   const rawType = params.get('type');
   const mediaType: MediaType = rawType && (MEDIA_TYPE_IDS as string[]).includes(rawType) ? rawType as MediaType : 'all';
-  return { query: q, mediaType };
+  const rawDiscipline = params.get('discipline');
+  const eventDiscipline: ApiSportsDiscipline | '' = rawDiscipline === 'football' || rawDiscipline === 'basketball' ? rawDiscipline : '';
+  return { query: q, mediaType, eventDiscipline };
 }
 
 // Mirrors .results-grid's own breakpoints (search.css) so Todos' per-type
@@ -159,6 +190,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const navSlot = useNavSlot();
   const [query, setQuery]         = useState(initialQuery);
   const [mediaType, setMediaType] = useState<MediaType>(initialType);
+  const [eventDiscipline, setEventDiscipline] = useState<ApiSportsDiscipline | ''>('');
+  const [isEventDisciplineOpen, setIsEventDisciplineOpen] = useState(false);
   const [results, setResults]     = useState<SearchResult[]>([]);
   const [status, setStatus]       = useState<SearchStatus>(initialQuery ? 'loading' : 'idle');
   const [missingProviders, setMissingProviders] = useState<string[]>([]);
@@ -196,6 +229,24 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
   }, [openDropdown]);
+
+  useEffect(() => {
+    if (!isEventDisciplineOpen) return;
+    const onDocumentClick = (event: MouseEvent) => {
+      if (!(event.target as HTMLElement).closest('.search-event-discipline-wrap')) {
+        setIsEventDisciplineOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsEventDisciplineOpen(false);
+    };
+    document.addEventListener('click', onDocumentClick);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('click', onDocumentClick);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isEventDisciplineOpen]);
 
   // Starts at the smallest breakpoint's column count (matching SSR/first
   // paint, avoiding a hydration mismatch) and corrects to the real value
@@ -235,6 +286,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const executeSearch = useCallback(async (
     searchQuery: string, type: MediaType, pageNum = 1, filters?: SearchFilters,
     autoChain?: { count: number; accumulated: number },
+    discipline: ApiSportsDiscipline | '' = '',
   ) => {
     // A completely empty box still shows something — the type's own top 100
     // by rating — instead of leaving the tab blank until you type (see
@@ -263,7 +315,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     // debounce and Enter racing each other), ride that request instead of
     // firing another one — this is the only thing avoided, no results are
     // ever reused later.
-    const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}:${JSON.stringify(filters ?? {})}`;
+    const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}:${JSON.stringify(filters ?? {})}:${type === 'event' ? `${discipline}:${isUnifySeasonsEnabled()}` : ''}`;
 
     try {
       let pageResults: SearchResult[];
@@ -284,7 +336,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           abortControllerRef.current = new AbortController();
           promise = (isBrowseMode
             ? topRated(type, abortControllerRef.current.signal, pageNum, filters)
-            : search(searchQuery, type, abortControllerRef.current.signal, pageNum)
+            : search(searchQuery, type, abortControllerRef.current.signal, pageNum, discipline || null)
           ).finally(() => inFlightSearches.delete(key));
           inFlightSearches.set(key, promise);
         }
@@ -310,6 +362,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         const currentUrl = new URL(window.location.href);
         currentUrl.searchParams.set('type', type);
         currentUrl.searchParams.set('q', searchQuery);
+        if (type === 'event' && discipline) currentUrl.searchParams.set('discipline', discipline);
+        else currentUrl.searchParams.delete('discipline');
         // Preserves Astro ClientRouter's own state object on this entry
         // instead of nulling it out — see profile.astro's switchTab() for
         // the full explanation of why a null state breaks browser Back.
@@ -320,7 +374,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       const MAX_AUTO_CHAINED_PAGES = 4;
       const chainCount = autoChain?.count ?? 0;
       if (type === 'anime' && more && totalSoFar < MIN_RESULTS_AFTER_COVER_FILTER && chainCount < MAX_AUTO_CHAINED_PAGES) {
-        executeSearch(searchQuery, type, pageNum + 1, filters, { count: chainCount + 1, accumulated: totalSoFar });
+        executeSearch(searchQuery, type, pageNum + 1, filters, { count: chainCount + 1, accumulated: totalSoFar }, discipline);
       }
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
@@ -349,12 +403,12 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // filter change, submitting mid-debounce, ...) cancels a pending debounced
   // search instead of letting a now-stale query fire after the fact.
   const [debouncedSearch, cancelDebouncedSearch] = useDebouncedCallback(
-    (value: string) => executeSearch(value, mediaType), 400,
+    (value: string) => executeSearch(value, mediaType, 1, undefined, undefined, eventDiscipline), 400,
   );
 
   const handleLoadMore = () => {
     if (isLoadingMore || !hasMore) return;
-    executeSearch(query, mediaType, page + 1, appliedFilters);
+    executeSearch(query, mediaType, page + 1, appliedFilters, undefined, eventDiscipline);
   };
 
   // Skips the very first persist-effect run — its closure still holds this
@@ -368,13 +422,16 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     if (urlParams) {
       setQuery(urlParams.query);
       setMediaType(urlParams.mediaType);
+      setEventDiscipline(urlParams.eventDiscipline);
 
       // Quick search's "Ver todos" already ran this exact query+type and
       // stashes its results here before navigating (same key this component
       // persists its own state to) — reuse them instead of re-fetching from
       // scratch and losing the seconds that first fetch already cost.
       const handoff = loadPersistedSearchState();
-      if (handoff && handoff.query === urlParams.query && handoff.mediaType === urlParams.mediaType) {
+      if (handoff && handoff.query === urlParams.query && handoff.mediaType === urlParams.mediaType
+        && (handoff.eventDiscipline ?? '') === urlParams.eventDiscipline
+        && (urlParams.mediaType !== 'event' || handoff.eventSeasonsUnified === isUnifySeasonsEnabled())) {
         setResults(handoff.results);
         setStatus(handoff.status === 'loading' ? (handoff.results.length ? 'done' : 'idle') : handoff.status);
         setPage(handoff.page);
@@ -382,7 +439,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         setSortField(handoff.sortField);
         setSortDirection(handoff.sortDirection);
       } else {
-        executeSearch(urlParams.query, urlParams.mediaType);
+        executeSearch(urlParams.query, urlParams.mediaType, 1, undefined, undefined, urlParams.eventDiscipline);
       }
     } else if (initialQuery) {
       executeSearch(initialQuery, initialType);
@@ -391,10 +448,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       if (saved) {
         setQuery(saved.query);
         setMediaType(saved.mediaType);
-        setResults(saved.results);
+        const savedDiscipline = saved.eventDiscipline === 'football' || saved.eventDiscipline === 'basketball' ? saved.eventDiscipline : '';
+        const groupingChanged = saved.mediaType === 'event' && saved.eventSeasonsUnified !== isUnifySeasonsEnabled();
+        setEventDiscipline(savedDiscipline);
+        setResults(groupingChanged ? [] : saved.results);
         // A save mid-fetch (navigated away before it settled) has no request
         // to resume — fall back to whatever the results array already shows.
-        setStatus(saved.status === 'loading' ? (saved.results.length ? 'done' : 'idle') : saved.status);
+        setStatus(groupingChanged ? 'loading' : saved.status === 'loading' ? (saved.results.length ? 'done' : 'idle') : saved.status);
         setPage(saved.page);
         setHasMore(saved.hasMore);
         setSortField(saved.sortField);
@@ -402,7 +462,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         const url = new URL(window.location.href);
         url.searchParams.set('type', saved.mediaType);
         url.searchParams.set('q', saved.query);
+        if (saved.mediaType === 'event' && savedDiscipline) url.searchParams.set('discipline', savedDiscipline);
+        else url.searchParams.delete('discipline');
         history.replaceState(history.state, '', url.toString());
+        if (groupingChanged) executeSearch(saved.query, saved.mediaType, 1, undefined, undefined, savedDiscipline);
       }
     }
     return () => {
@@ -418,12 +481,12 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     }
     try {
       sessionStorage.setItem(STORAGE_KEYS.searchState, JSON.stringify({
-        query, mediaType, results, status, page, hasMore, sortField, sortDirection,
+        query, mediaType, eventDiscipline, eventSeasonsUnified: isUnifySeasonsEnabled(), results, status, page, hasMore, sortField, sortDirection,
       }));
     } catch {
       // sessionStorage unavailable (private mode, quota) — search still works, just won't survive a round trip.
     }
-  }, [query, mediaType, results, status, page, hasMore, sortField, sortDirection]);
+  }, [query, mediaType, eventDiscipline, results, status, page, hasMore, sortField, sortDirection]);
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
@@ -433,6 +496,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const handleMediaTypeChange = (selectedType: MediaType) => {
     cancelDebouncedSearch();
     setMediaType(selectedType);
+    setEventDiscipline('');
     setQuery('');
     setResults([]);
     setHasMore(false);
@@ -447,6 +511,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('type', selectedType);
     currentUrl.searchParams.delete('q');
+    currentUrl.searchParams.delete('discipline');
     // See executeSearch's replaceState above for why history.state (not
     // null) has to be passed through here.
     history.replaceState(history.state, '', currentUrl.toString());
@@ -468,6 +533,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     cancelDebouncedSearch();
     abortControllerRef.current?.abort();
     setMediaType(type);
+    setEventDiscipline('');
     setResults(typeResults);
     setHasMore(hasMore);
     setPage(1);
@@ -475,12 +541,29 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('type', type);
     currentUrl.searchParams.set('q', query);
+    currentUrl.searchParams.delete('discipline');
     history.replaceState(history.state, '', currentUrl.toString());
   };
 
   const handleSearchSubmit = () => {
     cancelDebouncedSearch();
-    if (query.length >= 2) executeSearch(query, mediaType);
+    if (query.length >= 2) executeSearch(query, mediaType, 1, undefined, undefined, eventDiscipline);
+  };
+
+  const handleEventDisciplineChange = (value: string) => {
+    const discipline: ApiSportsDiscipline | '' = value === 'football' || value === 'basketball' ? value : '';
+    cancelDebouncedSearch();
+    setEventDiscipline(discipline);
+    const currentUrl = new URL(window.location.href);
+    if (discipline) currentUrl.searchParams.set('discipline', discipline);
+    else currentUrl.searchParams.delete('discipline');
+    history.replaceState(history.state, '', currentUrl.toString());
+    if (query.trim().length >= 2) executeSearch(query, 'event', 1, undefined, undefined, discipline);
+    else {
+      setResults([]);
+      setStatus('idle');
+      setHasMore(false);
+    }
   };
 
   const toggleSort = (field: 'releaseDate' | 'scoreGlobal') => {
@@ -537,7 +620,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     setGenreFilters([]);
     setAppliedFilters({});
     setOpenDropdown(null);
-    executeSearch(query, mediaType, 1);
+    executeSearch(query, mediaType, 1, undefined, undefined, eventDiscipline);
   };
 
   const toggleGenreFilter = useCallback((genre: string) => {
@@ -632,6 +715,48 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
               className="search-input"
             />
           </div>
+
+          {mediaType === 'event' && (
+            <div className="search-event-discipline-wrap">
+              <button
+                type="button"
+                className="search-event-discipline-trigger"
+                onClick={() => setIsEventDisciplineOpen(open => !open)}
+                aria-label={eventDiscipline ? i18n[eventDiscipline === 'football' ? 'event_football' : 'event_basketball'] : i18n.event_local_only}
+                aria-expanded={isEventDisciplineOpen}
+                aria-haspopup="true"
+                title={eventDiscipline ? i18n[eventDiscipline === 'football' ? 'event_football' : 'event_basketball'] : i18n.event_local_only}
+              >
+                <EventDisciplineIcon discipline={eventDiscipline} />
+                <ChevronDown size={9} strokeWidth={2} aria-hidden="true" />
+              </button>
+              {isEventDisciplineOpen && (
+                <div className="search-event-discipline-menu" role="group" aria-label={i18n.event_discipline}>
+                  {(['', 'football', 'basketball'] as const).map(discipline => {
+                    const label = discipline === ''
+                      ? i18n.event_local_only
+                      : i18n[discipline === 'football' ? 'event_football' : 'event_basketball'];
+                    return (
+                      <button
+                        key={discipline || 'local'}
+                        type="button"
+                        className={`search-event-discipline-option${eventDiscipline === discipline ? ' active' : ''}`}
+                        onClick={() => {
+                          handleEventDisciplineChange(discipline);
+                          setIsEventDisciplineOpen(false);
+                        }}
+                        aria-label={label}
+                        aria-pressed={eventDiscipline === discipline}
+                        title={label}
+                      >
+                        <EventDisciplineIcon discipline={discipline} />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <button
             onClick={handleSearchSubmit}

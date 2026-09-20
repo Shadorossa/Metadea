@@ -1248,6 +1248,49 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         )?;
         mark_migration(conn, 65)?;
     }
+    if v < 66 {
+        // API-Sports competition seasons and their match lists are app data,
+        // not a transient view of the provider response. Keeping the rows
+        // separate lets a previously synced competition open without an API
+        // key or network connection. matches_synced_at distinguishes a
+        // successful empty season from a season never fetched yet.
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS media_event_season (
+                external_id              TEXT PRIMARY KEY,
+                competition_external_id  TEXT NOT NULL,
+                season_key               TEXT NOT NULL,
+                season_number             INTEGER NOT NULL DEFAULT 0,
+                name                      TEXT NOT NULL DEFAULT '',
+                cover_url                 TEXT,
+                air_date                  TEXT,
+                is_current                INTEGER NOT NULL DEFAULT 0,
+                matches_synced_at         TEXT,
+                created_at                TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at                TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (competition_external_id, season_key)
+             );
+             CREATE INDEX IF NOT EXISTS idx_media_event_season_competition
+                ON media_event_season(competition_external_id, season_number DESC);
+             CREATE TABLE IF NOT EXISTS media_event_match (
+                season_external_id  TEXT NOT NULL,
+                match_id            TEXT NOT NULL,
+                date                TEXT,
+                time                TEXT,
+                home                TEXT,
+                away                TEXT,
+                home_score          TEXT,
+                away_score          TEXT,
+                image               TEXT,
+                venue               TEXT,
+                status              TEXT,
+                PRIMARY KEY (season_external_id, match_id),
+                FOREIGN KEY (season_external_id) REFERENCES media_event_season(external_id) ON DELETE CASCADE
+             );
+             CREATE INDEX IF NOT EXISTS idx_media_event_match_date
+                ON media_event_match(season_external_id, date, time);",
+        )?;
+        mark_migration(conn, 66)?;
+    }
 
     Ok(())
 }

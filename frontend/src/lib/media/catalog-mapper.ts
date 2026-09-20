@@ -6,6 +6,7 @@ import { formatDateParts, lookupLabel, countryName, firstCsvUrl } from './mapper
 import { parseDelimitedString } from '../shared/string-utils';
 import { getT } from '../../i18n/client';
 import { IN_PROGRESS_STATUSES, isReadingType } from '../constants/media';
+import { API_SPORTS_EVENT_BANNER_COLOR } from './constants';
 
 export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[number] {
   const base = type.split('_')[0];
@@ -16,6 +17,7 @@ export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[n
 
 export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = getT().media.progress_in_progress): MediaPageData {
   const tm = getT().media;
+  const isApiSportsEvent = /^event:apisports:(?:football|basketball):\d+(?::|$)/.test(c.external_id);
   const stats: MediaStat[] = [];
   // Order must match each live mapper's own push order (score, author,
   // episodes/chapters, duration, format|status, country) or Datos visibly
@@ -93,7 +95,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     titleEnglish:  c.title_english ?? undefined,
     cover:         c.cover_url    ?? undefined,
     bannerImage:   firstCsvUrl(c.banners_csv) ?? undefined,
-    bannerColor:   'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
+    bannerColor:   isApiSportsEvent ? API_SPORTS_EVENT_BANNER_COLOR : 'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
     description:   c.synopsis     ?? undefined,
     genreDots:     c.genres_csv     ? c.genres_csv.split(',').join(' · ')     : undefined,
     genreTagDots:  c.genres_tag_csv ? c.genres_tag_csv.split(',').join(' · ') : undefined,
@@ -110,7 +112,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     releaseEndDay:   c.release_end_day   ?? undefined,
     timeLength:    c.time_length   ?? undefined,
     status:        c.status        ?? undefined,
-    format:        c.format        ?? undefined,
+    format:        isApiSportsEvent ? 'Season' : c.format ?? undefined,
     source:        c.source        ?? undefined,
     sourceUrl:     c.source_url      ?? undefined,
     platforms:     platforms.length > 0 ? platforms : undefined,

@@ -9,7 +9,7 @@ import { getT } from '../../i18n/client';
 // relation isn't guaranteed to share the current entry's own type (e.g. a
 // vnovel's saga can include a movie adaptation), so all of them are queried
 // in parallel rather than restricting to the entry's own type.
-const SEARCHABLE_TYPES: MediaType[] = ['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic'];
+const SEARCHABLE_TYPES: MediaType[] = ['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event'];
 
 type SearchSort = 'relevance' | 'title_asc' | 'year_desc' | 'year_asc' | 'score_desc';
 
@@ -255,6 +255,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             <option value="series">{s.types.series}</option>
             <option value="book">{s.types.book}</option>
             <option value="comic">{s.types.comic}</option>
+            <option value="event">{s.types.event}</option>
           </select>
           <select
             className="pr-editor-search-select"

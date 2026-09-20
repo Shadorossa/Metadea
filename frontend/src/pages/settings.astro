@@ -155,7 +155,7 @@ const version = pkg.version;
         const modalId = helpType + "-help-modal";
         const modal = document.getElementById(modalId) as HTMLElement | null;
         if (modal) {
-          modal.style.display = "flex";
+          modal.classList.remove("hidden");
         }
       });
     });
@@ -163,14 +163,14 @@ const version = pkg.version;
     document.querySelectorAll(".settings-help-modal-close").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const modal = (e.target as HTMLElement).closest(".settings-help-modal") as HTMLElement | null;
-        if (modal) modal.style.display = "none";
+        if (modal) modal.classList.add("hidden");
       });
     });
 
     document.querySelectorAll(".settings-help-modal-overlay").forEach(overlay => {
       overlay.addEventListener("click", (e) => {
         const modal = (e.target as HTMLElement).closest(".settings-help-modal") as HTMLElement | null;
-        if (modal) modal.style.display = "none";
+        if (modal) modal.classList.add("hidden");
       });
     });
   }

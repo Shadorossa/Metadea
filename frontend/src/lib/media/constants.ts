@@ -1,5 +1,7 @@
 import type { MediaCatalogEntry } from '../tauri/catalog';
 
+export const API_SPORTS_EVENT_BANNER_COLOR = 'linear-gradient(135deg, #07143d 0%, #123d86 62%, #b99a46 100%)';
+
 export const STAR_PATH =
   'M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z';
 

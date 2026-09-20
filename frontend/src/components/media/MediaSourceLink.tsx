@@ -1,11 +1,12 @@
 import { openLink } from './MediaStoreLinks';
 
-const SOURCE_LOGO: Record<string, { file: string; label: string }> = {
+const SOURCE_LOGO: Record<string, { file?: string; label: string }> = {
   igdb:        { file: 'IGDB_logo.png', label: 'IGDB' },
   anilist:     { file: 'Anilist_logo.png', label: 'AniList' },
   tmdb:        { file: 'Tmdb.new.logo.png', label: 'TMDB' },
   openlibrary: { file: 'Open_Library_tight_logo.png', label: 'Open Library' },
   comicvine:   { file: 'comicvine_logo.png', label: 'Comic Vine' },
+  apisports:    { label: 'API-Sports' },
 };
 
 interface Props {
@@ -28,7 +29,9 @@ export function MediaSourceLink({ source, sourceUrl }: Props) {
       title={meta.label}
       onClick={() => openLink(sourceUrl)}
     >
-      <img src={`/API/${meta.file}`} alt={meta.label} className="media-store-icon" />
+      {meta.file
+        ? <img src={`/API/${meta.file}`} alt={meta.label} className="media-store-icon" />
+        : <span className="media-source-link-text">API</span>}
     </button>
   );
 }

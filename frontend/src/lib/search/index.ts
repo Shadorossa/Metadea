@@ -3,6 +3,7 @@ import { searchGames, searchGameBundles, searchGameExpandedEditions, searchGameR
 import { searchMovies, searchSeries, topRatedMovies, topRatedSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
+import { searchApiSportsEvents, type ApiSportsDiscipline } from './providers/apisports';
 import { MissingApiKeyError }          from './errors';
 import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
 import { parseCSV } from '../shared/string-utils';
@@ -15,7 +16,7 @@ export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
 
 export type MediaType =
   | 'all' | 'anime' | 'manga' | 'lnovel' | 'game'
-  | 'vnovel'  | 'movie' | 'series' | 'book' | 'comic' | 'character' | 'staff';
+  | 'vnovel'  | 'movie' | 'series' | 'book' | 'comic' | 'event' | 'character' | 'staff';
 
 /**
  * Subset of media_catalog columns available from search APIs.
@@ -29,7 +30,7 @@ export interface SearchResult {
   /** Matches media_catalog.format — e.g. "TV", "OVA", "MANGA" */
   format: string;
   /** Matches media_catalog.source — which API provided this result */
-  source: 'anilist' | 'igdb' | 'tmdb' | 'openlibrary' | 'comicvine';
+  source: 'anilist' | 'igdb' | 'tmdb' | 'openlibrary' | 'comicvine' | 'apisports';
   /** Matches media_catalog.title_main — primary display title */
   titleMain: string;
   /** Matches media_catalog.title_romaji — romanised title (AniList only) */
@@ -92,7 +93,7 @@ export interface SearchPage {
 // Every type folded into the "all" tab — deliberately excludes 'character',
 // which stays its own dedicated tab/result shape.
 const ALL_SEARCH_TYPES: MediaType[] = [
-  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic',
+  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event',
 ];
 
 function fetchFromApi(
@@ -100,6 +101,7 @@ function fetchFromApi(
   searchQuery: string,
   signal: AbortSignal,
   page: number,
+  eventDiscipline?: ApiSportsDiscipline | null,
 ): Promise<SearchPage> {
   switch (mediaType) {
     case 'anime':     return searchAniList(searchQuery, 'ANIME', 'anime', signal, undefined, page);
@@ -111,6 +113,7 @@ function fetchFromApi(
     case 'series':    return searchSeries(searchQuery, signal, page);
     case 'book':      return searchBooks(searchQuery, signal, page);
     case 'comic':     return searchComics(searchQuery, signal, page);
+    case 'event':     return searchApiSportsEvents(searchQuery, signal, page, eventDiscipline);
     case 'character': return searchCharacters(searchQuery, signal, page);
     case 'staff':     return searchStaff(searchQuery, signal, page);
     default:          return Promise.resolve({ results: [], hasMore: false });
@@ -304,13 +307,64 @@ async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaT
   return filtered.filter((_, i) => !hasPrequelFlags[i]).map(catalogEntryToSearchResult);
 }
 
+function apiSportsCompetitionKey(result: SearchResult): string | null {
+  const match = /^event:apisports:(football|basketball):(\d+)(?::|$)/.exec(result.externalId);
+  return match ? `${match[1]}:${match[2]}` : null;
+}
+
+function competitionTitle(title: string): string {
+  return title.replace(/\s+-\s+(?:\d{4}(?:[-/]\d{2,4})?|\d{2,4}[-/]\d{2,4})$/, '').trim();
+}
+
+// Search results are a view over leagues and their seasons, not new user-list
+// records. With unified seasons enabled the provider already returns a league
+// container; collapse any locally catalogued sibling seasons into that same
+// container too.
+function mergeUnifiedEventResults(apiResults: SearchResult[], localResults: SearchResult[], hasMore: boolean): SearchPage {
+  const apiLeagueKeys = new Set(apiResults.map(apiSportsCompetitionKey).filter((key): key is string => !!key));
+  const apiIds = new Set(apiResults.map(result => result.externalId));
+  const localGroups = new Map<string, SearchResult[]>();
+  const localExtras: SearchResult[] = [];
+
+  for (const result of localResults) {
+    const key = apiSportsCompetitionKey(result);
+    if (!key) {
+      if (!apiIds.has(result.externalId)) localExtras.push(result);
+      continue;
+    }
+    const group = localGroups.get(key) ?? [];
+    group.push(result);
+    localGroups.set(key, group);
+  }
+
+  const localCompetitions = [...localGroups.entries()]
+    .filter(([key]) => !apiLeagueKeys.has(key))
+    .map(([, seasons]) => {
+      const representative = [...seasons].sort((a, b) => (b.releaseYear ?? -Infinity) - (a.releaseYear ?? -Infinity))[0];
+      const key = apiSportsCompetitionKey(representative)!;
+      const [sport, leagueId] = key.split(':');
+      return {
+        ...representative,
+        externalId: `event:apisports:${sport}:${leagueId}`,
+        format: 'Season',
+        titleMain: competitionTitle(representative.titleMain),
+        releaseYear: null,
+        releaseMonth: null,
+        releaseDay: null,
+      };
+    });
+
+  return { results: [...apiResults, ...localExtras, ...localCompetitions], hasMore };
+}
+
 async function searchOne(
   mediaType: Exclude<MediaType, 'all'>,
   searchQuery: string,
   signal: AbortSignal,
   page: number,
+  eventDiscipline?: ApiSportsDiscipline | null,
 ): Promise<SearchPage> {
-  const apiPromise = fetchFromApi(mediaType, searchQuery, signal, page);
+  const apiPromise = fetchFromApi(mediaType, searchQuery, signal, page, eventDiscipline);
   if (mediaType === 'character' || mediaType === 'staff' || page !== 1) return apiPromise;
 
   const [apiOutcome, localResults] = await Promise.all([
@@ -324,7 +378,14 @@ async function searchOne(
     // local-only hit is still a valid result even if the live provider
     // couldn't be reached.
     if (localResults.length === 0) throw apiOutcome.err;
+    if (mediaType === 'event' && isUnifySeasonsEnabled()) {
+      return mergeUnifiedEventResults([], localResults, false);
+    }
     return { results: localResults, hasMore: false };
+  }
+
+  if (mediaType === 'event' && isUnifySeasonsEnabled()) {
+    return mergeUnifiedEventResults(apiOutcome.page.results, localResults, apiOutcome.page.hasMore);
   }
 
   const seen = new Set(apiOutcome.page.results.map(r => r.externalId));
@@ -424,10 +485,11 @@ export async function search(
   mediaType: MediaType,
   signal: AbortSignal,
   page = 1,
+  eventDiscipline?: ApiSportsDiscipline | null,
 ): Promise<SearchPage> {
   const page_ = mediaType === 'all'
     ? await searchAll(searchQuery, signal, page)
-    : await searchOne(mediaType, searchQuery, signal, page);
+    : await searchOne(mediaType, searchQuery, signal, page, eventDiscipline);
   if (mediaType === 'character' || mediaType === 'staff') return page_;
   return filterReclassified(await filterBlocked(page_));
 }
@@ -448,6 +510,7 @@ function fetchTopRatedFromApi(
     case 'vnovel': return searchGames('', 'vnovel', signal, page, filters);
     case 'movie':  return topRatedMovies(signal, page, filters);
     case 'series': return topRatedSeries(signal, page, filters);
+    case 'event':  return Promise.resolve({ results: [], hasMore: false });
   }
 }
 
@@ -458,7 +521,7 @@ function fetchTopRatedFromApi(
 // only with no sort option) — those two, plus 'all' and 'character', just
 // return empty here and keep the existing empty-until-typed behavior.
 export async function topRated(mediaType: MediaType, signal: AbortSignal, page = 1, filters?: SearchFilters): Promise<SearchPage> {
-  if (mediaType === 'all' || mediaType === 'character' || mediaType === 'staff' || mediaType === 'book' || mediaType === 'comic') {
+  if (mediaType === 'all' || mediaType === 'character' || mediaType === 'staff' || mediaType === 'book' || mediaType === 'comic' || mediaType === 'event') {
     return { results: [], hasMore: false };
   }
   return filterReclassified(await filterBlocked(await fetchTopRatedFromApi(mediaType, signal, page, filters)));
