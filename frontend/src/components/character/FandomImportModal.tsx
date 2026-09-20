@@ -177,9 +177,9 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                   <span>✓ {data.characteristics.length} {t.import_fandom_preview_characteristics.toLowerCase()}</span>
                   <span>
                     ✓ {data.voiceActors.length} {t.import_fandom_preview_voices.toLowerCase()}
-                    {data.voiceActors.some(v => v.matchedFrom === 'db' || v.matchedFrom === 'anilist') && (
+                    {data.voiceActors.some(v => v.matchedFrom === 'db' || v.matchedFrom === 'anilist' || v.matchedFrom === 'tmdb') && (
                       <strong style={{ color: 'var(--accent)', marginLeft: '0.25rem' }}>
-                        ({data.voiceActors.filter(v => v.matchedFrom === 'db' || v.matchedFrom === 'anilist').length} enlazados)
+                        ({data.voiceActors.filter(v => v.matchedFrom === 'db' || v.matchedFrom === 'anilist' || v.matchedFrom === 'tmdb').length} enlazados)
                       </strong>
                     )}
                   </span>
@@ -230,7 +230,7 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                         </span>
                         {va.matchedFrom && va.matchedFrom !== 'none' && (
                           <span style={{ fontSize: '0.62rem', color: 'var(--accent)', fontWeight: 700 }}>
-                            ✓ {va.matchedFrom === 'db' ? 'DB' : 'AniList'}
+                            ✓ {va.matchedFrom === 'db' ? 'DB' : va.matchedFrom === 'tmdb' ? 'TMDB' : 'AniList'}
                           </span>
                         )}
                       </div>

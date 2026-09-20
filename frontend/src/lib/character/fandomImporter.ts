@@ -6,7 +6,7 @@ export interface ExtractedVoiceActor {
   externalId?: string;
   native?: string;
   image?: string;
-  matchedFrom?: 'db' | 'anilist' | 'none';
+  matchedFrom?: 'db' | 'anilist' | 'tmdb' | 'none';
 }
 
 export interface FandomCharacterData {
@@ -55,6 +55,72 @@ export function cleanFandomImageUrl(rawUrl: string): string {
     return `${base}${cbMatch[1]}`;
   }
   return clean.split('?')[0];
+}
+
+const FANDOM_LANGUAGE_NAMES: Array<[RegExp, string]> = [
+  [/\b(?:japanese|japan|jp)\b/i, 'Japanese'],
+  [/\b(?:english|eng|en)\b/i, 'English'],
+  [/\b(?:french|francais|fr)\b/i, 'French'],
+  [/\b(?:spanish|espanol|castilian|es)\b/i, 'Spanish'],
+  [/\b(?:german|deutsch|de)\b/i, 'German'],
+  [/\b(?:italian|italiano|it)\b/i, 'Italian'],
+  [/\b(?:portuguese|portugues|pt)(?:\s*\((?:european|brazilian)\))?|\b(?:european|brazilian)\s+portuguese\b/i, 'Portuguese'],
+  [/\b(?:korean|kr)\b/i, 'Korean'],
+  [/\b(?:chinese|mandarin|cantonese|zh)\b/i, 'Chinese'],
+];
+
+function normalizeVoiceLanguage(annotation: string | undefined, fallback: string): string {
+  if (!annotation) return fallback;
+  const normalized = annotation.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return FANDOM_LANGUAGE_NAMES.find(([pattern]) => pattern.test(normalized))?.[1] ?? annotation.trim();
+}
+
+function parseVoiceActorsFromHtml(html: string, defaultLanguage: string): ExtractedVoiceActor[] {
+  const separated = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:li|p|div|tr)\s*>/gi, '\n')
+    .replace(/<(?:li|p|div|tr)\b[^>]*>/gi, '');
+  const parsed = new DOMParser().parseFromString(separated, 'text/html');
+  stripHiddenNoise(parsed.body);
+
+  return (parsed.body.textContent ?? '').split(/[\r\n]+/).map(line => line.trim()).filter(Boolean).flatMap(line => {
+    const annotations: string[] = [];
+    let name = line.replace(/\[\s*\d+\s*\]/g, '').trim();
+    let annotationMatch: RegExpExecArray | null;
+    while ((annotationMatch = /\s*\(([^()]*)\)\s*$/.exec(name))) {
+      annotations.unshift(annotationMatch[1].trim());
+      name = name.slice(0, annotationMatch.index).trim();
+    }
+    if (!name) return [];
+    const languageAnnotation = annotations.find(annotation => {
+      const normalized = annotation.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return FANDOM_LANGUAGE_NAMES.some(([pattern]) => pattern.test(normalized));
+    });
+    const language = normalizeVoiceLanguage(languageAnnotation, defaultLanguage);
+    return [{ name, language }];
+  });
+}
+
+function extractVoicedBySections(doc: Document, defaultLanguage: string): ExtractedVoiceActor[] {
+  const actors: ExtractedVoiceActor[] = [];
+  const headings = Array.from(doc.querySelectorAll<HTMLElement>('h2, h3, h4, h5, h6'));
+  for (const heading of headings) {
+    if (!/^(?:voiced by|voice actors?|voice cast|voice acting)\b/i.test(heading.textContent?.trim() ?? '')) continue;
+    const level = Number(heading.tagName.slice(1));
+    const headingBlock = heading.closest<HTMLElement>('.mw-heading') ?? heading;
+    const html: string[] = [];
+    let sibling = headingBlock.nextElementSibling;
+    while (sibling) {
+      const nextHeading = sibling.matches('h1, h2, h3, h4, h5, h6')
+        ? sibling
+        : sibling.querySelector('h1, h2, h3, h4, h5, h6');
+      if (nextHeading && Number(nextHeading.tagName.slice(1)) <= level) break;
+      html.push(sibling.outerHTML);
+      sibling = sibling.nextElementSibling;
+    }
+    actors.push(...parseVoiceActorsFromHtml(html.join('\n'), defaultLanguage));
+  }
+  return actors;
 }
 
 export async function fetchFandomCharacter(url: string): Promise<FandomCharacterData> {
@@ -297,45 +363,9 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
         defaultLang = 'Japanese';
       }
 
-      const lines = valHtml
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/?(?:p|li|div)[^>]*>/gi, '\n')
-        .split('\n');
-
-      for (const rawLine of lines) {
-        const clean = rawLine.replace(/<[^>]+>/g, '').trim();
-        if (!clean) continue;
-
-        const vaMatch = clean.match(/^(.+?)(?:\s*\(([^)]+)\))?$/);
-        if (vaMatch) {
-          const baseName = vaMatch[1].trim();
-          const parenthetical = vaMatch[2]?.trim();
-
-          let lang = defaultLang;
-          let finalName = baseName;
-
-          if (parenthetical) {
-            const pLower = parenthetical.toLowerCase();
-            if (pLower.includes('english') || pLower === 'en') {
-              lang = 'English';
-            } else if (pLower.includes('japanese') || pLower === 'jp' || pLower.includes('jap')) {
-              lang = 'Japanese';
-            } else if (pLower.includes('french') || pLower === 'fr') {
-              lang = 'French';
-            } else if (pLower.includes('spanish') || pLower === 'es') {
-              lang = 'Spanish';
-            } else if (pLower.includes('german') || pLower === 'de') {
-              lang = 'German';
-            } else if (pLower.includes('italian') || pLower === 'it') {
-              lang = 'Italian';
-            } else {
-              finalName = `${baseName} (${parenthetical})`;
-            }
-          }
-
-          if (finalName && !voiceActors.some(v => v.name.toLowerCase() === finalName.toLowerCase())) {
-            voiceActors.push({ name: finalName, language: lang });
-          }
+      for (const actor of parseVoiceActorsFromHtml(valHtml, defaultLang)) {
+        if (!voiceActors.some(v => v.name.toLowerCase() === actor.name.toLowerCase() && v.language === actor.language)) {
+          voiceActors.push(actor);
         }
       }
     } else if (sourceAttr === 'appears_in' || sourceAttr === 'appearances' || sourceAttr === 'debut' || normLabel.includes('appears in') || normLabel.includes('aparición')) {
@@ -346,6 +376,12 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
       characteristics.push({ label: finalLabel, value: cleanVal });
     }
   });
+
+  for (const actor of extractVoicedBySections(doc, 'Japanese')) {
+    if (!voiceActors.some(v => v.name.toLowerCase() === actor.name.toLowerCase() && v.language === actor.language)) {
+      voiceActors.push(actor);
+    }
+  }
 
   // Extraer biografía limpia eliminando todo elemento de infobox o ficha lateral
   const contentRoot = doc.querySelector('.mw-parser-output') || doc.body;

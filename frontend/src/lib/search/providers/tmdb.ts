@@ -333,6 +333,44 @@ export async function searchTvIncludingAnime(query: string, signal: AbortSignal)
   return data?.results ?? [];
 }
 
+export interface TmdbPersonSearchHit {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  known_for_department?: string;
+  popularity?: number;
+}
+
+function normalizePersonName(name: string): string {
+  return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
+/** Exact-name fallback for staff/voice actors not present in AniList. */
+export async function findTmdbPersonExactMatch(
+  query: string,
+  signal?: AbortSignal,
+): Promise<TmdbPersonSearchHit | null> {
+  const clean = query.trim();
+  if (!clean) return null;
+
+  const auth = await getTmdbAuth();
+  if (!auth) return null;
+
+  const headers: Record<string, string> = {};
+  if (auth.accessToken) headers.Authorization = `Bearer ${auth.accessToken}`;
+  let url = `${API_ENDPOINTS.TMDB}/search/person?query=${encodeURIComponent(clean)}&page=1&language=${tmdbLocale()}`;
+  if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
+
+  const data = await fetchJson<{ results?: TmdbPersonSearchHit[] }>(url, { headers, signal }).catch(() => null);
+  const normalizedQuery = normalizePersonName(clean);
+  return (data?.results ?? [])
+    .filter(person => normalizePersonName(person.name) === normalizedQuery)
+    .sort((a, b) => {
+      const actingDifference = Number(b.known_for_department === 'Acting') - Number(a.known_for_department === 'Acting');
+      return actingDifference || (b.popularity ?? 0) - (a.popularity ?? 0);
+    })[0] ?? null;
+}
+
 // TMDB's /discover endpoint (unlike /search) has no free-text query param at
 // all, but does support the year/genre filters this app's toolbar offers —
 // year+season become a primary_release_date/first_air_date range (same
