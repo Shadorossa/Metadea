@@ -6,7 +6,7 @@ import {
   igdbGetGameDetail, getMediaCompanies, readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
-import { SteamMediaSection } from './SteamMediaSection';
+import { MediaScreenshotsSection } from './MediaScreenshotsSection';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { IconMonitor, IconPencil } from '../ui/icons';
@@ -600,14 +600,13 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         </div>
         {displaySummary && <p className="local-game-detail-summary">{displaySummary}</p>}
 
-        {launchTarget.launcher === 'steam' && launchTarget.app_id && (
-          <SteamMediaSection
-            key={launchTarget.app_id}
-            appId={launchTarget.app_id}
-            achievements={achievements}
-            achievementsLoading={achievementsLoading}
-          />
-        )}
+        <MediaScreenshotsSection
+          key={`${contentKey}:${displayTitle}`}
+          appId={launchTarget.launcher === 'steam' ? launchTarget.app_id : undefined}
+          workName={displayTitle}
+          achievements={achievements}
+          achievementsLoading={achievementsLoading}
+        />
       </div>
     </>
   );

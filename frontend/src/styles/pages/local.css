@@ -1207,23 +1207,52 @@
   padding-top: 0.25rem;
 }
 
+.local-media-history-screenshots-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.local-media-history-screenshots-layout.has-history {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.local-media-history-screenshots-layout .local-steam-media {
+  min-width: 0;
+  margin-top: 0.5rem;
+  padding-top: 0.25rem;
+  border-top: 0;
+}
+
+@media (max-width: 760px) {
+  .local-media-history-screenshots-layout.has-history {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* "HISTORIAL" centered directly on the dividing line itself (flanked by two
    flex-grown rule segments) instead of a separate border-top with the label
    sitting underneath it. */
-.local-media-history-title {
+.local-media-history-title,
+.local-steam-media-title {
   display: flex;
   align-items: center;
+  width: 100%;
   gap: 0.75rem;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-dim);
-  margin-bottom: 0.6rem;
+  margin: 0 0 0.6rem;
+  white-space: nowrap;
 }
 
 .local-media-history-title::before,
-.local-media-history-title::after {
+.local-media-history-title::after,
+.local-steam-media-title::before,
+.local-steam-media-title::after {
   content: '';
   flex: 1;
   height: 1px;
@@ -2173,6 +2202,7 @@
 
 .local-steam-media-tabs {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
   margin-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);
@@ -2254,6 +2284,49 @@
   gap: 0.5rem;
 }
 
+.local-steam-screenshots-filter {
+  width: 4.75rem;
+  max-width: 45%;
+  padding: 0 0.9rem 0.1rem 0.1rem;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  font: inherit;
+  font-size: 0.62rem;
+  line-height: 1;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+
+.local-steam-screenshots-filter option {
+  text-align: center;
+}
+
+.local-steam-screenshots-heading {
+  position: relative;
+  margin-bottom: 0.6rem;
+}
+
+.local-steam-screenshots-heading .local-steam-media-title {
+  margin-bottom: 0;
+}
+
+.local-steam-screenshots-heading .local-steam-screenshots-filter {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.local-steam-media-tabs .local-steam-screenshots-filter {
+  flex-shrink: 0;
+  margin-left: auto;
+  background: transparent;
+}
+
 .local-steam-screenshot-thumb {
   display: block;
   min-width: 0;
@@ -2298,11 +2371,38 @@
   max-height: 100%;
 }
 
-.local-steam-screenshot-full {
+.local-steam-screenshot-frame {
   grid-column: 2;
   grid-row: 1;
+  display: flex;
+  min-width: 0;
+  max-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.local-steam-screenshot-vlc-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px #000;
+}
+
+.local-steam-screenshot-vlc-label span {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.local-steam-screenshot-full {
+  display: block;
   width: 100%;
-  max-height: calc(100vh - 7rem);
+  min-height: 0;
+  max-height: calc(100vh - 9rem);
   object-fit: contain;
 }
 

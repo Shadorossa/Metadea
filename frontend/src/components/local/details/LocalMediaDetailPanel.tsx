@@ -34,6 +34,7 @@ import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
 import { openMediaEditor } from '../../../lib/media/openMediaEditor';
+import { MediaScreenshotsSection } from './MediaScreenshotsSection';
 
 interface ChainHistoryEntry extends EpisodeHistoryEntry {
   seasonNum?: number | null;
@@ -1069,46 +1070,55 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           </div>
         )}
 
-        {currentHistory.length > 0 && (
-          <div className="local-media-history">
-            <p className="local-media-history-title">{t.local.history_label}</p>
-            <div className="local-media-history-feed">
-              {currentHistory.map(h => (
-                <div
-                  key={h.id}
-                  className="local-media-history-item"
-                  onContextMenu={e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setHistoryMenu({ x: e.pageX, y: e.pageY, entry: h });
-                  }}
-                >
-                  <IconCheck />
-                  {isMovieFormat ? (
-                    <span>{t.local.seen_count} <strong>{h.seasonTitle || item.title}</strong></span>
-                  ) : (
-                    <span>
-                      {isReadingType(item.libraryEntry.type) ? (
-                        <>
-                          {t.media.chapter} <strong>{h.episode_number}</strong> - {h.seasonTitle || item.title}
-                        </>
-                      ) : (
-                        <>
-                          <strong>{formatEpisodeLabel(h.seasonNum ?? itemSeason, h.episode_number, item.libraryEntry.type)}</strong>
-                          {(() => {
-                            const fetchedName = episodeNames.get(`${h.external_id}|${h.episode_number}`);
-                            return fetchedName && !isRedundantEpisodeName(fetchedName, h.seasonTitle, item.title) ? <> - "{fetchedName}"</> : null;
-                          })()} - {h.seasonTitle || item.title}
-                        </>
-                      )}
-                    </span>
-                  )}
-                  <span className="local-media-history-date">{formatWatchedAt(h.watched_at)}</span>
-                </div>
-              ))}
+        <div className={`local-media-history-screenshots-layout${currentHistory.length > 0 ? ' has-history' : ''}`}>
+          {currentHistory.length > 0 && (
+            <div className="local-media-history">
+              <p className="local-media-history-title">{t.local.history_label}</p>
+              <div className="local-media-history-feed">
+                {currentHistory.map(h => (
+                  <div
+                    key={h.id}
+                    className="local-media-history-item"
+                    onContextMenu={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setHistoryMenu({ x: e.pageX, y: e.pageY, entry: h });
+                    }}
+                  >
+                    <IconCheck />
+                    {isMovieFormat ? (
+                      <span>{t.local.seen_count} <strong>{h.seasonTitle || item.title}</strong></span>
+                    ) : (
+                      <span>
+                        {isReadingType(item.libraryEntry.type) ? (
+                          <>
+                            {t.media.chapter} <strong>{h.episode_number}</strong> - {h.seasonTitle || item.title}
+                          </>
+                        ) : (
+                          <>
+                            <strong>{formatEpisodeLabel(h.seasonNum ?? itemSeason, h.episode_number, item.libraryEntry.type)}</strong>
+                            {(() => {
+                              const fetchedName = episodeNames.get(`${h.external_id}|${h.episode_number}`);
+                              return fetchedName && !isRedundantEpisodeName(fetchedName, h.seasonTitle, item.title) ? <> - "{fetchedName}"</> : null;
+                            })()} - {h.seasonTitle || item.title}
+                          </>
+                        )}
+                      </span>
+                    )}
+                    <span className="local-media-history-date">{formatWatchedAt(h.watched_at)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          <MediaScreenshotsSection
+            key={item.externalId}
+            workName={item.title}
+            achievements={null}
+            achievementsLoading={false}
+          />
+        </div>
 
         {historyMenu && createPortal(
           <div
