@@ -465,7 +465,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
   // ── Editable relation handlers ────────────────────────────────────────────
 
-  const recommendationLabel = t.media.relation_types.RECOMMENDATION;
+  const recommendationLabel = tm.relations.RECOMMENDATION;
   const toRecommendationRelation = (recommendation: BundledRelation): EditableRelation => ({
     related_media_external_id: recommendation.external_id,
     relation_type: 'RECOMMENDATION',
