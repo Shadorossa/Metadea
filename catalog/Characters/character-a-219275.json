@@ -1,0 +1,45 @@
+{
+  "character": {
+    "external_id": "character:a:219275"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:2136",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "manga:89812",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "anime:20442",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:2135",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:76888",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "person:a95602",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a175402",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a322647",
+      "role": "voice",
+      "language": "Portuguese"
+    }
+  ]
+}
