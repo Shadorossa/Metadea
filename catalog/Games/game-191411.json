@@ -1,0 +1,42 @@
+{
+  "media_catalog": {
+    "id": "07483a7e7fe9f51f07483a7e7fe9f51f",
+    "external_id": "game:191411",
+    "type": "game",
+    "title_main": "Xenoblade Chronicles 3",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:405448",
+      "relation_type": "EXPANDED_GAME",
+      "type_label": "Expanded Edition",
+      "title": "Xenoblade Chronicles 3: Nintendo Switch 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc7ms.jpg",
+      "media_external_id": "game:191411"
+    },
+    {
+      "related_media_external_id": "game:236669",
+      "relation_type": "EXPANSION",
+      "type_label": "Expansion",
+      "title": "Xenoblade Chronicles 3: Future Redeemed",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob8r0.jpg",
+      "media_external_id": "game:191411"
+    },
+    {
+      "media_external_id": "game:191411",
+      "related_media_external_id": "game:26766",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenoblade Chronicles 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob8r2.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Xenoblade",
+  "story_arcs": []
+}
