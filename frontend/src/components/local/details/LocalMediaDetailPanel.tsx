@@ -40,6 +40,8 @@ interface ChainHistoryEntry extends EpisodeHistoryEntry {
   seasonTitle?: string;
 }
 
+const EMPTY_CHAIN_HISTORY: ChainHistoryEntry[] = [];
+
 interface LocalMediaDetailPanelProps {
   item:            LocalMediaItem;
   rootFolder:      string | undefined;
@@ -76,6 +78,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const isThisPlaying = playback?.externalId === item.externalId;
   const playState: 'idle' | 'playing' | 'paused' = isThisPlaying ? playback!.status : 'idle';
   const [history, setHistory] = useState<ChainHistoryEntry[]>([]);
+  const [historyExternalId, setHistoryExternalId] = useState(item.externalId);
+  // This panel stays mounted while the selected work changes. Don't render
+  // the previous work's history while the new chain is being fetched.
+  const currentHistory = historyExternalId === item.externalId ? history : EMPTY_CHAIN_HISTORY;
   // Right-click on a history row — same delete-entry pattern as Profile's
   // own activity feed (see ActivitySection.tsx).
   const [historyMenu, setHistoryMenu] = useState<{ x: number; y: number; entry: EpisodeHistoryEntry } | null>(null);
@@ -253,19 +259,32 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     setPlayError(null);
     let cancelled = false;
     fetchChainHistory().then(res => {
-      if (!cancelled) setHistory(res);
+      if (!cancelled) {
+        setHistory(res);
+        setHistoryExternalId(item.externalId);
+        setHistoryMenu(null);
+      }
     });
     return () => { cancelled = true; };
   }, [fetchChainHistory]);
 
   useEffect(() => {
+    let cancelled = false;
     function onEpisodeMarked() {
-      fetchChainHistory().then(setHistory).catch(() => {});
+      fetchChainHistory().then(res => {
+        if (!cancelled) {
+          setHistory(res);
+          setHistoryExternalId(item.externalId);
+        }
+      }).catch(() => {});
       onProgressSaved();
     }
     window.addEventListener('metadea:episode-marked', onEpisodeMarked);
-    return () => window.removeEventListener('metadea:episode-marked', onEpisodeMarked);
-  }, [fetchChainHistory, onProgressSaved]);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('metadea:episode-marked', onEpisodeMarked);
+    };
+  }, [fetchChainHistory, item.externalId, onProgressSaved]);
 
   useEffect(() => {
     if (!historyMenu) return;
@@ -435,7 +454,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       return;
     }
     let cancelled = false;
-    const ids = new Set<string>([item.externalId, ...history.map(h => h.external_id)]);
+    const ids = new Set<string>([item.externalId, ...currentHistory.map(h => h.external_id)]);
     (async () => {
       const merged = new Map<string, string>();
       await Promise.all([...ids].map(async id => {
@@ -445,7 +464,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       if (!cancelled) setEpisodeNames(merged);
     })();
     return () => { cancelled = true; };
-  }, [item.externalId, item.libraryEntry.type, isReading, isMovieFormat, history]);
+  }, [item.externalId, item.libraryEntry.type, isReading, isMovieFormat, currentHistory]);
 
   const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
   useEffect(() => {
@@ -985,10 +1004,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                         : `Al día — no hay episodios/capítulos nuevos (${totalCount} en total)`}
                     </span>
                   ) : (
-                    <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
+                    <span className={`local-media-match-chip local-media-match-chip--labeled${nextFile ? ' ok' : ' fail'}`}>
                       {nextFile ? (
                         <>
-                          {isReading ? t.local.next_volume_label : t.local.next_episode_label} <strong>
+                          <span className="local-media-match-label">{isReading ? t.local.next_volume_label : t.local.next_episode_label}</span>{' '}<strong>
                             {(() => {
                               const code = formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type);
                               const cleanFileName = cleanFilenameForDisplay(nextFile.name);
@@ -1017,6 +1036,21 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                           : tomosMismatch ? `Se esperaban exactamente ${totalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})`
                           : item.libraryEntry.type === 'comic' ? `Próximo número (${nextNumber}) no encontrado`
                           : isReading ? `Próximo volumen (${nextNumber}) no encontrado`
+                          : (item.libraryEntry.type === 'anime' || item.libraryEntry.type === 'series') ? (
+                            <>
+                              <span className="local-media-match-label">{t.local.next_episode_label}</span>{' '}
+                              <strong>
+                                {(() => {
+                                  const code = formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type);
+                                  const fetchedName = episodeNames.get(`${item.externalId}|${nextNumber}`);
+                                  const episodeTitle = fetchedName && !isRedundantEpisodeName(fetchedName, item.title)
+                                    ? fetchedName
+                                    : null;
+                                  return [code, episodeTitle, item.title].filter(Boolean).join(' - ');
+                                })()}
+                              </strong>
+                            </>
+                          )
                           : `Próximo episodio (${nextNumber}) no encontrado`
                       )}
                     </span>
@@ -1035,11 +1069,11 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           </div>
         )}
 
-        {history.length > 0 && (
+        {currentHistory.length > 0 && (
           <div className="local-media-history">
             <p className="local-media-history-title">{t.local.history_label}</p>
             <div className="local-media-history-feed">
-              {history.map(h => (
+              {currentHistory.map(h => (
                 <div
                   key={h.id}
                   className="local-media-history-item"
