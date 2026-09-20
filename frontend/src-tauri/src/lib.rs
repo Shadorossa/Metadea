@@ -260,6 +260,7 @@ pub fn run() {
             steam::steam_achievement_icon,
             steam::steam_get_owned_games,
             steam::steam_get_player_achievements,
+            steam::steam_get_screenshots,
             github::request_github_device_code,
             github::request_github_device_token,
             github::get_github_user_profile,

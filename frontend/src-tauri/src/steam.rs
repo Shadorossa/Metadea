@@ -194,6 +194,61 @@ pub fn detect_steam_user_id() -> Option<String> {
     most_recent_id.or(current_id)
 }
 
+/// Lists recent screenshots for this app from all local Steam accounts.
+/// Steam stores these in userdata/<account-id>/760/remote/<appid>/screenshots.
+#[tauri::command]
+pub async fn steam_get_screenshots(app_id: String) -> Result<Vec<String>, String> {
+    if app_id.is_empty() || !app_id.chars().all(|c| c.is_ascii_digit()) {
+        return Err("Invalid Steam app ID".to_string());
+    }
+
+    let root = steam_root().ok_or_else(|| "Steam installation not found".to_string())?;
+    let userdata = root.join("userdata");
+    let accounts = match std::fs::read_dir(userdata) {
+        Ok(accounts) => accounts,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error.to_string()),
+    };
+
+    let mut screenshots: Vec<(std::time::SystemTime, String)> = Vec::new();
+    for account in accounts.flatten() {
+        let account_path = account.path();
+        if !account_path.is_dir()
+            || !account.file_name().to_string_lossy().chars().all(|c| c.is_ascii_digit())
+        {
+            continue;
+        }
+
+        let screenshots_dir = account_path
+            .join("760")
+            .join("remote")
+            .join(&app_id)
+            .join("screenshots");
+        let entries = match std::fs::read_dir(screenshots_dir) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => continue,
+        };
+
+        screenshots.extend(entries.flatten().filter_map(|entry| {
+            let path = entry.path();
+            if !path.is_file() {
+                return None;
+            }
+            let extension = path.extension()?.to_str()?.to_ascii_lowercase();
+            if !matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "bmp" | "webp") {
+                return None;
+            }
+            let modified = entry.metadata().ok()?.modified().unwrap_or(std::time::UNIX_EPOCH);
+            Some((modified, path.to_string_lossy().into_owned()))
+        }));
+    }
+
+    screenshots.sort_by(|a, b| b.0.cmp(&a.0));
+    screenshots.truncate(100);
+    Ok(screenshots.into_iter().map(|(_, path)| path).collect())
+}
+
 #[tauri::command]
 pub async fn steam_achievements_download(
     app_handle: tauri::AppHandle,

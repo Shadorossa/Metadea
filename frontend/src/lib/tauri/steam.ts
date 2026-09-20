@@ -1,4 +1,4 @@
-import { tauriRun, tauriTry } from './core';
+import { tauriCmd, tauriRun, tauriTry } from './core';
 import type { SteamOwnedGame } from './local-library';
 
 function steamLang(): string {
@@ -40,6 +40,10 @@ export async function steamGetPlayerAchievements(
   return tauriTry<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(
     'steam_get_player_achievements', null, { appId, lang: steamLang() },
   );
+}
+
+export async function steamGetScreenshots(appId: string): Promise<string[]> {
+  return tauriCmd<string[]>('steam_get_screenshots', [], { appId });
 }
 
 export async function steamGetOwnedGames(): Promise<{ game_count?: number; games?: SteamOwnedGame[] } | null> {
