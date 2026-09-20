@@ -376,9 +376,21 @@ export async function startQueuePlayback(target: StartPlaybackTarget): Promise<v
   lastMarkedAt = Date.now();
 
   const pad = (value: number) => String(value).padStart(2, '0');
-  const screenshotEpisodeLabels = target.queue.map(item => target.type === 'movie'
-    ? `M${pad(item.episodeNumber)}`
-    : `S${pad(item.seasonNumber ?? 1)}E${pad(item.episodeNumber)}`);
+  const seriesEpisodeLabels = target.type === 'series'
+    ? await import('../media/episode-list')
+      .then(({ fetchLocalSeriesEpisodeLabels }) => fetchLocalSeriesEpisodeLabels(target.externalId))
+      .catch(() => new Map<number, string>())
+    : new Map<number, string>();
+  const screenshotEpisodeLabels = target.queue.map(item => {
+    if (target.type === 'movie') return `M${pad(item.episodeNumber)}`;
+    const seriesLabel = seriesEpisodeLabels.get(item.episodeNumber);
+    if (seriesLabel) return seriesLabel;
+    if (target.type === 'series') {
+      const filenameLabel = item.filePath.split(/[\\/]/).pop()?.match(/\bS\d{2}E\d{2}\b/i)?.[0];
+      if (filenameLabel) return filenameLabel.toUpperCase();
+    }
+    return `S${pad(item.seasonNumber ?? 1)}E${pad(item.episodeNumber)}`;
+  });
   await playFileWithVlc(
     target.queue.map(q => q.filePath),
     resumeSeconds ?? undefined,

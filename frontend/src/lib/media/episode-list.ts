@@ -427,3 +427,24 @@ export async function fetchLocalSeasonEpisodeNames(externalId: string, force = f
   }
   return map;
 }
+
+// Series progress is stored as one continuous episode number, while capture
+// filenames need TMDB's season-local SxxExx. `source_key` preserves that
+// original position after fetchFromTmdb converts episodes to cumulative order.
+export async function fetchLocalSeriesEpisodeLabels(externalId: string): Promise<Map<number, string>> {
+  const labels = new Map<number, string>();
+  if (parseExternalId(externalId).type !== 'series') return labels;
+
+  const episodes = await fetchMediaEpisodes(externalId).catch(() => []);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  for (const episode of episodes) {
+    const sourcePosition = episode.source_key?.match(/:season:(\d+):episode:(\d+)$/);
+    if (!sourcePosition || episode.episode_number <= 0) continue;
+
+    const season = Number(sourcePosition[1]);
+    const seasonEpisode = Number(sourcePosition[2]);
+    if (season <= 0 || seasonEpisode <= 0) continue;
+    labels.set(episode.episode_number, `S${pad(season)}E${pad(seasonEpisode)}`);
+  }
+  return labels;
+}
