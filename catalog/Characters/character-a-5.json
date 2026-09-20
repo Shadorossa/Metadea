@@ -1,0 +1,180 @@
+{
+  "character": {
+    "external_id": "character:a:5"
+  },
+  "appearances": [
+    {
+      "media_external_id": "manga:30012",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:269",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:154037",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "manga:41330",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:834",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:1686",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "lnovel:141700",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:2889",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "lnovel:141701",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:100719",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:4835",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "lnovel:141702",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:8247",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "lnovel:141703",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "manga:60541",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "lnovel:117412",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "lnovel:112709",
+      "relation_type": "BACKGROUND"
+    },
+    {
+      "media_external_id": "manga:137620",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:116674",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:159322",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:182561",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:169755",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:307765",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "lnovel:210289",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:185874",
+      "relation_type": "MAIN"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "person:a95205",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a96108",
+      "role": "voice",
+      "language": "Portuguese"
+    },
+    {
+      "external_id": "person:a95010",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a102094",
+      "role": "voice",
+      "language": "Spanish"
+    },
+    {
+      "external_id": "person:a119594",
+      "role": "voice",
+      "language": "Italian"
+    },
+    {
+      "external_id": "person:a162207",
+      "role": "voice",
+      "language": "French"
+    },
+    {
+      "external_id": "person:a130122",
+      "role": "voice",
+      "language": "German"
+    },
+    {
+      "external_id": "person:a102219",
+      "role": "voice",
+      "language": "German"
+    },
+    {
+      "external_id": "person:a95319",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a102827",
+      "role": "voice",
+      "language": "Hungarian"
+    },
+    {
+      "external_id": "person:a115082",
+      "role": "voice",
+      "language": "Italian"
+    },
+    {
+      "external_id": "person:a95073",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a104627",
+      "role": "voice",
+      "language": "Spanish"
+    },
+    {
+      "external_id": "person:a109853",
+      "role": "voice",
+      "language": "Korean"
+    }
+  ]
+}
