@@ -16,7 +16,7 @@ fn emulators_from_db(db: &crate::db::MetadeaDb) -> Result<HashMap<String, Emulat
     let conn = db.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare(
-            "SELECT platform_id, emulator_name, executable_path, launch_args, rom_folder, tracking_mode
+            "SELECT platform_id, emulator_name, executable_path, launch_args, rom_folder
              FROM emulator_configs"
         )
         .str_err()?;
@@ -30,7 +30,9 @@ fn emulators_from_db(db: &crate::db::MetadeaDb) -> Result<HashMap<String, Emulat
                     executable_path: r.get(2)?,
                     launch_args: r.get(3)?,
                     rom_folder: r.get(4)?,
-                    tracking_mode: r.get(5)?,
+                    // Retained in the serialized config/database for compatibility,
+                    // but monitoring is no longer a user-selectable mode.
+                    tracking_mode: "process".to_string(),
                 },
             ))
         })
@@ -78,7 +80,7 @@ pub async fn write_emulators_config(
                 config.executable_path,
                 config.launch_args,
                 config.rom_folder,
-                config.tracking_mode,
+                "process",
                 now
             ],
         )

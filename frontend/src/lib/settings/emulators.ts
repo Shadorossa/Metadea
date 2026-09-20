@@ -6,6 +6,7 @@ interface EmulatorConfig {
   executable_path: string;
   launch_args: string;
   rom_folder: string;
+  /** Kept for database compatibility; emulator sessions are always process-monitored. */
   tracking_mode: string;
 }
 
@@ -130,9 +131,6 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     } else if (input.id.includes('launch-args')) {
       pendingChanges[platformId].launch_args = input.value;
       console.log(`[Launch Args] ${platformId}: ${input.value}`);
-    } else if (input.id.includes('tracking-mode')) {
-      pendingChanges[platformId].tracking_mode = input.value;
-      console.log(`[Tracking Mode] ${platformId}: ${input.value}`);
     }
 
     if (!hasChanges) {
@@ -200,6 +198,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     saveBtn.addEventListener('click', async () => {
       emulatorsData = JSON.parse(JSON.stringify(pendingChanges));
       await saveEmulators();
+      window.dispatchEvent(new CustomEvent('emulators-config-reset', { detail: emulatorsData }));
       hasChanges = false;
       notification.style.opacity = '0';
       setTimeout(() => notification?.remove(), 300);
@@ -229,6 +228,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     });
     discardBtn.addEventListener('click', () => {
       pendingChanges = JSON.parse(JSON.stringify(emulatorsData));
+      window.dispatchEvent(new CustomEvent('emulators-config-reset', { detail: emulatorsData }));
       hasChanges = false;
       notification.style.opacity = '0';
       setTimeout(() => {
@@ -263,9 +263,6 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       } else if (input.id.includes('launch-args')) {
         const savedValue = emulatorsData[platformId]?.launch_args || '';
         input.value = savedValue;
-      } else if (input.id.includes('tracking-mode')) {
-        const savedValue = emulatorsData[platformId]?.tracking_mode || 'process';
-        input.value = savedValue;
       } else if (input.id.includes('rom-folder')) {
         const savedValue = emulatorsData[platformId]?.rom_folder || '';
         input.value = savedValue;
@@ -293,6 +290,9 @@ export async function initEmulators(showToast: (msg?: string) => void) {
 
 async function saveEmulators(): Promise<void> {
   try {
+    for (const config of Object.values(emulatorsData)) {
+      config.tracking_mode = 'process';
+    }
     await invoke('write_emulators_config', { configs: emulatorsData });
     console.log('[Save] Emulators config saved to database');
   } catch (err) {

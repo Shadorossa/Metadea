@@ -5,6 +5,7 @@ export interface EmulatorConfig {
   executable_path: string;
   launch_args: string;
   rom_folder: string;
+  /** Legacy persisted field; monitoring is fixed to process mode. */
   tracking_mode: string;
 }
 
