@@ -319,10 +319,6 @@ const version = pkg.version;
       }, 2000);
     });
 
-    document.getElementById("settings-preview-onboarding-btn")?.addEventListener("click", () => {
-      window.location.href = "/welcome?preview=1";
-    });
-
     document.getElementById("settings-signout-btn")?.addEventListener("click", async () => {
       await clearAuthToken().catch(() => {});
       window.location.href = "/";
