@@ -9,11 +9,11 @@
   "appearances": [
     {
       "media_external_id": "game:1009",
-      "relation_type": "SUPPORTING"
+      "relation_type": "MAIN"
     },
     {
       "media_external_id": "game:26192",
-      "relation_type": "SUPPORTING"
+      "relation_type": "MAIN"
     }
   ],
   "actors": [
