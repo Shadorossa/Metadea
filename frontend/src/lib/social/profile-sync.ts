@@ -127,7 +127,7 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
   }
 
   try {
-    const [info, activity, library, favorites, monthlyHistory, lists, customAvatar, customBanner] = await Promise.all([
+    const [info, activity, library, favorites, monthlyHistory, lists, customAvatar, customBanner, shareAvatar] = await Promise.all([
       getUserInfo().catch(() => ({} as Record<string, unknown>)),
       compileRecentActivity(),
       compileLibrary(),
@@ -136,14 +136,14 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
       compileLists(),
       getImage(STORAGE_KEYS.profileAvatarCustom).catch(() => null),
       getImage(STORAGE_KEYS.profileBannerCustom).catch(() => null),
+      getImage(STORAGE_KEYS.shareAvatarCustom).catch(() => null),
     ]);
 
-    // Same "custom takes priority over Google's own" resolution profile.astro
-    // does for the local banner — without this, the server row is stuck
-    // forever with whatever Google gave it at first link (name + photo),
-    // never reflecting a display name or avatar customized afterward.
+    // Social cards use the image chosen for sharing first, falling back to
+    // the normal custom avatar and then Google's photo when no share image
+    // was configured.
     const displayName = (info.display_name as string | undefined)?.trim() || session.username;
-    const avatarData = customAvatar || (payload.avatar as string | null) || null;
+    const avatarData = shareAvatar || customAvatar || (payload.avatar as string | null) || null;
 
     // Request body keys match the Turso column names 1:1 (see
     // saveProfileSnapshot in metadea-web) — info.theme is user_profile's own

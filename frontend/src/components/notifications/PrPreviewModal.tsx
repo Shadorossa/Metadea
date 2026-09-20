@@ -6,7 +6,7 @@ import { fetchFileAtRef } from '../../lib/github/api';
 import { catalogFilePath } from '../../lib/github/catalogPaths';
 import { getCatalogEntry } from '../../lib/tauri/catalog';
 import { getCharacter, type CharacterEntry } from '../../lib/tauri/characters';
-import { buildPreviewMediaPageData } from '../../lib/media/mediaService';
+import { buildPreviewMediaPageData, fetchMediaDataInternal } from '../../lib/media/mediaService';
 import type { ProposalBundle, CharacterProposalBundle, CharacterProposalAppearance } from '../../lib/github/submitCollaborativeProposal';
 import type { MediaPageData } from '../../lib/media/types';
 import { CharacterPreviewCard } from '../character/CharacterPreviewCard';
@@ -62,9 +62,15 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
           setPreviewAppearances(bundle.appearances ?? []);
         } else {
           const bundle = JSON.parse(content) as ProposalBundle;
-          const baseline = await getCatalogEntry(externalId).catch(() => null);
+          const [baseline, sourceData] = await Promise.all([
+            getCatalogEntry(externalId).catch(() => null),
+            // Preview the proposal on top of the work as provided by its
+            // source (AniList/TMDB/IGDB/etc.). A proposal bundle is a sparse
+            // community overlay, not a complete copy of the work's data.
+            fetchMediaDataInternal(externalId).catch(() => null),
+          ]);
           if (cancelled) return;
-          setPreviewData(buildPreviewMediaPageData(bundle, baseline));
+          setPreviewData(buildPreviewMediaPageData(bundle, baseline, sourceData));
         }
         setState('ready');
       } catch (err) {

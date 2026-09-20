@@ -3521,10 +3521,8 @@
   gap: 1rem;
 }
 
-/* Small, mostly-square card (a touch of rounding, not the pill-ish
-   --radius-xl the rest of the profile page's cards use) wrapping a
-   story-bubble-style circular photo — the whole thing reads as one compact
-   unit per person, not a wide info row. */
+/* Compact follower/following card with a square avatar and restrained corner
+   rounding, rather than the circular Story bubble used before. */
 .friend-card {
   position: relative;
   display: flex;
@@ -3552,26 +3550,22 @@
   text-decoration: none;
 }
 
-/* The ring around the photo itself — same idea as Instagram's own story
-   bubble (a circular photo with a coloured ring around it), not a plain
-   flat avatar. */
 .friend-card-avatar-wrap {
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  padding: 2.5px;
-  background: linear-gradient(135deg, var(--accent, #7c6af7), color-mix(in srgb, var(--accent, #7c6af7) 40%, transparent));
+  width: 60px;
+  height: 60px;
+  border-radius: 5px;
   flex-shrink: 0;
 }
 
 .friend-card-avatar {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
+  box-sizing: border-box;
+  border-radius: 4px;
   object-fit: cover;
   display: block;
   background: var(--bg-elevated);
-  border: 2px solid var(--bg-card, #16161f);
+  border: 1px solid var(--border-color);
 }
 
 .friend-card-avatar--placeholder {
