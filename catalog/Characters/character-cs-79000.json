@@ -1,0 +1,109 @@
+{
+  "character": {
+    "external_id": "character:cs:79000",
+    "name": "Ellie Williams",
+    "aliases_csv": "Kiddo,Baby girl,Little Rabbit,New Kid,Brick Master,Herding Master,El,Babe",
+    "biography": "<b>Birth date:</b> 2019<br>\n<b>Age(d):</b> 13 <small>(<i>American Dreams</i>)</small><br>14 <small>(<i>Left Behind</i>, <i>Part I</i>)</small><br>19 <small>(<i>Part II</i>)</small><br>\n<b>Status:</b> Alive<br>\n<b>Gender:</b> Female<br>\n<b>Occupation(s):</b> Military school cadet <small>(formerly)</small><br>Jackson patrolman<br>\n<b>Affiliation(s):</b> FEDRA <small>(preparatory school, formerly)</small><br>Fireflies <small>(informally; formerly)</small><br>Jackson <small>(formerly)</small><br>\n<b>Relationships:</b> Anna <small>(mother)</small><br>Cat <small>(ex-girlfriend)</small><br>Dina <small>(ex-girlfriend)</small><br>Riley Abel <small>(best friend)</small><br>JJ <small>(adopted son)</small><br>Joel Miller <small>(surrogate father)</small><br>\n<b>Resides:</b> Boston, Massachusetts <small>(formerly)</small><br>Jackson, Wyoming<br>The Farm, Wyoming <small>(formerly)</small><br>\n<b>Height:</b> 5'3\"/5'5\" <small>(160/165cm)</small> <small>(<i>Part I</i>)</small><br>\n<b>Hair color:</b> Auburn<br>\n<b>Eye color:</b> Green<br>\n<b>Mo-capped by:</b> Ashley Johnson<br>Courtney Munch <small>(stunt double; <i>Part I</i>)</small><br>\n<b>Portrayed by:</b> Ashley Johnson <small>(<i>One Night Live</i>)</small><br>\n<br>\n<p>Ellie Williams is the central character of The Last of Us series. She serves as the protagonist of The Last of Us: American Dreams, the playable deuteragonist of The Last of Us Part I, the playable protagonist of The Last of Us: Left Behind, the playable dual protagonist of The Last of Us Part II, and a playable character in the No Return mode.</p>\n<p>Ellie grew up as an orphan in the Boston quarantine zone and attended a military preparatory school, where she met and befriended Riley Abel. When Ellie was fourteen, the pair were both infected with the Cordyceps brain infection, where Ellie discovered she was immune. A friend of her mother's and the leader of the Fireflies, Marlene, believed that she was the key to reverse engineering a vaccine. Marlene tasked Joel Miller, a smuggler, with escorting Ellie outside of the QZ. The simple drop-off turned into a year-long journey across America, and the two eventually formed a close bond.</p>\n<p>Upon reaching the Fireflies in Salt Lake City, Joel learned that euthanizing Ellie could create the cure. Refusing this, he killed the head surgeon and escaped with Ellie to settle down in Jackson, his brother's community in Wyoming. For the next four years, Ellie resented Joel for depriving her life to have a purpose she believed in. In 2038, Abby Anderson, a former Firefly and the surgeon's daughter, found and killed Joel. Ellie vowed revenge and pursued Abby to Seattle. Her efforts were fruitless, leading her to retire on a farm with her girlfriend Dina and her son JJ. Unable to forgive Abby, Ellie abandoned her family and pursued her once again to Santa Barbara, only to spare Abby in the end, as her way of forgiving Joel through Abby. She returned to the farm, accepting Joel's death, only to leave upon realizing Dina was no longer there.</p>\n<p>Ellie Williams was born in the spring of 2019, by which time the Cordyceps brain infection had spread throughout the United States. Her mother was a nurse named Anna. Ellie's father's identity is unknown. On the day of her birth, her mother passed away. Before her death, Anna entrusted her closest friend Marlene to look after Ellie. However, Ellie did not meet Marlene until she was 13 years old.</p>\n<p>As a child, Ellie grew up as an orphan in an oppressive military quarantine zone in Boston, Massachusetts, with little knowledge of the world before infection.</p>\n<p>According to Ellie, at one point in her life, she drove a car, and used a BB rifle to shoot at rats.</p>\n<p>Shortly after turning 13, Ellie arrives at the Boston quarantine zone on a bus, to the sight of the military scanning a man for infection. She thinks nothing of it until the scan reads positive and a man is forced to his knees at gunpoint. This sight frightens her. Once she is safely inside the gates, she and the other survivors leave the bus. She is approached by a soldier who knows her. He warns her not to pull any of her \"old stunts\" once she has settled in and tells her that he can no longer look after her. Ellie asks that he take her with him, but he refuses, citing his responsibility to his own family. Enraged, Ellie declares she can take care of herself without his help.</p>\n<p>However, shortly after she is caught in a fight with a group of boys who attempt to steal her belongings. Ellie provokes them, but is saved by a teenage girl as their leader prepares to attack her. The girl intimidates the boys enough to scare them away. She asks Ellie what they wanted with her, and Ellie implies they meant to steal her belongings. She dismisses the girl when she tries to give her advice on how to function in the quarantine zone, inquiring whether or not she looks like she needs help. The girl notes she has \"trust issues\" and calls her \"new kid.\" Seconds later, she advises Ellie to flee before quickly leaving. Ellie is confused by what she means and is caught by one of the authority figures in charge of the school. In his office, Ellie is flippant with his show of authority despite the open reading of her rap sheet in previous homes.</p>",
+    "image_url": "https://static.wikia.nocookie.net/thelastofus/images/3/34/Part_II_Ellie_infobox.png/revision/latest?cb=20250711183842"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:1009",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:26192",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "person:a262342",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a102669",
+      "role": "voice",
+      "language": "French"
+    },
+    {
+      "external_id": "person:a142565",
+      "role": "voice",
+      "language": "German"
+    },
+    {
+      "external_id": "person:a105710",
+      "role": "voice",
+      "language": "German"
+    },
+    {
+      "external_id": "person:a109569",
+      "role": "voice",
+      "language": "Italian"
+    },
+    {
+      "external_id": "person:t4196662",
+      "name": "Maria Blanco",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Spanish"
+    },
+    {
+      "external_id": "person:t1915487",
+      "name": "Mariela Centurion",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Spanish"
+    },
+    {
+      "external_id": "person:t1686493",
+      "name": "Joana Ribeiro",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/ipukcmtTCQGJ7LPZuP3YLXbpEbm.jpg",
+      "role": "voice",
+      "language": "Portuguese"
+    },
+    {
+      "external_id": "person:a241496",
+      "role": "voice",
+      "language": "Portuguese"
+    },
+    {
+      "external_id": "person:t6318395",
+      "name": "Eirini Psychrami",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Greek"
+    },
+    {
+      "external_id": "person:a353066",
+      "role": "voice",
+      "language": "Turkish"
+    },
+    {
+      "external_id": "person:a107961",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:t589511",
+      "name": "Anna Cieślak",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/dle57DGfKqPYKZAMCM4xLA4T4v6.jpg",
+      "role": "voice",
+      "language": "Polish"
+    },
+    {
+      "external_id": "person:t3497508",
+      "name": "Eliza Martirosova",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Russian"
+    }
+  ]
+}
