@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { steamAchievementIcon, type SteamAchievement } from '../../../lib/tauri';
+import { getT } from '../../../i18n/client';
 import { formatDateShort } from '../../../lib/shared/formatDate';
 
 interface AchievementCellProps {
@@ -9,6 +10,8 @@ interface AchievementCellProps {
 }
 
 export function AchievementCell({ ach, appId }: AchievementCellProps) {
+  const t = getT();
+  const isUnachievedSpoiler = !!ach.hidden && !ach.achieved;
   const localFile = ach.achieved ? ach.icon_unlocked : ach.icon_locked;
   const [src, setSrc] = useState<string | null>(null);
   const cellRef = useRef<HTMLDivElement>(null);
@@ -51,7 +54,7 @@ export function AchievementCell({ ach, appId }: AchievementCellProps) {
   return (
     <div
       ref={cellRef}
-      className={`local-game-detail-ach-cell${ach.achieved ? ' achieved' : ''}`}
+      className={`local-game-detail-ach-cell${ach.achieved ? ' achieved' : ''}${isUnachievedSpoiler ? ' spoiler' : ''}`}
       onMouseEnter={showTooltip}
       onMouseLeave={() => setTooltipPos(null)}
     >
@@ -65,11 +68,13 @@ export function AchievementCell({ ach, appId }: AchievementCellProps) {
           </svg>
         </div>
       )}
+      {isUnachievedSpoiler && <span className="local-game-detail-ach-spoiler-label">{t.local.spoiler_label}</span>}
       {tooltipPos && createPortal(
         <div
           className="local-game-detail-ach-tooltip local-game-detail-ach-tooltip--portal"
           style={{ top: tooltipPos.top, left: tooltipPos.left }}
         >
+          {isUnachievedSpoiler && <span className="local-game-detail-ach-tooltip-spoiler">{t.local.spoiler_label}</span>}
           <span className="local-game-detail-ach-tooltip-name">{ach.name || ach.apiname}</span>
           {ach.description && <span className="local-game-detail-ach-tooltip-desc">{ach.description}</span>}
           {unlockDate && <span className="local-game-detail-ach-tooltip-date">Desbloqueado: {unlockDate}</span>}

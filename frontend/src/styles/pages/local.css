@@ -1349,6 +1349,16 @@
   color: var(--text-main);
 }
 
+.local-media-match-chip--labeled {
+  align-items: center;
+  min-height: 2.5em;
+}
+
+.local-media-match-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .local-media-match-chip.ok    { color: var(--color-completed); }
 .local-media-match-chip.fail  { color: var(--color-error); }
 
@@ -1361,6 +1371,11 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  line-height: 1.25;
+}
+
+.local-media-match-chip.fail strong {
+  color: inherit;
 }
 
 .spinner--sm {
@@ -2025,22 +2040,9 @@
   letter-spacing: 0.03em;
 }
 
-.local-game-detail-achievements {
-  margin-top: 0.5rem;
-}
-
-.local-game-detail-achievements-title {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
-}
-
 .local-game-detail-achievement-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 52px);
   gap: 0.5rem;
 }
 
@@ -2063,6 +2065,23 @@
 .local-game-detail-ach-cell:hover {
   filter: none;
   z-index: 10;
+}
+
+.local-game-detail-ach-spoiler-label {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  z-index: 1;
+  padding: 2px 3px;
+  color: var(--accent);
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  font-size: 0.48rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .local-game-detail-ach-img {
@@ -2135,27 +2154,92 @@
   margin-top: 0.15rem;
 }
 
-.local-steam-screenshots {
+.local-game-detail-ach-tooltip-spoiler {
+  align-self: flex-start;
+  padding: 0.1rem 0.3rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.local-steam-media {
   margin-top: 1rem;
-  padding-top: 0.9rem;
+  padding-top: 0.75rem;
   border-top: 1px solid var(--border-color);
 }
 
-.local-steam-screenshots-title {
+.local-steam-media-tabs {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.7rem;
-  color: var(--text-main);
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.local-steam-screenshots-count {
+.local-steam-media-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  margin-bottom: -1px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom-color: var(--border-color);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.local-steam-media-tab:hover,
+.local-steam-media-tab.active {
+  color: var(--text-main);
+}
+
+.local-steam-media-tab.active {
+  border-bottom: 2px solid var(--accent);
+}
+
+.local-steam-media-count {
   color: var(--text-dim);
   font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.local-steam-media-panel {
+  min-height: 2rem;
+}
+
+.local-steam-media-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.local-steam-media-page-btn {
+  padding: 0.25rem 0.55rem;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  font: inherit;
+  cursor: pointer;
+}
+
+.local-steam-media-page-btn:hover:not(:disabled) {
+  color: var(--text-main);
+  border-color: var(--accent);
+}
+
+.local-steam-media-page-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .local-steam-screenshots-empty {

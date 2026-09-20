@@ -6,8 +6,7 @@ import {
   igdbGetGameDetail, getMediaCompanies, readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
-import { AchievementCell } from './AchievementCell';
-import { SteamScreenshots } from './SteamScreenshots';
+import { SteamMediaSection } from './SteamMediaSection';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { IconMonitor, IconPencil } from '../ui/icons';
@@ -69,6 +68,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const contentKey = knownExternalId ?? game.app_id ?? game.name;
   const [gameInfo,      setGameInfo]      = useState<GameInfo | null>(null);
   const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
+  const [achievementsLoading, setAchievementsLoading] = useState(false);
   const [showPicker,    setShowPicker]    = useState(false);
   const [hasLaunched,   setHasLaunched]   = useState(false);
   const autoResumeButtonRef = useRef<HTMLButtonElement>(null);
@@ -95,9 +95,14 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
 
   useEffect(() => {
     setAchievements(null);
-    if (launchTarget.launcher !== 'steam' || !launchTarget.app_id) return;
+    const isSteamGame = launchTarget.launcher === 'steam' && !!launchTarget.app_id;
+    setAchievementsLoading(isSteamGame);
+    if (!isSteamGame) return;
     let cancelled = false;
-    steamGetPlayerAchievements(Number(launchTarget.app_id)).then(res => { if (!cancelled) setAchievements(res || null); }).catch(() => { if (!cancelled) setAchievements(null); });
+    steamGetPlayerAchievements(Number(launchTarget.app_id))
+      .then(res => { if (!cancelled) setAchievements(res || null); })
+      .catch(() => { if (!cancelled) setAchievements(null); })
+      .finally(() => { if (!cancelled) setAchievementsLoading(false); });
     return () => { cancelled = true; };
   }, [launchTarget.app_id, launchTarget.launcher]);
 
@@ -595,20 +600,13 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         </div>
         {displaySummary && <p className="local-game-detail-summary">{displaySummary}</p>}
 
-        {achievements?.list && achievements.list.length > 0 && (
-          <div className="local-game-detail-achievements">
-            <p className="local-game-detail-achievements-title">
-              Logros — {achievements.unlocked}/{achievements.total}
-            </p>
-            <div className="local-game-detail-achievement-grid">
-              {achievements.list.map((ach: SteamAchievement) => (
-                <AchievementCell key={ach.apiname} ach={ach} appId={launchTarget.app_id!} />
-              ))}
-            </div>
-          </div>
-        )}
         {launchTarget.launcher === 'steam' && launchTarget.app_id && (
-          <SteamScreenshots appId={launchTarget.app_id} />
+          <SteamMediaSection
+            key={launchTarget.app_id}
+            appId={launchTarget.app_id}
+            achievements={achievements}
+            achievementsLoading={achievementsLoading}
+          />
         )}
       </div>
     </>

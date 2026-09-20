@@ -16,6 +16,15 @@ fn steam_api_key(db: &crate::db::MetadeaDb) -> Result<Option<String>, String> {
         .filter(|s| !s.is_empty()))
 }
 
+fn is_hidden_achievement(schema: Option<&serde_json::Value>) -> bool {
+    match schema.and_then(|achievement| achievement.get("hidden")) {
+        Some(serde_json::Value::Bool(hidden)) => *hidden,
+        Some(serde_json::Value::Number(hidden)) => hidden.as_u64() == Some(1),
+        Some(serde_json::Value::String(hidden)) => hidden == "1" || hidden.eq_ignore_ascii_case("true"),
+        _ => false,
+    }
+}
+
 /// Downloads achievement icons (both locked and unlocked) and saves achievements.json.
 /// Always refreshes progress from Steam; only skips icon files that already exist on disk.
 /// Re-saves achievements.json whenever the unlock state has changed.
@@ -147,12 +156,14 @@ pub async fn download_achievements(
             .filter(|s| !s.is_empty())
             .or_else(|| p["description"].as_str().filter(|s| !s.is_empty()))
             .unwrap_or("");
+        let hidden = is_hidden_achievement(schema);
 
         merged.push(serde_json::json!({
             "apiname":          apiname,
             "name":             display_name,
             "description":      description,
             "achieved":         achieved,
+            "hidden":           hidden,
             "unlocktime":       p["unlocktime"].as_u64().unwrap_or(0),
             "icon_unlocked":    icon_file,
             "icon_locked":      icon_gray_file,
@@ -196,8 +207,14 @@ pub fn detect_steam_user_id() -> Option<String> {
 
 /// Lists recent screenshots for this app from all local Steam accounts.
 /// Steam stores these in userdata/<account-id>/760/remote/<appid>/screenshots.
+#[derive(serde::Serialize)]
+pub struct SteamScreenshot {
+    path: String,
+    thumbnail_path: String,
+}
+
 #[tauri::command]
-pub async fn steam_get_screenshots(app_id: String) -> Result<Vec<String>, String> {
+pub async fn steam_get_screenshots(app_id: String) -> Result<Vec<SteamScreenshot>, String> {
     if app_id.is_empty() || !app_id.chars().all(|c| c.is_ascii_digit()) {
         return Err("Invalid Steam app ID".to_string());
     }
@@ -210,7 +227,7 @@ pub async fn steam_get_screenshots(app_id: String) -> Result<Vec<String>, String
         Err(error) => return Err(error.to_string()),
     };
 
-    let mut screenshots: Vec<(std::time::SystemTime, String)> = Vec::new();
+    let mut screenshots: Vec<(std::time::SystemTime, SteamScreenshot)> = Vec::new();
     for account in accounts.flatten() {
         let account_path = account.path();
         if !account_path.is_dir()
@@ -240,12 +257,19 @@ pub async fn steam_get_screenshots(app_id: String) -> Result<Vec<String>, String
                 return None;
             }
             let modified = entry.metadata().ok()?.modified().unwrap_or(std::time::UNIX_EPOCH);
-            Some((modified, path.to_string_lossy().into_owned()))
+            let thumbnail_path = path
+                .parent()?
+                .join("thumbnails")
+                .join(path.file_name()?);
+            let thumbnail_path = if thumbnail_path.is_file() { thumbnail_path } else { path.clone() };
+            Some((modified, SteamScreenshot {
+                path: path.to_string_lossy().into_owned(),
+                thumbnail_path: thumbnail_path.to_string_lossy().into_owned(),
+            }))
         }));
     }
 
     screenshots.sort_by(|a, b| b.0.cmp(&a.0));
-    screenshots.truncate(100);
     Ok(screenshots.into_iter().map(|(_, path)| path).collect())
 }
 
@@ -401,9 +425,11 @@ pub async fn steam_get_player_achievements(
                     }
                 })
                 .unwrap_or("");
+            let hidden = is_hidden_achievement(schema);
             serde_json::json!({
                 "apiname":     apiname,
                 "achieved":    p["achieved"].as_u64().unwrap_or(0),
+                "hidden":      hidden,
                 "unlocktime":  p["unlocktime"].as_u64().unwrap_or(0),
                 "name":        display_name,
                 "description": description,

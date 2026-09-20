@@ -18,12 +18,18 @@ function steamLang(): string {
 export interface SteamAchievement {
   apiname:        string;
   achieved:       number;
+  hidden?:        boolean;
   unlocktime:     number;
   name?:          string;
   description?:   string;
   icon?:          string;
   icon_unlocked?: string;
   icon_locked?:   string;
+}
+
+export interface SteamScreenshot {
+  path: string;
+  thumbnail_path: string;
 }
 
 export async function steamAchievementsDownload(appId: string): Promise<void> {
@@ -42,8 +48,8 @@ export async function steamGetPlayerAchievements(
   );
 }
 
-export async function steamGetScreenshots(appId: string): Promise<string[]> {
-  return tauriCmd<string[]>('steam_get_screenshots', [], { appId });
+export async function steamGetScreenshots(appId: string): Promise<SteamScreenshot[]> {
+  return tauriCmd<SteamScreenshot[]>('steam_get_screenshots', [], { appId });
 }
 
 export async function steamGetOwnedGames(): Promise<{ game_count?: number; games?: SteamOwnedGame[] } | null> {
