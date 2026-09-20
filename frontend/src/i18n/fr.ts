@@ -1,5 +1,10 @@
 export const fr = {
   home: {
+    profile_sync_prompt: "Synchroniser votre profil avec Metadea ?",
+    profile_sync_description: "Envoyez les modifications de votre bibliothèque et de votre activité vers votre profil cloud.",
+    profile_sync_button: "Synchroniser",
+    profile_syncing: "Synchronisation…",
+    profile_sync_error: "Échec de la synchronisation. Vérifiez votre connexion et réessayez.",
     title: "Votre bibliothèque de médias personnelle",
     currently_sub_aria: "Diminuer",
     currently_add_aria: "Augmenter",
@@ -685,8 +690,6 @@ export const fr = {
     library_section_title: "Bibliothèque",
     content_section_title: "Contenu",
     activity_section: "Activité",
-    activity_batch_episodes: "Regrouper les épisodes par jour",
-    activity_batch_episodes_hint: "Regroupe les épisodes vus le même jour en une seule entrée d'activité.",
     unify_seasons_enabled: "Unifier les saisons d'anime",
     unify_seasons_hint: "Affiche chaque anime enchaîné par saisons (AniList) comme une seule œuvre dans votre bibliothèque, avec un onglet Saisons sur sa page.",
     activity_adult_content: "Afficher le contenu +18",

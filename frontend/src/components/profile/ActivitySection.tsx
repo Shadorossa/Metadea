@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { readUserJourney, writeUserJourney } from '../../lib/tauri';
+import { getAuthToken, readUserJourney, writeUserJourney } from '../../lib/tauri';
 import type { DayJourney, UserJourneyEvent, MediaCatalogEntry } from '../../lib/tauri';
 import { typeIconMap } from '../../lib/shared/icon-strings';
 import { IconTrash } from '../local/ui/icons';
@@ -11,6 +11,8 @@ import type { getT } from '../../i18n/client';
 import { formatLocalDateLong } from '../../lib/shared/formatDate';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { interpolate } from '../../lib/shared/interpolate';
+import { decodeJwtPayload } from '../../lib/shared/encoding-utils';
+import { removeCachedGeneralActivity, refreshGeneralActivityFeed } from '../../lib/social/activity-feed';
 
 type P = ReturnType<typeof getT>['profile'];
 
@@ -69,45 +71,17 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
 
   const finalEvents = useMemo<ActivityEvent[]>(() => {
     if (!journey) return [];
-    const daysWithEvents = journey.filter(day => day && day.date && day.events && day.events.length > 0).slice(0, 7);
+    const daysWithEvents = journey
+      .filter(day => day && day.date && day.events?.some(event => event.type === 'complete'))
+      .slice(0, 7);
 
-    // Flatten and filter events: no 'start' events, no hours (game/vnovel progress)
-    const allEvents: ActivityEvent[] = daysWithEvents.flatMap(day => {
+    return daysWithEvents.flatMap(day => {
       const formattedDate = formatLocalDateLong(day.date);
       return (day.events || [])
         .filter(Boolean)
-        .filter(event => event.type !== 'start')
-        .filter(event => !(event.type === 'progress' && (event.mediaType === 'game' || event.mediaType === 'vnovel')))
+        .filter(event => event.type === 'complete')
         .map(event => ({ ...event, date: day.date, formattedDate }));
     });
-
-    // Optionally batch progress events by date and media
-    const batchEpisodes = typeof localStorage !== 'undefined'
-      ? localStorage.getItem(STORAGE_KEYS.activityBatchEpisodes) === 'true'
-      : true;
-
-    if (!batchEpisodes) {
-      return allEvents.filter(event => event.type !== 'progress');
-    }
-
-    const groupedEvents: ActivityEvent[] = [];
-    const progressByDateAndMedia = new Map<string, ActivityEvent>();
-    for (const event of allEvents) {
-      if (event.type === 'progress') {
-        const key = `${event.date}_${event.externalId}`;
-        const existing = progressByDateAndMedia.get(key);
-        if (existing) {
-          existing.progressEnd = event.progressEnd;
-          existing.timestamp = event.timestamp;
-        } else {
-          progressByDateAndMedia.set(key, event);
-          groupedEvents.push(event);
-        }
-      } else {
-        groupedEvents.push(event);
-      }
-    }
-    return groupedEvents;
   }, [journey]);
 
   const handleDelete = async (event: ActivityEvent) => {
@@ -124,6 +98,29 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
     await writeUserJourney(updated);
     setMenu(null);
     setJourney(updated);
+
+    // This user action changes the local source of truth and must also update
+    // the Worker snapshot that powers Home's General feed. The existing sync
+    // endpoint replaces the profile snapshot (including its activity list).
+    const session = await getAuthToken().catch(() => null);
+    if (!session || session.token === 'offline_token') return;
+
+    const payload = decodeJwtPayload(session.token);
+    if (typeof payload.userId !== 'string') return;
+
+    removeCachedGeneralActivity(payload.userId, event);
+    let synced = false;
+    try {
+      const { syncProfileToServer } = await import('../../lib/social/profile-sync');
+      synced = await syncProfileToServer(true);
+    } catch { /* a failed upload keeps the Home prompt available for retry */ }
+    if (synced) {
+      await refreshGeneralActivityFeed(true);
+    } else {
+      // Let the daily Home prompt retry the now-dirty local snapshot.
+      localStorage.removeItem(STORAGE_KEYS.profileSyncLastSync);
+      console.warn('[Activity] Removed locally, but the Worker snapshot could not be updated.');
+    }
   };
 
   if (journey === null) return null;
@@ -145,20 +142,6 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
           let text = '';
           if (event.type === 'complete') {
             text = interpolate(j.completed || 'Completed {media}', { media: title });
-          } else if (event.type === 'progress') {
-            const start = event.progressStart ?? 0;
-            const end = event.progressEnd ?? 0;
-            const isSingle = start === end;
-
-            if (mType === 'anime' || mType === 'series') {
-              const tmpl = isSingle ? (j.watched_episode || 'Watched episode {end} of {media}') : (j.watched_episodes || 'Watched episodes {start}-{end} of {media}');
-              text = interpolate(tmpl, { media: title, start, end });
-            } else if (mType === 'manga' || mType === 'lnovel' || mType === 'book' || mType === 'comic') {
-              const tmpl = isSingle ? (j.read_chapter || 'Read chapter {end} of {media}') : (j.read_chapters || 'Read chapters {start}-{end} of {media}');
-              text = interpolate(tmpl, { media: title, start, end });
-            } else {
-              text = interpolate(j.updated || 'Updated {media}', { media: title });
-            }
           }
 
           const typeIc = TYPE_ICON[mType] ?? '';

@@ -1,5 +1,10 @@
 export const ja = {
   home: {
+    profile_sync_prompt: "Metadea とプロフィールを同期しますか？",
+    profile_sync_description: "ライブラリとアクティビティの変更をクラウドプロフィールにアップロードします。",
+    profile_sync_button: "同期",
+    profile_syncing: "同期中…",
+    profile_sync_error: "同期できませんでした。接続を確認してもう一度お試しください。",
     title: "あなただけのメディアライブラリ",
     currently_sub_aria: "減らす",
     currently_add_aria: "増やす",
@@ -685,8 +690,6 @@ export const ja = {
     library_section_title: "ライブラリ",
     content_section_title: "コンテンツ",
     activity_section: "アクティビティ",
-    activity_batch_episodes: "話数を日ごとにまとめる",
-    activity_batch_episodes_hint: "同じ日に視聴したエピソードを1つのアクティビティにまとめて表示します。",
     unify_seasons_enabled: "アニメのシーズンを統合する",
     unify_seasons_hint: "シーズンで繋がったアニメ(AniList)をライブラリ内で1つの作品としてまとめ、作品ページに「シーズン」タブを表示します。",
     activity_adult_content: "+18コンテンツを表示",

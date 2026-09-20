@@ -10,13 +10,16 @@ export async function logJourneyEvent(
   existing: LibraryEntry | null,
   entry: LibraryEntry,
   mediaType: string,
-  totalCount?: number
+  _totalCount?: number
 ): Promise<void> {
   try {
-    const journey = await readUserJourney();
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    // Activity is a completion history, not a progress log. Strip legacy
+    // start/progress rows whenever the journey is next written so they can no
+    // longer reappear locally or be uploaded to the social feed.
+    const journey = (await readUserJourney())
+      .map(day => ({ ...day, events: (day.events || []).filter(event => event.type === 'complete') }))
+      .filter(day => day.events.length > 0);
     const externalId = entry.external_id;
-    const timestamp = new Date().toISOString();
 
     // Only register 'complete' events (no 'start' events) — and only when a
     // real finish date was set. Without one there's no day to file the event
@@ -47,64 +50,6 @@ export async function logJourneyEvent(
         // outrank genuinely recent activity just because it was edited now.
         timestamp: new Date(`${finishDate}T12:00:00`).toISOString(),
       });
-    }
-
-    // 2. Check progress updates (only if not a direct-completion or batch entry)
-    const wasPlanningOrNew = !existing || existing.status === 'planning' || !existing.status;
-    const isDirectCompletion = wasPlanningOrNew && isNowCompleted;
-    // Batch entry: user added a work with all chapters/episodes already done at once
-    const prevProgress = existing ? existing.progress : 0;
-    const isBatchEntry = wasPlanningOrNew
-      && totalCount !== undefined && totalCount > 0
-      && entry.progress >= totalCount
-      && prevProgress === 0;
-
-    if (!isDirectCompletion && !isBatchEntry) {
-      const newProgress = entry.progress;
-
-      if (newProgress !== prevProgress && newProgress > 0) {
-        let dayEntry = journey.find(d => d.date === today);
-
-        if (newProgress > prevProgress) {
-          if (!dayEntry) {
-            dayEntry = { date: today, events: [] };
-            journey.push(dayEntry);
-          }
-          let progEvent = dayEntry.events.find(e => e.externalId === externalId && e.type === 'progress');
-          const startVal = prevProgress + 1;
-          const endVal = newProgress;
-
-          if (progEvent) {
-            progEvent.progressEnd = endVal;
-            progEvent.timestamp = timestamp;
-          } else {
-            dayEntry.events.push({
-              externalId,
-              type: 'progress',
-              progressStart: startVal,
-              progressEnd: endVal,
-              mediaType,
-              timestamp
-            });
-          }
-        } else if (newProgress < prevProgress) {
-          // Decreased progress
-          if (dayEntry) {
-            const progEventIndex = dayEntry.events.findIndex(e => e.externalId === externalId && e.type === 'progress');
-            if (progEventIndex !== -1) {
-              const progEvent = dayEntry.events[progEventIndex];
-              if (newProgress <= progEvent.progressStart) {
-                // Undid all progress made today, remove the event
-                dayEntry.events.splice(progEventIndex, 1);
-              } else {
-                // Decreased but still higher than start of today
-                progEvent.progressEnd = newProgress;
-                progEvent.timestamp = timestamp;
-              }
-            }
-          }
-        }
-      }
     }
 
     // Filter out day entries that have become empty

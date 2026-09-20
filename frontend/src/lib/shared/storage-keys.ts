@@ -6,7 +6,6 @@ export const STORAGE_KEYS = {
   customColor: 'metadea_custom_color',
   userBio: 'metadea_user_bio',
   ratingSystem: 'metadea_rating_system',
-  activityBatchEpisodes: 'metadea_activity_batch_episodes',
   anilistToken: 'metadea_anilist_token',
   showAdultContent: 'metadea_show_adult_content',
   authToken: 'auth_token',

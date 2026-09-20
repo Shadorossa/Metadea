@@ -1,5 +1,10 @@
 export const ca = {
   home: {
+    profile_sync_prompt: "Vols sincronitzar el teu perfil amb Metadea?",
+    profile_sync_description: "Puja els canvis de la teva biblioteca i activitat al teu perfil al núvol.",
+    profile_sync_button: "Sincronitza",
+    profile_syncing: "Sincronitzant…",
+    profile_sync_error: "No s'ha pogut sincronitzar. Comprova la connexió i torna-ho a provar.",
     title: "La teva biblioteca personal de mèdia",
     currently_sub_aria: "Restar",
     currently_add_aria: "Sumar",
@@ -685,8 +690,6 @@ export const ca = {
     library_section_title: "Biblioteca",
     content_section_title: "Contingut",
     activity_section: "Activitat",
-    activity_batch_episodes: "Agrupar episodis per dia",
-    activity_batch_episodes_hint: "Agrupa els episodis vistos el mateix dia en una única entrada d'activitat.",
     unify_seasons_enabled: "Unificar temporades d'anime",
     unify_seasons_hint: "Mostra cada anime encadenat per temporades (AniList) com una sola obra a la teva biblioteca, amb una pestanya de Temporades a la seva pàgina.",
     unify_seasons_highest_rated_cover: "Portada de la temporada més ben valorada",

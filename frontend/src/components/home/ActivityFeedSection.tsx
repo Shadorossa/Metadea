@@ -4,7 +4,7 @@ import { getCachedActivityFeed, getCachedGeneralActivityFeed, type ActivityFeedE
 import { getCatalogEntry, type MediaCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { typeIconMap } from '../../lib/shared/icon-strings';
-import { getTypeLabel, isReadingType } from '../../lib/constants/media';
+import { getTypeLabel } from '../../lib/constants/media';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { formatLocalDateLong } from '../../lib/shared/formatDate';
 import { toSmallCover } from '../../lib/shared/small-cover';
@@ -37,9 +37,14 @@ export function ActivityFeedSection({ title, i18n }: { title: string; i18n?: any
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setFriendEntries(getCachedActivityFeed());
-    setGeneralEntries(getCachedGeneralActivityFeed());
+    const readCaches = () => {
+      setFriendEntries(getCachedActivityFeed());
+      setGeneralEntries(getCachedGeneralActivityFeed());
+    };
+    readCaches();
     setMounted(true);
+    window.addEventListener('metadea:activity-feed-updated', readCaches);
+    return () => window.removeEventListener('metadea:activity-feed-updated', readCaches);
   }, []);
 
   const entries = useMemo(
@@ -49,7 +54,7 @@ export function ActivityFeedSection({ title, i18n }: { title: string; i18n?: any
 
   const events = useMemo<FlatEvent[]>(() => {
     const flat = entries.flatMap(entry =>
-      entry.activity.map(ev => ({
+      entry.activity.filter(ev => ev.type === 'complete').map(ev => ({
         userId: entry.userId,
         username: entry.username,
         avatarUrl: entry.avatarUrl,
@@ -109,21 +114,8 @@ export function ActivityFeedSection({ title, i18n }: { title: string; i18n?: any
   // so hoisting them here changes nothing about what they compute.
   const j = p.journey;
 
-  const describe = useMemo(() => (ev: FlatEvent, title: string): string => {
-    if (ev.type === 'complete') return interpolate(j.completed, { media: title });
-    if (ev.type === 'progress') {
-      const start = ev.progressStart ?? 0;
-      const end = ev.progressEnd ?? 0;
-      const isSingle = start === end;
-      if (ev.mediaType === 'anime' || ev.mediaType === 'series') {
-        return interpolate(isSingle ? j.watched_episode : j.watched_episodes, { media: title, start, end });
-      }
-      if (isReadingType(ev.mediaType)) {
-        return interpolate(isSingle ? j.read_chapter : j.read_chapters, { media: title, start, end });
-      }
-      return interpolate(j.updated, { media: title });
-    }
-    return interpolate(j.started, { media: title });
+  const describe = useMemo(() => (title: string): string => {
+    return interpolate(j.completed, { media: title });
   }, [j]);
 
   const ActivityCard = useMemo(() => memo((props: { ev: FlatEvent; i: number }) => {
@@ -131,7 +123,7 @@ export function ActivityFeedSection({ title, i18n }: { title: string; i18n?: any
     const meta = catalog[ev.externalId];
     const mediaTitle = meta?.title_main ?? ev.externalId;
     const cover = toSmallCover(meta?.cover_url);
-    const text = describe(ev, mediaTitle);
+    const text = describe(mediaTitle);
     const titleIdx = text.indexOf(mediaTitle);
     const textNode = titleIdx === -1
       ? text

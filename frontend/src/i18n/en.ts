@@ -1,5 +1,10 @@
 export const en = {
   home: {
+    profile_sync_prompt: "Sync your profile with Metadea?",
+    profile_sync_description: "Upload your library and activity changes to your cloud profile.",
+    profile_sync_button: "Synchronize",
+    profile_syncing: "Synchronizing…",
+    profile_sync_error: "Could not synchronize. Check your connection and try again.",
     title: "Your personal media library",
     currently_sub_aria: "Decrease",
     currently_add_aria: "Increase",
@@ -693,8 +698,6 @@ export const en = {
     library_section_title: "Library",
     content_section_title: "Content",
     activity_section: "Activity",
-    activity_batch_episodes: "Batch episodes by day",
-    activity_batch_episodes_hint: "Groups episodes watched on the same day into a single activity entry.",
     unify_seasons_enabled: "Unify anime seasons",
     unify_seasons_hint: "Shows each AniList anime chained by seasons as a single work in your library, with a Seasons tab on its page.",
     unify_seasons_highest_rated_cover: "Highest rated season cover",

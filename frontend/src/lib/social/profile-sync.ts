@@ -1,7 +1,7 @@
 // Once-a-day upload of the current user's public snapshot (bio, rating
 // system, theme, recent activity) to the metadea-web server — same pattern
 // as syncCommunityCatalog in BaseLayout.astro (localStorage timestamp gate,
-// called once per app session with a short delay). Only runs for a real
+// prompted on Home once per local calendar day). Only runs for a real
 // Google-linked session; the local "offline_token" mode has no server
 // identity to sync to.
 import { API_URL } from '../config';
@@ -44,7 +44,9 @@ export function getLastSyncAttempt(): SyncAttemptRecord | null {
 async function compileRecentActivity(): Promise<unknown[]> {
   const journey = await readUserJourney().catch(() => []);
   const flat = journey.flatMap(day =>
-    day.events.map(event => ({ date: day.date, ...event }))
+    day.events
+      .filter(event => event.type === 'complete')
+      .map(event => ({ date: day.date, ...event }))
   );
   flat.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   return flat.slice(0, MAX_ACTIVITY_ENTRIES);
@@ -89,10 +91,9 @@ async function compileLists(): Promise<unknown[]> {
   })));
 }
 
-// `force` skips the once-a-day gate below — used by the Settings > Perfil
-// "Sincronizar ahora" debug button (temporary, testing-only, see
-// ProfileTab.astro) to trigger a real sync on demand instead of waiting up
-// to 24h for the normal gate to expire.
+// `force` skips the rolling 24-hour gate below. The Home prompt checks
+// successful syncs by local calendar day and calls this with `true` so the
+// prompt timing follows the user's day boundary rather than a 24-hour timer.
 export async function syncProfileToServer(force = false): Promise<boolean> {
   if (!navigator.onLine) {
     recordAttempt({ at: Date.now(), result: 'skipped_offline' });

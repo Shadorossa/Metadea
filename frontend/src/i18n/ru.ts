@@ -1,5 +1,10 @@
 export const ru = {
   home: {
+    profile_sync_prompt: "Синхронизировать профиль с Metadea?",
+    profile_sync_description: "Загрузить изменения библиотеки и активности в облачный профиль.",
+    profile_sync_button: "Синхронизировать",
+    profile_syncing: "Синхронизация…",
+    profile_sync_error: "Не удалось синхронизировать. Проверьте подключение и повторите попытку.",
     title: "Твоя личная медиатека",
     currently_sub_aria: "Уменьшить",
     currently_add_aria: "Увеличить",
@@ -687,8 +692,6 @@ export const ru = {
     library_section_title: "Библиотека",
     content_section_title: "Контент",
     activity_section: "Активность",
-    activity_batch_episodes: "Группировать серии по дням",
-    activity_batch_episodes_hint: "Объединяет серии, просмотренные в один день, в одну запись активности.",
     unify_seasons_enabled: "Объединять сезоны аниме",
     unify_seasons_hint: "Показывает каждое аниме, связанное сезонами (AniList), как одно произведение в вашей библиотеке, с вкладкой «Сезоны» на его странице.",
     activity_adult_content: "Показывать контент 18+",

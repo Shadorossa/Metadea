@@ -524,10 +524,10 @@ export interface HeatmapCell {
   level: 0 | 1 | 2 | 3 | 4;
 }
 
-export function computeActivityHeatmap(journey: { date: string; events?: unknown[] }[], daysBack = 195, totalDays = 196): HeatmapCell[] {
+export function computeActivityHeatmap(journey: { date: string; events?: Array<{ type?: string }> }[], daysBack = 195, totalDays = 196): HeatmapCell[] {
   const activityMap: Record<string, number> = {};
   for (const day of journey) {
-    activityMap[day.date] = (day.events || []).length;
+    activityMap[day.date] = (day.events || []).filter(event => event.type === 'complete').length;
   }
 
   // Anchor to midday (12:00) so daylight saving time (DST) clock shifts

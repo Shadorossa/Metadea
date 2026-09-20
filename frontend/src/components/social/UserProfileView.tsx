@@ -101,6 +101,7 @@ function toDayJourney(activity: Array<{
 }>): DayJourney[] {
   const byDate = new Map<string, UserJourneyEvent[]>();
   for (const a of activity) {
+    if (a.event_type !== 'complete') continue;
     const date = a.date ?? a.timestamp.slice(0, 10);
     const list = byDate.get(date) ?? [];
     list.push({
