@@ -9,9 +9,12 @@
     {
       "media_external_id": "game:481",
       "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:222341",
+      "relation_type": "SUPPORTING"
     }
   ],
-  "merged_character_external_ids": [],
   "actors": [
     {
       "external_id": "person:t5997867",
@@ -41,27 +44,7 @@
       "image_url": "https://image.tmdb.org/t/p/w185/rrfvhZpmGsgGxmBSo7SJ6rUfuXP.jpg",
       "role": "voice",
       "language": "Japanese"
-    },
-    {
-      "external_id": "person:t5997867",
-      "name": "David Schaufele",
-      "name_native": null,
-      "image_url": null,
-      "role": "voice",
-      "language": "Japanese"
-    },
-    {
-      "external_id": "person:a95317",
-      "role": "voice",
-      "language": "Japanese"
-    },
-    {
-      "external_id": "person:t1898381",
-      "name": "Scott Haining",
-      "name_native": null,
-      "image_url": "https://image.tmdb.org/t/p/w185/wuN9ZO6HPYQJqYVllM65bhXMkGm.jpg",
-      "role": "voice",
-      "language": "Japanese"
     }
-  ]
+  ],
+  "merged_character_external_ids": []
 }
