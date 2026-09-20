@@ -1,0 +1,109 @@
+{
+  "character": {
+    "external_id": "character:cs:522822",
+    "name": "Joel Miller",
+    "aliases_csv": "Texas,Old timer,Old man",
+    "biography": "<b>Birth date:</b> September 26, 1981<br>\n<b>Age(d):</b> 51–52 <small>(<i>Part I</i>)</small><br>56 <small>(<i>Part II</i>)</small><br>\n<b>Status:</b> Deceased<br>\n<b>Gender:</b> Male<br>\n<b>Occupation(s):</b> Carpenter <small>(formerly)</small><br>Smuggler <small>(formerly)</small><br>Jackson patrolman<br>\n<b>Affiliation(s):</b> Hunters <small>(formerly)</small><br>Smugglers <small>(formerly)</small><br>Jackson community<br>\n<b>Relationships:</b> Tommy Miller <small>(younger brother)</small><br>Maria Miller <small>(sister-in-law)</small><br>Unnamed ex-wife<br>Sarah Miller <small>(daughter)</small><br>Tess Servopoulos <small>(ex-partner)</small><br>Ellie Williams <small>(surrogate daughter)</small><br>\n<b>Resides:</b> Austin, Texas <small>(formerly)</small><br>Boston, Massachusetts <small>(formerly)</small><br>Jackson, Wyoming<br>\n<b>Height:</b> 5 feet 11½ inches <small>(182 cm)</small><br>\n<b>Weight:</b> 200 lbs <small>(91kg)</small><br>\n<b>Hair color:</b> Dark brown <small>(graying)</small><br>\n<b>Eye color:</b> Hazel<br>\n<b>Mo-capped by:</b> Troy Baker<br>Reuben Langdon <small>(stunt double; <i>Part I</i>)</small><br>Chris Robbins <small>(stunt double; <i>Part I</i>)</small><br>\n<b>Portrayed by:</b> Troy Baker <small>(<i>One Night Live</i>)</small><br>\n<br>\n<p>Joel Miller is the playable protagonist of The Last of Us Part I, a supporting character in The Last of Us: Left Behind and The Last of Us Part II, the latter of which he is briefly playable in, and a playable character in the No Return mode.</p>\n<p>Joel was a survivor in post-apocalyptic America that had been ravaged by the Cordyceps brain infection. After losing his only daughter Sarah in the early stages of the outbreak, Joel became a ruthless and cynical smuggler eventually tasked with smuggling and protecting Ellie Williams, an immune teenage girl who could create a vaccine to ensure humanity's survival. Joel eventually formed a strong bond with her.</p>\n<p>Joel was born on September 26, 1981, in Arlington, Texas, and grew up in the state alongside his younger brother Tommy.</p>\n<p>As a child, Joel developed a passion for music, learning to play acoustic guitar and once even aspired to become a singer. Joel had a daughter named Sarah, and was married to her mother for a short period of time. Saddled early in life with the responsibilities of parenthood at a young age, he never had the opportunity to attend college.</p>\n<p>Regarding his ex-wife, whatever occurred between them is painful for Joel to talk about. Shortly after Sarah was born, Joel's wife left them. As a result, he raised their only daughter as a single father for the majority of his life. The two lived together in a two-story single-family home somewhere in or around Austin, Texas, located in Travis County through Texas State Highway 71.</p>\n<p>As an adult, Joel worked as a carpenter, alongside Tommy. He kept a revolver locked in a safe box in his office and owned a pick-up truck outside his house. Building plans laid on his bedside table along with several copies of a book called Construction Regionalism on top of his bookshelf. He had ambitions of starting his own business, with a copy of Everything You Need to Know About Creating a Startup also on a table next to his bed. His job kept him fit, and he owned a treadmill in his bedroom. He mentioned in a phone call that he was struggling to keep his job with a contractor.</p>\n<p>Despite his long, hard-working hours, he still managed to spend quality time with Sarah, as seen in photographs displayed throughout their home showing the two on a cruise, at a carnival with Tommy, and one of Sarah's soccer matches. Additionally, the two often went on several hikes together. Sarah also made him take her to every museum in Texas.</p>\n<p>On his 32nd birthday—just hours leading up to the outbreak—Sarah gave him a new watch as a gift to replace the one he had broken months before. This became a cherished memento he manages to keep in the turbulent years ahead.</p>",
+    "image_url": "https://static.wikia.nocookie.net/thelastofus/images/a/af/Part_II_Joel_infobox.png/revision/latest?cb=20230215221156"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:1009",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:26192",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:204350",
+      "relation_type": "MAIN"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "person:a95182",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a104884",
+      "role": "voice",
+      "language": "French"
+    },
+    {
+      "external_id": "person:a198704",
+      "role": "voice",
+      "language": "German"
+    },
+    {
+      "external_id": "person:a96239",
+      "role": "voice",
+      "language": "Italian"
+    },
+    {
+      "external_id": "person:t1700955",
+      "name": "Lorenzo Beteta",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/8eOPe63oSXk5mqEEsSPcDEAHR72.jpg",
+      "role": "voice",
+      "language": "Spanish"
+    },
+    {
+      "external_id": "va:Adrián Wowczuk",
+      "name": "Adrián Wowczuk",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Spanish"
+    },
+    {
+      "external_id": "person:t150500",
+      "name": "Marcantonio Del Carlo",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/aeBZB9s5SP8SHDVvPZqixULzLZS.jpg",
+      "role": "voice",
+      "language": "Portuguese"
+    },
+    {
+      "external_id": "person:a175181",
+      "role": "voice",
+      "language": "Portuguese"
+    },
+    {
+      "external_id": "person:t1892318",
+      "name": "Kostas Terzakis",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Greek"
+    },
+    {
+      "external_id": "person:a361012",
+      "role": "voice",
+      "language": "Turkish"
+    },
+    {
+      "external_id": "person:t20664",
+      "name": "Koichi Yamadera",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/biov5jENp2XYfehkcdnRvi796Wi.jpg",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a277541",
+      "role": "voice",
+      "language": "Polish"
+    },
+    {
+      "external_id": "person:t4662324",
+      "name": "Vsevolod Kuznetsov",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/ra8o6psf8sYYVM83trMe1nft8Wh.jpg",
+      "role": "voice",
+      "language": "Russian"
+    }
+  ]
+}
