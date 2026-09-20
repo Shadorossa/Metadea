@@ -201,6 +201,10 @@ export const en = {
   },
   notifications: {
     title: "Notifications",
+    release_day_title: "Today's releases in your library",
+    release_day_body: "{count} release(s): {titles}",
+    airing_weekly_title: "Unfinished airing anime",
+    airing_weekly_body: "You have {count} unfinished library anime still airing: {titles}",
     coming_soon: "Notifications will be available soon.",
     pr_list_title: "Open catalog proposals",
     loading_prs: "Loading pull requests...",

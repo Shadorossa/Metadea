@@ -349,6 +349,8 @@ const t = useTranslations(lang);
         try {
           const { initTauriDatabase } = await import('../lib/tauri');
           await initTauriDatabase();
+          const { startLibraryReleaseNotifications } = await import('../lib/shared/library-release-notifications');
+          startLibraryReleaseNotifications();
         } catch (e) {
           console.error(e);
         }

@@ -201,6 +201,10 @@ export const es = {
   },
   notifications: {
     title: "Notificaciones",
+    release_day_title: "Estrenos de hoy en tu biblioteca",
+    release_day_body: "{count} estreno(s): {titles}",
+    airing_weekly_title: "Anime en emisi\u00f3n pendiente",
+    airing_weekly_body: "Tienes {count} anime(s) de la biblioteca sin completar que siguen en emisi\u00f3n: {titles}",
     coming_soon: "Las notificaciones estarán disponibles próximamente.",
     pr_list_title: "Propuestas de catálogo abiertas",
     loading_prs: "Cargando pull requests...",
