@@ -1,15 +1,16 @@
 // Split out of LibrarySection.tsx: a single library grid cell, plus its private emoji-tag helper.
-import { useEffect, useRef, useState, useMemo, memo } from 'react';
+import { useEffect, useRef, useState, useMemo, memo, type MouseEvent } from 'react';
 import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
 import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled } from '../../lib/settings/preferences';
 import { typeIconMap, CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
-import { averageRating } from './library-grouping';
+import { averageRating, latestInProgressMember } from './library-grouping';
 import { toMediumCover } from '../../lib/shared/small-cover';
 import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { isInProgressStatus, pickAggregateStatus } from '../../lib/constants/media';
+import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../local/utils/constants';
 
 export const TYPE_ICON = typeIconMap(16);
 
@@ -28,7 +29,7 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, catalogMap, p, readOnly, ratingSlot = 'rating' }: {
+export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, catalogMap, p, readOnly, ratingSlot = 'rating', showResumeAction, playableResumeIds }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
@@ -52,6 +53,10 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   /** Settings > Preferencias' opt-in "doble calificación" selector, forwarded from
    * LibrarySection — which field the badge shows and which one the editor opens on. */
   ratingSlot?: RatingSlot;
+  /** Show the quick action only in the library's in-progress sections. */
+  showResumeAction?: boolean;
+  /** External IDs confirmed playable by Local / Play. */
+  playableResumeIds?: ReadonlySet<string>;
 }) => {
   const meta = catalogMap.get(item.external_id);
   const rawTitle = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
@@ -98,12 +103,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
       }
     }
 
-    if (!targetMember) {
-      const inProgressMembers = aggregateMembers.filter(m => isInProgressStatus(m.status) || m.status === 'in_progress');
-      if (inProgressMembers.length > 0) {
-        targetMember = inProgressMembers[inProgressMembers.length - 1];
-      }
-    }
+    if (!targetMember) targetMember = latestInProgressMember(aggregateMembers);
 
     if (!targetMember) {
       setDynamicCover(null);
@@ -135,10 +135,28 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   // card is actually representing right now.
   const activeSeasonId = useMemo(() => {
     if (!hideGroupingUi) return null;
-    const inProgressMembers = aggregateMembers.filter(m => isInProgressStatus(m.status) || m.status === 'in_progress');
-    if (inProgressMembers.length === 0) return null;
-    return inProgressMembers[inProgressMembers.length - 1].external_id;
+    return latestInProgressMember(aggregateMembers)?.external_id ?? null;
   }, [hideGroupingUi, aggregateMembers]);
+
+  const resumeTarget = useMemo(() => {
+    if (activeSeasonId) return aggregateMembers.find(member => member.external_id === activeSeasonId) ?? item;
+    const activeMembers = [item, ...aggregateMembers]
+      .filter(member => isInProgressStatus(member.status) || member.status === 'in_progress')
+      .sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''));
+    return activeMembers[activeMembers.length - 1] ?? item;
+  }, [activeSeasonId, aggregateMembers, item]);
+
+  const resumeCategoryId = LOCAL_CATEGORY_BY_MEDIA_TYPE[resumeTarget.type];
+  const canResume = showResumeAction && !readOnly && !!resumeCategoryId && playableResumeIds?.has(resumeTarget.external_id);
+  const resumeTitle = p.continue_in_local;
+  const handleResume = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (!resumeCategoryId) return;
+    const url = new URL('/local', window.location.origin);
+    url.searchParams.set('type', resumeCategoryId);
+    url.searchParams.set('resume', resumeTarget.external_id);
+    window.location.href = url.toString();
+  };
 
   const customGeneralRating = useMemo(() => {
     if (!hideGroupingUi) return null;
@@ -225,7 +243,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   return (
     <div
       ref={cellRef}
-      className={`library-card-cell${showGroupUi ? ' library-card-cell--stacked' : ''}${flyoutOnLeft ? ' library-card-cell--flyout-left' : ''}${isClosing ? ' library-card-cell--closing' : ''}`}
+      className={`library-card-cell${showGroupUi ? ' library-card-cell--stacked' : ''}${flyoutOnLeft ? ' library-card-cell--flyout-left' : ''}${isClosing ? ' library-card-cell--closing' : ''}${canResume ? ' library-card-cell--resumable' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -260,6 +278,19 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
           </div>
         </div>
       </div>
+      {canResume && (
+        <button
+          type="button"
+          className="library-card-resume"
+          title={resumeTitle}
+          aria-label={`${resumeTitle}: ${catalogMap.get(resumeTarget.external_id)?.title_main ?? resumeTarget.external_id}`}
+          onClick={handleResume}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+        </button>
+      )}
       {showGroupUi && (
         // Hidden until hover (.library-card--stacked:hover in profile.css) — a peek at the "+N" badge's contents.
         <div className="library-card-stack-extra" ref={flyoutRef}>

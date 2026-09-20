@@ -387,6 +387,25 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   transform: translateY(-2px) !important;
 }
 
+/* The in-progress library play action follows the same paper-button palette
+   and hover lift as its card, while remaining an unobtrusive overlay. */
+[data-theme="newspaper-dark"] .library-card-resume {
+  border: 3px double var(--border-color) !important;
+  border-radius: 0 !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-main) !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="newspaper-dark"] .library-card-cell:hover .library-card-resume,
+[data-theme="newspaper-dark"] .library-card-resume:focus-visible {
+  border-color: var(--text-main) !important;
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  transform: translateY(calc(-50% - 2px)) !important;
+}
+
 /* Translucent backgrounds for related and character cards */
 [data-theme="newspaper-dark"] .media-relation-card,
 [data-theme="newspaper-dark"] .media-char-card {

@@ -3,6 +3,11 @@ import { API_ENDPOINTS } from '../../../lib/api/endpoints';
 export type PlatformId = 'steam' | 'epic' | 'gog' | 'xbox' | 'ea' | 'nintendo' | 'playstation' | 'local';
 export type CategoryId = 'videojuegos' | 'visual-novel' | 'anime' | 'manga' | 'light-novel' | 'books' | 'comics' | 'series' | 'movies';
 
+export const LOCAL_CATEGORY_BY_MEDIA_TYPE: Record<string, CategoryId> = {
+  anime: 'anime', manga: 'manga', lnovel: 'light-novel', book: 'books', comic: 'comics',
+  series: 'series', movie: 'movies', game: 'videojuegos', vnovel: 'visual-novel',
+};
+
 export const PLATFORM_LABEL: Record<PlatformId, string> = {
   steam:       'Steam',
   epic:        'Epic Games',

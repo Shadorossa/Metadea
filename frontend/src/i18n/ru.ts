@@ -79,6 +79,7 @@ export const ru = {
     section_planning: "Запланировано",
     section_in_progress: "В процессе",
     section_caught_up: "Смотрю по расписанию",
+    section_publishing: "Выходит",
     section_completed: "Завершено",
     section_paused: "На паузе",
     section_dropped: "Брошено",

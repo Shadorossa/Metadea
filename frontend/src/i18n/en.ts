@@ -42,6 +42,7 @@ export const en = {
     playing_details: "Game details:",
   },
   profile: {
+    continue_in_local: "Continue in Local / Play",
     sign_out: "Sign out",
     library: "My library",
     empty: "Your library is empty. Start searching for titles!",
@@ -79,6 +80,7 @@ export const en = {
     section_planning: "Planned",
     section_in_progress: "In Progress",
     section_caught_up: "Caught Up",
+    section_publishing: "Publishing",
     section_completed: "Completed",
     section_paused: "Paused",
     section_dropped: "Dropped",

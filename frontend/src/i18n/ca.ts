@@ -79,6 +79,7 @@ export const ca = {
     section_planning: "Pendents",
     section_in_progress: "En curs",
     section_caught_up: "Al dia",
+    section_publishing: "En publicació",
     section_completed: "Completades",
     section_paused: "En pausa",
     section_dropped: "Abandonades",

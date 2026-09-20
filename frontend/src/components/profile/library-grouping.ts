@@ -13,7 +13,7 @@ import {
 } from '../../lib/media/sagaTypes';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
 import { createUnionFind } from '../../lib/shared/union-find';
-import { SEASON_STATUS_PRIORITY } from '../../lib/constants/media';
+import { isInProgressStatus, SEASON_STATUS_PRIORITY } from '../../lib/constants/media';
 import { reconstructSagaOrder } from '../../lib/media/sagaGrouping';
 
 // Groups editions of the same work (remakes, remasters, ports) under one
@@ -456,7 +456,8 @@ export function averageRating(entries: LibraryEntry[], slot: 'rating' | 'rating_
 // reach the same call to refineSagaGroups since they're filtered into
 // different sections before it runs. This runs once on the WHOLE owned list
 // before that split happens, so a chain spanning several statuses still
-// becomes exactly one card, placed by whichever member is furthest along.
+// becomes exactly one card, placed by its latest-started in-progress member
+// (so a currently watched, airing cour determines the unified card's section).
 // SEASON_STATUS_PRIORITY now lives in lib/constants/media.ts, shared with
 // MediaEditorModal.tsx's "general" tab (see its own doc comment there).
 
@@ -464,14 +465,22 @@ export interface UnifiedSeasonGroup<T> {
   item: T;             // earliest release — the card's cover/title/click target
   grouped: T[];         // every other season
   titleOverride?: string;
-  // The specific member whose status won — LibrarySection places the card
-  // using THIS one's status/progress (not necessarily `item`'s, since the
-  // earliest season is very often already completed while a later one is
-  // what's actually in progress).
+  // The member used for status and progress. When a season is in progress,
+  // the latest-started active season wins; otherwise the normal status
+  // priority applies. The card's earliest-release representative may be a
+  // completed season while a later cour is the one currently being watched.
   statusSourceItem: T;
 }
 
-export function unifyAnimeSeasons<T extends { external_id: string; status: string | null }>(
+/** Selects the same active season for a unified card wherever it is needed. */
+export function latestInProgressMember<T extends { status: string | null; started_at?: string | null }>(members: T[]): T | null {
+  const activeMembers = [...members]
+    .filter(member => isInProgressStatus(member.status))
+    .sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''));
+  return activeMembers[activeMembers.length - 1] ?? null;
+}
+
+export function unifyAnimeSeasons<T extends { external_id: string; status: string | null; started_at?: string | null }>(
   ownedItems: T[],
   catalogMap: Map<string, MediaCatalogEntry>,
   relations: DbMediaRelation[],
@@ -523,11 +532,14 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
     const sorted = orderedIds.map(id => byExternalId.get(id)!);
     const [rep, ...rest] = sorted;
 
-    let statusSourceItem = sorted[0];
-    let bestPriority = SEASON_STATUS_PRIORITY[statusSourceItem.status ?? ''] ?? 5;
-    for (const m of sorted) {
-      const priority = SEASON_STATUS_PRIORITY[m.status ?? ''] ?? 5;
-      if (priority < bestPriority) { bestPriority = priority; statusSourceItem = m; }
+    let statusSourceItem = latestInProgressMember(sorted);
+    if (!statusSourceItem) {
+      statusSourceItem = sorted[0];
+      let bestPriority = SEASON_STATUS_PRIORITY[statusSourceItem.status ?? ''] ?? 5;
+      for (const m of sorted) {
+        const priority = SEASON_STATUS_PRIORITY[m.status ?? ''] ?? 5;
+        if (priority < bestPriority) { bestPriority = priority; statusSourceItem = m; }
+      }
     }
 
     const rawSagaName = sorted.map(m => sagaNames[m.external_id]).find(Boolean);

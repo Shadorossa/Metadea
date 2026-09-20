@@ -79,6 +79,7 @@ export const it = {
     section_planning: "In sospeso",
     section_in_progress: "In corso",
     section_caught_up: "Al passo",
+    section_publishing: "In pubblicazione",
     section_completed: "Completate",
     section_paused: "In pausa",
     section_dropped: "Abbandonate",

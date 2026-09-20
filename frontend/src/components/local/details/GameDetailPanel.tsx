@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
   type LocalGame, type GameInfo, type SteamAchievement, type LibraryEntry,
@@ -52,9 +52,11 @@ interface GameDetailPanelProps {
   // cover/banner) comes from this real installed game instead, while the
   // title/cover/catalog identity shown still stays the season's own.
   launchOverride?: LocalGame;
+  autoResume?: boolean;
+  onAutoResumeHandled?: () => void;
 }
 
-export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh, onGameRelinked, knownExternalId, fallbackCover, launchOverride }: GameDetailPanelProps) {
+export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh, onGameRelinked, knownExternalId, fallbackCover, launchOverride, autoResume, onAutoResumeHandled }: GameDetailPanelProps) {
   const t = getT();
   const launchTarget = launchOverride ?? game;
   // Identifies which selection this render is actually showing — used only
@@ -68,6 +70,8 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
   const [showPicker,    setShowPicker]    = useState(false);
   const [hasLaunched,   setHasLaunched]   = useState(false);
+  const autoResumeButtonRef = useRef<HTMLButtonElement>(null);
+  const autoResumeStartedRef = useRef(false);
   // Whether the ROM's own platform (see rom_platform) has an emulator
   // executable actually configured — a scanned ROM always has an
   // install_path (see scan_emulator_roms), so canLaunch below is true for
@@ -304,6 +308,21 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // treatment as canLaunch itself, instead of the button silently doing
   // nothing (launch_game's own error was only ever logged to the console).
   const emulatorMissing = !isExe && !!launchTarget.rom_platform && emulatorConfigured === false;
+  useEffect(() => {
+    if (!autoResume) { autoResumeStartedRef.current = false; return; }
+    if (autoResumeStartedRef.current) return;
+    if (launchTarget.rom_platform && !isExe && emulatorConfigured === null) return;
+    if (!canLaunch || emulatorMissing) {
+      autoResumeStartedRef.current = true;
+      onAutoResumeHandled?.();
+      return;
+    }
+    const button = autoResumeButtonRef.current;
+    if (!button) return;
+    autoResumeStartedRef.current = true;
+    button.click();
+    onAutoResumeHandled?.();
+  }, [autoResume, launchTarget.rom_platform, isExe, emulatorConfigured, canLaunch, emulatorMissing, onAutoResumeHandled]);
   // Same "own identity, not the source's" reasoning as the banner above —
   // the catalog entry's own release date/genres/synopsis (this identity's
   // real data) win over gameInfo (which is actually launchTarget's cached
@@ -446,6 +465,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         <div className={`local-media-info-row${(prequelInfo || sequelInfo || bundleChildren.length > 0) ? ' local-media-info-row--has-neighbors' : ''}`}>
           <div className="local-media-left-col">
             <button
+              ref={autoResumeButtonRef}
               className="local-game-detail-play"
               disabled={emulatorMissing || (!canLaunch && !effectiveStoreLink)}
               title={emulatorMissing ? t.local.no_emulator_configured : (canLaunch || effectiveStoreLink ? undefined : t.local.not_installed)}

@@ -79,6 +79,7 @@ export const de = {
     section_planning: "Ausstehend",
     section_in_progress: "In Bearbeitung",
     section_caught_up: "Auf dem Laufenden",
+    section_publishing: "Laufend",
     section_completed: "Abgeschlossen",
     section_paused: "Pausiert",
     section_dropped: "Abgebrochen",

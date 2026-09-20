@@ -79,6 +79,7 @@ export const ja = {
     section_planning: "未着手",
     section_in_progress: "進行中",
     section_caught_up: "最新話まで視聴済み",
+    section_publishing: "放送・刊行中",
     section_completed: "完了",
     section_paused: "中断中",
     section_dropped: "視聴中止",

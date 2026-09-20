@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getAllLibraryEntries, getAllCatalogEntries, getAllMediaRelations, type LibraryEntry, type MediaCatalogEntry, type DbMediaRelation } from '../../../lib/tauri';
 import { isInProgressStatus } from '../../../lib/constants/media';
-import type { CategoryId } from '../utils/constants';
+import { LOCAL_CATEGORY_BY_MEDIA_TYPE, type CategoryId } from '../utils/constants';
 
 // Maps a local-tab category to the media_catalog/library `type` column —
 // only categories listed here get their WHOLE tab replaced by the status-
@@ -10,16 +10,13 @@ import type { CategoryId } from '../utils/constants';
 // own 'game'-typed pending items in via useLocalMediaItemsByType directly,
 // and tags each installed game with its matched library status, without
 // switching its whole layout away from per-platform sections.
-export const LOCAL_MEDIA_TYPE_BY_CATEGORY: Partial<Record<CategoryId, string>> = {
-  anime:        'anime',
-  manga:        'manga',
-  'light-novel': 'lnovel',
-  books:        'book',
-  comics:       'comic',
-  series:       'series',
-  movies:       'movie',
-  'visual-novel': 'vnovel',
-};
+// The game category has its own scanner grid; all other Local tabs map
+// directly from their catalog type using the shared reverse map.
+export const LOCAL_MEDIA_TYPE_BY_CATEGORY: Partial<Record<CategoryId, string>> = Object.fromEntries(
+  Object.entries(LOCAL_CATEGORY_BY_MEDIA_TYPE)
+    .filter(([mediaType]) => mediaType !== 'game')
+    .map(([mediaType, category]) => [category, mediaType]),
+) as Partial<Record<CategoryId, string>>;
 
 export interface LocalMediaItem {
   externalId:   string;

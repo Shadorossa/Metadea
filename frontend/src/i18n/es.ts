@@ -42,6 +42,7 @@ export const es = {
     playing_details: "Detalles del juego:",
   },
   profile: {
+    continue_in_local: "Continuar en Local / Play",
     sign_out: "Cerrar sesión",
     library: "Mi biblioteca",
     empty: "Tu biblioteca está vacía. ¡Empieza a buscar obras!",
@@ -79,6 +80,7 @@ export const es = {
     section_planning: "Pendientes",
     section_in_progress: "En progreso",
     section_caught_up: "Al día",
+    section_publishing: "En publicación",
     section_completed: "Completadas",
     section_paused: "En pausa",
     section_dropped: "Abandonadas",

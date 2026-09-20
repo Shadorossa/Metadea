@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useDeferredValue } from 'react';
-import { getAllLibraryEntries, getAllMediaRelations, getCatalogEntry, getSagaNames, getSyncStates } from '../../lib/tauri';
+import { getAllLibraryEntries, getAllMediaRelations, getCatalogEntry, getSagaNames, getSyncStates, readRoutes, scanFolderContents, scanAllGames, readMetadataIndex, readEmulatorsConfig } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { notifyNewEpisode } from '../../lib/shared/notifications';
@@ -14,7 +14,7 @@ import {
 } from '../../lib/settings/preferences';
 import { getTypeLabel, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/constants/media';
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
-import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
+import { needsResync } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { isSagaComponentRelationType } from '../../lib/media/sagaTypes';
 import { createUnionFind } from '../../lib/shared/union-find';
@@ -23,6 +23,9 @@ import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/m
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { LibraryCard, TYPE_ICON } from './LibraryCard';
 import { VirtualLibraryGrid } from './VirtualLibraryGrid';
+import { buildLibraryStatusEntries } from '../local/utils/catalogGameLinking';
+import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../local/utils/constants';
+import { isLocalMediaItemPlayable, toLocalMediaItem } from './library-playability';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
@@ -95,6 +98,7 @@ export function LibrarySection({
   const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
   const [sagaRelations, setSagaRelations] = useState<DbMediaRelation[]>(overrideSagaRelations ?? []);
   const [sagaNames, setSagaNames] = useState<Record<string, string>>(overrideSagaNames ?? {});
+  const [playableResumeIds, setPlayableResumeIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const [nameFilter, setNameFilter] = useState('');
   const deferredNameFilter = useDeferredValue(nameFilter);
@@ -145,6 +149,78 @@ export function LibrarySection({
     setActiveTypeTab(libtype);
     sessionStorage.removeItem(STORAGE_KEYS.pendingLibraryType);
   }, [overrideItems]);
+
+  // Keep the shortcut strictly in sync with Local / Play's real sources:
+  // installed/scannable games for game entries, and a matched next file in
+  // the configured category folder for media entries. Until detection ends,
+  // no play icon is shown rather than advertising an unavailable action.
+  useEffect(() => {
+    if (readOnly || !items) {
+      setPlayableResumeIds(new Set());
+      return;
+    }
+    setPlayableResumeIds(new Set());
+    const candidates = items.filter(entry => isInProgressStatus(entry.status));
+    if (candidates.length === 0) {
+      setPlayableResumeIds(new Set());
+      return;
+    }
+
+    let cancelled = false;
+    const detectPlayableItems = async () => {
+      const playableIds = new Set<string>();
+      const routes = await readRoutes().catch(() => ({} as Record<string, string>));
+      const mediaCandidates = candidates.filter(entry => entry.type !== 'game' && entry.type !== 'vnovel');
+      const categories = [...new Set(mediaCandidates.map(entry => LOCAL_CATEGORY_BY_MEDIA_TYPE[entry.type]).filter((category): category is string => !!category))];
+      const rootEntriesByCategory = new Map<string, Awaited<ReturnType<typeof scanFolderContents>>>();
+      await Promise.all(categories.map(async category => {
+        const rootPath = routes[category];
+        if (!rootPath) return;
+        const entries = await scanFolderContents(rootPath).catch(() => []);
+        rootEntriesByCategory.set(category, entries);
+      }));
+
+      const mediaResults = await Promise.all(mediaCandidates.map(async entry => {
+        const category = LOCAL_CATEGORY_BY_MEDIA_TYPE[entry.type];
+        const rootPath = category ? routes[category] : undefined;
+        const rootEntries = category ? rootEntriesByCategory.get(category) : undefined;
+        if (!rootPath || !rootEntries) return null;
+        const mediaItem = toLocalMediaItem(entry, catalogMap.get(entry.external_id));
+        return await isLocalMediaItemPlayable(mediaItem, rootPath, rootEntries) ? entry.external_id : null;
+      }));
+      mediaResults.forEach(id => { if (id) playableIds.add(id); });
+
+      const gameCandidates = candidates.filter(entry => entry.type === 'game' || entry.type === 'vnovel');
+      if (gameCandidates.length > 0) {
+        const [games, pathCache, emulators] = await Promise.all([
+          scanAllGames().catch(() => []),
+          readMetadataIndex().catch(() => ({} as Awaited<ReturnType<typeof readMetadataIndex>>)),
+          readEmulatorsConfig().catch(() => ({} as Awaited<ReturnType<typeof readEmulatorsConfig>>)),
+        ]);
+        for (const entry of gameCandidates) {
+          const statusEntry = buildLibraryStatusEntries(
+            [toLocalMediaItem(entry, catalogMap.get(entry.external_id))],
+            games,
+            catalogMap,
+            pathCache,
+            sagaRelations,
+          )[0];
+          const game = statusEntry?.kind === 'game' ? statusEntry.game
+            : statusEntry?.kind === 'catalog' ? statusEntry.launchGame
+            : undefined;
+          if (!game || game.installed === false || (!game.app_id && !game.install_path)) continue;
+          if (game.rom_platform && !game.install_path?.toLowerCase().endsWith('.exe')
+            && !emulators[game.rom_platform]?.executable_path) continue;
+          playableIds.add(entry.external_id);
+        }
+      }
+
+      if (!cancelled) setPlayableResumeIds(playableIds);
+    };
+
+    detectPlayableItems().catch(error => console.error('[LibrarySection] Local playability detection failed:', error));
+    return () => { cancelled = true; };
+  }, [items, catalogMap, sagaRelations, readOnly]);
 
   useEffect(() => {
     if (overrideItems) return;
@@ -309,16 +385,15 @@ export function LibrarySection({
       });
     };
 
-    // "Al día" is a computed regrouping, not a stored status (see isCaughtUpOnReleasing).
-    const caughtUp = (i: Items[number]) => isCaughtUpOnReleasing(i.status, i.progress, catalogMap.get(i.external_id));
+    const isPublishing = (i: Items[number]) => catalogMap.get(i.external_id)?.status === 'RELEASING';
 
     const sectionsData = [
-      { title: p.section_caught_up, items: sortItems(unmergedFiltered.filter(i => isInProgressStatus(i.status) && caughtUp(i)), true), isCompletedSection: false },
-      { title: p.section_in_progress, items: sortItems(unmergedFiltered.filter(i => isInProgressStatus(i.status) && !caughtUp(i)), true), isCompletedSection: false },
-      { title: p.section_completed, items: sortItems(unmergedFiltered.filter(i => i.status === 'completed')), isCompletedSection: true },
-      { title: p.section_planning, items: sortItems(unmergedFiltered.filter(i => i.status === 'planning')), isCompletedSection: false },
-      { title: p.section_paused, items: sortItems(unmergedFiltered.filter(i => i.status === 'paused')), isCompletedSection: false },
-      { title: p.section_dropped, items: sortItems(unmergedFiltered.filter(i => i.status === 'dropped')), isCompletedSection: false },
+      { title: p.section_publishing, items: sortItems(unmergedFiltered.filter(i => isInProgressStatus(i.status) && isPublishing(i)), true), isCompletedSection: false, isCurrently: true },
+      { title: p.section_in_progress, items: sortItems(unmergedFiltered.filter(i => isInProgressStatus(i.status) && !isPublishing(i)), true), isCompletedSection: false, isCurrently: true },
+      { title: p.section_completed, items: sortItems(unmergedFiltered.filter(i => i.status === 'completed')), isCompletedSection: true, isCurrently: false },
+      { title: p.section_planning, items: sortItems(unmergedFiltered.filter(i => i.status === 'planning')), isCompletedSection: false, isCurrently: false },
+      { title: p.section_paused, items: sortItems(unmergedFiltered.filter(i => i.status === 'paused')), isCompletedSection: false, isCurrently: false },
+      { title: p.section_dropped, items: sortItems(unmergedFiltered.filter(i => i.status === 'dropped')), isCompletedSection: false, isCurrently: false },
     ];
 
     // Every completed work's own id — regardless of the current name/type/
@@ -337,7 +412,7 @@ export function LibrarySection({
     const seasonCardsByTitle = new Map<string, typeof seasonGroups>();
     for (const group of seasonGroups) {
       const src = group.statusSourceItem;
-      const title = isInProgressStatus(src.status) && caughtUp(src) ? p.section_caught_up
+      const title = isInProgressStatus(src.status) && isPublishing(src) ? p.section_publishing
         : isInProgressStatus(src.status) ? p.section_in_progress
         : src.status === 'completed' ? p.section_completed
         : src.status === 'planning' ? p.section_planning
@@ -372,7 +447,7 @@ export function LibrarySection({
         }
 
         // groupBundles/refineSagaGroups append merged cards regardless of date/rating — re-sort using the group's aggregate.
-        const sectionUsesStartDate = sec.title === p.section_caught_up || sec.title === p.section_in_progress;
+        const sectionUsesStartDate = sec.title === p.section_publishing || sec.title === p.section_in_progress;
         cards = [...cards].sort((a, b) => {
           const isAggA = !!a.bundleMeta || !!a.aggregateStats;
           const isAggB = !!b.bundleMeta || !!b.aggregateStats;
@@ -395,7 +470,7 @@ export function LibrarySection({
           return dateB - dateA;
         });
 
-        return { title: sec.title, cards };
+        return { title: sec.title, cards, isCurrently: sec.isCurrently };
       });
   }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, deferredNameFilter, activeTypeTab, selectedEditionFormats, statusIndex, startDateFilter, endDateFilter, sortBy, groupByEdition, groupByBundle, dualRatingEnabled, ratingSlot, STATUS_LIST, p]);
 
@@ -629,6 +704,8 @@ export function LibrarySection({
                     catalogMap={catalogMap}
                     p={p}
                     readOnly={readOnly}
+                    showResumeAction={sec.isCurrently}
+                    playableResumeIds={playableResumeIds}
                     ratingSlot={dualRatingEnabled ? ratingSlot : 'rating'}
                   />
                 )}

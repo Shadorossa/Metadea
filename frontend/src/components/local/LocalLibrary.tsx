@@ -66,6 +66,8 @@ export default function LocalLibrary() {
   // panelSelectedPendingItem/etc. are derived further down, once
   // games/pendingGameItems and friends are in scope.
   const { selection, setCatalogSelection, setGameSelection, openPendingSelection, clearSelection } = useLocalPanelSelection(activeCategory);
+  const [resumeExternalId, setResumeExternalId] = useState<string | null>(null);
+  const handledResumeRef = useRef<string | null>(null);
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
@@ -446,6 +448,47 @@ export default function LocalLibrary() {
   // mid-view. Holding both halves back until BOTH sources are ready makes
   // every card in these mixed sections appear in one pass instead of two.
   const sectionsReady = gamesState !== 'idle' && gamesState !== 'loading' && !mediaLoading;
+
+  // A profile-card quick action enters /local with ?resume=<external_id>.
+  // Resolve it through the same game/catalog matching used by Local's own
+  // grids, open the right panel, then let that panel start its native action.
+  useEffect(() => {
+    if (!mediaRaw) return;
+    const url = new URL(window.location.href);
+    const externalId = url.searchParams.get('resume');
+    const requestedCategory = url.searchParams.get('type') as CategoryId | null;
+    if (!externalId || !requestedCategory || activeCategory !== requestedCategory || handledResumeRef.current === externalId) return;
+    const isGameCategory = requestedCategory === 'videojuegos' || requestedCategory === 'visual-novel';
+    if (isGameCategory && (gamesState === 'idle' || gamesState === 'loading')) return;
+
+    const candidates = requestedCategory === 'videojuegos' ? pendingGameItems : activeCategoryItems;
+    const targetItem = candidates.find(candidate => candidate.externalId === externalId);
+    if (!targetItem) return;
+
+    url.searchParams.delete('resume');
+    history.replaceState(history.state, '', url.toString());
+    handledResumeRef.current = externalId;
+    setResumeExternalId(externalId);
+
+    window.setTimeout(() => {
+      if (isGameCategory) {
+        const gamePool = requestedCategory === 'videojuegos' ? games : vnSteamGames;
+        const match = buildLibraryStatusEntries(
+          [targetItem], gamePool, catalogMapById, pathCache, mediaRaw.relations,
+        )[0];
+        if (match?.kind === 'game') setGameSelection(match.game);
+        else if (match?.kind === 'catalog') openPendingSelection(match.item, match.launchGame);
+        else openPendingSelection(targetItem);
+      } else {
+        setCatalogSelection(externalId);
+      }
+    }, 0);
+  }, [
+    mediaRaw, activeCategory, activeCategoryItems, pendingGameItems, gamesState, games,
+    vnSteamGames, catalogMapById, pathCache, setGameSelection, openPendingSelection, setCatalogSelection,
+  ]);
+
+  const clearResumeAction = useCallback(() => setResumeExternalId(null), []);
   // Which pending ("Pendiente") entries actually belong to a launcher
   // section (Steam/Nintendo/...) instead of just the general status
   // sections — shared with availablePlatforms below so a platform's sidebar
@@ -650,6 +693,8 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     onCloseClick={handleClose}
                     onProgressSaved={refetchMedia}
                     onRootRefresh={refetchFolder}
+                    autoResume={resumeExternalId === panelSelectedItem.externalId}
+                    onAutoResumeHandled={clearResumeAction}
                   />
                 ) : (
                   <GameDetailPanel
@@ -661,6 +706,11 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     onCloseClick={handleClose}
                     onMetaRefresh={refreshMeta}
                     onGameRelinked={onGameRelinked}
+                    autoResume={!!resumeExternalId && (
+                      panelSelectedPendingItem?.externalId === resumeExternalId ||
+                      (!!panelSelectedGame && candidateExternalIdsForGame(panelSelectedGame, pathCache).includes(resumeExternalId))
+                    )}
+                    onAutoResumeHandled={clearResumeAction}
                   />
                 )}
               </DetailPanelShell>

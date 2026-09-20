@@ -55,9 +55,11 @@ interface LocalMediaDetailPanelProps {
   // to matchedFolder/rootFileMatch until something else happens to trigger
   // a rescan (switching category and back, reopening the app).
   onRootRefresh:   () => Promise<void>;
+  autoResume?: boolean;
+  onAutoResumeHandled?: () => void;
 }
 
-export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoading, onCloseClick, onProgressSaved, onRootRefresh }: LocalMediaDetailPanelProps) {
+export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoading, onCloseClick, onProgressSaved, onRootRefresh, autoResume, onAutoResumeHandled }: LocalMediaDetailPanelProps) {
   const t = getT();
   const [subEntries, setSubEntries] = useState<LocalFolderEntry[] | null>(null);
   // Absolute path actually holding the episode files — folderToScan
@@ -190,13 +192,15 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // can't see. Only runs once normal matching has already failed, since
   // it's a multi-round-trip scan not worth paying for on every open.
   const [deepTagMatch, setDeepTagMatch] = useState<TaggedMatch | null>(null);
+  const [deepTagSearchComplete, setDeepTagSearchComplete] = useState(false);
   useEffect(() => {
     setDeepTagMatch(null);
-    if (!rootFolder || matchedFolder || rootFileMatch) return;
+    if (!rootFolder || matchedFolder || rootFileMatch) { setDeepTagSearchComplete(true); return; }
+    setDeepTagSearchComplete(false);
     let cancelled = false;
     findTaggedPathRecursive(rootFolder, item.externalId).then(found => {
-      if (!cancelled) setDeepTagMatch(found);
-    });
+      if (!cancelled) { setDeepTagMatch(found); setDeepTagSearchComplete(true); }
+    }).catch(() => { if (!cancelled) setDeepTagSearchComplete(true); });
     return () => { cancelled = true; };
   }, [rootFolder, matchedFolder, rootFileMatch, item.externalId, deepScanNonce]);
 
@@ -793,6 +797,24 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     }
     handlePlay();
   };
+
+  const autoResumeHandledRef = useRef(false);
+  useEffect(() => {
+    if (!autoResume) { autoResumeHandledRef.current = false; return; }
+    if (autoResumeHandledRef.current || rootLoading || subLoading || !deepTagSearchComplete) return;
+    if ((matchedFolder || deepTagMatch?.isDir) && subEntries === null) return;
+
+    autoResumeHandledRef.current = true;
+    if (playPath && nextFile) {
+      if (isReading) setReaderOpen(true);
+      else if (isThisPlaying) {
+        if (playback?.status === 'paused') resumePlayback();
+      } else {
+        handlePlay();
+      }
+    }
+    onAutoResumeHandled?.();
+  }, [autoResume, rootLoading, subLoading, deepTagSearchComplete, matchedFolder, deepTagMatch, subEntries, playPath, nextFile, isReading, isThisPlaying, playback?.status, handlePlay, onAutoResumeHandled]);
 
   // Shared by both the ReaderModal prop and the stand-by session it can
   // hand off to (onStandBy below) — computed once instead of twice.
