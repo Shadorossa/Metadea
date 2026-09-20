@@ -6,10 +6,13 @@ import { fetchFileAtRef, listPullRequestFiles, type GitHubPullFile } from '../..
 import { catalogFilePath, externalIdFromFilename } from '../../lib/github/catalogPaths';
 import { getCatalogEntry } from '../../lib/tauri/catalog';
 import { getCharacter, type CharacterEntry } from '../../lib/tauri/characters';
+import { fetchAniListCharacterDetail, type AniListCharacterDetail } from '../../lib/search/providers/anilist';
+import { mapExternalFormatToType } from '../../lib/media/mapper-utils';
+import { parseCSV } from '../../lib/shared/string-utils';
 import { buildPreviewMediaPageData, fetchMediaDataInternal, mapMediaDataToCatalogEntry } from '../../lib/media/mediaService';
-import type { ProposalBundle, CharacterProposalBundle, CharacterProposalAppearance } from '../../lib/github/submitCollaborativeProposal';
+import type { ProposalBundle, CharacterProposalBundle, CharacterProposalActor, CharacterProposalAppearance } from '../../lib/github/submitCollaborativeProposal';
 import type { MediaPageData } from '../../lib/media/types';
-import { CharacterPreviewCard } from '../character/CharacterPreviewCard';
+import { CharacterPreviewCard, type CharacterPreviewAppearance, type CharacterPreviewChanges } from '../character/CharacterPreviewCard';
 import { IconChevronLeft, IconChevronRight, IconX } from '../local/ui/icons';
 import MediaPage from '../media/MediaPage';
 
@@ -37,7 +40,15 @@ interface PreviewChangeSummary {
   groups: PreviewChangeGroup[];
   newRelationIds: string[];
   updatedRelationIds: string[];
-  removedRelations: Array<{ id: string; title: string }>;
+  removedItems: Array<{ id: string; title: string }>;
+  characterChanges: CharacterPreviewChanges;
+}
+
+interface CharacterProviderData {
+  entry: CharacterEntry;
+  aliases: string[];
+  appearances: CharacterPreviewAppearance[];
+  actors: CharacterProposalActor[];
 }
 
 interface PreviewRecord {
@@ -267,36 +278,259 @@ function buildMediaChangeSummary(
     groups: [...groups].map(([label, counts]) => ({ label, ...counts })),
     newRelationIds: relationChanges.newIds,
     updatedRelationIds: relationChanges.updatedIds,
-    removedRelations: relationChanges.removedRelations,
+    removedItems: relationChanges.removedRelations,
+    characterChanges: { fields: {}, appearances: {}, actors: {} },
   };
+}
+
+function normalizeAliases(value: string | null | undefined): string[] {
+  return [...new Set(parseCSV(value).map(alias => alias.trim().toLowerCase()).filter(Boolean))].sort();
+}
+
+function sameCharacterField(field: string, left: unknown, right: unknown): boolean {
+  if (field === 'aliases_csv') return JSON.stringify(normalizeAliases(left as string | null)) === JSON.stringify(normalizeAliases(right as string | null));
+  if (field === 'image_url') {
+    const normalizeImage = (value: unknown) => typeof value === 'string'
+      ? value.replace(/\/(?:small|medium|large)\//i, '/_size_/')
+      : value ?? null;
+    return normalizeImage(left) === normalizeImage(right);
+  }
+  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+}
+
+function buildAniListCharacterData(externalId: string, detail: AniListCharacterDetail): CharacterProviderData {
+  const aliases = [...new Set([...(detail.name.alternative ?? []), ...(detail.name.alternativeSpoiler ?? [])].filter(Boolean))];
+  const appearances = new Map<string, CharacterPreviewAppearance>();
+  const actors = new Map<string, CharacterProposalActor>();
+
+  for (const edge of detail.media?.edges ?? []) {
+    const mediaExternalId = `${mapExternalFormatToType(edge.node.type, edge.node.format)}:${edge.node.id}`;
+    appearances.set(mediaExternalId, {
+      media_external_id: mediaExternalId,
+      relation_type: edge.characterRole ?? null,
+      title: edge.node.title.userPreferred || mediaExternalId,
+      cover: edge.node.coverImage?.large ?? null,
+    });
+    for (const voiceActor of edge.voiceActors ?? []) {
+      if (!voiceActor.id) continue;
+      const actorId = `person:a${voiceActor.id}`;
+      if (!actors.has(actorId)) {
+        actors.set(actorId, {
+          external_id: actorId,
+          name: voiceActor.name?.userPreferred || voiceActor.name?.full || actorId,
+          name_native: voiceActor.name?.native ?? null,
+          image_url: voiceActor.image?.large || voiceActor.image?.medium || null,
+          role: 'voice',
+          language: voiceActor.languageV2 || 'Japanese',
+        });
+      }
+    }
+  }
+
+  return {
+    aliases,
+    entry: {
+      id: '',
+      external_id: externalId,
+      name: detail.name.full || externalId,
+      name_native: detail.name.native ?? null,
+      aliases_csv: aliases.join(', '),
+      biography: detail.description ?? null,
+      image_url: detail.image?.large ?? null,
+      gender: detail.gender ?? null,
+      age: detail.age ?? null,
+      blood_type: detail.bloodType ?? null,
+      dob_year: detail.dateOfBirth?.year ?? null,
+      dob_month: detail.dateOfBirth?.month ?? null,
+      dob_day: detail.dateOfBirth?.day ?? null,
+      created_at: '',
+      updated_at: '',
+    },
+    appearances: [...appearances.values()],
+    actors: [...actors.values()],
+  };
+}
+
+function mergeCharacterPreviewEntry(
+  externalId: string,
+  bundle: CharacterProposalBundle,
+  provider: CharacterProviderData | null,
+  local: CharacterEntry | null,
+): CharacterEntry {
+  const providerEntry = provider?.entry;
+  const proposal = bundle.character;
+  const fieldValue = (field: 'name' | 'name_native' | 'biography' | 'image_url') => {
+    const hasProposalValue = Object.prototype.hasOwnProperty.call(proposal, field);
+    const proposalValue = proposal[field];
+    const providerValue = providerEntry?.[field];
+    const localValue = local?.[field];
+    if (hasProposalValue) return proposalValue || providerValue || null;
+    return localValue || providerValue || null;
+  };
+  const chosenAliases = Object.prototype.hasOwnProperty.call(proposal, 'aliases_csv')
+    ? proposal.aliases_csv
+    : local?.aliases_csv;
+  const aliases = [...new Set([...(provider?.aliases ?? []), ...parseCSV(chosenAliases).map(alias => alias.trim()).filter(Boolean)])];
+  const localImageIsAniListMedium = !!local?.image_url
+    && local.image_url.includes('anilist.co')
+    && local.image_url.includes('/medium/');
+
+  return {
+    id: local?.id ?? '',
+    external_id: externalId,
+    name: String(fieldValue('name') || externalId),
+    name_native: fieldValue('name_native'),
+    aliases_csv: aliases.join(', '),
+    biography: fieldValue('biography'),
+    image_url: (localImageIsAniListMedium && !Object.prototype.hasOwnProperty.call(proposal, 'image_url'))
+      ? providerEntry?.image_url ?? local?.image_url ?? null
+      : fieldValue('image_url'),
+    reaction: local?.reaction ?? null,
+    gender: local?.gender ?? providerEntry?.gender ?? null,
+    age: local?.age ?? providerEntry?.age ?? null,
+    blood_type: local?.blood_type ?? providerEntry?.blood_type ?? null,
+    dob_year: local?.dob_year ?? providerEntry?.dob_year ?? null,
+    dob_month: local?.dob_month ?? providerEntry?.dob_month ?? null,
+    dob_day: local?.dob_day ?? providerEntry?.dob_day ?? null,
+    created_at: local?.created_at ?? '',
+    updated_at: local?.updated_at ?? '',
+  };
+}
+
+function mergeCharacterPreviewAppearances(
+  current: CharacterProposalAppearance[],
+  provider: CharacterPreviewAppearance[],
+): CharacterPreviewAppearance[] {
+  const byId = new Map(provider.map(appearance => [appearance.media_external_id, appearance] as const));
+  for (const appearance of current) {
+    byId.set(appearance.media_external_id, { ...byId.get(appearance.media_external_id), ...appearance });
+  }
+  return [...byId.values()];
+}
+
+function mergeCharacterPreviewActors(
+  current: CharacterProposalActor[],
+  provider: CharacterProposalActor[],
+): CharacterProposalActor[] {
+  const byId = new Map(provider.map(actor => [actor.external_id, actor] as const));
+  for (const actor of current) {
+    const merged = { ...(byId.get(actor.external_id) ?? { external_id: actor.external_id }) };
+    for (const [field, value] of Object.entries(actor)) {
+      if (value !== undefined && value !== null) (merged as Record<string, unknown>)[field] = value;
+    }
+    byId.set(actor.external_id, merged);
+  }
+  return [...byId.values()];
 }
 
 function buildCharacterChangeSummary(
   current: CharacterProposalBundle,
   previous: CharacterProposalBundle | null,
+  provider: CharacterProviderData | null,
   i18n: Props['i18n'],
 ): PreviewChangeSummary {
   const groups = new Map<string, ChangeCounts>();
-  for (const [field, value] of Object.entries(current.character)) {
-    if (field === 'external_id') continue;
-    const previousValue = previous?.character?.[field as keyof typeof current.character];
-    if (previous
-      ? JSON.stringify(value ?? null) === JSON.stringify(previousValue ?? null)
-      : value === null || value === undefined) continue;
-    addChange(groups, i18n.notifications.preview_character_data, previous ? 'updated' : 'added');
+  const changedFields: CharacterPreviewChanges['fields'] = {};
+  const fields = ['name', 'name_native', 'aliases_csv', 'biography', 'image_url'] as const;
+  for (const field of fields) {
+    if (!Object.prototype.hasOwnProperty.call(current.character, field)) continue;
+    const value = current.character[field];
+    const previousValue = previous?.character?.[field];
+    if (previous && sameCharacterField(field, value, previousValue)) continue;
+    if (!previous && (value === null || value === undefined)) continue;
+    const providerValue = provider?.entry[field];
+    const matchesProvider = provider && sameCharacterField(field, value, providerValue);
+    if (matchesProvider) continue;
+    const isRemoval = (value === null || value === '') && previousValue != null && (providerValue === null || providerValue === undefined);
+    const kind = isRemoval ? 'removed' : previous ? 'updated' : 'added';
+    addChange(groups, i18n.notifications.preview_character_data, kind);
+    changedFields[field] = kind;
   }
-  mergeChangeCounts(groups, i18n.notifications.preview_appearances, compareList(
-    current.appearances ?? [], previous?.appearances ?? [], appearance => appearance.media_external_id,
-  ));
-  mergeChangeCounts(groups, i18n.notifications.preview_voice_actors, compareList(
-    current.actors ?? [], previous?.actors ?? [], actor => actor.external_id,
-  ));
+
+  const providerAppearances = new Map((provider?.appearances ?? []).map(item => [item.media_external_id, item] as const));
+  const providerActors = new Map((provider?.actors ?? []).map(item => [item.external_id, item] as const));
+  const currentAppearances = current.appearances ?? [];
+  const previousAppearances = previous?.appearances ?? [];
+  const currentActors = current.actors ?? [];
+  const previousActors = previous?.actors ?? [];
+  const appearanceChanges: CharacterPreviewChanges['appearances'] = {};
+  const actorChanges: CharacterPreviewChanges['actors'] = {};
+  const removedItems: Array<{ id: string; title: string }> = [];
+
+  const appearanceCounts = { ...EMPTY_CHANGE_COUNTS };
+  const currentAppearanceById = new Map(currentAppearances.map(item => [item.media_external_id, item] as const));
+  const previousAppearanceById = new Map(previousAppearances.map(item => [item.media_external_id, item] as const));
+  for (const [id, item] of currentAppearanceById) {
+    const old = previousAppearanceById.get(id);
+    const api = providerAppearances.get(id);
+    const matchesApi = !!api && normalizedRelationType(item.relation_type) === normalizedRelationType(api.relation_type);
+    if (!old) {
+      if (matchesApi) continue;
+      const kind = api ? 'updated' : 'added';
+      appearanceCounts[kind] += 1;
+      appearanceChanges[id] = kind;
+    } else if (normalizedRelationType(item.relation_type) !== normalizedRelationType(old.relation_type)) {
+      if (matchesApi && normalizedRelationType(old.relation_type) === normalizedRelationType(api?.relation_type)) continue;
+      appearanceCounts.updated += 1;
+      appearanceChanges[id] = 'updated';
+    }
+  }
+  for (const [id, old] of previousAppearanceById) {
+    if (currentAppearanceById.has(id)) continue;
+    const api = providerAppearances.get(id);
+    if (api) {
+      if (normalizedRelationType(old.relation_type) !== normalizedRelationType(api.relation_type)) {
+        appearanceCounts.updated += 1;
+        appearanceChanges[id] = 'updated';
+      }
+    } else {
+      appearanceCounts.removed += 1;
+      removedItems.push({ id, title: old.title || id });
+    }
+  }
+  mergeChangeCounts(groups, i18n.notifications.preview_appearances, appearanceCounts);
+
+  const actorCounts = { ...EMPTY_CHANGE_COUNTS };
+  const currentActorById = new Map(currentActors.map(item => [item.external_id, item] as const));
+  const previousActorById = new Map(previousActors.map(item => [item.external_id, item] as const));
+  const actorMatches = (left: CharacterProposalActor, right: CharacterProposalActor, api: CharacterProposalActor | undefined) => {
+    const fields = ['name', 'name_native', 'image_url', 'role', 'language'] as const;
+    return fields.every(field => (left[field] ?? api?.[field] ?? null) === (right[field] ?? api?.[field] ?? null));
+  };
+  for (const [id, item] of currentActorById) {
+    const old = previousActorById.get(id);
+    const api = providerActors.get(id);
+    if (!old) {
+      if (api && actorMatches(item, api, api)) continue;
+      const kind = api ? 'updated' : 'added';
+      actorCounts[kind] += 1;
+      actorChanges[id] = kind;
+    } else if (!actorMatches(item, old, api)) {
+      actorCounts.updated += 1;
+      actorChanges[id] = 'updated';
+    }
+  }
+  for (const [id, old] of previousActorById) {
+    if (currentActorById.has(id)) continue;
+    const api = providerActors.get(id);
+    if (api) {
+      if (!actorMatches(old, api, api)) {
+        actorCounts.updated += 1;
+        actorChanges[id] = 'updated';
+      }
+    } else {
+      actorCounts.removed += 1;
+      removedItems.push({ id, title: old.name || id });
+    }
+  }
+  mergeChangeCounts(groups, i18n.notifications.preview_voice_actors, actorCounts);
 
   return {
     groups: [...groups].map(([label, counts]) => ({ label, ...counts })),
     newRelationIds: [],
     updatedRelationIds: [],
-    removedRelations: [],
+    removedItems,
+    characterChanges: { fields: changedFields, appearances: appearanceChanges, actors: actorChanges },
   };
 }
 
@@ -307,7 +541,8 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewData, setPreviewData] = useState<MediaPageData | null>(null);
   const [previewCharacter, setPreviewCharacter] = useState<CharacterEntry | null>(null);
-  const [previewAppearances, setPreviewAppearances] = useState<CharacterProposalAppearance[]>([]);
+  const [previewAppearances, setPreviewAppearances] = useState<CharacterPreviewAppearance[]>([]);
+  const [previewActors, setPreviewActors] = useState<CharacterProposalActor[]>([]);
   const [previewChanges, setPreviewChanges] = useState<PreviewChangeSummary | null>(null);
   const activeRecord = previewFiles[activeIndex] ?? null;
   const isCharacter = activeRecord?.externalId.startsWith('character:') ?? externalId.startsWith('character:');
@@ -376,6 +611,7 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
     setPreviewData(null);
     setPreviewCharacter(null);
     setPreviewAppearances([]);
+    setPreviewActors([]);
     setPreviewChanges(null);
 
     (async () => {
@@ -391,16 +627,21 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
           // Character proposals are independent files, not media-page data.
           const bundle = activeRecord.bundle as CharacterProposalBundle;
           const previousBundle = previousContent ? JSON.parse(previousContent) as CharacterProposalBundle : null;
-          const baseline = await getCharacter(activeRecord.externalId).catch(() => null);
+          const [, providerCode, rawProviderId] = activeRecord.externalId.split(':');
+          const providerId = providerCode === 'a' && /^\d+$/.test(rawProviderId ?? '') ? Number(rawProviderId) : null;
+          const [baseline, aniListDetail] = await Promise.all([
+            getCharacter(activeRecord.externalId).catch(() => null),
+            providerId ? fetchAniListCharacterDetail(providerId).catch(err => {
+              console.warn('[PrPreviewModal] Could not fetch AniList character details:', err);
+              return null;
+            }) : Promise.resolve(null),
+          ]);
+          const provider = aniListDetail ? buildAniListCharacterData(activeRecord.externalId, aniListDetail) : null;
           if (cancelled) return;
-          setPreviewCharacter({
-            id: baseline?.id ?? '', created_at: baseline?.created_at ?? '', updated_at: baseline?.updated_at ?? '',
-            ...baseline,
-            ...bundle.character,
-            name: bundle.character.name ?? baseline?.name ?? activeRecord.externalId,
-          });
-          setPreviewAppearances(bundle.appearances ?? []);
-          setPreviewChanges(buildCharacterChangeSummary(bundle, previousBundle, i18n));
+          setPreviewCharacter(mergeCharacterPreviewEntry(activeRecord.externalId, bundle, provider, baseline));
+          setPreviewAppearances(mergeCharacterPreviewAppearances(bundle.appearances ?? [], provider?.appearances ?? []));
+          setPreviewActors(mergeCharacterPreviewActors(bundle.actors ?? [], provider?.actors ?? []));
+          setPreviewChanges(buildCharacterChangeSummary(bundle, previousBundle, provider, i18n));
         } else {
           const bundle = activeRecord.bundle as ProposalBundle;
           const previousBundle = previousContent ? JSON.parse(previousContent) as ProposalBundle : null;
@@ -512,17 +753,22 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
                 </div>
               </div>
               {previewChanges.groups.length === 0 && <p className="pr-preview-no-changes">{t.preview_no_changes}</p>}
-              {previewChanges.removedRelations.length > 0 && (
+              {previewChanges.removedItems.length > 0 && (
                 <div className="pr-preview-removed-relations" aria-label={t.preview_removed}>
-                  {previewChanges.removedRelations.map(relation => (
-                    <span className="pr-preview-removed-relation" key={relation.id}>{relation.title}</span>
+                  {previewChanges.removedItems.map(item => (
+                    <span className="pr-preview-removed-relation" key={item.id}>{item.title}</span>
                   ))}
                 </div>
               )}
             </section>
           )}
           {state === 'ready' && isCharacter && previewCharacter && (
-            <CharacterPreviewCard character={previewCharacter} appearances={previewAppearances} />
+            <CharacterPreviewCard
+              character={previewCharacter}
+              appearances={previewAppearances}
+              actors={previewActors}
+              changes={previewChanges?.characterChanges}
+            />
           )}
           {state === 'ready' && !isCharacter && previewData && (
             <MediaPage

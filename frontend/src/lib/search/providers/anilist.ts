@@ -723,6 +723,13 @@ export interface AniListCharacterDetail {
       // field is `characterRole`; querying `relationType` here just returns
       // null for every edge.
       characterRole: string;
+      voiceActors?: Array<{
+        id: number;
+        name: { full: string; native: string | null; userPreferred: string };
+        languageV2: string | null;
+        image: { large: string | null; medium: string | null } | null;
+        siteUrl: string | null;
+      }>;
       node: {
         id: number;
         title: {

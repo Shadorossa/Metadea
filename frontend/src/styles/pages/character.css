@@ -280,6 +280,48 @@
   border-radius: 4px;
 }
 
+.character-preview-field {
+  border-radius: 3px;
+}
+
+.character-preview-field.character-preview-diff--added,
+.character-avatar-frame.character-preview-diff--added {
+  outline: 1px solid color-mix(in srgb, #d8b44f 78%, transparent);
+  outline-offset: 3px;
+}
+
+.character-preview-field.character-preview-diff--updated,
+.character-avatar-frame.character-preview-diff--updated {
+  outline: 1px solid color-mix(in srgb, #b477f2 78%, transparent);
+  outline-offset: 3px;
+}
+
+.character-preview-field.character-preview-diff--removed,
+.character-avatar-frame.character-preview-diff--removed {
+  outline: 1px solid color-mix(in srgb, #ff8585 78%, transparent);
+  outline-offset: 3px;
+}
+
+.media-relation-card.character-preview-diff--added,
+.media-relation-card.character-preview-diff--added:hover {
+  border-color: #d8b44f;
+  box-shadow: inset 0 0 0 1px rgba(216, 180, 79, 0.35);
+}
+
+.media-relation-card.character-preview-diff--updated,
+.media-relation-card.character-preview-diff--updated:hover {
+  border-color: #b477f2;
+  box-shadow: inset 0 0 0 1px rgba(180, 119, 242, 0.38);
+}
+
+.character-preview-stats-list {
+  display: block;
+}
+
+.character-preview-voice-actors {
+  grid-column: 1 / -1;
+}
+
 /* Spoilers */
 .spoiler, .markdown-spoiler, .markdown_spoiler {
   background: #3f3f46;
