@@ -108,14 +108,6 @@
 .settings-section--fill { flex: 1; }
 .connections-auth-list { max-width: 900px; margin-top: 1rem; gap: 1rem; }
 .connection-cancel-btn { width: 100%; }
-.settings-sync-last-attempt { margin-top: 0.4rem; color: var(--text-dim); font-size: 0.72rem; }
-
-.settings-test-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-
 .settings-signout-btn {
   color: var(--color-error);
   border-color: color-mix(in srgb, var(--color-error) 40%, transparent);

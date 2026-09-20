@@ -61,12 +61,29 @@ const t = useTranslations(lang);
         </section>
       </aside>
     </div>
+
+    <aside
+      id="home-profile-sync-prompt"
+      class="home-profile-sync-prompt"
+      aria-labelledby="home-profile-sync-title"
+      hidden
+    >
+      <div class="home-profile-sync-copy">
+        <h2 id="home-profile-sync-title">{t.home.profile_sync_prompt}</h2>
+        <p>{t.home.profile_sync_description}</p>
+        <p id="home-profile-sync-status" class="home-profile-sync-status" aria-live="polite"></p>
+      </div>
+      <button id="home-profile-sync-button" class="btn btn--accent" type="button">
+        {t.home.profile_sync_button}
+      </button>
+    </aside>
   </main>
 
   <script>
     import { getAuthToken } from "../lib/tauri";
     import { API_URL } from "../lib/config";
     import { renderReleaseCalendar } from "../lib/home/render-calendar";
+    import { refreshGeneralActivityFeed } from "../lib/social/activity-feed";
     import { STORAGE_KEYS } from "../lib/shared/storage-keys";
     import { getT } from "../i18n/client";
 
@@ -77,13 +94,54 @@ const t = useTranslations(lang);
     if (googleText && ht.auth?.link_google) googleText.textContent = ht.auth.link_google;
 
     async function checkSession() {
-      const session = await getAuthToken();
+      const session = await getAuthToken().catch(() => null);
+      const prompt = document.getElementById("home-profile-sync-prompt");
+      const syncButton = document.getElementById("home-profile-sync-button") as HTMLButtonElement | null;
+
       if (session && session.token === "offline_token") {
         const container = document.getElementById("google-link-container");
         if (container) {
           container.style.display = "block";
         }
       }
+
+      if (!prompt || !session?.token || session.token === "offline_token") return;
+
+      const lastSync = Number(localStorage.getItem(STORAGE_KEYS.profileSyncLastSync));
+      const lastSyncDate = Number.isFinite(lastSync) && lastSync > 0
+        ? new Date(lastSync).toDateString()
+        : null;
+      if (lastSyncDate === new Date().toDateString()) return;
+
+      prompt.hidden = false;
+      requestAnimationFrame(() => prompt.classList.add("is-visible"));
+      syncButton?.addEventListener("click", async () => {
+        if (!syncButton || syncButton.disabled) return;
+
+        const status = document.getElementById("home-profile-sync-status");
+        syncButton.disabled = true;
+        prompt.setAttribute("aria-busy", "true");
+        syncButton.textContent = ht.home?.profile_syncing ?? "Sincronizando…";
+        if (status) status.textContent = "";
+
+        let synced = false;
+        try {
+          const { syncProfileToServer } = await import("../lib/social/profile-sync");
+          synced = await syncProfileToServer(true);
+        } catch { /* show the same retry state for import, network, or server errors */ }
+
+        prompt.setAttribute("aria-busy", "false");
+        if (synced) {
+          await refreshGeneralActivityFeed(true);
+          prompt.classList.remove("is-visible");
+          window.setTimeout(() => { prompt.hidden = true; }, 180);
+          return;
+        }
+
+        if (status) status.textContent = ht.home?.profile_sync_error ?? "No se pudo sincronizar. Comprueba la conexión e inténtalo de nuevo.";
+        syncButton.textContent = ht.home?.profile_sync_button ?? "Sincronizar";
+        syncButton.disabled = false;
+      });
     }
 
     document.addEventListener("astro:page-load", () => {

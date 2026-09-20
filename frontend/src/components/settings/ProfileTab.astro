@@ -187,18 +187,6 @@ const { t, onboarding = false } = Astro.props;
     </div>
   </div>
 
-  <!-- TEST — botón temporal para forzar el sync del perfil al servidor sin
-       esperar la puerta de 24h, solo para pruebas del sistema social. Quitar
-       antes de release. -->
-  <div class="settings-divider" hidden={onboarding}>
-    <div class="settings-test-actions">
-      <button class="btn btn--sm btn--ghost" id="settings-force-sync-btn">
-        [TEST] Sincronizar perfil ahora (forzar)
-      </button>
-    </div>
-    <p id="settings-sync-last-attempt" class="settings-sync-last-attempt"></p>
-  </div>
-
   <!-- Cerrar sesión -->
   <div class="settings-divider" hidden={onboarding}>
     <button
