@@ -1,0 +1,78 @@
+---
+import '../styles/pages/screenshot-toast.css';
+import { getT } from '../i18n/client';
+
+const t = getT();
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Metadea</title>
+  </head>
+  <body>
+    <main class="screenshot-toast-page">
+      <section class="screenshot-toast-card" id="screenshot-toast" role="status" aria-live="polite">
+        <span class="screenshot-toast-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 7.5h3l1.4-2h7.2l1.4 2h3A1.5 1.5 0 0 1 21.5 9v9a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z" />
+            <circle cx="12" cy="13" r="3.5" />
+            <path d="M18 10h.01" />
+          </svg>
+        </span>
+        <span class="screenshot-toast-content">
+          <strong class="screenshot-toast-title" id="screenshot-toast-title">{t.local.screenshot_saved}</strong>
+          <span class="screenshot-toast-work" id="screenshot-toast-work"></span>
+          <span class="screenshot-toast-meta">
+            <span class="screenshot-toast-episode" id="screenshot-toast-episode"></span>
+            <span aria-hidden="true">·</span>
+            <span class="screenshot-toast-time" id="screenshot-toast-time"></span>
+          </span>
+        </span>
+      </section>
+    </main>
+  </body>
+</html>
+
+<script>
+  import { listen } from '@tauri-apps/api/event';
+  import { invoke } from '@tauri-apps/api/core';
+  import { getT } from '../i18n/client';
+
+  type ScreenshotToastPayload = {
+    work_name: string;
+    episode_label: string;
+    timecode: string;
+  };
+
+  const toast = document.getElementById('screenshot-toast');
+  const title = document.getElementById('screenshot-toast-title');
+  const work = document.getElementById('screenshot-toast-work');
+  const episode = document.getElementById('screenshot-toast-episode');
+  const time = document.getElementById('screenshot-toast-time');
+  let hideTimer: number | undefined;
+
+  if (title) title.textContent = getT().local.screenshot_saved;
+
+  function showScreenshotToast(payload: ScreenshotToastPayload) {
+    if (!toast || !work || !episode || !time) return;
+    work.textContent = payload.work_name;
+    episode.textContent = payload.episode_label;
+    const timecode = payload.timecode.match(/^(\d+)h(\d{2})m(\d{2})s(\d{3})$/);
+    time.textContent = timecode
+      ? `${timecode[1]}:${timecode[2]}:${timecode[3]}.${timecode[4]}`
+      : payload.timecode;
+    toast.classList.remove('is-visible');
+    void toast.getBoundingClientRect();
+    toast.classList.add('is-visible');
+    if (hideTimer !== undefined) window.clearTimeout(hideTimer);
+    hideTimer = window.setTimeout(() => toast.classList.remove('is-visible'), 2600);
+  }
+
+  void listen<ScreenshotToastPayload>('local-screenshot-saved', event => {
+    showScreenshotToast(event.payload);
+  }).then(() => invoke('screenshot_toast_ready'))
+    .catch(error => console.error('[Screenshot toast] Failed to initialize:', error));
+</script>

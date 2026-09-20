@@ -74,6 +74,7 @@ pub fn run() {
             }
 
             app.manage(metadea_db);
+            app.manage(folders::ScreenshotToastState::default());
             let discord = discord::DiscordState::new();
             discord.start_background();
             app.manage(discord);
@@ -111,6 +112,8 @@ pub fn run() {
             folders::stop_game_process,
             folders::open_external_url,
             folders::play_file_with_vlc,
+            folders::screenshot_toast_ready,
+            folders::get_local_screenshots,
             backup::export_backup,
             backup::prepare_restore,
             folders::get_vlc_playback_status,

@@ -375,7 +375,16 @@ export async function startQueuePlayback(target: StartPlaybackTarget): Promise<v
   lastPresenceStart = null;
   lastMarkedAt = Date.now();
 
-  await playFileWithVlc(target.queue.map(q => q.filePath), resumeSeconds ?? undefined);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const screenshotEpisodeLabels = target.queue.map(item => target.type === 'movie'
+    ? `M${pad(item.episodeNumber)}`
+    : `S${pad(item.seasonNumber ?? 1)}E${pad(item.episodeNumber)}`);
+  await playFileWithVlc(
+    target.queue.map(q => q.filePath),
+    resumeSeconds ?? undefined,
+    target.title,
+    screenshotEpisodeLabels,
+  );
 
   setState({
     externalId: target.externalId, type: target.type, title: target.title, cover: target.cover,

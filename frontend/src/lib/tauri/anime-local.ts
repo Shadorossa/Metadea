@@ -1,10 +1,15 @@
-import { isTauri, invoke, tauriRun } from './core';
+import { isTauri, invoke, tauriCmd, tauriRun } from './core';
 
 // filePaths plays as one VLC playlist, in order — lets a caller queue every
 // remaining episode in one launch instead of relaunching per episode.
 // startSeconds only ever applies to the first path.
-export async function playFileWithVlc(filePaths: string[], startSeconds?: number): Promise<void> {
-  return tauriRun('play_file_with_vlc', { filePaths, startSeconds: startSeconds ?? null });
+export async function playFileWithVlc(
+  filePaths: string[],
+  startSeconds: number | undefined,
+  workName: string,
+  episodeLabels: string[],
+): Promise<void> {
+  return tauriRun('play_file_with_vlc', { filePaths, startSeconds: startSeconds ?? null, workName, episodeLabels });
 }
 
 export interface VlcPlaybackStatus {
@@ -32,3 +37,11 @@ export async function sendVlcCommand(command: string, val?: string): Promise<voi
   return tauriRun('send_vlc_command', { command, val: val ?? null });
 }
 
+export interface LocalScreenshot {
+  path: string;
+  thumbnail_path: string;
+}
+
+export async function getLocalScreenshots(workName: string): Promise<LocalScreenshot[]> {
+  return tauriCmd<LocalScreenshot[]>('get_local_screenshots', [], { workName });
+}

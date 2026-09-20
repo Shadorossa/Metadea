@@ -138,6 +138,8 @@ commands.allow = [
   "stop_game_process",
   "open_external_url",
   "play_file_with_vlc",
+  "screenshot_toast_ready",
+  "get_local_screenshots",
   "get_vlc_playback_status",
   "send_vlc_command",
   "fetch_image_data_url",

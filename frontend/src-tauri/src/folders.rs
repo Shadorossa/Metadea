@@ -700,16 +700,423 @@ fn kill_existing_vlc() {
     }
 }
 
+struct PendingVlcScreenshot {
+    path: PathBuf,
+    size: u64,
+    stable_checks: u8,
+    episode_label: String,
+    position_millis: u64,
+}
+
+#[derive(Clone, Serialize)]
+struct ScreenshotToastPayload {
+    work_name: String,
+    episode_label: String,
+    timecode: String,
+}
+
+#[derive(Default)]
+pub struct ScreenshotToastState {
+    latest: std::sync::Mutex<Option<ScreenshotToastPayload>>,
+    page_ready: std::sync::atomic::AtomicBool,
+    generation: std::sync::atomic::AtomicU64,
+}
+
+fn basename_lower(path: &str) -> String {
+    path.rsplit(|character| character == '/' || character == '\\')
+        .next()
+        .unwrap_or(path)
+        .to_lowercase()
+}
+
+fn extract_episode_label(filename: &str) -> Option<String> {
+    let bytes = filename.as_bytes();
+    for start in 0..bytes.len() {
+        if !matches!(bytes[start].to_ascii_uppercase(), b'S') {
+            continue;
+        }
+        let season_start = start + 1;
+        let mut episode_marker = season_start;
+        while episode_marker < bytes.len() && bytes[episode_marker].is_ascii_digit() {
+            episode_marker += 1;
+        }
+        if episode_marker == season_start
+            || episode_marker >= bytes.len()
+            || bytes[episode_marker].to_ascii_uppercase() != b'E'
+        {
+            continue;
+        }
+        let episode_start = episode_marker + 1;
+        let mut end = episode_start;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if end == episode_start {
+            continue;
+        }
+        let season = filename[season_start..episode_marker].parse::<u32>().ok()?;
+        let episode = filename[episode_start..end].parse::<u32>().ok()?;
+        return Some(format!("S{season:02}E{episode:02}"));
+    }
+    None
+}
+
+fn resolve_screenshot_episode_label(
+    current_filename: &str,
+    file_paths: &[String],
+    episode_labels: &[String],
+) -> String {
+    let current_basename = basename_lower(current_filename);
+    if let Some((_, label)) = file_paths.iter().zip(episode_labels).find(|(path, _)| {
+        basename_lower(path) == current_basename
+    }) {
+        return label.clone();
+    }
+    extract_episode_label(current_filename)
+        .or_else(|| (episode_labels.len() == 1).then(|| episode_labels[0].clone()))
+        .unwrap_or_else(|| "Episodio".to_string())
+}
+
+fn screenshot_timecode(position_millis: u64) -> String {
+    let hours = position_millis / 3_600_000;
+    let minutes = (position_millis % 3_600_000) / 60_000;
+    let seconds = (position_millis % 60_000) / 1_000;
+    let milliseconds = position_millis % 1_000;
+    format!("{hours:02}h{minutes:02}m{seconds:02}s{milliseconds:03}")
+}
+
+fn screenshot_file_name(work_name: &str, episode_label: &str, position_millis: u64) -> String {
+    let title: String = sanitize_capture_folder_name(work_name).chars().take(100).collect();
+    format!("{title} - {episode_label} - {}.png", screenshot_timecode(position_millis))
+}
+
+#[cfg(test)]
+mod screenshot_file_name_tests {
+    use super::screenshot_file_name;
+
+    #[test]
+    fn includes_milliseconds_after_the_episode_timecode() {
+        assert_eq!(
+            screenshot_file_name("Teen Titans", "S01E25", 3_723_456),
+            "Teen Titans - S01E25 - 01h02m03s456.png"
+        );
+    }
+}
+
+fn available_screenshot_path(directory: &std::path::Path, filename: &str) -> PathBuf {
+    let preferred = directory.join(filename);
+    if !preferred.exists() {
+        return preferred;
+    }
+
+    let stem = preferred.file_stem().unwrap_or_default().to_string_lossy();
+    for suffix in 2u32.. {
+        let candidate = directory.join(format!("{stem}-{suffix}.png"));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    preferred
+}
+
+async fn read_vlc_screenshot_position(client: &reqwest::Client) -> Option<(String, u64)> {
+    let url = format!("http://127.0.0.1:{VLC_HTTP_PORT}/requests/status.json");
+    let response = client
+        .get(url)
+        .basic_auth("", Some(VLC_HTTP_PASSWORD))
+        .send()
+        .await
+        .ok()?
+        .error_for_status()
+        .ok()?;
+    let json: serde_json::Value = response.json().await.ok()?;
+    let filename = json
+        .get("information")
+        .and_then(|info| info.get("category"))
+        .and_then(|category| category.get("meta"))
+        .and_then(|meta| meta.get("filename"))
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let seconds = json
+        .get("time")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or_default()
+        .max(0) as u64;
+    let position_millis = json
+        .get("position")
+        .and_then(serde_json::Value::as_f64)
+        .zip(json.get("length").and_then(serde_json::Value::as_i64))
+        .filter(|(position, length)| position.is_finite() && *length > 0)
+        .map(|(position, length)| (position.clamp(0.0, 1.0) * length as f64 * 1_000.0).round() as u64)
+        .unwrap_or(seconds.saturating_mul(1_000));
+    Some((filename, position_millis))
+}
+
+async fn watch_and_rename_vlc_screenshots(
+    mut child: std::process::Child,
+    app_handle: tauri::AppHandle,
+    capture_dir: PathBuf,
+    work_name: String,
+    file_paths: Vec<String>,
+    episode_labels: Vec<String>,
+) {
+    use std::time::{Duration, Instant};
+
+    let mut seen = std::collections::HashSet::new();
+    if let Ok(entries) = std::fs::read_dir(&capture_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|extension| extension.to_str()) == Some("png")
+                && path.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.starts_with("Metadea-"))
+            {
+                seen.insert(path);
+            }
+        }
+    }
+
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_millis(700))
+        .build()
+    {
+        Ok(client) => client,
+        Err(_) => return,
+    };
+    let mut pending: Vec<PendingVlcScreenshot> = Vec::new();
+    let mut child_exited_at: Option<Instant> = None;
+
+    loop {
+        tokio::time::sleep(Duration::from_millis(150)).await;
+
+        let mut discovered = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&capture_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let is_capture = path.is_file()
+                    && path.extension().and_then(|extension| extension.to_str()) == Some("png")
+                    && path.file_name().and_then(|name| name.to_str()).is_some_and(|name| name.starts_with("Metadea-"));
+                if is_capture && !seen.contains(&path) {
+                    seen.insert(path.clone());
+                    discovered.push(path);
+                }
+            }
+        }
+
+        if !discovered.is_empty() {
+            let current = read_vlc_screenshot_position(&client).await;
+            for path in discovered {
+                let (episode_label, position_millis) = current.as_ref().map_or_else(
+                    || ("Episodio".to_string(), 0),
+                    |(filename, position)| (
+                        resolve_screenshot_episode_label(filename, &file_paths, &episode_labels),
+                        *position,
+                    ),
+                );
+                let size = std::fs::metadata(&path).map(|metadata| metadata.len()).unwrap_or_default();
+                pending.push(PendingVlcScreenshot {
+                    path,
+                    size,
+                    stable_checks: 0,
+                    episode_label,
+                    position_millis,
+                });
+            }
+        }
+
+        let mut index = 0;
+        while index < pending.len() {
+            let capture = &mut pending[index];
+            let current_size = std::fs::metadata(&capture.path)
+                .map(|metadata| metadata.len())
+                .unwrap_or_default();
+            if current_size > 0 && current_size == capture.size {
+                capture.stable_checks = capture.stable_checks.saturating_add(1);
+            } else {
+                capture.size = current_size;
+                capture.stable_checks = 0;
+            }
+
+            if capture.stable_checks < 2 {
+                index += 1;
+                continue;
+            }
+
+            let filename = screenshot_file_name(&work_name, &capture.episode_label, capture.position_millis);
+            let destination = available_screenshot_path(&capture_dir, &filename);
+            if std::fs::rename(&capture.path, destination).is_ok() {
+                show_screenshot_toast(&app_handle, ScreenshotToastPayload {
+                    work_name: work_name.clone(),
+                    episode_label: capture.episode_label.clone(),
+                    timecode: screenshot_timecode(capture.position_millis),
+                });
+                pending.remove(index);
+            } else {
+                index += 1;
+            }
+        }
+
+        if child_exited_at.is_none() {
+            match child.try_wait() {
+                Ok(Some(_)) | Err(_) => child_exited_at = Some(Instant::now()),
+                Ok(None) => {}
+            }
+        }
+        if child_exited_at.is_some_and(|exited| exited.elapsed() >= Duration::from_secs(5)) {
+            break;
+        }
+    }
+}
+
+fn screenshot_toast_position(app_handle: &tauri::AppHandle) -> (f64, f64) {
+    use tauri::Manager;
+
+    const TOAST_WIDTH: f64 = 430.0;
+    const RIGHT_MARGIN: f64 = 4.0;
+    const TOP_MARGIN: f64 = 11.0;
+
+    let monitor = app_handle
+        .get_webview_window("main")
+        .and_then(|window| window.current_monitor().ok().flatten())
+        .or_else(|| {
+            app_handle
+                .get_webview_window("main")
+                .and_then(|window| window.primary_monitor().ok().flatten())
+        });
+    let Some(monitor) = monitor else {
+        return (800.0, TOP_MARGIN);
+    };
+
+    let scale = monitor.scale_factor().max(1.0);
+    let position = monitor.position();
+    let size = monitor.size();
+    (
+        position.x as f64 / scale + size.width as f64 / scale - TOAST_WIDTH - RIGHT_MARGIN,
+        position.y as f64 / scale + TOP_MARGIN,
+    )
+}
+
+#[tauri::command]
+pub fn screenshot_toast_ready(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use std::sync::atomic::Ordering;
+    use tauri::{Emitter, Manager};
+
+    const WINDOW_LABEL: &str = "screenshot-toast";
+    const EVENT_NAME: &str = "local-screenshot-saved";
+
+    let state = app_handle.state::<ScreenshotToastState>();
+    let pending = {
+        let latest = state.latest.lock().map_err(|error| error.to_string())?;
+        state.page_ready.store(true, Ordering::Release);
+        latest.clone()
+    };
+    let Some(window) = app_handle.get_webview_window(WINDOW_LABEL) else {
+        return Ok(());
+    };
+    if let Some(payload) = pending {
+        window.emit(EVENT_NAME, payload).map_err(|error| error.to_string())?;
+        window.show().map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn show_screenshot_toast(app_handle: &tauri::AppHandle, payload: ScreenshotToastPayload) {
+    use std::sync::atomic::Ordering;
+    use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+
+    const WINDOW_LABEL: &str = "screenshot-toast";
+    const EVENT_NAME: &str = "local-screenshot-saved";
+
+    let state = app_handle.state::<ScreenshotToastState>();
+    if let Ok(mut latest) = state.latest.lock() {
+        *latest = Some(payload.clone());
+    }
+    let generation = state.generation.fetch_add(1, Ordering::Relaxed) + 1;
+
+    if let Some(window) = app_handle.get_webview_window(WINDOW_LABEL) {
+        if state.page_ready.load(Ordering::Acquire) {
+            let _ = window.emit(EVENT_NAME, payload);
+            let _ = window.show();
+        }
+    } else {
+        let (x, y) = screenshot_toast_position(app_handle);
+        let builder = WebviewWindowBuilder::new(
+            app_handle,
+            WINDOW_LABEL,
+            WebviewUrl::App("/screenshot-toast".into()),
+        )
+        .title("Metadea")
+        .inner_size(430.0, 131.0)
+        .position(x, y)
+        .decorations(false)
+        .resizable(false)
+        .transparent(true)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focused(false)
+        .visible(false)
+        .shadow(false)
+        .on_page_load(move |window, page| {
+            if page.event() != tauri::webview::PageLoadEvent::Finished
+                || !page.url().path().ends_with("/screenshot-toast")
+            {
+                return;
+            }
+
+            let _ = window.set_ignore_cursor_events(true);
+        });
+
+        match builder.build() {
+            Ok(window) => {
+                let _ = window.set_ignore_cursor_events(true);
+            }
+            Err(error) => log::warn!("Could not create screenshot toast window: {error}"),
+        }
+    }
+
+    let app_for_hide = app_handle.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(3_200)).await;
+        if app_for_hide
+            .state::<ScreenshotToastState>()
+            .generation
+            .load(Ordering::Relaxed)
+            == generation
+        {
+            if let Some(window) = app_for_hide.get_webview_window(WINDOW_LABEL) {
+                let _ = window.hide();
+            }
+        }
+    });
+}
+
 // file_paths is played in order as one VLC playlist (a plain multi-argument
 // launch queues them sequentially, no shuffle) — lets "Reproducir" queue
 // every remaining episode in one go instead of relaunching per episode.
 // start_seconds only ever applies to the first path (VLC's --start-time
 // only affects whatever plays first when the process starts).
 #[tauri::command]
-pub async fn play_file_with_vlc(file_paths: Vec<String>, start_seconds: Option<f64>) -> Result<(), String> {
+pub async fn play_file_with_vlc(
+    app_handle: tauri::AppHandle,
+    file_paths: Vec<String>,
+    start_seconds: Option<f64>,
+    work_name: String,
+    episode_labels: Vec<String>,
+) -> Result<(), String> {
     if file_paths.is_empty() {
         return Err("No files to play".into());
     }
+
+    use tauri::Manager;
+
+    let capture_dir = app_handle
+        .path()
+        .picture_dir()
+        .map_err(|e| format!("No se pudo localizar Imágenes: {e}"))?
+        .join("Metadea")
+        .join(sanitize_capture_folder_name(&work_name));
+    std::fs::create_dir_all(&capture_dir)
+        .map_err(|e| format!("No se pudo crear la carpeta de capturas: {e}"))?;
+
     kill_existing_vlc();
     // `--extraintf http` runs VLC's web status API *alongside* its normal
     // player window (it doesn't replace the UI) so get_vlc_playback_status
@@ -724,13 +1131,96 @@ pub async fn play_file_with_vlc(file_paths: Vec<String>, start_seconds: Option<f
             cmd.arg(format!("--start-time={seconds}"));
         }
     }
+    // VLC creates each F12 image with this temporary prefix. A lightweight
+    // watcher then replaces it with the work, current episode and VLC timecode.
+    let capture_prefix = "Metadea-";
+    cmd.arg(format!("--snapshot-path={}", capture_dir.display()))
+        .arg(format!("--snapshot-prefix={capture_prefix}"))
+        .arg("--snapshot-format=png")
+        .arg("--key-snapshot=F12")
+        // Prevent the large snapshot-path OSD notification from covering playback.
+        .arg("--no-osd")
+        // VLC's snapshot preview is a separate image overlay, independent of the OSD.
+        .arg("--no-snapshot-preview");
     cmd.arg("--extraintf").arg("http")
         .arg("--http-host").arg("127.0.0.1")
         .arg("--http-port").arg(VLC_HTTP_PORT.to_string())
-        .arg("--http-password").arg(VLC_HTTP_PASSWORD)
-        .spawn()
+        .arg("--http-password").arg(VLC_HTTP_PASSWORD);
+    let child = cmd.spawn()
         .map_err(|e| format!("Failed to launch VLC: {}", e))?;
+    tokio::spawn(watch_and_rename_vlc_screenshots(
+        child,
+        app_handle.clone(),
+        capture_dir,
+        work_name,
+        file_paths,
+        episode_labels,
+    ));
     Ok(())
+}
+
+fn sanitize_capture_folder_name(name: &str) -> String {
+    let sanitized: String = name
+        .chars()
+        .map(|character| {
+            if character.is_control() || "<>:\"/\\|?*".contains(character) {
+                '_'
+            } else {
+                character
+            }
+        })
+        .collect();
+    let sanitized = sanitized.trim().trim_matches('.');
+    if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
+        "Obra".to_string()
+    } else {
+        sanitized.to_string()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LocalScreenshot {
+    pub path: String,
+    pub thumbnail_path: String,
+}
+
+#[tauri::command]
+pub async fn get_local_screenshots(
+    app_handle: tauri::AppHandle,
+    work_name: String,
+) -> Result<Vec<LocalScreenshot>, String> {
+    use tauri::Manager;
+
+    let screenshots_dir = app_handle
+        .path()
+        .picture_dir()
+        .map_err(|e| format!("No se pudo localizar Imágenes: {e}"))?
+        .join("Metadea")
+        .join(sanitize_capture_folder_name(&work_name));
+    let entries = match std::fs::read_dir(screenshots_dir) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error.to_string()),
+    };
+
+    let mut screenshots: Vec<(std::time::SystemTime, LocalScreenshot)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if !path.is_file() {
+                return None;
+            }
+            let extension = path.extension()?.to_str()?.to_ascii_lowercase();
+            if !matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp") {
+                return None;
+            }
+            let modified = entry.metadata().ok()?.modified().unwrap_or(std::time::UNIX_EPOCH);
+            let path = path.to_string_lossy().into_owned();
+            Some((modified, LocalScreenshot { path: path.clone(), thumbnail_path: path }))
+        })
+        .collect();
+    screenshots.sort_by(|a, b| b.0.cmp(&a.0));
+    Ok(screenshots.into_iter().map(|(_, screenshot)| screenshot).collect())
 }
 
 // Fire-and-forget playback control — VLC's status.json endpoint doubles as a
