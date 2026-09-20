@@ -1,0 +1,70 @@
+.onboarding-page {
+  width: 100%;
+  min-height: calc(100vh - 8rem);
+  padding: 2rem 1rem;
+}
+
+.onboarding-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100vh - 12rem);
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.onboarding-header { margin-bottom: 2rem; }
+.onboarding-brand { color: var(--accent); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.2em; }
+.onboarding-header h1 { margin: 0.65rem 0 0.5rem; color: var(--text-main); font-size: clamp(1.5rem, 4vw, 2.25rem); }
+.onboarding-header p,
+.onboarding-step p { color: var(--text-muted); line-height: 1.7; }
+.onboarding-header p { margin: 0; }
+.onboarding-step-count { display: block; margin-top: 1rem; color: var(--text-dim); font-size: 0.78rem; }
+.onboarding-progress { height: 4px; overflow: hidden; margin-top: 0.5rem; border-radius: 99px; background: var(--bg-card); }
+.onboarding-progress span { display: block; height: 100%; background: var(--accent); transition: width 180ms ease; }
+.onboarding-step { flex: 1; }
+.onboarding-step[hidden] { display: none; }
+.onboarding-step h2 { margin: 0 0 0.6rem; color: var(--text-main); font-size: 1.25rem; }
+.onboarding-step p { margin: 0; }
+.onboarding-section-intro { margin-bottom: 1.5rem; }
+.onboarding-settings-content,
+.onboarding-config-slot { min-width: 0; }
+.onboarding-basic-grid { display: grid; grid-template-columns: minmax(14rem, 0.7fr) minmax(0, 1.3fr); gap: clamp(1.25rem, 3vw, 2.5rem); align-items: start; }
+.onboarding-profile-slot,
+.onboarding-library-slot { display: grid; gap: 0.75rem; }
+.onboarding-library-rating-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 1rem; }
+.onboarding-library-rating-row > .settings-section { min-width: 0; gap: 0.45rem; }
+.onboarding-library-slot > .settings-divider { margin-top: 0.25rem; padding-top: 0.75rem; }
+.onboarding-library-slot .settings-checkbox-row { justify-content: flex-start; gap: 0.5rem 1.25rem; }
+.onboarding-library-slot .settings-checkbox-group { align-items: flex-start; }
+.onboarding-library-slot .settings-section-title { margin-bottom: 0; }
+.onboarding-nav-guide { margin-top: 1.5rem; }
+.onboarding-nav-guide h3 { margin: 0 0 0.35rem; color: var(--text-main); font-size: 1rem; }
+.onboarding-nav-guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem 1rem; margin-top: 1rem; }
+.onboarding-nav-guide-item { display: flex; align-items: flex-start; gap: 0.7rem; min-width: 0; padding: 0.55rem 0; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 55%, transparent); }
+.onboarding-nav-guide-item > span:last-child { display: grid; gap: 0.15rem; }
+.onboarding-nav-guide-item strong { color: var(--text-main); font-size: 0.88rem; }
+.onboarding-nav-guide-item small { color: var(--text-muted); font-size: 0.78rem; line-height: 1.4; }
+.onboarding-nav-guide-icon { width: 1.15rem; height: 1.15rem; flex: 0 0 1.15rem; margin-top: 0.1rem; fill: none; stroke: var(--text-main); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.onboarding-nav-guide-item--text { align-items: center; }
+.onboarding-nav-guide-media-links { display: flex; flex: 0 0 7.5rem; flex-wrap: wrap; gap: 0.2rem 0.35rem; color: var(--accent); font-size: 0.55rem; font-style: normal; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.onboarding-nav-guide-media-links i { font-style: normal; }
+.onboarding-nav-guide-media-links i + i::before { content: '·'; margin-right: 0.35rem; color: var(--text-dim); }
+.onboarding-footer { position: sticky; bottom: 1rem; z-index: 45; display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 2rem; padding: 0; border: 0; background: transparent; }
+.onboarding-nav-buttons { display: flex; gap: 0.6rem; }
+.onboarding-footer [hidden] { display: none; }
+
+body.onboarding-active .navbar { opacity: 0.32; pointer-events: none; }
+body.onboarding-active.onboarding-guide-final .navbar { opacity: 0.85; }
+
+@media (max-width: 520px) {
+  .onboarding-basic-grid { grid-template-columns: 1fr; }
+  .onboarding-nav-guide-grid { grid-template-columns: 1fr; }
+  .onboarding-card { min-height: calc(100vh - 10rem); }
+  .onboarding-footer { align-items: stretch; flex-direction: column-reverse; }
+  .onboarding-footer > button,
+  .onboarding-nav-buttons > button { flex: 1; justify-content: center; }
+}

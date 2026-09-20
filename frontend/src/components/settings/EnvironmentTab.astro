@@ -1,16 +1,16 @@
 ---
-import { ICON_HELP_CIRCLE } from "../../lib/shared/icon-strings";
 import type { Translations } from "../../i18n/index";
 
 interface Props {
   t: Translations;
+  onboarding?: boolean;
 }
-const { t } = Astro.props;
+const { t, onboarding = false } = Astro.props;
 ---
 
 <!-- Tab: Entorno -->
 <div class="settings-panel hidden" id="panel-environment">
-  <div class="settings-section">
+  <div class="settings-section" data-onboarding-part="api-keys">
     <h3 class="settings-section-title" data-i18n="settings.env_title">{t.settings.env_title}</h3>
 
     <!-- API Platforms Selector Bar -->
@@ -65,10 +65,10 @@ const { t } = Astro.props;
 
       <!-- Form: IGDB -->
       <div class="api-platform-form-block hidden" id="api-form-igdb">
-        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+        <div class="env-service-header env-service-header--api">
           <span class="api-form-service-title">Twitch / IGDB API</span>
-          <button type="button" class="settings-help-btn" data-help="igdb" title={t.settings.env_igdb_help_title} style="position: absolute; top: 0; right: 0;">
-            <Fragment set:html={ICON_HELP_CIRCLE} />
+          <button type="button" class="settings-help-btn api-help-btn" data-help="igdb" title={t.settings.env_igdb_help_title}>
+            <span class="api-help-indicator" aria-hidden="true">i</span>
           </button>
         </div>
         <div class="env-fields env-fields--row">
@@ -98,10 +98,10 @@ const { t } = Astro.props;
 
       <!-- Form: TMDB -->
       <div class="api-platform-form-block hidden" id="api-form-tmdb">
-        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+        <div class="env-service-header env-service-header--api">
           <span class="api-form-service-title">TheMovieDB API</span>
-          <button type="button" class="settings-help-btn" data-help="tmdb" title={t.settings.env_tmdb_help_title} style="position: absolute; top: 0; right: 0;">
-            <Fragment set:html={ICON_HELP_CIRCLE} />
+          <button type="button" class="settings-help-btn api-help-btn" data-help="tmdb" title={t.settings.env_tmdb_help_title}>
+            <span class="api-help-indicator" aria-hidden="true">i</span>
           </button>
         </div>
         <div class="env-fields env-fields--row">
@@ -130,10 +130,10 @@ const { t } = Astro.props;
 
       <!-- Form: Steam -->
       <div class="api-platform-form-block hidden" id="api-form-steam">
-        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+        <div class="env-service-header env-service-header--api">
           <span class="api-form-service-title">Steam Web API</span>
-          <button type="button" class="settings-help-btn" data-help="steam" title={t.settings.env_steam_help_title} style="position: absolute; top: 0; right: 0;">
-            <Fragment set:html={ICON_HELP_CIRCLE} />
+          <button type="button" class="settings-help-btn api-help-btn" data-help="steam" title={t.settings.env_steam_help_title}>
+            <span class="api-help-indicator" aria-hidden="true">i</span>
           </button>
         </div>
         <div class="env-fields">
@@ -152,10 +152,10 @@ const { t } = Astro.props;
 
       <!-- Form: AniList -->
       <div class="api-platform-form-block hidden" id="api-form-anilist">
-        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+        <div class="env-service-header env-service-header--api">
           <span class="api-form-service-title">AniList Developer API</span>
-          <button type="button" class="settings-help-btn" data-help="anilist" title={t.settings.env_anilist_help_title} style="position: absolute; top: 0; right: 0;">
-            <Fragment set:html={ICON_HELP_CIRCLE} />
+          <button type="button" class="settings-help-btn api-help-btn" data-help="anilist" title={t.settings.env_anilist_help_title}>
+            <span class="api-help-indicator" aria-hidden="true">i</span>
           </button>
         </div>
         <div class="env-fields">
@@ -174,10 +174,10 @@ const { t } = Astro.props;
 
       <!-- Form: Comic Vine -->
       <div class="api-platform-form-block hidden" id="api-form-comicvine">
-        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+        <div class="env-service-header env-service-header--api">
           <span class="api-form-service-title">Comic Vine API</span>
-          <button type="button" class="settings-help-btn" data-help="comicvine" title={t.settings.env_comicvine_help_title} style="position: absolute; top: 0; right: 0;">
-            <Fragment set:html={ICON_HELP_CIRCLE} />
+          <button type="button" class="settings-help-btn api-help-btn" data-help="comicvine" title={t.settings.env_comicvine_help_title}>
+            <span class="api-help-indicator" aria-hidden="true">i</span>
           </button>
         </div>
         <div class="env-fields">
@@ -196,7 +196,7 @@ const { t } = Astro.props;
 
     </div>
 
-    <div class="settings-divider settings-divider--actions" style="justify-content: center; margin-top: 1.5rem;">
+    <div class="settings-divider settings-divider--actions env-actions-center">
       <button class="btn btn--primary" id="env-save-btn"
         >{t.settings.env_save}</button
       >
@@ -207,32 +207,30 @@ const { t } = Astro.props;
   </div>
 
   <!-- Local Routes -->
-  <div class="settings-section" style="margin-top: 2rem;">
+  <div class="settings-section env-local-routes" data-onboarding-part="local-routes">
     <h3 class="settings-section-title">{t.settings.local_routes_title}</h3>
     <p class="settings-hint">{t.settings.local_routes_hint}</p>
-    <div id="local-routes-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
+    <div id="local-routes-list" class="local-routes-list">
       <!-- Populated by JS -->
     </div>
     <button
-      class="btn btn--sm btn--ghost"
+      class="btn btn--sm btn--ghost env-open-folder-btn"
       id="open-env-folder-btn"
-      style="margin-top: 1rem;"
     >
       📁 {t.settings.env_open_folder}
     </button>
   </div>
 
   <!-- Catalog maintenance -->
-  <div class="settings-section" style="margin-top: 2rem;">
+  <div class="settings-section env-catalog-maintenance" hidden={onboarding}>
     <h3 class="settings-section-title">{t.settings.catalog_health_title}</h3>
     <p class="settings-hint">{t.settings.catalog_health_hint}</p>
-    <button class="btn btn--sm btn--ghost" id="catalog-health-btn" style="margin-top: 0.75rem;">
+    <button class="btn btn--sm btn--ghost env-catalog-health-btn" id="catalog-health-btn">
       🔍 {t.settings.catalog_health_btn}
     </button>
     <div
       id="catalog-health-results"
-      class="settings-modal"
-      style="margin-top: 1rem; align-items: stretch; text-align: left; max-height: 320px; overflow-y: auto;"
+      class="settings-modal catalog-health-results"
     ></div>
   </div>
 

@@ -1,13 +1,14 @@
 ---
 // Punto de entrada: inicializa la DB y comprueba sesión
+import '../styles/pages/entry.css';
 ---
 <html>
   <head>
     <meta charset="utf-8" />
-    <style>body { margin: 0; background: #0a0a0a; }</style>
     <script>
       import { initTauriDatabase } from '../lib/tauri/database';
       import { getAuthToken } from '../lib/tauri/auth';
+      import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 
       // localStorage alone isn't enough here: it lives in the WebView2
       // profile folder, separate from the SQLite DB file — restoring only
@@ -19,7 +20,10 @@
       initTauriDatabase().catch(e => console.error('Failed to init Tauri database:', e)).finally(async () => {
         const session = await getAuthToken();
         const last = localStorage.getItem('metadea_last_visited_path');
-        const destination = session ? (last && last !== '/' ? last : '/home') : '/login';
+        const needsOnboarding = localStorage.getItem(STORAGE_KEYS.onboardingCompleted) !== '1';
+        const destination = session
+          ? (needsOnboarding ? '/welcome' : (last && last !== '/' ? last : '/home'))
+          : '/login';
         window.location.replace(destination);
       });
     </script>

@@ -17,6 +17,7 @@ const t    = useTranslations(lang);
     <script>
       import { storeAuthToken, initTauriDatabase } from '../../lib/tauri';
       import { API_URL } from '../../lib/config';
+      import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 
       // Standalone page (no BaseLayout) — every invoke() call (see
       // lib/tauri/core.ts) awaits a promise that only resolves once this
@@ -54,7 +55,10 @@ const t    = useTranslations(lang);
       } else if (code) {
         redeemCode()
           .then(({ token, username }) => storeAuthToken(token, username ?? ''))
-          .then(() => { window.location.replace('/home'); })
+          .then(() => {
+            const destination = localStorage.getItem(STORAGE_KEYS.onboardingCompleted) === '1' ? '/home' : '/welcome';
+            window.location.replace(destination);
+          })
           .catch((err) => {
             status.textContent = saveErrorTemplate.replace('{message}', err?.message ?? String(err));
             console.error('[callback] auth exchange failed:', err);

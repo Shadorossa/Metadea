@@ -18,7 +18,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
 <div class="settings-panel hidden" id="panel-preferences">
   <!-- Sistema de Calificación + Idioma -->
   <div class="settings-divider settings-divider--row">
-    <div class="settings-section" style="flex: 1;">
+    <div class="settings-section settings-section--fill" data-onboarding-part="library-rating">
       <h3 class="settings-section-title" data-i18n="settings.rating_system_title">
         {t.settings.rating_system_title}
       </h3>
@@ -62,7 +62,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
       </div>
     </div>
 
-    <div class="settings-section settings-section--dual-rating" style="flex: 1;">
+    <div class="settings-section settings-section--dual-rating settings-section--fill" data-onboarding-part="library-rating">
       <h3 class="settings-section-title" data-i18n="settings.dual_rating_section_title">
         {t.settings.dual_rating_section_title}
       </h3>
@@ -161,7 +161,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
       </div>
     </div>
 
-    <div class="settings-section" style="flex: 1;">
+    <div class="settings-section settings-section--fill" data-onboarding-part="basics-language">
       <h3 class="settings-section-title" data-i18n="settings.language_section_title">
         {t.settings.language_section_title}
       </h3>
@@ -184,8 +184,8 @@ const LANGUAGE_NAMES: Record<string, string> = {
   </div>
 
   <!-- Biblioteca + Contenido -->
-  <div class="settings-divider settings-divider--row">
-    <div class="settings-section" style="flex: 1;">
+  <div class="settings-divider settings-divider--row" data-onboarding-part="library-options">
+    <div class="settings-section settings-section--fill">
       <h3 class="settings-section-title" data-i18n="settings.library_section_title">
         {t.settings.library_section_title}
       </h3>
@@ -259,7 +259,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
       </div>
     </div>
 
-    <div class="settings-section" style="flex: 1;">
+    <div class="settings-section settings-section--fill">
       <h3 class="settings-section-title" data-i18n="settings.content_section_title">
         {t.settings.content_section_title}
       </h3>

@@ -1,0 +1,518 @@
+  .settings-subsection-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+    margin-top: 0;
+  }
+
+  /* Empresas selector */
+  .companies-selector-section {
+    margin-bottom: 2rem;
+  }
+
+  .companies-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .company-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .company-tab-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    padding: 0.5rem;
+    background: var(--bg-elevated);
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .company-tab-btn[data-company="nintendo"] { --company-color: #e60012; }
+  .company-tab-btn[data-company="playstation"] { --company-color: #003087; }
+  .company-tab-btn[data-company="xbox"] { --company-color: #107c10; }
+
+  .company-tab-btn:hover {
+    border-color: var(--company-color, var(--accent));
+    background: var(--bg-primary);
+    transform: translateY(-2px);
+  }
+
+  .company-tab-btn.active {
+    border-color: var(--company-color, var(--accent));
+    background: color-mix(in srgb, var(--company-color, var(--accent)) 12%, var(--bg-elevated));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--company-color, var(--accent)) 20%, transparent);
+  }
+
+  .company-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    filter: brightness(1) contrast(1.1) saturate(1.1);
+  }
+
+  .company-tab-btn:hover .company-logo {
+    filter: brightness(1.15) contrast(1.2) saturate(1.2);
+  }
+
+  .company-tab-btn.active .company-logo {
+    filter: brightness(1.1) contrast(1.25) saturate(1.15);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .company-logo {
+      filter: brightness(1.05) contrast(1.2) saturate(1.15);
+    }
+
+    .company-tab-btn:hover .company-logo {
+      filter: brightness(1.2) contrast(1.3) saturate(1.25);
+    }
+
+    .company-tab-btn.active .company-logo {
+      filter: brightness(1.15) contrast(1.35) saturate(1.2);
+    }
+  }
+
+  .company-placeholder {
+    width: 40%;
+    height: 40%;
+    color: var(--text-dim);
+    display: none;
+  }
+
+  .company-tab-btn.has-error .company-placeholder {
+    display: block;
+    color: var(--text-muted);
+  }
+
+  .company-tab-btn.has-error .company-logo { display: none; }
+
+  .company-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .company-tab-btn.active ~ .company-label {
+    color: var(--company-color, var(--accent));
+    font-weight: 700;
+  }
+
+  .platforms-selector-title[data-company="nintendo"] { --company-color: #e60012; }
+  .platforms-selector-title[data-company="playstation"] { --company-color: #003087; }
+  .platforms-selector-title[data-company="xbox"] { --company-color: #107c10; }
+
+  /* Selector de plataformas */
+  .platforms-selector-container {
+    padding: 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+  }
+
+  .platforms-selector-container.hidden {
+    display: none !important;
+  }
+
+  .platforms-selector-title {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--company-color, var(--accent));
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--company-color, var(--accent));
+  }
+
+  .platforms-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+    justify-items: center;
+  }
+
+  .platform-item {
+    display: block;
+  }
+
+  .platform-selector-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    padding: 0.5rem;
+    background: var(--bg-primary);
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .platform-selector-btn[data-company="nintendo"] { --platform-color: #e60012; }
+  .platform-selector-btn[data-company="playstation"] { --platform-color: #003087; }
+  .platform-selector-btn[data-company="xbox"] { --platform-color: #107c10; }
+
+  .platform-selector-btn:hover {
+    background: var(--bg-elevated);
+    border-color: var(--platform-color, var(--accent));
+    transform: translateY(-1px);
+  }
+
+  .platform-selector-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    filter: brightness(1) contrast(1.1) saturate(1.1);
+  }
+
+  .platform-selector-btn:hover .platform-selector-logo {
+    filter: brightness(1.15) contrast(1.2) saturate(1.2);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .platform-selector-logo {
+      filter: brightness(1.05) contrast(1.2) saturate(1.15);
+    }
+
+    .platform-selector-btn:hover .platform-selector-logo {
+      filter: brightness(1.2) contrast(1.3) saturate(1.25);
+    }
+  }
+
+  .platform-selector-placeholder {
+    width: 60%;
+    height: 60%;
+    color: var(--text-dim);
+    display: none;
+  }
+
+  .platform-selector-btn.has-error .platform-selector-placeholder {
+    display: block;
+    color: var(--text-muted);
+  }
+
+  .platform-selector-btn.has-error .platform-selector-logo { display: none; }
+
+  .platform-selector-btn.has-error:hover .platform-selector-placeholder {
+    color: var(--platform-color, var(--accent));
+  }
+
+  /* Viewport para formularios */
+  .platforms-viewport {
+    padding: 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    min-height: 200px;
+  }
+
+  .platforms-empty-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .platforms-empty-placeholder h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-main);
+  }
+
+  .platforms-empty-placeholder p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  .platforms-placeholder-icon {
+    font-size: 2rem;
+  }
+
+  .platform-form-block {
+    display: block;
+  }
+
+  .platform-form-block.hidden {
+    display: none !important;
+  }
+
+  .platform-form-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid;
+    border-color: var(--platform-color, var(--accent));
+  }
+
+  .platform-form-header[data-company="nintendo"] { --platform-color: #e60012; }
+  .platform-form-header[data-company="playstation"] { --platform-color: #003087; }
+  .platform-form-header[data-company="xbox"] { --platform-color: #107c10; }
+
+  .platform-form-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--platform-color, var(--accent));
+  }
+
+  .platform-form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .emulator-config-row {
+    display: grid;
+    grid-template-columns: auto auto auto 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .emulator-config-row.combined-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .emulator-section,
+  .launch-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .input-row {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .emulator-config-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .form-group-inline {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .form-group-inline .form-label {
+    white-space: nowrap;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .form-group-inline .form-input {
+    flex: 1;
+  }
+
+  .emulator-config-left .form-select {
+    width: 180px;
+  }
+
+  .form-select.compact {
+    padding: 0.6rem 0.7rem;
+    font-size: 0.8rem;
+    height: 40px;
+    box-sizing: border-box;
+  }
+
+  .exe-picker-btn,
+  .rom-folder-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
+    flex-shrink: 0;
+  }
+
+  .exe-picker-btn {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .rom-folder-btn {
+    grid-column: 5;
+    grid-row: 2;
+  }
+
+  .exe-picker-btn:hover,
+  .rom-folder-btn:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .emulator-config-middle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    height: 40px;
+    grid-column: 3;
+    grid-row: 2;
+    visibility: visible;
+  }
+
+  .emulator-config-middle.hidden {
+    visibility: hidden;
+  }
+
+  .form-label-small {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin: 0;
+  }
+
+  .supported-types {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .emulator-config-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    grid-column: 4;
+    grid-row: 1 / 3;
+  }
+
+  .emulator-config-right .form-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+
+  .emulator-config-right .form-input {
+    width: 100%;
+    height: 40px;
+    box-sizing: border-box;
+  }
+
+  .form-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+
+  .form-input,
+  .form-select {
+    padding: 0.6rem 0.875rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-family: inherit;
+    transition: border-color var(--anim-base) var(--anim-ease);
+  }
+
+  .form-input:focus,
+  .form-select:focus {
+    outline: none;
+    border-color: var(--platform-color, var(--accent));
+  }
+
+  .folder-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .folder-input-group .form-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .folder-browse-btn {
+    padding: 0.6rem 1rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
+    white-space: nowrap;
+  }
+
+  .folder-browse-btn:hover {
+    background: var(--bg-elevated);
+    border-color: var(--platform-color, var(--accent));
+    color: var(--platform-color, var(--accent));
+  }
+
+  .rom-folder-display {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+
+
+  .hidden {
+    display: none !important;
+  }

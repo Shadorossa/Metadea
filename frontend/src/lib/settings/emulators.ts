@@ -16,6 +16,7 @@ interface EmulatorsData {
 let emulatorsData: EmulatorsData = {};
 let pendingChanges: EmulatorsData = {};
 let hasChanges = false;
+let listenersAttached = false;
 
 export async function initEmulators(showToast: (msg?: string) => void) {
   // Load from database via Tauri, with fallback to empty object
@@ -35,6 +36,9 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     loadEmulatorInputs();
     console.log('[Init] Loaded values into inputs');
   }, 100);
+
+  if (listenersAttached) return;
+  listenersAttached = true;
 
   // File pickers
   document.addEventListener('click', async (e) => {

@@ -40,6 +40,7 @@ const t    = useTranslations(lang);
 
     <script>
       import { storeAuthToken, initTauriDatabase } from '../lib/tauri';
+      import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 
       const form = document.getElementById('login-form');
       const input = document.getElementById('username-input') as HTMLInputElement;
@@ -58,7 +59,8 @@ const t    = useTranslations(lang);
         if (username) {
           try {
             await storeAuthToken('offline_token', username);
-            window.location.replace('/home');
+            const destination = localStorage.getItem(STORAGE_KEYS.onboardingCompleted) === '1' ? '/home' : '/welcome';
+            window.location.replace(destination);
           } catch (err) {
             if (errorMsg) {
               errorMsg.textContent = (err instanceof Error ? err.message : null) || errorMsg.dataset.defaultError || '';

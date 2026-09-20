@@ -23,6 +23,8 @@ export const STORAGE_KEYS = {
   shareAvatarCustom: 'share_avatar_custom',
   communityCatalogLastSync: 'community_catalog_last_sync',
   lastVisitedPath: 'metadea_last_visited_path',
+  onboardingCompleted: 'metadea_onboarding_completed',
+  onboardingStep: 'metadea_onboarding_step',
   homeCalendarGeneralCache: 'metadea_home_calendar_general_cache',
   libraryGroupByBundle: 'metadea_library_group_by_bundle',
   searchState: 'metadea_search_state',

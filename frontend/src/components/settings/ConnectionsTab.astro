@@ -11,8 +11,7 @@ const { t } = Astro.props;
 <!-- Tab: Conexiones -->
 <div class="settings-panel hidden" id="panel-application">
   <div
-    class="settings-section"
-    style="max-width: 900px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"
+    class="settings-section connections-auth-list"
   >
     <div class="settings-connections-row">
       <!-- GitHub Auth Block -->
@@ -71,6 +70,22 @@ const { t } = Astro.props;
             >{t.settings.disconnect}</button
           >
         </div>
+      </div>
+
+      <!-- VNDB outbound-sync connection placeholder -->
+      <div class="settings-auth-block settings-auth-block--pending">
+        <div class="settings-auth-info">
+          <div class="settings-auth-avatar settings-auth-avatar--vndb" aria-hidden="true">
+            <span>VNDB</span>
+          </div>
+          <div class="settings-auth-text">
+            <span class="settings-auth-name">VNDB</span>
+            <span class="settings-auth-status">{t.settings.vndb_coming_soon}</span>
+          </div>
+        </div>
+        <button class="btn btn--sm btn--secondary" type="button" disabled>
+          {t.settings.vndb_coming_soon}
+        </button>
       </div>
 
       <!-- Import Modal -->
@@ -161,9 +176,9 @@ const { t } = Astro.props;
         >{t.settings.github_open_device_link}</a
       >
       <button
-        class="btn btn--sm btn--ghost"
+        class="btn btn--sm btn--ghost connection-cancel-btn"
         id="github-cancel-device-btn"
-        style="width: 100%;">{t.settings.cancel}</button
+      >{t.settings.cancel}</button
       >
     </div>
 

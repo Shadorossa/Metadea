@@ -38,7 +38,7 @@ const { t } = Astro.props;
     <div class="settings-help-modal-body">
       <p set:html={t.help.github_body1} />
       <p>{t.help.github_body2}</p>
-      <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
+      <ul class="settings-help-list">
         <li set:html={t.help.github_item1} />
         <li set:html={t.help.github_item2} />
         <li set:html={t.help.github_item3} />
@@ -59,13 +59,13 @@ const { t } = Astro.props;
     </div>
     <div class="settings-help-modal-body">
       <p set:html={t.help.anilist_body1} />
-      <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
+      <ul class="settings-help-list">
         <li set:html={t.help.anilist_item1} />
         <li set:html={t.help.anilist_item2} />
         <li set:html={t.help.anilist_item3} />
       </ul>
-      <p style="margin-top: 1rem;" set:html={t.help.anilist_body2} />
-      <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+      <p class="settings-help-content-spaced" set:html={t.help.anilist_body2} />
+      <ol class="settings-help-steps">
         <li set:html={t.help.anilist_step1} />
         <li set:html={t.help.anilist_step2} />
         <li set:html={t.help.anilist_step3} />
@@ -73,7 +73,7 @@ const { t } = Astro.props;
         <li set:html={t.help.anilist_step5} />
         <li set:html={t.help.anilist_step6} />
       </ol>
-      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);" set:html={t.help.anilist_body3} />
+      <p class="settings-help-muted" set:html={t.help.anilist_body3} />
     </div>
   </div>
 </div>
@@ -88,14 +88,14 @@ const { t } = Astro.props;
     </div>
     <div class="settings-help-modal-body">
       <p set:html={t.help.igdb_body1} />
-      <p style="margin-top: 0.75rem; padding: 0.6rem 0.75rem; border-left: 3px solid var(--color-error, #ff6b6b); background: color-mix(in srgb, var(--color-error, #ff6b6b) 10%, transparent); border-radius: 4px; font-size: 0.9em;" set:html={t.help.igdb_warning} />
-      <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+      <p class="settings-help-igdb-warning" set:html={t.help.igdb_warning} />
+      <ol class="settings-help-steps">
         <li set:html={t.help.igdb_step1} />
         <li set:html={t.help.igdb_step2} />
         <li set:html={t.help.igdb_step3} />
         <li>
           {t.help.igdb_step4}
-          <ul style="margin: 0.4rem 0 0 1.25rem; list-style: disc;">
+          <ul class="settings-help-list settings-help-list--nested">
             <li set:html={t.help.igdb_step4_item1} />
             <li set:html={t.help.igdb_step4_item2} />
             <li set:html={t.help.igdb_step4_item3} />
@@ -105,8 +105,8 @@ const { t } = Astro.props;
         <li set:html={t.help.igdb_step6} />
         <li set:html={t.help.igdb_step7} />
       </ol>
-      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);" set:html={t.help.igdb_body2} />
-      <p style="margin-top: 0.5rem; font-size: 0.9em; color: var(--text-muted);" set:html={t.help.igdb_body3} />
+      <p class="settings-help-muted" set:html={t.help.igdb_body2} />
+      <p class="settings-help-muted settings-help-muted--compact" set:html={t.help.igdb_body3} />
     </div>
   </div>
 </div>
@@ -121,14 +121,14 @@ const { t } = Astro.props;
     </div>
     <div class="settings-help-modal-body">
       <p set:html={t.help.tmdb_body1} />
-      <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+      <ol class="settings-help-steps">
         <li set:html={t.help.tmdb_step1} />
         <li set:html={t.help.tmdb_step2} />
         <li set:html={t.help.tmdb_step3} />
         <li set:html={t.help.tmdb_step4} />
         <li set:html={t.help.tmdb_step5} />
       </ol>
-      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">{t.help.tmdb_body2}</p>
+      <p class="settings-help-muted">{t.help.tmdb_body2}</p>
     </div>
   </div>
 </div>
@@ -143,12 +143,12 @@ const { t } = Astro.props;
     </div>
     <div class="settings-help-modal-body">
       <p set:html={t.help.comicvine_body1} />
-      <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+      <ol class="settings-help-steps">
         <li set:html={t.help.comicvine_step1} />
         <li set:html={t.help.comicvine_step2} />
         <li set:html={t.help.comicvine_step3} />
       </ol>
-      <p style="margin-top: 0.5rem; font-size: 0.9em; color: var(--text-muted);">{t.help.comicvine_body2}</p>
+      <p class="settings-help-muted settings-help-muted--compact">{t.help.comicvine_body2}</p>
     </div>
   </div>
 </div>
@@ -163,7 +163,7 @@ const { t } = Astro.props;
     </div>
     <div class="settings-help-modal-body">
       <p set:html={t.help.steam_body1} />
-      <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+      <ol class="settings-help-steps">
         <li set:html={t.help.steam_step1} />
         <li set:html={t.help.steam_step2} />
         <li set:html={t.help.steam_step3} />
@@ -172,7 +172,7 @@ const { t } = Astro.props;
         <li set:html={t.help.steam_step6} />
         <li set:html={t.help.steam_step7} />
       </ol>
-      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">{t.help.steam_body2}</p>
+      <p class="settings-help-muted">{t.help.steam_body2}</p>
     </div>
   </div>
 </div>

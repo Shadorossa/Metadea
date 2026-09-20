@@ -10,14 +10,15 @@ import type { Translations } from "../../i18n/index";
 
 interface Props {
   t: Translations;
+  onboarding?: boolean;
 }
-const { t } = Astro.props;
+const { t, onboarding = false } = Astro.props;
 ---
 
 <!-- Tab: Apariencia (Perfil) -->
 <div class="settings-panel" id="panel-profile">
   <!-- Avatar + Banner en la misma fila -->
-  <div class="profile-media-row">
+  <div class="profile-media-row" data-onboarding-part="profile-media">
     <!-- Nombre en la app + Fuente del nombre, fusionados: el input del
          nombre ES el preview de la fuente, en vez de dos controles que
          mostraban/editaban el mismo nombre por separado. -->
@@ -134,7 +135,7 @@ const { t } = Astro.props;
   </div>
 
   <!-- Biografía, Color Personalizado y Fondo Dinámico lado a lado -->
-  <div class="settings-divider settings-divider--row settings-divider--wrap">
+  <div class="settings-divider settings-divider--row settings-divider--wrap" data-onboarding-part="profile-details">
     <!-- Biografía -->
     <div class="settings-section flex-1">
       <h3 class="settings-section-title" data-i18n="settings.bio_title">{t.settings.bio_title}</h3>
@@ -178,7 +179,7 @@ const { t } = Astro.props;
     </div>
 
     <!-- Selector de Fondo Dinámico -->
-    <div class="settings-section settings-section--theme">
+    <div class="settings-section settings-section--theme" data-onboarding-part="appearance-theme">
       <h3 class="settings-section-title" data-i18n="settings.appearance_bg_title">
         {t.settings.appearance_bg_title}
       </h3>
@@ -189,18 +190,20 @@ const { t } = Astro.props;
   <!-- TEST — botón temporal para forzar el sync del perfil al servidor sin
        esperar la puerta de 24h, solo para pruebas del sistema social. Quitar
        antes de release. -->
-  <div class="settings-divider">
-    <button
-      class="btn btn--sm btn--ghost"
-      id="settings-force-sync-btn"
-    >
-      [TEST] Sincronizar perfil ahora (forzar)
-    </button>
-    <p id="settings-sync-last-attempt" style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.4rem;"></p>
+  <div class="settings-divider" hidden={onboarding}>
+    <div class="settings-test-actions">
+      <button class="btn btn--sm btn--ghost" id="settings-force-sync-btn">
+        [TEST] Sincronizar perfil ahora (forzar)
+      </button>
+      <button class="btn btn--sm btn--ghost" id="settings-preview-onboarding-btn" type="button">
+        [TEST] Previsualizar bienvenida
+      </button>
+    </div>
+    <p id="settings-sync-last-attempt" class="settings-sync-last-attempt"></p>
   </div>
 
   <!-- Cerrar sesión -->
-  <div class="settings-divider">
+  <div class="settings-divider" hidden={onboarding}>
     <button
       class="btn btn--sm btn--secondary settings-signout-btn"
       id="settings-signout-btn"

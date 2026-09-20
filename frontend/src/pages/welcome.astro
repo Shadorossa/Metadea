@@ -1,0 +1,347 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getLang, useTranslations } from '../i18n/index';
+import ProfileTab from '../components/settings/ProfileTab.astro';
+import PreferencesTab from '../components/settings/PreferencesTab.astro';
+import EnvironmentTab from '../components/settings/EnvironmentTab.astro';
+import EmulatorsTab from '../components/settings/EmulatorsTab.astro';
+import ConnectionsTab from '../components/settings/ConnectionsTab.astro';
+import HelpModals from '../components/settings/HelpModals.astro';
+import '../styles/pages/welcome.css';
+import '../styles/pages/settings.css';
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+const w = t.onboarding;
+---
+
+<BaseLayout title={`${w.title} - Metadea`} lang={lang} activePage="home">
+  <main class="onboarding-page" data-step-template={w.step_count}>
+    <section class="onboarding-card" aria-labelledby="onboarding-title">
+      <header class="onboarding-header">
+        <span class="onboarding-brand">METADEA</span>
+        <h1 id="onboarding-title">{w.title}</h1>
+        <p>{w.subtitle}</p>
+        <span id="onboarding-step-count" class="onboarding-step-count" aria-live="polite"></span>
+        <div class="onboarding-progress" role="progressbar" aria-label={w.title} aria-valuemin="1" aria-valuemax="9" aria-valuenow="1">
+          <span id="onboarding-progress-fill"></span>
+        </div>
+      </header>
+
+      <section class="onboarding-step" data-step="0" aria-labelledby="onboarding-intro-title">
+        <h2 id="onboarding-intro-title">{w.intro_title}</h2>
+        <p>{w.intro_body}</p>
+      </section>
+
+      <section class="onboarding-step" data-step="1" aria-labelledby="onboarding-basics-title" hidden>
+        <div class="onboarding-section-intro">
+          <h2 id="onboarding-basics-title">{w.basics_title}</h2>
+          <p>{w.basics_body}</p>
+        </div>
+        <div class="onboarding-basic-grid">
+          <div id="onboarding-basic-language" class="onboarding-config-slot"></div>
+          <div id="onboarding-basic-theme" class="onboarding-config-slot"></div>
+        </div>
+      </section>
+
+      <section class="onboarding-step" data-step="2" aria-labelledby="onboarding-profile-title" hidden>
+        <div class="onboarding-section-intro">
+          <h2 id="onboarding-profile-title">{w.profile_step_title}</h2>
+          <p>{w.profile_step_body}</p>
+        </div>
+        <div id="onboarding-profile-content" class="onboarding-profile-slot"></div>
+      </section>
+
+      <section class="onboarding-step" data-step="3" aria-labelledby="onboarding-preferences-title" hidden>
+        <div class="onboarding-section-intro">
+          <h2 id="onboarding-preferences-title">{w.preferences_step_title}</h2>
+          <p>{w.library_step_body}</p>
+        </div>
+        <div id="onboarding-library-content" class="onboarding-library-slot">
+          <div id="onboarding-library-rating-row" class="onboarding-library-rating-row"></div>
+        </div>
+      </section>
+
+      <section class="onboarding-step" data-step="4" aria-labelledby="onboarding-local-title" hidden>
+        <div class="onboarding-section-intro">
+          <h2 id="onboarding-local-title">{w.local_step_title}</h2>
+          <p>{w.local_step_body}</p>
+        </div>
+        <div id="onboarding-local-content" class="onboarding-config-slot"></div>
+      </section>
+
+      <section class="onboarding-step" data-step="5" aria-labelledby="onboarding-api-title" hidden>
+        <div class="onboarding-section-intro">
+          <h2 id="onboarding-api-title">{w.api_step_title}</h2>
+          <p>{w.api_step_body}</p>
+        </div>
+        <div id="onboarding-api-content" class="onboarding-config-slot"></div>
+      </section>
+
+      <section class="onboarding-step" data-step="6" aria-labelledby="onboarding-emulators-title" hidden>
+        <div class="onboarding-section-intro">
+          <h2 id="onboarding-emulators-title">{w.emulators_step_title}</h2>
+          <p>{w.emulators_step_body}</p>
+        </div>
+        <div id="onboarding-emulators-content" class="onboarding-config-slot"></div>
+      </section>
+
+      <section class="onboarding-step" data-step="7" aria-labelledby="onboarding-connections-title" hidden>
+        <div class="onboarding-section-intro">
+          <h2 id="onboarding-connections-title">{w.connections_step_title}</h2>
+          <p>{w.connections_step_body}</p>
+        </div>
+        <div id="onboarding-connections-content" class="onboarding-config-slot"></div>
+      </section>
+
+      <section class="onboarding-step" data-step="8" aria-labelledby="onboarding-finish-title" hidden>
+        <h2 id="onboarding-finish-title">{w.finish_title}</h2>
+        <p>{w.finish_body}</p>
+        <div class="onboarding-nav-guide">
+          <h3>{w.navigation_guide_title}</h3>
+          <p>{w.navigation_guide_body}</p>
+          <div class="onboarding-nav-guide-grid">
+            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-home" /></svg><span><strong>{t.nav.home}</strong><small>{w.navigation_guide_home}</small></span></div>
+            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-play" /></svg><span><strong>{t.nav.local}</strong><small>{w.navigation_guide_play}</small></span></div>
+            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-explore" /></svg><span><strong>{t.nav.browse}</strong><small>{w.navigation_guide_browse}</small></span></div>
+            <div class="onboarding-nav-guide-item onboarding-nav-guide-item--text"><span class="onboarding-nav-guide-media-links" aria-hidden="true"><i>{t.search.types.anime}</i><i>{t.search.types.manga}</i><i>{t.search.types.game}</i></span><span><strong>{w.navigation_guide_library_title}</strong><small>{w.navigation_guide_library}</small></span></div>
+            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-notifications" /></svg><span><strong>{t.nav.notifications}</strong><small>{w.navigation_guide_notifications}</small></span></div>
+            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-profile" /></svg><span><strong>{t.nav.dropdown_profile}</strong><small>{w.navigation_guide_profile}</small></span></div>
+            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-settings" /></svg><span><strong>{t.nav.dropdown_settings}</strong><small>{w.navigation_guide_settings}</small></span></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="onboarding-footer">
+        <button id="onboarding-skip" class="btn btn--ghost" type="button">{w.skip}</button>
+        <div class="onboarding-nav-buttons">
+          <button id="onboarding-back" class="btn btn--secondary" type="button" hidden>{w.back}</button>
+          <button id="onboarding-next" class="btn btn--primary" type="button">{w.next}</button>
+          <button id="onboarding-finish" class="btn btn--primary" type="button" hidden>{w.finish}</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+  <div id="welcome-config-source" hidden aria-hidden="true">
+    <ProfileTab t={t} onboarding={true} />
+    <PreferencesTab t={t} />
+    <EnvironmentTab t={t} onboarding={true} />
+    <EmulatorsTab t={t} />
+    <ConnectionsTab t={t} />
+  </div>
+  <HelpModals t={t} />
+  <div class="settings-toast" id="settings-toast">{t.settings.env_saved}</div>
+</BaseLayout>
+
+<script>
+  import { getAuthToken } from '../lib/tauri';
+  import { decodeJwtPayload } from '../lib/profile/utils';
+  import { STORAGE_KEYS } from '../lib/shared/storage-keys';
+  import { getT } from '../i18n/client';
+  import { initAvatar, initShareAvatar } from '../lib/settings/avatar';
+  import { initBanner } from '../lib/settings/banner';
+  import { initThemePicker } from '../lib/settings/theme';
+  import { initEnvironment } from '../lib/settings/environment';
+  import { initEmulators } from '../lib/settings/emulators';
+  import { initGitHubAuth } from '../lib/settings/github';
+  import { initAniListAuth } from '../lib/settings/anilist';
+  import { initAniListImportUI } from '../lib/settings/anilist-import-ui';
+  import { initDisplayName } from '../lib/settings/display-name';
+  import { initFontPicker } from '../lib/settings/fonts';
+  import { initRatingSystem } from '../lib/settings/rating-system';
+  import { initCustomColor } from '../lib/settings/custom-color';
+  import { initActivitySettings } from '../lib/settings/activity';
+  import { initDualRating } from '../lib/settings/dual-rating';
+  import { initLanguageSwitcher } from '../lib/settings/language';
+  import { initBio } from '../lib/settings/bio';
+
+  let initializedRoot: HTMLElement | null = null;
+
+  async function initWelcomePage() {
+    const root = document.querySelector<HTMLElement>('.onboarding-page');
+    if (!root || root === initializedRoot) return;
+    initializedRoot = root;
+
+    const session = await getAuthToken().catch(() => null);
+    if (!session?.token) {
+      window.location.replace('/login');
+      return;
+    }
+
+    const previewMode = new URLSearchParams(window.location.search).get('preview') === '1';
+    const steps = Array.from(root.querySelectorAll<HTMLElement>('.onboarding-step'));
+    const configSource = document.getElementById('welcome-config-source');
+    const counter = document.getElementById('onboarding-step-count');
+    const progress = root.querySelector<HTMLElement>('.onboarding-progress');
+    const progressFill = document.getElementById('onboarding-progress-fill');
+    const back = document.getElementById('onboarding-back') as HTMLButtonElement | null;
+    const next = document.getElementById('onboarding-next') as HTMLButtonElement | null;
+    const skip = document.getElementById('onboarding-skip') as HTMLButtonElement | null;
+    const finish = document.getElementById('onboarding-finish') as HTMLButtonElement | null;
+    const countTemplate = root.dataset.stepTemplate;
+
+    function moveConfigPart(part: string, targetId: string, multiple = false) {
+      const target = document.getElementById(targetId);
+      if (!target || !configSource) return;
+      const selector = `[data-onboarding-part="${part}"]`;
+      const parts = multiple
+        ? Array.from(configSource.querySelectorAll<HTMLElement>(selector))
+        : [configSource.querySelector<HTMLElement>(selector)].filter((item): item is HTMLElement => !!item);
+      parts.forEach((item) => target.appendChild(item));
+    }
+
+    moveConfigPart('basics-language', 'onboarding-basic-language');
+    moveConfigPart('appearance-theme', 'onboarding-basic-theme');
+    moveConfigPart('profile-media', 'onboarding-profile-content');
+    moveConfigPart('profile-details', 'onboarding-profile-content');
+    const libraryContent = document.getElementById('onboarding-library-content');
+    const ratingRow = document.getElementById('onboarding-library-rating-row');
+    const ratingParts = Array.from(configSource.querySelectorAll<HTMLElement>('[data-onboarding-part="library-rating"]'));
+    if (libraryContent && ratingRow) ratingParts.forEach((part) => ratingRow.appendChild(part));
+    moveConfigPart('library-options', 'onboarding-library-content');
+    document.querySelector('#onboarding-basic-language [data-i18n="settings.language_hint"]')?.remove();
+    document.querySelector('#onboarding-library-content #clear-all-notes-btn')?.closest('.settings-checkbox-group')?.remove();
+    moveConfigPart('local-routes', 'onboarding-local-content');
+    moveConfigPart('api-keys', 'onboarding-api-content');
+    const emulatorsPanel = configSource.querySelector<HTMLElement>('#panel-emulators');
+    if (emulatorsPanel) document.getElementById('onboarding-emulators-content')?.appendChild(emulatorsPanel);
+    const connectionsPanel = configSource.querySelector<HTMLElement>('#panel-application');
+    if (connectionsPanel) document.getElementById('onboarding-connections-content')?.appendChild(connectionsPanel);
+    configSource.remove();
+
+    let currentStep = previewMode ? 0 : Number.parseInt(localStorage.getItem(STORAGE_KEYS.onboardingStep) ?? '0', 10);
+    if (!Number.isFinite(currentStep) || currentStep < 0 || currentStep >= steps.length) currentStep = 0;
+
+    function renderStep() {
+      steps.forEach((step, index) => {
+        step.hidden = index !== currentStep;
+        step.querySelector<HTMLElement>('.settings-panel')?.classList.remove('hidden');
+      });
+      const current = String(currentStep + 1);
+      const total = String(steps.length);
+      if (counter) {
+        counter.textContent = (countTemplate ?? 'Step {current} of {total}')
+          .replace('{current}', current)
+          .replace('{total}', total);
+      }
+      progress?.setAttribute('aria-valuenow', current);
+      if (progressFill) progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+      if (back) back.hidden = currentStep === 0;
+      if (next) next.hidden = currentStep === steps.length - 1;
+      if (finish) finish.hidden = currentStep !== steps.length - 1;
+      document.body.classList.toggle('onboarding-guide-final', currentStep === steps.length - 1);
+      if (!previewMode) localStorage.setItem(STORAGE_KEYS.onboardingStep, String(currentStep));
+      root.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+
+    function finishOnboarding() {
+      if (previewMode) {
+        window.location.replace('/settings?tab=profile');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEYS.onboardingCompleted, '1');
+      localStorage.removeItem(STORAGE_KEYS.onboardingStep);
+      window.location.replace('/home');
+    }
+
+    back?.addEventListener('click', () => { if (currentStep > 0) currentStep -= 1; renderStep(); });
+    next?.addEventListener('click', () => { if (currentStep < steps.length - 1) currentStep += 1; renderStep(); });
+    skip?.addEventListener('click', finishOnboarding);
+    finish?.addEventListener('click', finishOnboarding);
+    renderStep();
+
+    function showToast(message?: string) {
+      const toast = document.getElementById('settings-toast');
+      if (!toast) return;
+      toast.textContent = message || getT().settings.env_saved;
+      toast.classList.add('visible');
+      window.setTimeout(() => toast.classList.remove('visible'), 2200);
+    }
+
+    const payload = decodeJwtPayload(session.token);
+    const avatar = payload.avatar as string | null;
+    initAvatar(avatar, session.username, showToast);
+    initShareAvatar(showToast);
+    initBanner(showToast);
+    initFontPicker(session.username, showToast);
+    initThemePicker(showToast);
+    initEnvironment(showToast);
+    initEmulators(showToast);
+    initGitHubAuth();
+    initAniListAuth();
+    initAniListImportUI(showToast);
+    initDisplayName(showToast);
+    initRatingSystem(showToast);
+    initCustomColor(showToast);
+    initActivitySettings(showToast);
+    initDualRating(showToast);
+    initLanguageSwitcher();
+    initBio(showToast);
+
+    const t = getT();
+    document.querySelectorAll<HTMLElement>('[data-i18n], [data-i18n-title]').forEach((el) => {
+      const keyPath = el.getAttribute('data-i18n') ?? el.getAttribute('data-i18n-title');
+      if (!keyPath) return;
+      let value: any = t;
+      for (const part of keyPath.split('.')) value = value?.[part];
+      if (typeof value !== 'string') return;
+      if (el.hasAttribute('data-i18n-title')) el.setAttribute('title', value);
+      else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        el.setAttribute(el.dataset.i18nAttr || 'placeholder', value);
+      } else el.textContent = value;
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.api-platform-tab-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const platform = button.dataset.platform;
+        const wasActive = button.classList.contains('active');
+        document.querySelectorAll('.api-platform-tab-btn').forEach((item) => item.classList.remove('active'));
+        document.querySelectorAll('.api-platform-form-block').forEach((form) => form.classList.add('hidden'));
+        document.getElementById('api-keys-placeholder')?.classList.toggle('hidden', !wasActive);
+        if (!wasActive && platform) {
+          button.classList.add('active');
+          document.getElementById(`api-form-${platform}`)?.classList.remove('hidden');
+        }
+      });
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('button[data-help]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const modal = document.getElementById(`${button.dataset.help}-help-modal`);
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.style.display = 'flex';
+        }
+      });
+    });
+    document.querySelectorAll<HTMLElement>('.settings-help-modal-close, .settings-help-modal-overlay').forEach((control) => {
+      control.addEventListener('click', (event) => {
+        const modal = (event.target as HTMLElement).closest<HTMLElement>('.settings-help-modal');
+        if (modal) {
+          modal.style.display = 'none';
+          modal.classList.add('hidden');
+        }
+      });
+    });
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    const isOnboarding = !!document.querySelector('.onboarding-page');
+    const navbar = document.querySelector<HTMLElement>('.navbar');
+    document.body.classList.toggle('onboarding-active', isOnboarding);
+    if (navbar) {
+      if (isOnboarding) {
+        navbar.setAttribute('inert', '');
+        navbar.setAttribute('aria-hidden', 'true');
+      } else {
+        navbar.removeAttribute('inert');
+        navbar.removeAttribute('aria-hidden');
+      }
+    }
+    if (isOnboarding) {
+      initWelcomePage().catch((error) => console.error('[Welcome] Failed to initialize:', error));
+    }
+  });
+</script>

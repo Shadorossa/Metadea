@@ -161,7 +161,11 @@ const t = useTranslations(lang);
             try {
               const { storeAuthToken } = await import(/* @vite-ignore */ '../lib/tauri');
               await storeAuthToken('offline_token', username);
-              window.location.reload();
+              if (localStorage.getItem(STORAGE_KEYS.onboardingCompleted) !== '1') {
+                window.location.replace('/welcome');
+              } else {
+                window.location.reload();
+              }
             } catch {
               console.error('Error storing token');
             }
@@ -330,6 +334,10 @@ const t = useTranslations(lang);
         const search = window.location.search;
         const hash = window.location.hash;
         const fullPath = pathname + search + hash;
+
+        // The onboarding route is a one-time launch flow, not a page to
+        // restore as the user's last working location after setup.
+        if (pathname === '/welcome') return;
 
         // Don't save root or login pages
         if (pathname === '/' || pathname === '/login') {
