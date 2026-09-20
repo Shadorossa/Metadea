@@ -7,7 +7,7 @@ import type { DbMediaCharacter } from '../../../lib/tauri/characters';
 import type { MediaPageData } from '../../../lib/media/types';
 import { CANONICAL_RELATION_LABELS } from '../../../lib/media/canonical-relations';
 import { setField } from '../../../lib/shared/object-utils';
-import type { EditableRelation } from '../PrEditorModal';
+import type { BundledRelation, EditableRelation } from '../PrEditorModal';
 
 // Only fills fields currently empty — a live re-fetch must never overwrite a manual edit.
 export const RESYNC_FIELDS: (keyof MediaCatalogEntry)[] = [
@@ -46,7 +46,7 @@ export function appendResyncRelations(prev: EditableRelation[], liveData: MediaP
   const existingIds = new Set(prev.map(r => r.related_media_external_id));
   const toAdd: any[] = [];
   for (const r of liveData.relations) {
-    if (r.relatedExternalId && !existingIds.has(r.relatedExternalId)) {
+    if (r.relationType !== 'RECOMMENDATION' && r.relatedExternalId && !existingIds.has(r.relatedExternalId)) {
       existingIds.add(r.relatedExternalId);
       toAdd.push({
         media_external_id: externalId,
@@ -59,5 +59,13 @@ export function appendResyncRelations(prev: EditableRelation[], liveData: MediaP
       });
     }
   }
+  return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+}
+
+export function appendResyncRecommendations(prev: BundledRelation[], liveData: MediaPageData): BundledRelation[] {
+  const existingIds = new Set(prev.map(r => r.external_id));
+  const toAdd = (liveData.relations ?? [])
+    .filter(r => r.relationType === 'RECOMMENDATION' && r.relatedExternalId && !existingIds.has(r.relatedExternalId))
+    .map(r => ({ external_id: r.relatedExternalId!, title: r.title, cover: r.cover }));
   return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
 }

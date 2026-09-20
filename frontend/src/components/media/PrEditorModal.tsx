@@ -11,7 +11,7 @@ import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { submitPrEditorChanges } from './pr-editor/pr-editor-submit';
 import { loadPrEditorRelationsAndSaga } from './pr-editor/pr-editor-load';
 import { buildPrEditorChangeSummary } from './pr-editor/pr-editor-change-summary';
-import { mergeResyncFields, buildResyncCharacters, appendResyncRelations } from './pr-editor/pr-editor-resync';
+import { mergeResyncFields, buildResyncCharacters, appendResyncRelations, appendResyncRecommendations } from './pr-editor/pr-editor-resync';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { generateCustomCharacterId } from '../../lib/character/customCharacter';
@@ -140,6 +140,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // before (Set-like via .has) and to detect an in-place type change on an
   // id that's still present (a plain id Set couldn't tell the two apart).
   const [originalEditableRelationTypes, setOriginalEditableRelationTypes] = useState<Map<string, string>>(new Map());
+  const [recommendations, setRecommendations] = useState<BundledRelation[]>([]);
+  const [originalRecommendationIds, setOriginalRecommendationIds] = useState<Set<string>>(new Set());
 
   // ComicVine issues — split out of editableRelations into their own
   // collapsible section since their titles are often just a bare issue
@@ -182,12 +184,13 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // characters/authors get — the section reports its own removals instead.
   const [removedArcIds, setRemovedArcIds] = useState<string[]>([]);
 
-  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | 'bundle-children' | 'issues' | null>(null);
+  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | 'recommendations' | 'bundle-children' | 'issues' | null>(null);
 
   // Collapsible sections — Issues (ComicVine's numbered-title relations)
   // starts collapsed since a comic volume can have dozens of them; Relations
   // stays open since it's usually just a handful of named entries.
   const [relationsExpanded, setRelationsExpanded] = useState(true);
+  const [recommendationsExpanded, setRecommendationsExpanded] = useState(false);
   const [issuesExpanded, setIssuesExpanded] = useState(false);
 
   useEffect(() => {
@@ -225,6 +228,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         setOriginalContainedIds(result.originalContainedIds);
         setEditableRelations(result.editableRelations);
         setOriginalEditableRelationTypes(result.originalEditableRelationTypes);
+        setRecommendations(result.recommendations);
+        setOriginalRecommendationIds(result.originalRecommendationIds);
         setIssueRelations(result.issueRelations);
         setOriginalIssueIds(result.originalIssueIds);
         if (result.currentEntry) {
@@ -245,6 +250,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         setBundledRelations([]);
         setContainedRelations([]);
         setEditableRelations([]);
+        setRecommendations([]);
+        setOriginalRecommendationIds(new Set());
         setIssueRelations([]);
       } finally {
         setLoading(false);
@@ -458,8 +465,18 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
   // ── Editable relation handlers ────────────────────────────────────────────
 
+  const recommendationLabel = t.media.relation_types.RECOMMENDATION;
+  const toRecommendationRelation = (recommendation: BundledRelation): EditableRelation => ({
+    related_media_external_id: recommendation.external_id,
+    relation_type: 'RECOMMENDATION',
+    type_label: recommendationLabel,
+    title: recommendation.title,
+    cover: recommendation.cover,
+  });
+
   const addEditableRelation = (result: ApiSearchResult) => {
-    if (!editableRelations.some(r => r.related_media_external_id === result.externalId)) {
+    if (!editableRelations.some(r => r.related_media_external_id === result.externalId)
+      && !recommendations.some(r => r.external_id === result.externalId)) {
       // Type is picked afterward on the card's own select (same one shown
       // for pre-existing relations), not before adding — a default here is
       // just the starting point.
@@ -478,6 +495,27 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       : r));
   const removeEditableRelation = (id: string) =>
     setEditableRelations(prev => prev.filter(r => r.related_media_external_id !== id));
+  const addRecommendation = (result: ApiSearchResult) => {
+    if (!recommendations.some(r => r.external_id === result.externalId)
+      && !editableRelations.some(r => r.related_media_external_id === result.externalId)) {
+      setRecommendations(prev => [...prev, {
+        external_id: result.externalId,
+        title: result.titleMain,
+        cover: result.coverUrl,
+      }]);
+    }
+  };
+  const removeRecommendation = (id: string) =>
+    setRecommendations(prev => prev.filter(r => r.external_id !== id));
+  const reorderRecommendations = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= recommendations.length || toIndex >= recommendations.length) return;
+    const next = [...recommendations];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setRecommendations(next);
+  };
+  const { draggedIndex: draggedRecommendationIndex, dragHandlers: recommendationDragHandlers } =
+    useDragReorder(reorderRecommendations);
 
   // ── Issue (ComicVine) relation handlers ───────────────────────────────────
 
@@ -533,6 +571,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       if (newCharacters) setCharacters(newCharacters);
 
       setEditableRelations(prev => appendResyncRelations(prev, liveData, externalId));
+      setRecommendations(prev => appendResyncRecommendations(prev, liveData));
 
       setStatusMsg('Datos oficiales descargados para campos vacíos');
       setTimeout(() => setStatusMsg(''), 3500);
@@ -559,8 +598,14 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       removedContainedIds: [...originalContainedIds].filter(id => !containedRelations.some(r => r.external_id === id)),
       addedBundleChildren: bundleChildren.filter(r => !originalBundleChildIds.has(r.external_id)),
       removedBundleChildIds: [...originalBundleChildIds].filter(id => !bundleChildren.some(r => r.external_id === id)),
-      addedEditableRelations: editableRelations.filter(r => !originalEditableRelationTypes.has(r.related_media_external_id)),
-      removedEditableRelationIds: [...originalEditableRelationTypes.keys()].filter(id => !editableRelations.some(r => r.related_media_external_id === id)),
+      addedEditableRelations: [
+        ...editableRelations.filter(r => !originalEditableRelationTypes.has(r.related_media_external_id)),
+        ...recommendations.filter(r => !originalRecommendationIds.has(r.external_id)).map(toRecommendationRelation),
+      ],
+      removedEditableRelationIds: [
+        ...[...originalEditableRelationTypes.keys()].filter(id => !editableRelations.some(r => r.related_media_external_id === id)),
+        ...[...originalRecommendationIds].filter(id => !recommendations.some(r => r.external_id === id)),
+      ],
       changedEditableRelations: editableRelations.filter(r => {
         const originalType = originalEditableRelationTypes.get(r.related_media_external_id);
         return originalType !== undefined && originalType !== r.relation_type;
@@ -661,7 +706,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         bundleId: bundledRelations[0]?.external_id,
         bundleChildren,
         originalBundleChildIds,
-        editableRelations,
+        editableRelations: [...editableRelations, ...recommendations.map(toRecommendationRelation)],
         issueRelations,
         characters,
         charactersChanged: charactersChanged(),
@@ -1065,6 +1110,24 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
               <div className="pr-editor-section">
                 <div className="pr-editor-section-header-row">
+                  <button type="button" className="pr-editor-section-toggle" onClick={() => setRecommendationsExpanded(v => !v)}>
+                    <span className={`pr-editor-section-chevron${recommendationsExpanded ? ' pr-editor-section-chevron--open' : ''}`}>▸</span>
+                    {sectionTitle(recommendationLabel, [])}
+                  </button>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('recommendations')}>{tPr.add_generic}</button>
+                </div>
+                {recommendationsExpanded && (
+                  <PrEditorRelationCardList
+                    relations={recommendations}
+                    draggedIndex={draggedRecommendationIndex}
+                    dragHandlers={recommendationDragHandlers}
+                    onRemove={removeRecommendation}
+                  />
+                )}
+              </div>
+
+              <div className="pr-editor-section">
+                <div className="pr-editor-section-header-row">
                   {sectionTitle('Bundled In', [])}
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>{tPr.add_generic}</button>
                 </div>
@@ -1218,7 +1281,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         <MediaSearchPopup
           onSelect={addEditableRelation}
           onClose={() => setSearchPopupMode(null)}
-          excludeIds={[externalId, ...editableRelations.map(r => r.related_media_external_id)]}
+          excludeIds={[externalId, ...editableRelations.map(r => r.related_media_external_id), ...recommendations.map(r => r.external_id)]}
           closeOnSelect={false}
           // Unlike Bundled In/Contains, this general Relations picker isn't
           // scoped to one specific relation kind — a curator manually fixing
@@ -1229,6 +1292,15 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           includeIgdbExpandedEditions
           includeRemasters
           igdbRelationMediaType={igdbRelationMediaType}
+        />
+      )}
+
+      {searchPopupMode === 'recommendations' && (
+        <MediaSearchPopup
+          onSelect={addRecommendation}
+          onClose={() => setSearchPopupMode(null)}
+          excludeIds={[externalId, ...recommendations.map(r => r.external_id), ...editableRelations.map(r => r.related_media_external_id)]}
+          closeOnSelect={false}
         />
       )}
 
