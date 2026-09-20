@@ -1,0 +1,256 @@
+{
+  "media_catalog": {
+    "id": "05cff9f432bedadf05cff9f432bedadf",
+    "external_id": "game:307765",
+    "type": "game",
+    "title_main": "Bleach: Rebirth of Souls",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [],
+  "characters": [
+    {
+      "external_id": "character:a:5",
+      "name": "Ichigo Kurosaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b5-a7bkJgjhhigE.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:6",
+      "name": "Rukia Kuchiki",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_a_6.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:906",
+      "name": "Renji Abarai",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_a_906.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1086",
+      "name": "Sousuke Aizen",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_a_1086.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:909",
+      "name": "Kenpachi Zaraki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b909-slhoFBon7oiH.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:5726",
+      "name": "Genryuusai Yamamoto",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b5726-mO7kc8Abka9J.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:905",
+      "name": "Soi Fon",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b905-zKwCoIRiYJSr.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:907",
+      "name": "Byakuya Kuchiki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b907-kgnDKeMtEN5y.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:4298",
+      "name": "Sajin Komamura",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b4298-nuazBlSaHL7y.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1088",
+      "name": "Jirou Souzousa Shunsui Kyouraku",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1088-6oO10CmxZ1lP.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:245",
+      "name": "Toushirou Hitsugaya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b245-buy3Cfn6IFSB.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1168",
+      "name": "Mayuri Kurotsuchi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1168-y2jsGtlJVv4z.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1093",
+      "name": "Izuru Kira",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1093-QmEOUj6fXYOK.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:904",
+      "name": "Rangiku Matsumoto",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b904-bdfi2xqHicCj.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1084",
+      "name": "Shinji Hirako",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1084-36qzqGdvxVLI.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:564",
+      "name": "Uryuu Ishida",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_a_564.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:575",
+      "name": "Yasutora Sado",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/575.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:908",
+      "name": "Yoruichi Shihouin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b908-JSYUkJLCw1f0.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210",
+      "name": "Kisuke Urahara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b210-mw01NrQfRjzT.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1087",
+      "name": "Gin Ichimaru",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1087-wMTny26FezYB.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1085",
+      "name": "Kaname Tousen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/1085.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1095",
+      "name": "Shuuhei Hisagi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1095-0vUC9qW8qXey.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1151",
+      "name": "Ikkaku Madarame",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1151-izBrO6oWMvDv.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1893",
+      "name": "Kaien Shiba",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1893-dd3KycfGEIGl.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1080",
+      "name": "Grimmjow Jaegerjaquez",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_a_1080.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:1081",
+      "name": "Ulquiorra Cifer",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_a_1081.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:4730",
+      "name": "Nelliel Tu Oderschvank",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b4730-zvzowqOHaQL2.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:3211",
+      "name": "Szayel Aporro Grantz",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b3211-zqoObUuMBvul.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:3210",
+      "name": "Nnoitra Gilga",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b3210-QlxtHKmXjFk0.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:3212",
+      "name": "Coyote Starrk",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b3212-F5qZe4NWlZq9.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:3217",
+      "name": "Tier Harribel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b3217-WahxtOqdRxJq.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:3845",
+      "name": "Retsu Unohana",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b3845-B0r5OCEkdJOR.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:68537",
+      "name": "Yhwach",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_a_68537.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:74359",
+      "name": "Ichibe Hyousube",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b74359-ruMPBJV92Ncr.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    }
+  ],
+  "media_authors": [],
+  "story_arcs": []
+}
