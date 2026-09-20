@@ -1,0 +1,75 @@
+{
+  "character": {
+    "external_id": "character:cs:214893",
+    "name": "Mary Shepherd-Sunderland",
+    "biography": "<b>Full Name::</b> Mary Shepherd-Sunderland<br>\n<b>Gender::</b> Female<br>\n<b>Age::</b> 25<br>\n<b>Occupation::</b> Housewife<br>\n<b>Status::</b> Deceased<br>\n<b>Affiliations::</b> James Sunderland<br><small>(husband)</small><br>\n<b>Debut::</b> <i>Silent Hill 2</i><br>\n<b>Also In::</b> <i>Silent Hill 4: The Room</i> <small>(mentioned)</small><br><i>Hunger</i> <small>(cameo)</small><br><i>Silent Hill: Downpour</i> <small>(cameo)</small><br><i>Silent Hill: Book of Memories</i> <small>(cameo)</small><br><i>Silent Hill 2</i> <small>(2024 video game)</small><br>\n<br>\n<p>This article requires cleanup to meet quality standards. Please help Silent Hill Wiki by improving this article if you can.</p>\n<p>Mary Shepherd-Sunderland is the late wife of James Sunderland. The couple had vacationed in Silent Hill a few years prior to the events of Silent Hill 2. Mary was a kind, sweet young woman who spent the last moments of her life in emotional turmoil, distress and anguish after being stricken with a terminal disease.</p>\n<p>James and Mary met at a house party held by a mutual friend, and their affection evolved from a blazing passion to a peaceful and stable relationship. Before Mary and James were married, James would listen to Mary playing the piano. Mary liked to play the piano and even though she wasn't very good at it, James still loved to hear her play.</p>\n<p>Prior to the events of Silent Hill 2, Mary and James vacationed in Silent Hill. They stayed in the Lakeview Hotel, where James recorded a video tape of Mary in Room 312, although he accidentally forgot the video tape in the hotel and the couple left Silent Hill. Mary stated in the video tape that she loved the town and would love to go to Silent Hill again one day.</p>\n<p>Not too long after their vacation, Mary fell ill with an unspecified incurable, terminal disease and was bedridden in a hospital. She was given a maximum of three years to live, which she was forced to spend in the hospital. The disease had altered her skin tone to a sickly shade of tan and promoted hair loss, dissolving any traces of physical beauty she once possessed. Her doctor predicted she would have less than three years left to live and told James that there was \"no effective treatment for her condition\" and they were unable to help her.</p>\n<p>Both Mary and James did not take her predicament well. In anger, Mary lashed out at those closest to her, especially James. James did not visit Mary in the hospital very frequently because the disease seemed to bring out tensions between the couple. Upon examining some liquor bottles in Heaven's Night, James states that he drinks \"a fair bit\", most likely due to missing Mary and the joy they once had. Mary suffered from suicidal depression, saying \"It'd be easier if they'd just kill me,\" and expressing a wish to die. Mary's and James' wish of having children was also put to an end due to her disease.</p>\n<p>Nevertheless, Mary was able to find sanity in thoughts of Silent Hill, the last place where she was happy. She talked about the town with another patient, the orphan Laura, and the two bonded. Mary would often wait for James, and Laura would console her when he did not come; this is likely why Laura states that Mary was always waiting for James and is hostile towards him. One can also gather from Mary's violent mood swings and tendency to \"str[ike] out at...especially...James\" during this time, that she may have made resentful remarks about him to Laura. If things had worked out differently, Mary was willing to adopt Laura; in the \"Leave\" ending of the game, James leaves Silent Hill with Laura, possibly to fulfill Mary's wish.</p>\n<p>In the later days of her life, Mary wrote farewell letters to Laura and James and requested that her nurse, Rachel, give the notes to them after her death. Mary was permitted to return home for a short while, although it was only because her death was imminent and she was afraid James would not see her again before she died. At their home, James was tasked with being Mary's caretaker, which eventually became a burden.</p>",
+    "image_url": "https://static.wikia.nocookie.net/silent/images/3/39/Mary_SH_2.png/revision/latest?cb=20200618115826"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:481",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "va:Monica Taylor Horgan",
+      "name": "Monica Taylor Horgan",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a95269",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Salóme Gunnarsdóttir",
+      "name": "Salóme Gunnarsdóttir",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:t4318210",
+      "name": "Shizuka Ito",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Monica Taylor Horgan",
+      "name": "Monica Taylor Horgan",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a95269",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "va:Salóme Gunnarsdóttir",
+      "name": "Salóme Gunnarsdóttir",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:t4318210",
+      "name": "Shizuka Ito",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    }
+  ]
+}
