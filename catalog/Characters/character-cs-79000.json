@@ -9,11 +9,27 @@
   "appearances": [
     {
       "media_external_id": "game:1009",
-      "relation_type": "SUPPORTING"
+      "relation_type": "MAIN"
     },
     {
       "media_external_id": "game:26192",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:11790",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:204350",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "series:100088",
       "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:277143",
+      "relation_type": "MAIN"
     }
   ],
   "actors": [
@@ -105,5 +121,8 @@
       "role": "voice",
       "language": "Russian"
     }
+  ],
+  "merged_character_external_ids": [
+    "character:ms:1668004:100088"
   ]
 }
