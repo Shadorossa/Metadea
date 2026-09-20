@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "e000824aae58f8dbe000824aae58f8db",
+    "external_id": "movie:181812",
+    "type": "movie",
+    "title_main": "Star Wars: The Rise of Skywalker",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "movie:181812",
+      "related_media_external_id": "movie:181808",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Star Wars: The Last Jedi",
+      "cover": "https://image.tmdb.org/t/p/w300/kOVEVeg59E0wsnXmF9nrh6OmWII.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Star Wars"
+}

@@ -1,0 +1,383 @@
+{
+  "media_catalog": {
+    "id": "c8dc5665152ed2ebc8dc5665152ed2eb",
+    "external_id": "movie:181808",
+    "type": "movie",
+    "title_main": "Star Wars: The Last Jedi",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "movie:181812",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Star Wars: The Rise of Skywalker",
+      "cover": "https://image.tmdb.org/t/p/w300/db32LaOibwEliAmSL2jjDF6oDdj.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:934632",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Rebel Moon - Part Two: The Scargiver",
+      "cover": "https://image.tmdb.org/t/p/w300/95gnJZIk2rEkMO0Ch46x5CVjnms.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:188927",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Star Trek Beyond",
+      "cover": "https://image.tmdb.org/t/p/w300/wI5VghYNYLktDRPUa5rrVcVA1h7.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:1894",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Star Wars: Episode II - Attack of the Clones",
+      "cover": "https://image.tmdb.org/t/p/w300/oZNPzxqM2s5DyVWab09NTQScDQt.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:330459",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Rogue One: A Star Wars Story",
+      "cover": "https://image.tmdb.org/t/p/w300/i0yw1mFbB7sNGHCs7EXZPzFkdA1.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:348350",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Solo: A Star Wars Story",
+      "cover": "https://image.tmdb.org/t/p/w300/4oD6VEccFkorEBTEDXtpLAaz0Rl.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:54138",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Star Trek Into Darkness",
+      "cover": "https://image.tmdb.org/t/p/w300/Aim3kVNh1MPIxPEFeJrl9e9Uf1a.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:848326",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Rebel Moon - Part One: A Child of Fire",
+      "cover": "https://image.tmdb.org/t/p/w300/ui4DrH1cKk2vkHshcUcGt2lKxCm.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:118340",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Guardians of the Galaxy",
+      "cover": "https://image.tmdb.org/t/p/w300/r7vmZjiyZw9rpJMQJdXpjgiCOk9.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:1895",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Star Wars: Episode III - Revenge of the Sith",
+      "cover": "https://image.tmdb.org/t/p/w300/xfSAoBEm9MNBjmlNcDYLvLSMlnq.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:10940",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Babylon 5: In the Beginning",
+      "cover": "https://image.tmdb.org/t/p/w300/iFum9eQ5DztNMGE1c1CFm01SnJt.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:487186",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Halo: Nightfall",
+      "cover": "https://image.tmdb.org/t/p/w300/liLQ8EFzHN06eFZ9KQMDK6cmGaK.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:148980",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Battlestar Galactica",
+      "cover": "https://image.tmdb.org/t/p/w300/96ETJEnHoVuptkCNMtxcEZ5iWzN.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:10941",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Babylon 5: Thirdspace",
+      "cover": "https://image.tmdb.org/t/p/w300/lGRkbsA4cqFBjvshNAnCnUg0uyV.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:447365",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Guardians of the Galaxy Vol. 3",
+      "cover": "https://image.tmdb.org/t/p/w300/r2J02Z2OpNTctfOSN1Ydgii51I3.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:1452",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Superman Returns",
+      "cover": "https://image.tmdb.org/t/p/w300/385XwTQZDpRX2d3kxtnpiLrjBXw.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:13475",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Star Trek",
+      "cover": "https://image.tmdb.org/t/p/w300/lV5OpzAss1z06YNagOVap1I35mH.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:201",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Star Trek: Nemesis",
+      "cover": "https://image.tmdb.org/t/p/w300/cldAwhvBmOv9jrd3bXWuqRHoXyq.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:458897",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Charlie's Angels",
+      "cover": "https://image.tmdb.org/t/p/w300/1DPUFG6QnGqzpvEaDEv7TaepycM.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "related_media_external_id": "movie:463272",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Johnny English Strikes Again",
+      "cover": "https://image.tmdb.org/t/p/w300/tCBxnZwLiY1BOKw3tH6AxHZdqPh.jpg",
+      "media_external_id": "movie:181808"
+    },
+    {
+      "media_external_id": "movie:181808",
+      "related_media_external_id": "movie:140607",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Star Wars: The Force Awakens",
+      "cover": "https://image.tmdb.org/t/p/w300/wqnLdwVXoBjKibFRR5U3y0aDUhs.jpg"
+    },
+    {
+      "media_external_id": "movie:181808",
+      "related_media_external_id": "movie:181812",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Star Wars: The Rise of Skywalker",
+      "cover": "https://image.tmdb.org/t/p/w300/db32LaOibwEliAmSL2jjDF6oDdj.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:ms:5679cdd4c3a3685bbf000206",
+      "name": "Luke Skywalker / Dobbu Scay",
+      "image_url": "https://image.tmdb.org/t/p/w185/zMQ93JTLW8KxusKhOlHFZhih3YQ.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:567aa394c3a3685bdf00266a",
+      "name": "Leia Organa",
+      "image_url": "https://image.tmdb.org/t/p/w185/of4yHmryKPy92eeskUQ7MRmjC3l.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5679cdbd92514106f50001e9",
+      "name": "Kylo Ren",
+      "image_url": "https://image.tmdb.org/t/p/w185/b5w381C8Z33D1iF30KT4k8tJNsk.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:562fdd999251413b460008ad",
+      "name": "Rey",
+      "image_url": "https://image.tmdb.org/t/p/w185/dnRtM8YBxidAshD76XIMN495Yqc.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:562fdda8c3a3681b5900dd91",
+      "name": "Finn",
+      "image_url": "https://image.tmdb.org/t/p/w185/3153CfpgZQXTzCY0i74WpJumMQe.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:55e96032c3a3682c6b0053f2",
+      "name": "Poe Dameron",
+      "image_url": "https://image.tmdb.org/t/p/w185/dW5U5yrIIPmMjRThR9KT2xH6nTz.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:57884cd292514138df001b72",
+      "name": "Snoke",
+      "image_url": "https://image.tmdb.org/t/p/w185/eNGqhebQ4cDssjVeNFrKtUvweV5.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:57884c7ac3a36832e40026df",
+      "name": "Maz Kanata",
+      "image_url": "https://image.tmdb.org/t/p/w185/y40Wu1T742kynOqtwXASc5Qgm49.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:57884c66c3a36832e40026d3",
+      "name": "General Hux",
+      "image_url": "https://image.tmdb.org/t/p/w185/a63BgOBKzJ9XPaLFyu7u5Ge3REG.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:582bfe12c3a36872cf0047c0",
+      "name": "C-3PO",
+      "image_url": "https://image.tmdb.org/t/p/w185/c876ZM5ObwYgXksrRWNNrL9KeZg.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:567aa55ac3a3685bdf0026d3",
+      "name": "Captain Phasma",
+      "image_url": "https://image.tmdb.org/t/p/w185/kmlv5i02n3zKryBr2W3kSeWVKTD.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:582bfd2a92514111b7004391",
+      "name": "Rose Tico",
+      "image_url": "https://image.tmdb.org/t/p/w185/wmJTR2vxcCWKNMF7XPdNqhmo2rj.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:582bfd2092514111ac004664",
+      "name": "Vice Admiral Holdo",
+      "image_url": "https://image.tmdb.org/t/p/w185/gB9PnGEvxKg33OSlcqptQwTBwPE.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:55e960409251413e3a005761",
+      "name": "DJ",
+      "image_url": "https://image.tmdb.org/t/p/w185/aYomJWx0B2B8ra6Rmgt8lr0XCrw.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5a313cb4925141033618b8b9",
+      "name": "Yoda",
+      "image_url": "https://image.tmdb.org/t/p/w185/mb2JbT8s6LIgaxj6QTph0NW1pmI.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:582bfccdc3a36872c300428d",
+      "name": "Lieutenant Connix",
+      "image_url": "https://image.tmdb.org/t/p/w185/1u8bZL6ZXu5iDbPO3Z0Spetyt34.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5a313d91c3a3680b9d1776ee",
+      "name": "Chewbacca",
+      "image_url": "https://image.tmdb.org/t/p/w185/7RkDUL2W8ujHfztSLRqfwjhETqF.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5a33c7e8925141032c1b31e0",
+      "name": "Commander D'Acy",
+      "image_url": "https://image.tmdb.org/t/p/w185/n0RmDWYo266XvrNlS0aZCXSOihn.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5a22a07c92514103360b7890",
+      "name": "R2-D2",
+      "image_url": "https://image.tmdb.org/t/p/w185/wggqzE3RjIKh6JaboOuEuIi7lj5.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5a33de6fc3a36814b9029507",
+      "name": "BB-8",
+      "image_url": "https://image.tmdb.org/t/p/w185/hFCRdsUUvN7TOi7vf3daWNjMF5R.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5cb1e6ed0e0a2626cac6783b",
+      "name": "BB-8",
+      "image_url": "https://image.tmdb.org/t/p/w185/vbB6di8qduC3qDlNyJIg20N6m1Z.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5a1ab0dcc3a3680b9303c97e",
+      "name": "Master Codebreaker",
+      "image_url": "https://image.tmdb.org/t/p/w185/vnI9L0rXBAw1HeC0Q8hJGeJMGAW.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5863481f9251412b840079ba",
+      "name": "Admiral Ackbar",
+      "image_url": "https://image.tmdb.org/t/p/w185/7sRwkGOjXq56CUfaXbgtrHwdpoJ.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5a33c82792514103241acc31",
+      "name": "Admiral Ackbar",
+      "image_url": "https://image.tmdb.org/t/p/w185/sq49aVP56G50Nr5kCL7Ove6Z9jE.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5a33c83dc3a3680b9d19b921",
+      "name": "Captain Peavey",
+      "image_url": "https://image.tmdb.org/t/p/w185/btwSD67CRm3lgouhLDbVockucra.jpg",
+      "relation_type": null,
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:t67367",
+      "name": "Rian Johnson",
+      "image": "https://image.tmdb.org/t/p/w185/ggwlJvCn0laNGjcvwGchuwC00hQ.jpg",
+      "role": "Director",
+      "url": null,
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "saga_name": "Star Wars",
+  "story_arcs": []
+}

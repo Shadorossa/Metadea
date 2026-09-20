@@ -1,0 +1,247 @@
+{
+  "media_catalog": {
+    "id": "53f358e9cfa6561753f358e9cfa65617",
+    "external_id": "series:100088",
+    "type": "series",
+    "title_main": "The Last of Us",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:1009",
+      "relation_type": "REL_SOURCE",
+      "type_label": "Source Material",
+      "title": "The Last of Us",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1r7f.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "game:26192",
+      "relation_type": "REL_SOURCE",
+      "type_label": "Source Material",
+      "title": "The Last of Us Part II",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ziw.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:60948",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "12 Monkeys",
+      "cover": "https://image.tmdb.org/t/p/w300/w5u1PqBYfDyfrlkxADTA38jYG3I.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:61345",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Z Nation",
+      "cover": "https://image.tmdb.org/t/p/w300/gXfeDMkEcHoYBvtkbU11g3F81b.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:90972",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Station Eleven",
+      "cover": "https://image.tmdb.org/t/p/w300/xWlhMOzRxUpu4uzkWcDQOaESCE.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:86382",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "The Stand",
+      "cover": "https://image.tmdb.org/t/p/w300/w6XiuRK5QQaLNmIqDRCWOpEcHwi.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:106379",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Fallout",
+      "cover": "https://image.tmdb.org/t/p/w300/c15BtJxCXMrISLVmysdsnZUPQft.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:86374",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "La guerra de los mundos",
+      "cover": "https://image.tmdb.org/t/p/w300/bxJ53tsvVtlNmtESf5n62NhzpG.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:60802",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "The Last Ship",
+      "cover": "https://image.tmdb.org/t/p/w300/xH529hDtPxhslAEeCrN7gD64ZMX.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:9045",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "The Stand",
+      "cover": "https://image.tmdb.org/t/p/w300/o4Gb63aXRh5mMqGifYACixnxGkQ.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:94305",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "The Walking Dead: World Beyond",
+      "cover": "https://image.tmdb.org/t/p/w300/6HanIV2hTLE2w7A5bI1KJb3bTL7.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:62286",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Fear the Walking Dead",
+      "cover": "https://image.tmdb.org/t/p/w300/eKt4ELpQZUKGZCKIDobEbwHwk3I.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:1402",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "The Walking Dead",
+      "cover": "https://image.tmdb.org/t/p/w300/hUblG1KZCTRpHc3wqqoU0DW98Q3.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:103768",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Sweet Tooth",
+      "cover": "https://image.tmdb.org/t/p/w300/rgMfhcrVZjuy5b7Pn0KzCRCEnMX.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:86550",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Y: The Last Man",
+      "cover": "https://image.tmdb.org/t/p/w300/xJvTO2fLOQWwJlQ4MAt7rP8Yno0.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:88052",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Black Summer",
+      "cover": "https://image.tmdb.org/t/p/w300/d27fZpY8jSZDOs1k0JCL0RY0b94.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:47640",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "The Strain",
+      "cover": "https://image.tmdb.org/t/p/w300/2BWErT9QcADpf2G4BZ769eSnFTP.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:34967",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Falling Skies",
+      "cover": "https://image.tmdb.org/t/p/w300/uP6p0aWcIpYwA0HjY4bYR4naz5g.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:62560",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Mr. Robot",
+      "cover": "https://image.tmdb.org/t/p/w300/kv1nRqgebSsREnd7vdC2pSGjpLo.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:48866",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "The 100",
+      "cover": "https://image.tmdb.org/t/p/w300/wHIMMLFsk32wIzDmawWkYVbxFCS.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:211288",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Tracker",
+      "cover": "https://image.tmdb.org/t/p/w300/otula4h1ITZ0eV84eg7Lb8u614C.jpg",
+      "media_external_id": "series:100088"
+    },
+    {
+      "related_media_external_id": "series:51704",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recomendado",
+      "title": "Defiance",
+      "cover": "https://image.tmdb.org/t/p/w300/4Xo2D2MX8v4FoHi70Y9jEghJGUI.jpg",
+      "media_external_id": "series:100088"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:ms:60249992abf8e2003fa458b0",
+      "name": "Ellie Williams",
+      "image_url": "https://image.tmdb.org/t/p/w185/vDbgxc7RYawpB1wK7JDEj62j06H.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:6407840b158c85007c1ea4a9",
+      "name": "Tommy Miller",
+      "image_url": "https://image.tmdb.org/t/p/w185/bIPORtYxTJPEUJIThbZrpqf4A11.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:67fc6f983110bd82dfad1aa8",
+      "name": "Dina",
+      "image_url": "https://image.tmdb.org/t/p/w185/7O5GWIH8IHwU4kGZIhC3JkGDiZr.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:67fc6fa4aacf7cfb26996a94",
+      "name": "Jesse",
+      "image_url": "https://image.tmdb.org/t/p/w185/cRuVRx1DMe2hBkz5pssVqdpCtaQ.jpg",
+      "relation_type": null,
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:t1295692",
+      "name": "Neil Druckmann",
+      "image": "https://image.tmdb.org/t/p/w185/bVUsM4aYiHbeSYE1xAw2H5Z1ANU.jpg",
+      "role": "Creator",
+      "url": null,
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    },
+    {
+      "external_id": "person:t35796",
+      "name": "Craig Mazin",
+      "image": "https://image.tmdb.org/t/p/w185/uEhna6qcMuyU5TP7irpTUZ2ZsZc.jpg",
+      "role": "Creator",
+      "url": null,
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "story_arcs": []
+}
