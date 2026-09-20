@@ -9,7 +9,7 @@ import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, getBlockedExternalIds, getSyncState, setSyncState, markSyncFailed } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
-import type { MediaPageData, MediaAuthor, MediaCompany } from './types';
+import type { MediaPageData, MediaAuthor, MediaCompany, MediaCharacter } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { getMediaStaff } from '../tauri/misc-commands';
@@ -134,6 +134,25 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
   }
 
   return null;
+}
+
+async function loadBaseEditionCharacters(baseId: string, fetchIfMissing: boolean): Promise<MediaCharacter[]> {
+  const saved = await getMediaCharacters(baseId).catch(() => [] as DbMediaCharacter[]);
+  if (saved.length > 0) return saved.map(dbCharacterToMediaCharacter);
+  if (!fetchIfMissing) return [];
+
+  // A remaster can be the first edition the user opens. In that case, use
+  // the base game's provider cast for this render without writing duplicate
+  // appearance rows to either edition.
+  const cachedBase = getCachedMediaData(baseId);
+  const liveBase = cachedBase ?? await fetchMediaDataInternal(baseId).catch(() => null);
+  return liveBase?.characters ?? [];
+}
+
+function getBaseEditionId(data: MediaPageData): string | null {
+  const format = data.format?.toUpperCase();
+  if (format !== 'REMASTER' && format !== 'EXPANDED_GAME') return null;
+  return data.relations.find(relation => relation.relationType === 'BASE_EDITION')?.relatedExternalId ?? null;
 }
 
 // Fields diffed for "did this fetch bring anything new" — excludes
@@ -390,7 +409,12 @@ export async function fetchMediaData(
     }
 
     // If retry-sync requested fresh data and API returned characters, prefer them over stale DB characters.
-    if (dbChars.length > 0 && (!opts?.refreshAniListTotalCount || data.characters.length === 0)) {
+    const baseEditionId = getBaseEditionId(data);
+    if (baseEditionId) {
+      data.characters = await loadBaseEditionCharacters(baseEditionId, true);
+      data.charactersInheritedFromBase = true;
+      data.charactersHasMore = false;
+    } else if (dbChars.length > 0 && (!opts?.refreshAniListTotalCount || data.characters.length === 0)) {
       data.characters = dbChars.map(dbCharacterToMediaCharacter);
     }
 
@@ -451,7 +475,14 @@ async function enrichLocalData(rawId: string, catalog: MediaCatalogEntry, localD
     localData.hasSaga = hasSaga;
   }
   if (dbAuthors.length > 0) localData.authors = dbAuthors.map(dbAuthorToMediaAuthor);
-  if (dbChars.length > 0) localData.characters = dbChars.map(dbCharacterToMediaCharacter);
+  const baseEditionRelation = dbRels.find(relation => relation.relation_type === 'BASE_EDITION');
+  const inheritsBaseEditionCast = ['REMASTER', 'EXPANDED_GAME'].includes(localData.format?.toUpperCase() ?? '');
+  if (inheritsBaseEditionCast && baseEditionRelation) {
+    localData.characters = await loadBaseEditionCharacters(baseEditionRelation.related_media_external_id, false);
+    localData.charactersInheritedFromBase = true;
+  } else if (dbChars.length > 0) {
+    localData.characters = dbChars.map(dbCharacterToMediaCharacter);
+  }
   if (dbStaff.length > 0) localData.staff = dbStaff.map(dbStaffToMediaStaff);
   if (dbCompanies.length > 0) {
     localData.companies = dbCompanies.map(dbCompanyToMediaCompany);

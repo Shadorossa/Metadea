@@ -107,6 +107,12 @@ CREATE TABLE character_appearances (
     PRIMARY KEY (character_external_id, media_external_id)
 );
 
+CREATE TABLE character_merges (
+    source_character_external_id TEXT PRIMARY KEY,
+    canonical_character_external_id TEXT NOT NULL,
+    added_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Shared between voice actors (role='voice', AniList Staff) and live-action
 -- actors (role='actor', e.g. TMDB) — mirrors db.rs's actors/character_actors.
 CREATE TABLE actors (
@@ -282,6 +288,9 @@ function buildDatabase({ mediaBundles, characterBundles }) {
   const appearanceStmt = db.prepare(
     'INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at) VALUES (?, ?, ?, ?, ?)'
   );
+  const characterMergeStmt = db.prepare(
+    'INSERT OR REPLACE INTO character_merges (source_character_external_id, canonical_character_external_id, added_at) VALUES (?, ?, ?)'
+  );
   const actorStmt = db.prepare(
     'INSERT OR REPLACE INTO actors (id, external_id, name, name_native, image_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
   );
@@ -425,6 +434,10 @@ function buildDatabase({ mediaBundles, characterBundles }) {
       now,
     );
     characterCount++;
+    for (const sourceId of bundle.merged_character_external_ids || []) {
+      if (!sourceId || sourceId === char.external_id) continue;
+      characterMergeStmt.run(sourceId, char.external_id, now);
+    }
     for (const app of bundle.appearances || []) {
       if (!app.media_external_id) continue;
       appearanceStmt.run(char.external_id, app.media_external_id, app.relation_type ?? null, null, now);

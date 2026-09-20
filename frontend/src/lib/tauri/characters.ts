@@ -116,6 +116,24 @@ export async function getCharacterAppearances(characterExternalId: string): Prom
   return tauriCmd<CharacterAppearance[]>('get_character_appearances', [], { characterExternalId });
 }
 
+export interface CharacterMerge {
+  external_id: string;
+  name: string;
+  image_url?: string | null;
+}
+
+export async function getCharacterMerges(canonicalCharacterExternalId: string): Promise<CharacterMerge[]> {
+  return tauriCmd<CharacterMerge[]>('get_character_merges', [], { canonicalCharacterExternalId });
+}
+
+export async function getCharacterMergeTarget(sourceCharacterExternalId: string): Promise<string | null> {
+  return tauriCmd<string | null>('get_character_merge_target', null, { sourceCharacterExternalId });
+}
+
+export async function saveCharacterMerges(canonicalCharacterExternalId: string, sourceCharacterExternalIds: string[]): Promise<void> {
+  return tauriRun('save_character_merges', { canonicalCharacterExternalId, sourceCharacterExternalIds });
+}
+
 export interface SkeletonCharacter {
   external_id: string;
   name: string;
@@ -134,9 +152,23 @@ export interface DbMediaCharacter {
   image_url?: string | null;
   relation_type?: string | null;
   character_name?: string | null;
+  merged_character_external_id?: string | null;
 }
 
 // Get all characters cached locally for a specific media
 export async function getMediaCharacters(mediaExternalId: string): Promise<DbMediaCharacter[]> {
   return tauriCmd<DbMediaCharacter[]>('get_media_characters', [], { mediaExternalId });
+}
+
+export interface LegacyTmdbCharacterAppearance {
+  character_external_id: string;
+  media_external_id: string;
+}
+
+export async function getLegacyTmdbCharacterAppearances(): Promise<LegacyTmdbCharacterAppearance[]> {
+  return tauriCmd<LegacyTmdbCharacterAppearance[]>('get_legacy_tmdb_character_appearances', []);
+}
+
+export async function remapTmdbCharacterIds(remaps: Array<{ old_external_id: string; new_external_id: string }>): Promise<number> {
+  return tauriCmd<number>('remap_tmdb_character_ids', 0, { remaps });
 }

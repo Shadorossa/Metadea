@@ -67,12 +67,33 @@ const FANDOM_LANGUAGE_NAMES: Array<[RegExp, string]> = [
   [/\b(?:portuguese|portugues|pt)(?:\s*\((?:european|brazilian)\))?|\b(?:european|brazilian)\s+portuguese\b/i, 'Portuguese'],
   [/\b(?:korean|kr)\b/i, 'Korean'],
   [/\b(?:chinese|mandarin|cantonese|zh)\b/i, 'Chinese'],
+  [/\bgreek\b/i, 'Greek'],
+  [/\bturkish\b/i, 'Turkish'],
+  [/\bpolish\b/i, 'Polish'],
+  [/\brussian\b/i, 'Russian'],
 ];
 
 function normalizeVoiceLanguage(annotation: string | undefined, fallback: string): string {
   if (!annotation) return fallback;
   const normalized = annotation.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return FANDOM_LANGUAGE_NAMES.find(([pattern]) => pattern.test(normalized))?.[1] ?? annotation.trim();
+}
+
+// Fandom's Portable Infobox pairs an on-hover "explain" tooltip (native
+// `title=` attribute on a `.explain` span) with an invisible screen-reader
+// duplicate of that same note text (`<span style="display: none;"> (...)
+// </span>`), plus a "?" help-icon `<sup>` link pointing at the wiki's own
+// explanation page - none of which ever renders as visible running text on
+// the live wiki page, but `.textContent`/`.innerHTML` don't know that (CSS
+// `display:none` is invisible to both) and were pulling all of it in
+// verbatim, e.g. turning the label "Reckoned birth year(s)" into "Reckoned
+// birth year(s) (this is for age comparison purposes, and so may look odd;
+// click on the question mark for details)?". Mutates in place - always
+// called on values already local to this parse (never the live page's own
+// DOM), so mutating instead of cloning is safe and avoids the extra copy.
+function stripHiddenNoise(el: Element): void {
+  el.querySelectorAll('sup, [style*="display: none" i], [style*="display:none" i], .reference, .cite-bracket')
+    .forEach(n => n.remove());
 }
 
 function parseVoiceActorsFromHtml(html: string, defaultLanguage: string): ExtractedVoiceActor[] {
@@ -83,7 +104,10 @@ function parseVoiceActorsFromHtml(html: string, defaultLanguage: string): Extrac
   const parsed = new DOMParser().parseFromString(separated, 'text/html');
   stripHiddenNoise(parsed.body);
 
-  return (parsed.body.textContent ?? '').split(/[\r\n]+/).map(line => line.trim()).filter(Boolean).flatMap(line => {
+  const actors: ExtractedVoiceActor[] = [];
+  const lines = (parsed.body.textContent ?? '').split(/[\r\n]+/).map(line => line.trim()).filter(Boolean);
+
+  for (const line of lines) {
     const annotations: string[] = [];
     let name = line.replace(/\[\s*\d+\s*\]/g, '').trim();
     let annotationMatch: RegExpExecArray | null;
@@ -91,14 +115,27 @@ function parseVoiceActorsFromHtml(html: string, defaultLanguage: string): Extrac
       annotations.unshift(annotationMatch[1].trim());
       name = name.slice(0, annotationMatch.index).trim();
     }
-    if (!name) return [];
     const languageAnnotation = annotations.find(annotation => {
       const normalized = annotation.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       return FANDOM_LANGUAGE_NAMES.some(([pattern]) => pattern.test(normalized));
     });
+
+    // Some Fandom pages put the actor link and its language annotation on
+    // separate lines. Attach a recognized annotation-only line to the actor
+    // immediately before it instead of dropping it and keeping the fallback.
+    if (!name) {
+      const previousActor = actors[actors.length - 1];
+      if (previousActor && languageAnnotation) {
+        previousActor.language = normalizeVoiceLanguage(languageAnnotation, defaultLanguage);
+      }
+      continue;
+    }
+
     const language = normalizeVoiceLanguage(languageAnnotation, defaultLanguage);
-    return [{ name, language }];
-  });
+    actors.push({ name, language });
+  }
+
+  return actors;
 }
 
 function extractVoicedBySections(doc: Document, defaultLanguage: string): ExtractedVoiceActor[] {
@@ -159,23 +196,6 @@ export async function fetchFandomCharacter(url: string): Promise<FandomCharacter
     }
   }
 
-// Fandom's Portable Infobox pairs an on-hover "explain" tooltip (native
-// `title=` attribute on a `.explain` span) with an invisible screen-reader
-// duplicate of that same note text (`<span style="display: none;"> (...)
-// </span>`), plus a "?" help-icon `<sup>` link pointing at the wiki's own
-// explanation page — none of which ever renders as visible running text on
-// the live wiki page, but `.textContent`/`.innerHTML` don't know that (CSS
-// `display:none` is invisible to both) and were pulling all of it in
-// verbatim, e.g. turning the label "Reckoned birth year(s)" into "Reckoned
-// birth year(s) (this is for age comparison purposes, and so may look odd;
-// click on the question mark for details)?". Mutates in place — always
-// called on values already local to this parse (never the live page's own
-// DOM), so mutating instead of cloning is safe and avoids the extra copy.
-function stripHiddenNoise(el: Element): void {
-  el.querySelectorAll('sup, [style*="display: none" i], [style*="display:none" i], .reference, .cite-bracket')
-    .forEach(n => n.remove());
-}
-
 function formatCharacteristicItem(html: string): string {
   let clean = html
     .replace(/<img[^>]*>/gi, '')
@@ -186,6 +206,16 @@ function formatCharacteristicItem(html: string): string {
     clean = clean.replace(/\s*(\([^)]{1,40}\))/g, ' <small>$1</small>');
   }
   return clean.replace(/\s+/g, ' ').trim();
+}
+
+function normalizeImportedFieldText(value: string): string {
+  return value
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase();
 }
 
 function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): string {
@@ -257,6 +287,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
 
   // Parsear campos del Infobox usando patrones estructurales y semánticos universales
   const characteristics: ParsedCharacteristic[] = [];
+  const seenCharacteristicValues = new Map<string, Set<string>>();
   const voiceActors: ExtractedVoiceActor[] = [];
   let aliases: string[] = [];
   let appearsIn: string | null = null;
@@ -311,6 +342,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
 
     const sourceAttr = (el.getAttribute('data-source') || '').toLowerCase();
     const normLabel = label.toLowerCase();
+    const isOtherNamesField = sourceAttr === 'other_name' || sourceAttr === 'other_names' || /\bother names?\b/i.test(label);
     const valHtml = valEl.innerHTML;
 
     const lis = valEl.querySelectorAll('li');
@@ -334,14 +366,30 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
       cleanVal = rawLines.join('<br>');
     }
 
-    if (sourceAttr === 'aliases' || sourceAttr === 'alias' || normLabel.includes('alias') || normLabel.includes('aliases')) {
+    if (
+      sourceAttr === 'aliases' || sourceAttr === 'alias' || isOtherNamesField ||
+      normLabel.includes('alias') || normLabel.includes('aliases')
+    ) {
+      let rawParts: string[];
       if (lis.length > 0) {
-        const parts = Array.from(lis).map(li => li.textContent?.trim() || '').filter(Boolean);
-        aliases = Array.from(new Set([...aliases, ...parts]));
+        rawParts = Array.from(lis).map(li => li.textContent?.trim() || '').filter(Boolean);
       } else {
-        const plain = cleanVal.replace(/<[^>]+>/g, '').trim();
-        const parts = plain.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
-        aliases = Array.from(new Set([...aliases, ...parts]));
+        const plain = cleanVal
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .trim();
+        rawParts = plain.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+      }
+      const parts = rawParts
+        .map(value => (isOtherNamesField ? value.replace(/\([^)]*\)/g, '') : value).replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+      const existingAliases = new Set(aliases.map(alias => alias.toLocaleLowerCase()));
+      for (const alias of parts) {
+        const key = alias.toLocaleLowerCase();
+        if (!existingAliases.has(key)) {
+          aliases.push(alias);
+          existingAliases.add(key);
+        }
       }
     } else if (
       sourceAttr === 'voiced_by' || sourceAttr === 'voice_actor' || sourceAttr === 'voiceactor' ||
@@ -373,7 +421,24 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     } else if (sourceAttr === 'image' || sourceAttr === 'name' || sourceAttr === 'title') {
       // Ignorar campos ya resueltos
     } else {
-      characteristics.push({ label: finalLabel, value: cleanVal });
+      const normalizedLabel = normalizeImportedFieldText(finalLabel);
+      const normalizedValue = normalizeImportedFieldText(cleanVal);
+      const seenValues = seenCharacteristicValues.get(normalizedLabel) ?? new Set<string>();
+      if (seenValues.has(normalizedValue)) return;
+      seenValues.add(normalizedValue);
+      seenCharacteristicValues.set(normalizedLabel, seenValues);
+
+      const existingIndex = characteristics.findIndex(item =>
+        normalizeImportedFieldText(item.label) === normalizedLabel
+      );
+      if (existingIndex === -1) {
+        characteristics.push({ label: finalLabel, value: cleanVal });
+      } else {
+        characteristics[existingIndex] = {
+          ...characteristics[existingIndex],
+          value: `${characteristics[existingIndex].value}<br>${cleanVal}`,
+        };
+      }
     }
   });
 

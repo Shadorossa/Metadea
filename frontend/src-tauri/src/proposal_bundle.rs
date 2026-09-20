@@ -58,6 +58,7 @@ pub struct CharacterProposalBundle {
     pub character: CharacterProposalField,
     pub appearances: Vec<CharacterProposalAppearance>,
     pub actors: Vec<CharacterProposalActor>,
+    pub merged_character_external_ids: Option<Vec<String>>,
 }
 
 // One level of recursion is all catalog/ ever has (catalog/<Folder>/*.json).
@@ -164,6 +165,23 @@ fn import_character_bundle(db: &crate::db::MetadeaDb, bundle: CharacterProposalB
              VALUES (?1, ?2, ?3, NULL, ?4)",
             rusqlite::params![&char.external_id, &app.media_external_id, &app.relation_type, &now],
         ).str_err()?;
+    }
+
+    if let Some(source_ids) = &bundle.merged_character_external_ids {
+        tx.execute(
+            "DELETE FROM character_merges WHERE canonical_character_external_id = ?1",
+            [&char.external_id],
+        ).str_err()?;
+        for source_id in source_ids {
+            if source_id.trim().is_empty() || source_id == &char.external_id {
+                continue;
+            }
+            tx.execute(
+                "INSERT OR REPLACE INTO character_merges (source_character_external_id, canonical_character_external_id, added_at)
+                 VALUES (?1, ?2, ?3)",
+                rusqlite::params![source_id, &char.external_id, &now],
+            ).str_err()?;
+        }
     }
 
     for actor in &bundle.actors {

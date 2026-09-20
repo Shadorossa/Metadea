@@ -61,6 +61,7 @@ export interface CharacterProposalBundle {
   character: CharacterProposalField;
   appearances: CharacterProposalAppearance[];
   actors: CharacterProposalActor[];
+  merged_character_external_ids?: string[];
 }
 
 export type ProposalFileEntry =
@@ -85,6 +86,7 @@ export type ProposalFileEntry =
       // mergeListByKey). Never itself written to the on-disk bundle.
       removedAppearanceIds?: string[];
       removedActorIds?: string[];
+      removedMergedCharacterIds?: string[];
     };
 
 function entryTitle(entry: ProposalFileEntry): string {
@@ -224,6 +226,10 @@ async function buildOutgoingContent(fileEntry: ProposalFileEntry, primaryExterna
         actors: mergeListByKey(
           existingBundle.actors ?? [], fileEntry.bundle.actors,
           fileEntry.removedActorIds, a => a.external_id,
+        ),
+        merged_character_external_ids: mergeListByKey(
+          existingBundle.merged_character_external_ids ?? [], fileEntry.bundle.merged_character_external_ids ?? [],
+          fileEntry.removedMergedCharacterIds, id => id,
         ),
       }
     : fileEntry.bundle;

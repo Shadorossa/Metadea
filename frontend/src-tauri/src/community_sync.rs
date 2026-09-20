@@ -161,6 +161,15 @@ pub async fn sync_community_catalog(
                 [],
             ).str_err()? as i64;
 
+            if attached_db_has_column(&conn, "community", "character_merges", "source_character_external_id") {
+                changes += conn.execute(
+                    "INSERT OR IGNORE INTO character_merges (source_character_external_id, canonical_character_external_id, added_at)
+                     SELECT m.source_character_external_id, m.canonical_character_external_id, m.added_at
+                     FROM community.character_merges m",
+                    [],
+                ).str_err()? as i64;
+            }
+
             // Actors (voice/live-action) — same fill-gaps merge as characters above.
             let has_actor_tables: bool = conn
                 .query_row(

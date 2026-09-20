@@ -220,6 +220,7 @@ export function dbCompanyToMediaCompany(c: DbMediaCompany): MediaCompany {
 export function dbCharacterToMediaCharacter(c: DbMediaCharacter): MediaCharacter {
   return {
     id: c.external_id,
+    hrefId: c.merged_character_external_id || c.external_id,
     name: c.name,
     image: c.image_url || undefined,
     role: c.relation_type || c.character_name || undefined,

@@ -168,17 +168,20 @@ export function mapTmdbToMedia(
   // — movies have no network, so this is empty for them, never a fallback.
   const metaLines = [getPublisherNamesString(companies)].filter(Boolean);
 
-  // Cards here represent the in-fiction character, not the actor — the
+  // Cards here represent the in-fiction character, not the actor - the
   // photo is necessarily the actor's own (TMDB has no separate character
-  // art), but the name/identity must be the character's. credit_id (unique
-  // per casting) keys each card instead of the actor's person id, so an
-  // actor playing two different roles gets two distinct character cards
-  // instead of colliding into one. Actor identity/credits are a separate
-  // concern for later (an actor page or dedicated section), not this list.
+  // art), but the name/identity must be the character's. TMDB's credit_id
+  // looks random and is an opaque implementation detail, so it must not be
+  // used as a shared catalog key. The TMDB person id + media external id is
+  // stable across installations and uniquely identifies this cast slot for
+  // the normal TMDB case (one actor playing one character in one work).
+  // Actor identity/credits are a separate concern for later (an actor page
+  // or dedicated section), not this list.
   const characters: MediaCharacter[] = (raw.credits?.cast ?? [])
     .slice(0, CAST_LIMIT)
     .map(c => ({
-      id: `character:ms:${c.credit_id ?? `${c.id}-${c.character ?? ''}`}`,
+      id: `character:ms:${c.id}:${rawId.slice(rawId.indexOf(':') + 1)}`,
+      tmdbCreditId: c.credit_id ?? undefined,
       // TMDB appends "(voice)"/"(voice)  " to animated/dubbed roles right in
       // the character string itself (e.g. "Woody (voice)") — stripped since
       // this card is the character's name, not a credit annotation.

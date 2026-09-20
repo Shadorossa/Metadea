@@ -29,6 +29,7 @@ import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSe
 import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
 import { DIFF_FIELDS } from '../../lib/media/constants';
 import { getT } from '../../i18n/client';
+import { Pagination } from '../media/Pagination';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
@@ -36,6 +37,7 @@ interface Props {
 
 type Source = 'local' | 'github' | 'add';
 type Entity = 'media' | 'saga' | 'character' | 'episodes';
+const ADMIN_PAGE_SIZE = 50;
 
 export function CatalogAdminPanel({ i18n }: Props) {
   const gate = useOwnerGate();
@@ -44,6 +46,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
   const [source, setSource] = useState<Source>('local');
   const [entity, setEntity] = useState<Entity>('media');
+  const [pages, setPages] = useState<Record<string, number>>({});
 
   // Local catalog state
   const [query, setQuery] = useState('');
@@ -406,6 +409,52 @@ export function CatalogAdminPanel({ i18n }: Props) {
     });
   })();
 
+  const visibleGithubFiles = githubFiles.filter(f => {
+    const q = deferredGithubQuery.trim().toLowerCase();
+    if (!q) return true;
+    const title = catalogInfoMap[externalIdFromDatabaseFilename(f.name)]?.title;
+    return f.name.toLowerCase().includes(q) || !!title?.toLowerCase().includes(q);
+  });
+
+  const pageItems = <T,>(key: string, items: T[]) => {
+    const totalPages = Math.max(1, Math.ceil(items.length / ADMIN_PAGE_SIZE));
+    const currentPage = Math.min(Math.max(pages[key] ?? 1, 1), totalPages);
+    return {
+      currentPage,
+      totalPages,
+      items: items.slice((currentPage - 1) * ADMIN_PAGE_SIZE, currentPage * ADMIN_PAGE_SIZE),
+    };
+  };
+  const renderPagination = (key: string, totalPages: number, currentPage: number) => (
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onChange={page => setPages(previous => ({ ...previous, [key]: page }))}
+    />
+  );
+
+  const pagedEntries = pageItems('local-media', visibleEntries);
+  const pagedGithubFiles = pageItems('github-media', visibleGithubFiles);
+  const pagedSagas = pageItems(`sagas-${source}`, visibleSagas);
+  const pagedCharacters = pageItems(`characters-${source}`, visibleCharacters);
+  const pagedEpisodeShows = pageItems('episode-search', deduplicatedEpisodeShows);
+  const pagedEpisodeGroups = pageItems('episode-groups', visibleEpisodeGroups);
+  const pagedGroupEpisodes = pageItems(`episode-details-${episodeSelectedShow?.externalId ?? ''}`, groupEpisodes);
+  const pagedBackfillResults = pageItems('backfill-results', backfillResults ?? []);
+
+  useEffect(() => {
+    setPages({});
+  }, [
+    source,
+    entity,
+    deferredQuery,
+    deferredGithubQuery,
+    deferredSagaQuery,
+    deferredCharacterQuery,
+    deferredEpisodeQuery,
+    episodeSelectedShow?.externalId,
+  ]);
+
   if (gate.state === 'loading') return null;
 
   const confirmDeleteLocal = async () => {
@@ -511,13 +560,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
     loadGithubFiles();
     loadSagas();
   };
-
-  const visibleGithubFiles = githubFiles.filter(f => {
-    const q = deferredGithubQuery.trim().toLowerCase();
-    if (!q) return true;
-    const title = catalogInfoMap[externalIdFromDatabaseFilename(f.name)]?.title;
-    return f.name.toLowerCase().includes(q) || !!title?.toLowerCase().includes(q);
-  });
 
   return (
     <div className="catalog-admin-panel">
@@ -692,8 +734,9 @@ export function CatalogAdminPanel({ i18n }: Props) {
               )}
 
               {!loadingGroupEpisodes && groupEpisodes.length > 0 && (
+                <>
                 <div className="catalog-admin-episodes-list" style={{ padding: 0 }}>
-                  {groupEpisodes.map(ep => (
+                  {pagedGroupEpisodes.items.map(ep => (
                     <div key={`${ep.season_number}-${ep.episode_number}`} className="catalog-admin-episode-row">
                       <div className="catalog-admin-episode-info">
                         {ep.cover_url ? (
@@ -719,6 +762,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                     </div>
                   ))}
                 </div>
+                {renderPagination(`episode-details-${episodeSelectedShow.externalId}`, pagedGroupEpisodes.totalPages, pagedGroupEpisodes.currentPage)}
+                </>
               )}
             </div>
           ) : (
@@ -732,8 +777,9 @@ export function CatalogAdminPanel({ i18n }: Props) {
                     <p className="catalog-admin-status">{t.no_entries}</p>
                   )}
                   {!isSearchingEpisodeShows && deduplicatedEpisodeShows.length > 0 && (
+                    <>
                     <div className="pr-editor-search-grid">
-                      {deduplicatedEpisodeShows.map(show => (
+                      {pagedEpisodeShows.items.map(show => (
                         <CatalogEntryCard
                           key={show.externalId}
                           id={show.externalId}
@@ -751,6 +797,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                         />
                       ))}
                     </div>
+                    {renderPagination('episode-search', pagedEpisodeShows.totalPages, pagedEpisodeShows.currentPage)}
+                    </>
                   )}
                 </>
               ) : (
@@ -762,8 +810,9 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   )}
 
                   {!episodesLoading && visibleEpisodeGroups.length > 0 && (
+                    <>
                     <div className="pr-editor-search-grid">
-                      {visibleEpisodeGroups.map(group => {
+                      {pagedEpisodeGroups.items.map(group => {
                         const info = catalogInfoMap[group.external_id];
                         const title = info?.title || group.sample_name || group.external_id;
                         const cover = info?.cover || group.sample_cover;
@@ -786,6 +835,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                         );
                       })}
                     </div>
+                    {renderPagination('episode-groups', pagedEpisodeGroups.totalPages, pagedEpisodeGroups.currentPage)}
+                    </>
                   )}
                 </>
               )}
@@ -805,9 +856,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
           )}
 
           {!(source === 'github' ? githubSagasLoading : sagaLoading) && visibleSagas.length > 0 && (
+            <>
             <div className="catalog-admin-saga-list">
-              {visibleSagas.map(saga => {
+              {pagedSagas.items.map(saga => {
                 const isExpanded = expandedSagaId === saga.id;
+                const pagedMembers = pageItems(`saga-members-${saga.id}`, saga.members);
                 return (
                   <div className="catalog-admin-saga-row" key={saga.id}>
                     <div className="catalog-admin-saga-row-main">
@@ -837,8 +890,9 @@ export function CatalogAdminPanel({ i18n }: Props) {
                       )}
                     </div>
                     {isExpanded && (
+                      <>
                       <div className="catalog-admin-saga-members">
-                        {saga.members.map(member => (
+                        {pagedMembers.items.map(member => (
                           <a
                             key={member.external_id}
                             className="catalog-admin-saga-member"
@@ -851,11 +905,15 @@ export function CatalogAdminPanel({ i18n }: Props) {
                           </a>
                         ))}
                       </div>
+                      {renderPagination(`saga-members-${saga.id}`, pagedMembers.totalPages, pagedMembers.currentPage)}
+                      </>
                     )}
                   </div>
                 );
               })}
             </div>
+            {renderPagination(`sagas-${source}`, pagedSagas.totalPages, pagedSagas.currentPage)}
+            </>
           )}
         </>
       )}
@@ -871,8 +929,9 @@ export function CatalogAdminPanel({ i18n }: Props) {
           )}
 
           {!(source === 'github' ? githubCharactersLoading : characterLoading) && visibleCharacters.length > 0 && (
+            <>
             <div className="pr-editor-search-grid">
-              {visibleCharacters.map(character => (
+              {pagedCharacters.items.map(character => (
                 <CatalogEntryCard
                   key={character.external_id}
                   id={character.external_id}
@@ -885,6 +944,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                 />
               ))}
             </div>
+            {renderPagination(`characters-${source}`, pagedCharacters.totalPages, pagedCharacters.currentPage)}
+            </>
           )}
         </>
       )}
@@ -911,8 +972,9 @@ export function CatalogAdminPanel({ i18n }: Props) {
           {!loading && visibleEntries.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
 
           {!loading && visibleEntries.length > 0 && (
+            <>
             <div className="pr-editor-search-grid">
-              {visibleEntries.map(entry => (
+              {pagedEntries.items.map(entry => (
                 <CatalogEntryCard
                   key={entry.external_id}
                   id={entry.external_id}
@@ -925,6 +987,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                 />
               ))}
             </div>
+            {renderPagination('local-media', pagedEntries.totalPages, pagedEntries.currentPage)}
+            </>
           )}
         </>
       )}
@@ -948,11 +1012,12 @@ export function CatalogAdminPanel({ i18n }: Props) {
               </p>
             )}
             {!backfillRunning && backfillResults && (
+              <>
               <div className="catalog-backfill-results">
                 {backfillResults.length === 0 ? (
                   <p className="catalog-admin-status">{pe.backfill_nothing_to_update}</p>
                 ) : (
-                  backfillResults.map(entry => (
+                  pagedBackfillResults.items.map(entry => (
                     <div key={entry.externalId} className="catalog-backfill-entry">
                       <p className="catalog-backfill-entry-title">{entry.titleMain}</p>
                       <div className="catalog-backfill-fields">
@@ -969,6 +1034,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   ))
                 )}
               </div>
+              {renderPagination('backfill-results', pagedBackfillResults.totalPages, pagedBackfillResults.currentPage)}
+              </>
             )}
           </div>
 
@@ -976,8 +1043,9 @@ export function CatalogAdminPanel({ i18n }: Props) {
           {!githubLoading && visibleGithubFiles.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
 
           {!githubLoading && visibleGithubFiles.length > 0 && (
+            <>
             <div className="pr-editor-search-grid">
-              {visibleGithubFiles.map(file => {
+              {pagedGithubFiles.items.map(file => {
                 const fileExternalId = externalIdFromDatabaseFilename(file.name);
                 const info = catalogInfoMap[fileExternalId];
                 return (
@@ -995,6 +1063,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                 );
               })}
             </div>
+            {renderPagination('github-media', pagedGithubFiles.totalPages, pagedGithubFiles.currentPage)}
+            </>
           )}
         </>
       )}

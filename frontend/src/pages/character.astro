@@ -146,6 +146,7 @@ const translations = useTranslations(lang);
     syncFavorites,
     saveCharacter,
     getCharacter,
+    getCharacterMergeTarget,
     setCharacterReaction,
     getCharacterAppearances,
     saveCharacterAppearances,
@@ -235,6 +236,13 @@ const translations = useTranslations(lang);
 
     try {
       const localChar = await getCharacter(characterExternalId).catch(() => null);
+      const mergeTarget = await getCharacterMergeTarget(characterExternalId).catch(() => null);
+      if (mergeTarget && mergeTarget !== characterExternalId) {
+        const targetUrl = new URL(window.location.href);
+        targetUrl.searchParams.set('id', mergeTarget);
+        window.location.replace(targetUrl.toString());
+        return;
+      }
 
       if (providerCode !== 'a' && !localChar) {
         loadingEl.style.display = 'none';

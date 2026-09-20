@@ -26,6 +26,21 @@ pub struct CharacterEntry {
     pub updated_at: String,
 }
 
+/// A legacy TMDB cast key plus the work it was cached from. Old keys used
+/// TMDB's opaque `credit_id`; the frontend resolves that credit to the
+/// deterministic person-id + work-id form before asking Rust to migrate it.
+#[derive(Debug, Serialize)]
+pub struct LegacyTmdbCharacterAppearance {
+    pub character_external_id: String,
+    pub media_external_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CharacterIdRemap {
+    pub old_external_id: String,
+    pub new_external_id: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct CharacterAppearance {
@@ -342,6 +357,7 @@ pub struct MediaCharacter {
     pub image_url: Option<String>,
     pub relation_type: Option<String>,
     pub character_name: Option<String>,
+    pub merged_character_external_id: Option<String>,
 }
 
 // Reverse of get_character_appearances (which is keyed by character) — used
@@ -355,31 +371,202 @@ pub async fn get_media_characters(
     media_external_id: String,
 ) -> Result<Vec<MediaCharacter>, String> {
     let conn = state.conn.lock().str_err()?;
+
+    // Editions inherit the base game's cast for display only. Walk the
+    // BASE_EDITION chain to its root (with a cycle/depth guard), and use it
+    // only when that edition actually has a cached cast. No appearance rows
+    // are created for the remaster.
+    let base_id: Option<String> = conn.query_row(
+        "WITH RECURSIVE base_chain(external_id, depth, path) AS (
+             SELECT related_media_external_id, 1,
+                    '|' || ?1 || '|' || related_media_external_id || '|'
+             FROM media_relations
+             WHERE media_external_id = ?1 AND relation_type = 'BASE_EDITION'
+               AND EXISTS (
+                   SELECT 1 FROM media_catalog mc
+                   WHERE mc.external_id = ?1
+                     AND UPPER(COALESCE(mc.format, '')) IN ('REMASTER', 'EXPANDED_GAME')
+               )
+             UNION ALL
+             SELECT r.related_media_external_id, b.depth + 1,
+                    b.path || r.related_media_external_id || '|'
+             FROM media_relations r
+             JOIN base_chain b ON r.media_external_id = b.external_id
+             WHERE r.relation_type = 'BASE_EDITION'
+               AND b.depth < 16
+               AND instr(b.path, '|' || r.related_media_external_id || '|') = 0
+         )
+         SELECT external_id FROM base_chain ORDER BY depth DESC LIMIT 1",
+        [&media_external_id],
+        |row| row.get(0),
+    ).optional().str_err()?;
+    let cast_media_id = if let Some(base_id) = base_id {
+        let has_base_cast: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM character_appearances WHERE media_external_id = ?1)",
+            [&base_id],
+            |row| row.get(0),
+        ).str_err()?;
+        if has_base_cast { base_id } else { media_external_id.clone() }
+    } else {
+        media_external_id.clone()
+    };
     let mut stmt = conn
         .prepare(
-            "SELECT c.external_id, c.name, c.image_url, ca.relation_type, ca.character_name
+            "SELECT c.external_id, c.name, c.image_url, ca.relation_type, ca.character_name, cm.canonical_character_external_id
              FROM character_appearances ca
              JOIN characters c ON c.external_id = ca.character_external_id
+             LEFT JOIN character_merges cm ON cm.source_character_external_id = c.external_id
              WHERE ca.media_external_id = ?1
+               -- An editor-created canonical appearance is useful on the
+               -- canonical character page, but the media's cast must retain
+               -- the source identity that actually belongs to this work.
+               -- Its card redirects through cm, so never render both cards.
+               AND NOT EXISTS (
+                 SELECT 1
+                 FROM character_appearances source_ca
+                 JOIN character_merges source_cm
+                   ON source_cm.source_character_external_id = source_ca.character_external_id
+                 WHERE source_ca.media_external_id = ca.media_external_id
+                   AND source_cm.canonical_character_external_id = ca.character_external_id
+                   AND source_ca.character_external_id <> ca.character_external_id
+               )
              ORDER BY
                 (ca.position IS NULL), ca.position,
                  CASE ca.relation_type WHEN 'MAIN' THEN 0 WHEN 'SUPPORTING' THEN 1 WHEN 'CAMEO' THEN 2 WHEN 'BACKGROUND' THEN 3 ELSE 4 END",
         )
         .str_err()?;
     let rows = stmt
-        .query_map([&media_external_id], |row| {
+        .query_map([&cast_media_id], |row| {
             Ok(MediaCharacter {
                 external_id: row.get(0)?,
                 name: row.get(1)?,
                 image_url: row.get(2)?,
                 relation_type: row.get(3)?,
                 character_name: row.get(4)?,
+                merged_character_external_id: row.get(5)?,
             })
         })
         .str_err()?
         .filter_map(|r| r.ok())
         .collect();
     Ok(rows)
+}
+
+#[tauri::command]
+pub async fn get_legacy_tmdb_character_appearances(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<LegacyTmdbCharacterAppearance>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(
+        "SELECT DISTINCT character_external_id, media_external_id
+         FROM character_appearances
+         WHERE character_external_id LIKE 'character:ms:%'
+           AND (
+             -- Older keys used the opaque TMDB credit id as the whole suffix.
+             instr(substr(character_external_id, 14), ':') = 0
+             -- An intermediate format included the media type in the suffix.
+             OR character_external_id LIKE '%:series:%'
+             OR character_external_id LIKE '%:movie:%'
+           )"
+    ).str_err()?;
+    let rows = stmt.query_map([], |row| {
+        Ok(LegacyTmdbCharacterAppearance {
+            character_external_id: row.get(0)?,
+            media_external_id: row.get(1)?,
+        })
+    }).str_err()?
+        .filter_map(|row| row.ok())
+        .collect();
+    Ok(rows)
+}
+
+#[tauri::command]
+pub async fn remap_tmdb_character_ids(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    remaps: Vec<CharacterIdRemap>,
+) -> Result<usize, String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+    let mut moved = 0usize;
+    let mut seen = std::collections::HashSet::new();
+
+    for remap in remaps {
+        if !remap.old_external_id.starts_with("character:ms:")
+            || !remap.new_external_id.starts_with("character:ms:")
+            || remap.old_external_id == remap.new_external_id
+            || !seen.insert(remap.old_external_id.clone())
+        {
+            continue;
+        }
+        let exists: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM characters WHERE external_id = ?1)",
+            [&remap.old_external_id],
+            |row| row.get(0),
+        ).str_err()?;
+        if !exists { continue; }
+
+        // Preserve the old row's local enrichment if a new deterministic row
+        // was already created by a later visit to the same media page.
+        tx.execute(
+            "UPDATE characters
+             SET name = CASE WHEN name = '' THEN COALESCE((SELECT name FROM characters WHERE external_id = ?2), '') ELSE name END,
+                 name_native = COALESCE(name_native, (SELECT name_native FROM characters WHERE external_id = ?2)),
+                 aliases_csv = CASE WHEN COALESCE(aliases_csv, '') = '' THEN (SELECT aliases_csv FROM characters WHERE external_id = ?2) ELSE aliases_csv END,
+                 biography = COALESCE(biography, (SELECT biography FROM characters WHERE external_id = ?2)),
+                 image_url = COALESCE(image_url, (SELECT image_url FROM characters WHERE external_id = ?2)),
+                 reaction = COALESCE(reaction, (SELECT reaction FROM characters WHERE external_id = ?2))
+             WHERE external_id = ?1",
+            rusqlite::params![&remap.new_external_id, &remap.old_external_id],
+        ).str_err()?;
+
+        // Copy first and remove the legacy rows last. INSERT OR IGNORE keeps
+        // an already-canonical relationship instead of overwriting it.
+        tx.execute(
+            "INSERT OR IGNORE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, position, added_at)
+             SELECT ?2, media_external_id, relation_type, character_name, position, added_at
+             FROM character_appearances WHERE character_external_id = ?1",
+            rusqlite::params![&remap.old_external_id, &remap.new_external_id],
+        ).str_err()?;
+        tx.execute("DELETE FROM character_appearances WHERE character_external_id = ?1", [&remap.old_external_id]).str_err()?;
+        tx.execute(
+            "INSERT OR IGNORE INTO character_actors (actor_external_id, character_external_id, role, language, added_at)
+             SELECT actor_external_id, ?2, role, language, added_at
+             FROM character_actors WHERE character_external_id = ?1",
+            rusqlite::params![&remap.old_external_id, &remap.new_external_id],
+        ).str_err()?;
+        tx.execute("DELETE FROM character_actors WHERE character_external_id = ?1", [&remap.old_external_id]).str_err()?;
+        tx.execute(
+            "INSERT OR IGNORE INTO character_merges (source_character_external_id, canonical_character_external_id, added_at)
+             SELECT ?2, canonical_character_external_id, added_at
+             FROM character_merges WHERE source_character_external_id = ?1",
+            rusqlite::params![&remap.old_external_id, &remap.new_external_id],
+        ).str_err()?;
+        tx.execute("DELETE FROM character_merges WHERE source_character_external_id = ?1", [&remap.old_external_id]).str_err()?;
+        tx.execute(
+            "UPDATE character_merges SET canonical_character_external_id = ?2 WHERE canonical_character_external_id = ?1",
+            rusqlite::params![&remap.old_external_id, &remap.new_external_id],
+        ).str_err()?;
+        tx.execute(
+            "INSERT OR IGNORE INTO user_list_items (external_id, list_key, position, added_at)
+             SELECT ?2, list_key, position, added_at FROM user_list_items WHERE external_id = ?1",
+            rusqlite::params![&remap.old_external_id, &remap.new_external_id],
+        ).str_err()?;
+        tx.execute("DELETE FROM user_list_items WHERE external_id = ?1", [&remap.old_external_id]).str_err()?;
+        tx.execute(
+            "INSERT OR IGNORE INTO tier_list_items (external_id, position, tier_key, tier_list_id)
+             SELECT ?2, position, tier_key, tier_list_id FROM tier_list_items WHERE external_id = ?1",
+            rusqlite::params![&remap.old_external_id, &remap.new_external_id],
+        ).str_err()?;
+        tx.execute("DELETE FROM tier_list_items WHERE external_id = ?1", [&remap.old_external_id]).str_err()?;
+        tx.execute("UPDATE OR IGNORE favorite_custom_images SET external_id = ?2 WHERE external_id = ?1", rusqlite::params![&remap.old_external_id, &remap.new_external_id]).str_err()?;
+        tx.execute("DELETE FROM favorite_custom_images WHERE external_id = ?1", [&remap.old_external_id]).str_err()?;
+        tx.execute("UPDATE user_activity SET external_id = ?2 WHERE external_id = ?1", rusqlite::params![&remap.old_external_id, &remap.new_external_id]).str_err()?;
+        tx.execute("UPDATE OR IGNORE characters SET external_id = ?2 WHERE external_id = ?1", rusqlite::params![&remap.old_external_id, &remap.new_external_id]).str_err()?;
+        tx.execute("DELETE FROM characters WHERE external_id = ?1", [&remap.old_external_id]).str_err()?;
+        moved += 1;
+    }
+    tx.commit().str_err()?;
+    Ok(moved)
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -450,6 +637,91 @@ pub async fn save_characters_skeleton(
         ).str_err()?;
     }
 
+    tx.commit().str_err()?;
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CharacterMerge {
+    pub external_id: String,
+    pub name: String,
+    pub image_url: Option<String>,
+}
+
+#[tauri::command]
+pub async fn get_character_merges(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    canonical_character_external_id: String,
+) -> Result<Vec<CharacterMerge>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(
+        "SELECT m.source_character_external_id, COALESCE(c.name, m.source_character_external_id), c.image_url
+         FROM character_merges m
+         LEFT JOIN characters c ON c.external_id = m.source_character_external_id
+         WHERE m.canonical_character_external_id = ?1
+         ORDER BY COALESCE(c.name, m.source_character_external_id)",
+    ).str_err()?;
+    let rows = stmt.query_map([&canonical_character_external_id], |row| {
+        Ok(CharacterMerge {
+            external_id: row.get(0)?,
+            name: row.get(1)?,
+            image_url: row.get(2)?,
+        })
+    }).str_err()?.filter_map(|row| row.ok()).collect();
+    Ok(rows)
+}
+
+#[tauri::command]
+pub async fn get_character_merge_target(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    source_character_external_id: String,
+) -> Result<Option<String>, String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.query_row(
+        "WITH RECURSIVE redirects(external_id, depth, path) AS (
+             SELECT canonical_character_external_id, 1,
+                    '|' || ?1 || '|' || canonical_character_external_id || '|'
+             FROM character_merges WHERE source_character_external_id = ?1
+             UNION ALL
+             SELECT m.canonical_character_external_id, r.depth + 1,
+                    r.path || m.canonical_character_external_id || '|'
+             FROM character_merges m
+             JOIN redirects r ON m.source_character_external_id = r.external_id
+             WHERE r.depth < 32
+               AND instr(r.path, '|' || m.canonical_character_external_id || '|') = 0
+         )
+         SELECT external_id FROM redirects ORDER BY depth DESC LIMIT 1",
+        [&source_character_external_id],
+        |row| row.get(0),
+    ).optional().str_err()
+}
+
+#[tauri::command]
+pub async fn save_character_merges(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    canonical_character_external_id: String,
+    source_character_external_ids: Vec<String>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+    tx.execute(
+        "DELETE FROM character_merges WHERE canonical_character_external_id = ?1",
+        [&canonical_character_external_id],
+    ).str_err()?;
+    let mut seen = std::collections::HashSet::new();
+    for source_id in source_character_external_ids {
+        if source_id.trim().is_empty()
+            || source_id == canonical_character_external_id
+            || !seen.insert(source_id.clone())
+        {
+            continue;
+        }
+        tx.execute(
+            "INSERT OR REPLACE INTO character_merges (source_character_external_id, canonical_character_external_id)
+             VALUES (?1, ?2)",
+            rusqlite::params![source_id, &canonical_character_external_id],
+        ).str_err()?;
+    }
     tx.commit().str_err()?;
     Ok(())
 }

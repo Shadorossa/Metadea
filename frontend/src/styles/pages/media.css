@@ -4756,6 +4756,308 @@
   font-weight: 400;
 }
 
+.pr-editor-appearance-merges {
+  margin-top: 1.1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+}
+
+.pr-editor-appearance-merge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 2.3rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.pr-editor-appearance-merge-work {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main, #e3e1db);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.pr-editor-appearance-merge-label {
+  min-width: 0;
+  max-width: 15rem;
+  overflow: hidden;
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-label.is-empty {
+  color: var(--text-dim, #77736d);
+}
+
+.pr-editor-appearance-merge-btn,
+.pr-editor-appearance-merge-clear {
+  border: 0;
+  background: transparent;
+  color: var(--accent, #c084fc);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  padding: 0.15rem 0;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-btn:hover,
+.pr-editor-appearance-merge-clear:hover {
+  color: var(--text-main, #e3e1db);
+  text-decoration: underline;
+}
+
+.pr-editor-appearance-merge-clear {
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.character-preview-merge-target {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.3rem;
+  max-width: calc(100% - 0.7rem);
+  overflow: hidden;
+  color: var(--accent, #c084fc);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-character-merges {
+  margin-top: 1.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.16));
+}
+
+.pr-editor-character-merges-header,
+.pr-editor-merge-cast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pr-editor-character-merges-hint {
+  max-width: 44rem;
+  margin: 0.35rem 0 0;
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.pr-editor-merge-title {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pr-editor-merge-info {
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted, #a7a29a);
+  cursor: pointer;
+  font-family: Georgia, serif;
+  font-size: 0.78rem;
+  font-style: italic;
+  line-height: 1;
+  cursor: help;
+}
+
+.pr-editor-merge-info:hover,
+.pr-editor-merge-info:focus-visible {
+  color: var(--accent, #c084fc);
+}
+
+.pr-editor-merge-info::after {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.55rem);
+  left: 50%;
+  width: min(21rem, calc(100vw - 3rem));
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color, #514c43);
+  background: var(--bg-elevated, #1b1917);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
+  color: var(--text-main, #e3e1db);
+  content: attr(data-hint);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -0.2rem);
+  transition: opacity 120ms ease, transform 120ms ease;
+  visibility: hidden;
+}
+
+.pr-editor-merge-info:hover::after,
+.pr-editor-merge-info:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  visibility: visible;
+}
+
+.pr-editor-character-merge-list,
+.pr-editor-merge-cast-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.pr-editor-character-merge-item,
+.pr-editor-merge-cast-option {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-main, #e3e1db);
+  text-align: left;
+}
+
+.pr-editor-character-merge-item > img,
+.pr-editor-character-merge-placeholder,
+.pr-editor-merge-cast-option > img,
+.pr-editor-merge-cast-option > .pr-editor-character-merge-placeholder {
+  width: 2.5rem;
+  height: 2.9rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  background: var(--bg-elevated, #1b1917);
+}
+
+.pr-editor-character-merge-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--accent, #c084fc);
+  font-weight: 700;
+}
+
+.pr-editor-character-merge-name,
+.pr-editor-merge-cast-option > span:last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.pr-editor-character-merge-name strong,
+.pr-editor-merge-cast-option strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-character-merge-name small,
+.pr-editor-merge-cast-option small,
+.pr-editor-merge-cast-header small {
+  overflow: hidden;
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-character-merge-item > button,
+.pr-editor-merge-cast-header > button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted, #a7a29a);
+  cursor: pointer;
+  font-size: 1.05rem;
+}
+
+.pr-editor-character-merge-item > button:hover,
+.pr-editor-merge-cast-header > button:hover {
+  color: var(--text-main, #fff);
+}
+
+.pr-editor-character-merges-empty {
+  padding: 1rem 0.25rem;
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.78rem;
+}
+
+.pr-editor-merge-cast-overlay {
+  z-index: 10001;
+}
+
+.pr-editor-merge-cast-modal {
+  width: min(38rem, calc(100vw - 2rem));
+  max-height: min(80vh, 48rem);
+  overflow: auto;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border-color, #514c43);
+  background: var(--bg-elevated, #1b1917);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.55);
+}
+
+.pr-editor-merge-cast-header {
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+}
+
+.pr-editor-merge-cast-header > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.pr-editor-merge-cast-option {
+  width: 100%;
+  cursor: pointer;
+}
+
+.pr-editor-merge-cast-option:hover {
+  border-color: var(--accent, #c084fc);
+  background: rgba(192, 132, 252, 0.09);
+}
+
+.character-preview-merge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.character-preview-merge-id {
+  max-width: 100%;
+  padding: 0.3rem 0.5rem;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.18));
+  color: var(--text-main, #e3e1db);
+  font-size: 0.7rem;
+}
+
 /* ── Custom relation-type dropdown (replaces the native <select> — Windows/
    Chromium won't let CSS style a native listbox's row spacing, corners, or
    hover color, which is what made it look cramped and generic) ──────────── */
@@ -5766,6 +6068,53 @@
   max-width: 900px;
 }
 
+.pr-editor-search-drilldown-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--border-color, #2d2a24);
+}
+
+.pr-editor-search-back {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 0.4rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: transparent;
+  color: var(--text-main, #e3e1db);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.pr-editor-search-back:hover {
+  border-color: var(--accent, #7c6af7);
+  color: var(--accent, #c084fc);
+}
+
+.pr-editor-search-drilldown-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.pr-editor-search-drilldown-title strong {
+  font-size: 0.8rem;
+}
+
+.pr-editor-search-drilldown-title span {
+  overflow: hidden;
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Embedded inline (e.g. the admin panel's "add work" tab) instead of as a
    fixed full-page overlay — same card look, just not floating/shadowed. */
 .pr-editor-search-popup-content--inline {
@@ -5875,6 +6224,14 @@
   object-fit: cover;
   border-radius: 2px;
   background: var(--bg-primary, #12110f);
+}
+
+.pr-editor-search-result-cover--placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--accent, #c084fc);
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .pr-editor-search-result-info {

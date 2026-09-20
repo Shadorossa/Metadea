@@ -26,12 +26,14 @@ export interface CharacterPreviewChanges {
   fields: Record<string, CharacterPreviewChangeKind>;
   appearances: Record<string, CharacterPreviewChangeKind>;
   actors: Record<string, CharacterPreviewChangeKind>;
+  merges: Record<string, CharacterPreviewChangeKind>;
 }
 
 interface Props {
   character: CharacterEntry;
   appearances: CharacterPreviewAppearance[];
   actors?: CharacterProposalActor[];
+  mergedCharacterIds?: string[];
   changes?: CharacterPreviewChanges;
 }
 
@@ -39,8 +41,9 @@ function diffClass(kind?: CharacterPreviewChangeKind): string {
   return kind ? ` character-preview-diff--${kind}` : '';
 }
 
-export function CharacterPreviewCard({ character, appearances, actors = [], changes }: Props) {
+export function CharacterPreviewCard({ character, appearances, actors = [], mergedCharacterIds = [], changes }: Props) {
   const t = getT().character;
+  const editorT = getT().character_editor;
   const { characteristics, cleanBiography } = parseCharacterBiography(character.biography);
   const aliases = (character.aliases_csv ?? '').split(',').map(a => a.trim()).filter(Boolean);
 
@@ -134,10 +137,26 @@ export function CharacterPreviewCard({ character, appearances, actors = [], chan
           </div>
         )}
 
+        {mergedCharacterIds.length > 0 && (
+          <div className="media-col-related character-preview-merges">
+            <div className="media-section-header-row">
+              <p className="section-label">{editorT.merges}</p>
+              <div className="media-section-header-line" />
+            </div>
+            <div className="character-preview-merge-list">
+              {mergedCharacterIds.map(id => (
+                <span key={id} className={`character-preview-merge-id character-preview-field${diffClass(changes?.merges[id])}`} title={id}>
+                  {id}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {actors.length > 0 && (
           <div className="media-col-related character-preview-voice-actors">
             <div className="media-section-header-row">
-              <p className="section-label">{t.voice_actors}</p>
+              <p className="section-label">{editorT.voice_actors}</p>
               <div className="media-section-header-line" />
             </div>
             <div className="media-relations-grid">

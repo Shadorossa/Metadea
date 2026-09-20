@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { openUrlInBrowser } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../shared/ImageCropModal';
-import type { CharacterEntry } from '../../lib/tauri/characters';
+import { getCharacterMergeTarget, getCharacterMerges, getMediaCharacters, type CharacterEntry, type CharacterMerge } from '../../lib/tauri/characters';
 import type { AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import type { ParsedCharacteristic } from '../../lib/character/biography-parser';
 import { compareByReleaseDateThenTitle } from '../../lib/media/mapper-utils';
@@ -18,6 +18,7 @@ import { TagsInput } from '../shared/TagsInput';
 import { RichTextEditor } from '../shared/RichTextEditor';
 import { loadCharacterEditorData, type PendingAppearance } from '../../lib/character/characterPrEditorLoad';
 import { submitCharacterProposal } from '../../lib/character/characterPrEditorSubmit';
+import { fetchMediaDataInternal } from '../../lib/media/mediaService';
 import {
   isFieldChanged,
   characteristicsChanged as characteristicsChangedPure,
@@ -135,6 +136,16 @@ interface CachedCharacterData {
   originalCleanBiography: string;
   appearances: AppearanceRow[];
   originalAppearances: AppearanceRow[];
+  mergedCharacters: CharacterMerge[];
+  originalMergedCharacters: CharacterMerge[];
+  voiceActors: VoiceActorRow[];
+  originalVoiceActors: VoiceActorRow[];
+}
+
+interface MergeCandidate {
+  external_id: string;
+  name: string;
+  image_url?: string | null;
 }
 
 export function CharacterPrEditorModal() {
@@ -182,10 +193,17 @@ export function CharacterPrEditorModal() {
 
   const [appearances, setAppearances] = useState<AppearanceRow[]>([]);
   const [originalAppearances, setOriginalAppearances] = useState<AppearanceRow[]>([]);
+  const [mergedCharacters, setMergedCharacters] = useState<CharacterMerge[]>([]);
+  const [originalMergedCharacters, setOriginalMergedCharacters] = useState<CharacterMerge[]>([]);
+  // Tracks appearances inserted by this editor session solely because a
+  // source character was merged. They must disappear with that merge, while
+  // manually-added appearances remain untouched.
+  const [mergeAppearanceIds, setMergeAppearanceIds] = useState<Record<string, string>>({});
   const [voiceActors, setVoiceActors] = useState<VoiceActorRow[]>([]);
   const [originalVoiceActors, setOriginalVoiceActors] = useState<VoiceActorRow[]>([]);
   const [appearanceRelationType, setAppearanceRelationType] = useState('SUPPORTING');
   const [appearanceSearchOpen, setAppearanceSearchOpen] = useState(false);
+  const [mergeMediaSearchOpen, setMergeMediaSearchOpen] = useState(false);
   const [voiceActorSearchOpen, setVoiceActorSearchOpen] = useState(false);
   const [fandomModalOpen, setFandomModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'appearances' | 'voices'>('general');
@@ -201,6 +219,8 @@ export function CharacterPrEditorModal() {
     setErrorMsg('');
     setStatusMsg('');
     setAppearanceSearchOpen(false);
+    setMergeMediaSearchOpen(false);
+    setMergeAppearanceIds({});
     setFandomModalOpen(false);
   };
 
@@ -233,6 +253,9 @@ export function CharacterPrEditorModal() {
 
     const loadCharacter = async () => {
       try {
+        // These links only describe additions made in the currently open
+        // editor; never carry them over to a different character/session.
+        setMergeAppearanceIds({});
         const cached = characterCacheRef.current[currentId];
         if (cached) {
           setCharacter(cached.character);
@@ -247,6 +270,14 @@ export function CharacterPrEditorModal() {
           setOriginalCleanBiography(cached.originalCleanBiography);
           setAppearances(cached.appearances);
           setOriginalAppearances(cached.originalAppearances);
+          setMergedCharacters(cached.mergedCharacters);
+          setOriginalMergedCharacters(cached.originalMergedCharacters);
+          setVoiceActors(cached.voiceActors);
+          setOriginalVoiceActors(cached.originalVoiceActors);
+          setOriginalName(cached.name);
+          setOriginalNameNative(cached.nameNative);
+          setOriginalAliases(cached.aliases);
+          setOriginalImageUrl(cached.imageUrl);
           setLoading(false);
           return;
         }
@@ -267,6 +298,8 @@ export function CharacterPrEditorModal() {
         setOriginalCleanBiography(result.originalCleanBiography);
         setAppearances(result.appearances);
         setOriginalAppearances(result.originalAppearances);
+        setMergedCharacters(result.mergedCharacters);
+        setOriginalMergedCharacters(result.originalMergedCharacters);
         setOriginalName(result.name);
         setOriginalNameNative(result.nameNative);
         setOriginalAliases(result.aliases);
@@ -287,6 +320,10 @@ export function CharacterPrEditorModal() {
           originalCleanBiography: result.originalCleanBiography,
           appearances: result.appearances,
           originalAppearances: result.originalAppearances,
+          mergedCharacters: result.mergedCharacters,
+          originalMergedCharacters: result.originalMergedCharacters,
+          voiceActors: result.voiceActors,
+          originalVoiceActors: result.originalVoiceActors,
         };
       } catch (err) {
         console.error('Failed to load character:', err);
@@ -311,7 +348,10 @@ export function CharacterPrEditorModal() {
   const characteristicsChanged = () => characteristicsChangedPure(characteristics, originalCharacteristics);
   const appearancesChanged = () => appearancesChangedPure(appearances, originalAppearances);
   const voiceActorsChanged = () => voiceActorsChangedPure(voiceActors, originalVoiceActors);
-  const hasChanged = () => hasChangedPure(originalCharacter, diffFields);
+  const mergedCharacterIds = () => mergedCharacters.map(item => item.external_id).sort();
+  const originalMergedCharacterIds = () => originalMergedCharacters.map(item => item.external_id).sort();
+  const mergedCharactersChanged = () => JSON.stringify(mergedCharacterIds()) !== JSON.stringify(originalMergedCharacterIds());
+  const hasChanged = () => hasChangedPure(originalCharacter, diffFields) || mergedCharactersChanged();
   const buildChangeSummary = () => buildChangeSummaryPure(originalCharacter, diffFields);
 
   const addCharacteristic = () => setCharacteristics([...characteristics, { label: '', value: '' }]);
@@ -323,6 +363,57 @@ export function CharacterPrEditorModal() {
     setAppearances(appearances.filter(a => a.media_external_id !== mediaExternalId));
   const updateAppearanceRelationType = (mediaExternalId: string, relationType: string) =>
     setAppearances(appearances.map(a => a.media_external_id === mediaExternalId ? { ...a, relation_type: relationType } : a));
+  const removeMergedCharacter = (externalId: string) =>
+    {
+      const mergeAppearanceId = mergeAppearanceIds[externalId];
+      setMergedCharacters(previous => previous.filter(item => item.external_id !== externalId));
+      if (mergeAppearanceId) {
+        setAppearances(previous => previous.filter(item => item.media_external_id !== mergeAppearanceId));
+        setMergeAppearanceIds(previous => {
+          const { [externalId]: _removed, ...remaining } = previous;
+          return remaining;
+        });
+      }
+    };
+  const loadMergeCandidates = async (result: ApiSearchResult): Promise<MergeCandidate[]> => {
+    const cached = await getMediaCharacters(result.externalId).catch(() => []);
+    let candidates: MergeCandidate[] = cached.map(item => ({
+      external_id: item.external_id,
+      name: item.name,
+      image_url: item.image_url,
+    }));
+    if (!candidates.length) {
+      const live = await fetchMediaDataInternal(result.externalId);
+      candidates = (live?.characters ?? []).map(item => ({
+        external_id: item.id || `character:${item.name}`,
+        name: item.name,
+        image_url: item.image,
+      }));
+    }
+    const seen = new Set<string>();
+    const alreadyAdded = new Set(mergedCharacters.map(item => item.external_id));
+    const unique = candidates.filter(item => {
+      if (!item.external_id || item.external_id === currentId || alreadyAdded.has(item.external_id) || seen.has(item.external_id)) return false;
+      seen.add(item.external_id);
+      return true;
+    });
+    const eligible: MergeCandidate[] = [];
+    for (const item of unique) {
+      const target = await getCharacterMergeTarget(item.external_id).catch(() => null);
+      if (!target || target === currentId) eligible.push(item);
+    }
+    return eligible;
+  };
+  const addMergedCharacter = (candidate: MergeCandidate, work: ApiSearchResult) => {
+    const workIsAlreadyAnAppearance = appearances.some(item => item.media_external_id === work.externalId);
+    setMergedCharacters(previous => previous.some(item => item.external_id === candidate.external_id)
+      ? previous
+      : [...previous, candidate]);
+    if (!workIsAlreadyAnAppearance) {
+      addAppearance(work);
+      setMergeAppearanceIds(previous => ({ ...previous, [candidate.external_id]: work.externalId }));
+    }
+  };
   const addAppearance = (result: ApiSearchResult) => {
     if (appearances.some(a => a.media_external_id === result.externalId)) return;
     const next = [...appearances, {
@@ -364,10 +455,15 @@ export function CharacterPrEditorModal() {
         name, nameNative, aliases, imageUrl,
         characteristics, cleanBiography, originalCleanBiography,
         appearances, originalAppearances,
+        mergedCharacterIds: mergedCharacterIds(),
+        originalMergedCharacterIds: originalMergedCharacterIds(),
+        mergedCharactersChanged: mergedCharactersChanged(),
         voiceActors, originalVoiceActors,
         appearancesChanged: appearancesChanged(),
         voiceActorsChanged: voiceActorsChanged(),
-        changeSummary: buildChangeSummary(),
+        changeSummary: mergedCharactersChanged() && !hasChangedPure(originalCharacter, diffFields)
+          ? t.merge_change_summary
+          : buildChangeSummary(),
         setStatusMsg,
         statusSavingLocal: t.saving_local,
         statusPreparingProposal: t.preparing_proposal,
@@ -525,8 +621,8 @@ export function CharacterPrEditorModal() {
             {characteristicsChanged() && <span className="pr-editor-tab-changed-dot" />}
           </button>
           <button type="button" className={`pr-editor-tab-btn${activeTab === 'appearances' ? ' active' : ''}`} onClick={() => setActiveTab('appearances')}>
-            {t.appearances}
-            {appearancesChanged() && <span className="pr-editor-tab-changed-dot" />}
+            {t.appearances_tab}
+            {(appearancesChanged() || mergedCharactersChanged()) && <span className="pr-editor-tab-changed-dot" />}
           </button>
           <button type="button" className={`pr-editor-tab-btn${activeTab === 'voices' ? ' active' : ''}`} onClick={() => setActiveTab('voices')}>
             {t.voice_actors}
@@ -686,8 +782,82 @@ export function CharacterPrEditorModal() {
                 </div>
               ))}
             </div>
+
+            {/* Character identity merges are managed in the dedicated tab. */}
+            {/* <div className="pr-editor-appearance-merges">
+              <div className="pr-editor-section-title">{t.appearance_merges}</div>
+              {appearances.map(a => (
+                <div className="pr-editor-appearance-merge-row" key={`merge-${a.media_external_id}`}>
+                  <div className="pr-editor-appearance-merge-work" title={a.title}>{a.title}</div>
+                  <div className="pr-editor-appearance-merge-controls">
+                    <span
+                      className={`pr-editor-appearance-merge-label${a.merged_character_external_id ? '' : ' is-empty'}`}
+                      title={a.merged_character_external_id || undefined}
+                    >
+                      {a.merged_character_external_id
+                        ? `${t.merged_with}: ${a.merged_character_name || a.merged_character_external_id}`
+                        : t.no_merge_target}
+                    </span>
+                    <button
+                      type="button"
+                      className="pr-editor-appearance-merge-btn"
+                      onClick={() => setMergePickerFor(a.media_external_id)}
+                    >
+                      {a.merged_character_external_id ? t.change_merge : t.merge_character}
+                    </button>
+                    {a.merged_character_external_id && (
+                      <button
+                        type="button"
+                        className="pr-editor-appearance-merge-clear"
+                        onClick={() => clearAppearanceMergeTarget(a.media_external_id)}
+                        title={t.clear_merge}
+                        aria-label={t.clear_merge}
+                      >×</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div> */}
           </div>
           </>
+          )}
+
+          {activeTab === 'appearances' && (
+            <div className="pr-editor-section pr-editor-character-merges">
+              <div className="pr-editor-character-merges-header">
+                <div>
+                  <span className="pr-editor-section-title pr-editor-merge-title">
+                    {t.merge_section}
+                    {mergedCharactersChanged() && <span className="pr-editor-section-changed-dot" />}
+                    <span
+                      className="pr-editor-merge-info"
+                      tabIndex={0}
+                      aria-label={`${t.merge_info}: ${t.merge_hint}`}
+                      data-hint={t.merge_hint}
+                    >i</span>
+                  </span>
+                </div>
+                <button type="button" className="pr-editor-add-btn" onClick={() => setMergeMediaSearchOpen(true)}>
+                  {t.add_merge}
+                </button>
+              </div>
+              {mergedCharacters.length > 0 ? (
+                <div className="pr-editor-character-merge-list">
+                  {mergedCharacters.map(item => (
+                    <div className="pr-editor-character-merge-item" key={item.external_id}>
+                      {item.image_url
+                        ? <img src={item.image_url} alt="" />
+                        : <div className="pr-editor-character-merge-placeholder">{item.name.charAt(0).toUpperCase()}</div>}
+                      <span className="pr-editor-character-merge-name" title={`${item.name} · ${item.external_id}`}>
+                        <strong>{item.name}</strong>
+                        <small>{item.external_id}</small>
+                      </span>
+                      <button type="button" onClick={() => removeMergedCharacter(item.external_id)} title={t.clear_merge} aria-label={t.clear_merge}>×</button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           )}
 
           {activeTab === 'voices' && (
@@ -773,6 +943,54 @@ export function CharacterPrEditorModal() {
           closeOnSelect={false}
         />
       )}
+
+      {mergeMediaSearchOpen && (
+        <MediaSearchPopup
+          onSelect={() => {}}
+          onClose={() => setMergeMediaSearchOpen(false)}
+          closeOnSelect
+          castPicker={{
+            loadCast: loadMergeCandidates,
+            onSelectCharacter: (work, candidate) => addMergedCharacter(candidate, work),
+            title: t.select_character,
+            loadingLabel: t.loading_characters,
+            emptyLabel: t.no_characters,
+            backLabel: t.back_to_works,
+            errorLabel: t.merge_cast_error,
+          }}
+        />
+      )}
+
+      {/* {mergeSelectedWork && createPortal(
+        <div className="pr-editor-overlay pr-editor-overlay--nested pr-editor-merge-cast-overlay" onClick={() => setMergeSelectedWork(null)}>
+          <div className="pr-editor-merge-cast-modal" onClick={event => event.stopPropagation()}>
+            <div className="pr-editor-merge-cast-header">
+              <div>
+                <span className="pr-editor-section-title">{t.select_character}</span>
+                <small>{mergeSelectedWork.title}</small>
+              </div>
+              <button type="button" onClick={() => setMergeSelectedWork(null)} aria-label={t.cancel}>×</button>
+            </div>
+            {mergeCandidatesLoading ? (
+              <div className="pr-editor-character-merges-empty">{t.loading_characters}</div>
+            ) : mergeCandidates.length > 0 ? (
+              <div className="pr-editor-merge-cast-list">
+                {mergeCandidates.map(candidate => (
+                  <button type="button" className="pr-editor-merge-cast-option" key={candidate.external_id} onClick={() => addMergedCharacter(candidate)}>
+                    {candidate.image_url
+                      ? <img src={candidate.image_url} alt="" />
+                      : <span className="pr-editor-character-merge-placeholder">{candidate.name.charAt(0).toUpperCase()}</span>}
+                    <span><strong>{candidate.name}</strong><small>{candidate.external_id}</small></span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="pr-editor-character-merges-empty">{t.no_characters}</div>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )} */}
 
       {voiceActorSearchOpen && (
         <VoiceActorSearchPopup

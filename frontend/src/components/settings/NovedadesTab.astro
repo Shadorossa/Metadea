@@ -10,18 +10,15 @@ const { t, version } = Astro.props;
 
 <!-- Tab: Novedades -->
 <div class="settings-panel hidden" id="panel-novedades">
-  <div
-    class="settings-section"
-    style="max-width: 900px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1.5rem;"
-  >
-    <p class="settings-hint" style="margin-bottom: 0.75rem;">
+  <div class="settings-section settings-novedades-section">
+    <p class="settings-hint settings-novedades-hint">
       {t.settings.novedades_hint}
     </p>
 
-    <div style="display: flex; gap: 1.5rem; align-items: stretch;">
-      <div style="flex: 0 0 auto; display: flex; flex-direction: column;">
+    <div class="settings-novedades-cards">
+      <div class="settings-novedades-card-wrap">
         <div class="settings-version-card">
-          <div style="display: flex; flex-direction: row; align-items: baseline; gap: 0.4rem;">
+          <div class="settings-novedades-version-heading">
             <span class="settings-auth-name">{t.settings.app_version_label}</span>
             <span
               class="app-curr-ver settings-auth-status settings-auth-status--mono"
@@ -35,14 +32,14 @@ const { t, version } = Astro.props;
         </div>
         <div
           id="updater-status-text"
-          style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
+          class="settings-novedades-status"
         >
         </div>
       </div>
 
-      <div style="flex: 0 0 auto; display: flex; flex-direction: column;">
+      <div class="settings-novedades-card-wrap">
         <div class="settings-version-card">
-          <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+          <div class="settings-novedades-card-heading">
             <span class="settings-auth-name">{t.settings.community_catalog_sync_label}</span>
           </div>
           <button
@@ -52,16 +49,14 @@ const { t, version } = Astro.props;
         </div>
         <div
           id="community-catalog-sync-status"
-          style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
+          class="settings-novedades-status"
         >
         </div>
       </div>
 
-      <!-- TEMPORARY — see fix_character_ids in vestigial_cleanup.rs. Remove
-           this card (and lib/settings/fix-character-ids.ts) alongside it. -->
-      <div style="flex: 0 0 auto; display: flex; flex-direction: column;">
+      <div class="settings-novedades-card-wrap">
         <div class="settings-version-card">
-          <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+          <div class="settings-novedades-card-heading">
             <span class="settings-auth-name">{t.settings.fix_character_ids_label}</span>
           </div>
           <button
@@ -71,7 +66,7 @@ const { t, version } = Astro.props;
         </div>
         <div
           id="fix-character-ids-status"
-          style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
+          class="settings-novedades-status"
         >
         </div>
       </div>

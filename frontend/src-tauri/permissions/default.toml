@@ -1,4 +1,4 @@
-[[permission]]
+﻿[[permission]]
 identifier = "allow-all-commands"
 description = "Allows all custom Metadea commands"
 commands.allow = [
@@ -117,10 +117,15 @@ commands.allow = [
   "delete_character",
   "get_community_characters",
   "set_character_reaction",
+  "get_character_merges",
+  "get_character_merge_target",
+  "save_character_merges",
   "save_character_appearances",
   "get_character_appearances",
   "save_characters_skeleton",
   "get_media_characters",
+  "get_legacy_tmdb_character_appearances",
+  "remap_tmdb_character_ids",
   "save_staff_skeleton",
   "get_media_staff",
   "get_character_actors",
@@ -199,4 +204,3 @@ commands.allow = [
   "remove_local_game",
   "get_hidden_local_games"
 ]
-

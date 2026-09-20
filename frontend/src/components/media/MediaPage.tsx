@@ -153,8 +153,9 @@ interface CharacterCardProps {
 }
 
 const CharacterCard = memo(function CharacterCard({ character: c, charTab, customImagesMap }: CharacterCardProps) {
-  const href = c.id
-    ? (charTab === 'staff' ? `/author?id=${encodeURIComponent(c.id)}` : `/character?id=${encodeURIComponent(c.id)}`)
+  const hrefId = c.hrefId || c.id;
+  const href = hrefId
+    ? (charTab === 'staff' ? `/author?id=${encodeURIComponent(hrefId)}` : `/character?id=${encodeURIComponent(hrefId)}`)
     : undefined;
   const customImg = c.id ? customImagesMap.get(c.id) : undefined;
   const displayImg = customImg ? wrapAssetUrl(customImg.image_url) : c.image;
@@ -773,7 +774,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, ...patch } : prev);
         };
 
-        if (full.characters && full.characters.length > 0) {
+        if (!full.charactersInheritedFromBase && full.characters && full.characters.length > 0) {
           const isCastRole = full.type === 'movie' || full.type === 'series';
           const skeletonChars = mediaCharactersToSkeleton(full.characters, isCastRole);
           saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
@@ -785,7 +786,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         // A cast over 50 (AniList's per-page cap) no longer blocks the page
         // itself — see fetchAniListDetail/fetchExtraCharacters — so the rest
         // of it is topped up here, after the page is already showing.
-        if (full.charactersHasMore) {
+        if (!full.charactersInheritedFromBase && full.charactersHasMore) {
           fetchExtraCharacters(currentId, full).then(characters => {
             if (cancelled || !characters) return;
             patchCachedCharacters(currentId, characters);
@@ -1124,14 +1125,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     fetchMediaData(currentId, { refreshAniListTotalCount: true, refreshSourceAdaptation: true }).then(fresh => {
       if (fresh) {
         setData(fresh);
-        if (fresh.characters && fresh.characters.length > 0) {
+        if (!fresh.charactersInheritedFromBase && fresh.characters && fresh.characters.length > 0) {
           const isCastRole = fresh.type === 'movie' || fresh.type === 'series';
           saveCharactersSkeleton(currentId, mediaCharactersToSkeleton(fresh.characters, isCastRole)).catch(console.error);
         }
         if (fresh.staff && fresh.staff.length > 0) {
           saveStaffSkeleton(currentId, mediaStaffToSkeleton(fresh.staff)).catch(console.error);
         }
-        if (fresh.charactersHasMore) {
+        if (!fresh.charactersInheritedFromBase && fresh.charactersHasMore) {
           fetchExtraCharacters(currentId, fresh).then(characters => {
             if (!characters) return;
             patchCachedCharacters(currentId, characters);

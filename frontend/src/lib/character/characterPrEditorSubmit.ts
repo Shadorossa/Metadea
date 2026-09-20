@@ -4,6 +4,7 @@
 // 'local' mode) submits the GitHub PR. Takes precomputed diff values instead
 // of the component's own closures.
 import { saveCharacter, saveCharacterAppearances, type CharacterEntry } from '../tauri/characters';
+import { saveCharacterMerges } from '../tauri/characters';
 import { saveCharacterActors } from '../tauri/actors';
 import { markSynced } from '../tauri';
 import { submitCollaborativeProposal, type CharacterProposalBundle } from '../github/submitCollaborativeProposal';
@@ -52,6 +53,9 @@ export interface SubmitCharacterEditorParams {
   originalCleanBiography: string;
   appearances: AppearanceRow[];
   originalAppearances: AppearanceRow[];
+  mergedCharacterIds: string[];
+  originalMergedCharacterIds: string[];
+  mergedCharactersChanged: boolean;
   voiceActors: VoiceActorRow[];
   originalVoiceActors: VoiceActorRow[];
   appearancesChanged: boolean;
@@ -100,6 +104,9 @@ export async function submitCharacterProposal(p: SubmitCharacterEditorParams): P
       relation_type: a.relation_type,
     })));
   }
+  if (p.mergedCharactersChanged) {
+    await saveCharacterMerges(p.currentId, p.mergedCharacterIds);
+  }
   if (p.voiceActorsChanged) {
     await saveCharacterActors(p.currentId, p.voiceActors.map(v => ({
       external_id: v.externalId || `va:${encodeURIComponent(v.name)}`,
@@ -130,6 +137,7 @@ export async function submitCharacterProposal(p: SubmitCharacterEditorParams): P
       media_external_id: a.media_external_id,
       relation_type: a.relation_type,
     })),
+    merged_character_external_ids: p.mergedCharacterIds,
     // AniList-sourced actors (real external_id from the search picker) only
     // propose the relation itself (role/language) — name/native/image are
     // AniList's data, not this proposal's; a legacy row with no real
@@ -159,10 +167,12 @@ export async function submitCharacterProposal(p: SubmitCharacterEditorParams): P
   const removedActorIds = p.originalVoiceActors
     .filter(orig => orig.externalId && !p.voiceActors.some(v => v.externalId === orig.externalId))
     .map(orig => orig.externalId as string);
+  const removedMergedCharacterIds = p.originalMergedCharacterIds
+    .filter(id => !p.mergedCharacterIds.includes(id));
 
   return submitCollaborativeProposal(
     p.currentId,
-    [{ kind: 'character', externalId: p.currentId, bundle, removedAppearanceIds, removedActorIds }],
+    [{ kind: 'character', externalId: p.currentId, bundle, removedAppearanceIds, removedActorIds, removedMergedCharacterIds }],
     `- ${p.changeSummary}`,
     p.setStatusMsg,
   );

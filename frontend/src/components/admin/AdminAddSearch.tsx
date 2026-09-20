@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getT } from '../../i18n/client';
 import { igdbSearchUnfiltered, igdbImageUrl } from '../../lib/tauri';
 import { graphqlPost, fetchJson } from '../../lib/api/client';
@@ -6,6 +6,9 @@ import { API_ENDPOINTS } from '../../lib/api/endpoints';
 import { getTmdbAuth, tmdbLocale } from '../../lib/search/providers/tmdb';
 import { bookIdFromWorkKey } from '../../lib/search/providers/openlibrary';
 import { useDebouncedSearch } from '../../lib/shared/useDebouncedSearch';
+import { Pagination } from '../media/Pagination';
+
+const PAGE_SIZE = 50;
 
 type ApiProvider = 'igdb' | 'anilist' | 'tmdb' | 'openlibrary' | 'comicvine';
 
@@ -160,6 +163,7 @@ interface AdminAddSearchProps {
 export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
   const [provider, setProvider] = useState<ApiProvider>('igdb');
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   const { results, isLoading } = useDebouncedSearch<RawResult>(
     query,
@@ -176,6 +180,11 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
     },
     [provider],
   );
+
+  useEffect(() => setPage(1), [query, provider]);
+  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visibleResults = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="pr-editor-search-popup-content pr-editor-search-popup-content--wide pr-editor-search-popup-content--inline">
@@ -204,7 +213,7 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
           <div className="pr-editor-search-empty">{getT().search.no_results_generic}</div>
         )}
         <div className="pr-editor-search-grid">
-          {results.map(r => (
+          {visibleResults.map(r => (
             <button
               key={r.externalId}
               type="button"
@@ -222,6 +231,7 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
             </button>
           ))}
         </div>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onChange={setPage} />
       </div>
     </div>
   );

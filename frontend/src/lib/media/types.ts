@@ -18,6 +18,11 @@ export interface MediaStat {
 
 export interface MediaCharacter {
   id?: string;
+  /** TMDB's opaque cast credit id. It is only retained while repairing old
+   * local IDs; it is never persisted or shown in the UI. */
+  tmdbCreditId?: string;
+  /** Optional canonical destination; visual identity remains `id`. */
+  hrefId?: string;
   name: string;
   image?: string;
   role?: string;
@@ -127,6 +132,9 @@ export interface MediaPageData {
   description?: string;
   stats: MediaStat[];
   characters: MediaCharacter[];
+  /** Cast inherited for display from a remaster's base edition; never save
+   *  this list as appearances belonging to the remaster itself. */
+  charactersInheritedFromBase?: boolean;
   // AniList only — true when `characters` is just the first (up to 50) page
   // and more exist. The initial fetch no longer waits on those extra pages
   // (see fetchAniListDetail/fetchExtraCharacters) so the page can render

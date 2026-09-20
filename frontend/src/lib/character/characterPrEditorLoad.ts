@@ -4,7 +4,7 @@
 // know (the pending appearance ref, the relation type new appearances
 // default to) instead of closing over component state.
 import {
-  getCharacter, getCharacterAppearances,
+  getCharacter, getCharacterAppearances, getCharacterMerges,
   type CharacterEntry, type CharacterAppearance,
 } from '../tauri/characters';
 import { getCharacterActors, type DbCharacterActor } from '../tauri/actors';
@@ -37,6 +37,8 @@ export interface CharacterEditorLoadResult {
   originalCleanBiography: string;
   appearances: AppearanceRow[];
   originalAppearances: AppearanceRow[];
+  mergedCharacters: Awaited<ReturnType<typeof getCharacterMerges>>;
+  originalMergedCharacters: Awaited<ReturnType<typeof getCharacterMerges>>;
   voiceActors: VoiceActorRow[];
   originalVoiceActors: VoiceActorRow[];
 }
@@ -147,6 +149,7 @@ export async function loadCharacterEditorData(
 
   // ── APARICIONES: Usar datos guardados localmente o fallback a AniList ──
   const rawAppearances = await getCharacterAppearances(currentId).catch(() => [] as CharacterAppearance[]);
+  const mergedCharacters = await getCharacterMerges(currentId).catch(() => []);
   let resolved: AppearanceRow[] = [];
 
   const anilistMediaCache: Record<string, { title: string; cover: string | null; year: number | null; month: number | null; day: number | null }> = {};
@@ -282,6 +285,8 @@ export async function loadCharacterEditorData(
     originalCleanBiography: parsedBio,
     appearances: resolvedWithPending,
     originalAppearances: resolved,
+    mergedCharacters,
+    originalMergedCharacters: mergedCharacters,
     voiceActors: initialVas,
     originalVoiceActors: initialVas,
   };

@@ -1236,6 +1236,18 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         )?;
         mark_migration(conn, 64)?;
     }
+    if v < 65 {
+        // Global character identity links: provider-specific duplicates
+        // (source_character_external_id) redirect to a canonical character.
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS character_merges (
+                source_character_external_id TEXT PRIMARY KEY,
+                canonical_character_external_id TEXT NOT NULL,
+                added_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );",
+        )?;
+        mark_migration(conn, 65)?;
+    }
 
     Ok(())
 }
@@ -1377,6 +1389,12 @@ CREATE TABLE IF NOT EXISTS character_appearances (
     position              INTEGER,
     added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (character_external_id, media_external_id)
+);
+
+CREATE TABLE IF NOT EXISTS character_merges (
+    source_character_external_id TEXT PRIMARY KEY,
+    canonical_character_external_id TEXT NOT NULL,
+    added_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Staff (director, writer, composer, ...) — deliberately its own table

@@ -1232,13 +1232,65 @@
      (flex: 1), so all three end up the same height regardless of how many
      lines each one's label wraps to. */
   flex: 1;
-  min-height: 3.25rem;
+  min-height: 6.1rem;
   /* Sized to content now (see NovedadesTab.astro's flex: 0 0 auto wrapper),
      not a shared fixed width — nowrap keeps a card from ever growing taller
      to wrap its own label/button text instead of just being as wide as it
      needs. */
-  white-space: nowrap;
   box-sizing: border-box;
+}
+
+.settings-novedades-section {
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.settings-novedades-hint { margin-bottom: 0.75rem; }
+
+.settings-novedades-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.settings-novedades-card-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.settings-novedades-card-wrap .settings-version-card {
+  width: 100%;
+  height: 100%;
+}
+
+.settings-novedades-version-heading {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.settings-novedades-card-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.settings-novedades-status {
+  display: none;
+  margin-top: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .settings-novedades-cards { grid-template-columns: 1fr; }
 }
 
 /* ── Modals (GitHub device flow / AniList token) ─────────────────────────── */

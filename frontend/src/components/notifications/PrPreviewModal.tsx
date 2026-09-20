@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
+import { getT } from '../../i18n/client';
 import type { GitHubPull } from '../../lib/github/api';
 import { fetchFileAtRef, listPullRequestFiles, type GitHubPullFile } from '../../lib/github/api';
 import { catalogFilePath, externalIdFromFilename } from '../../lib/github/catalogPaths';
@@ -279,7 +280,7 @@ function buildMediaChangeSummary(
     newRelationIds: relationChanges.newIds,
     updatedRelationIds: relationChanges.updatedIds,
     removedItems: relationChanges.removedRelations,
-    characterChanges: { fields: {}, appearances: {}, actors: {} },
+    characterChanges: { fields: {}, appearances: {}, actors: {}, merges: {} },
   };
 }
 
@@ -455,6 +456,7 @@ function buildCharacterChangeSummary(
   const previousActors = previous?.actors ?? [];
   const appearanceChanges: CharacterPreviewChanges['appearances'] = {};
   const actorChanges: CharacterPreviewChanges['actors'] = {};
+  const mergeChanges: CharacterPreviewChanges['merges'] = {};
   const removedItems: Array<{ id: string; title: string }> = [];
 
   const appearanceCounts = { ...EMPTY_CHANGE_COUNTS };
@@ -463,7 +465,8 @@ function buildCharacterChangeSummary(
   for (const [id, item] of currentAppearanceById) {
     const old = previousAppearanceById.get(id);
     const api = providerAppearances.get(id);
-    const matchesApi = !!api && normalizedRelationType(item.relation_type) === normalizedRelationType(api.relation_type);
+    const matchesApi = !!api
+      && normalizedRelationType(item.relation_type) === normalizedRelationType(api.relation_type);
     if (!old) {
       if (matchesApi) continue;
       const kind = api ? 'updated' : 'added';
@@ -485,10 +488,26 @@ function buildCharacterChangeSummary(
       }
     } else {
       appearanceCounts.removed += 1;
-      removedItems.push({ id, title: old.title || id });
+      removedItems.push({ id, title: id });
     }
   }
   mergeChangeCounts(groups, i18n.notifications.preview_appearances, appearanceCounts);
+
+  const currentMergeIds = new Set(current.merged_character_external_ids ?? []);
+  const previousMergeIds = new Set(previous?.merged_character_external_ids ?? []);
+  const mergeCounts = { ...EMPTY_CHANGE_COUNTS };
+  for (const id of currentMergeIds) {
+    if (previousMergeIds.has(id)) continue;
+    mergeCounts.added += 1;
+    mergeChanges[id] = 'added';
+  }
+  for (const id of previousMergeIds) {
+    if (currentMergeIds.has(id)) continue;
+    mergeCounts.removed += 1;
+    mergeChanges[id] = 'removed';
+    removedItems.push({ id, title: id });
+  }
+  mergeChangeCounts(groups, getT().character_editor.merges, mergeCounts);
 
   const actorCounts = { ...EMPTY_CHANGE_COUNTS };
   const currentActorById = new Map(currentActors.map(item => [item.external_id, item] as const));
@@ -530,7 +549,7 @@ function buildCharacterChangeSummary(
     newRelationIds: [],
     updatedRelationIds: [],
     removedItems,
-    characterChanges: { fields: changedFields, appearances: appearanceChanges, actors: actorChanges },
+    characterChanges: { fields: changedFields, appearances: appearanceChanges, actors: actorChanges, merges: mergeChanges },
   };
 }
 
@@ -543,6 +562,7 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
   const [previewCharacter, setPreviewCharacter] = useState<CharacterEntry | null>(null);
   const [previewAppearances, setPreviewAppearances] = useState<CharacterPreviewAppearance[]>([]);
   const [previewActors, setPreviewActors] = useState<CharacterProposalActor[]>([]);
+  const [previewMergedCharacterIds, setPreviewMergedCharacterIds] = useState<string[]>([]);
   const [previewChanges, setPreviewChanges] = useState<PreviewChangeSummary | null>(null);
   const activeRecord = previewFiles[activeIndex] ?? null;
   const isCharacter = activeRecord?.externalId.startsWith('character:') ?? externalId.startsWith('character:');
@@ -612,6 +632,7 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
     setPreviewCharacter(null);
     setPreviewAppearances([]);
     setPreviewActors([]);
+    setPreviewMergedCharacterIds([]);
     setPreviewChanges(null);
 
     (async () => {
@@ -641,6 +662,7 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
           setPreviewCharacter(mergeCharacterPreviewEntry(activeRecord.externalId, bundle, provider, baseline));
           setPreviewAppearances(mergeCharacterPreviewAppearances(bundle.appearances ?? [], provider?.appearances ?? []));
           setPreviewActors(mergeCharacterPreviewActors(bundle.actors ?? [], provider?.actors ?? []));
+          setPreviewMergedCharacterIds(bundle.merged_character_external_ids ?? []);
           setPreviewChanges(buildCharacterChangeSummary(bundle, previousBundle, provider, i18n));
         } else {
           const bundle = activeRecord.bundle as ProposalBundle;
@@ -767,6 +789,7 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
               character={previewCharacter}
               appearances={previewAppearances}
               actors={previewActors}
+              mergedCharacterIds={previewMergedCharacterIds}
               changes={previewChanges?.characterChanges}
             />
           )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
 import { search, searchGameBundles, searchGameExpandedEditions, searchGameRemasters, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
@@ -78,6 +78,16 @@ export interface MediaSearchPopupProps {
    *  VN is still a VN (being a remaster doesn't change enough about a work
    *  to justify a different type). */
   igdbRelationMediaType?: 'game' | 'vnovel';
+  /** Reuses this popup as an in-place work -> cast picker. */
+  castPicker?: {
+    loadCast: (work: ApiSearchResult) => Promise<Array<{ external_id: string; name: string; image_url?: string | null }>>;
+    onSelectCharacter: (work: ApiSearchResult, character: { external_id: string; name: string; image_url?: string | null }) => void;
+    title: string;
+    loadingLabel: string;
+    emptyLabel: string;
+    backLabel: string;
+    errorLabel: string;
+  };
 }
 
 /** Live multi-provider search (AniList/IGDB/TMDB/OpenLibrary/Comic Vine) used
@@ -91,11 +101,16 @@ export interface MediaSearchPopupProps {
  *  transform/filter/etc. becomes the fixed element's containing block
  *  instead of the viewport, per the CSS spec, leaving whatever's above that
  *  ancestor visible over the popup. */
-export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false, igdbRelationMediaType = 'game' }: MediaSearchPopupProps) {
+export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false, igdbRelationMediaType = 'game', castPicker }: MediaSearchPopupProps) {
   const s = getT().search;
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
   const [sortBy, setSortBy] = useState<SearchSort>('relevance');
+  const [drilldownWork, setDrilldownWork] = useState<ApiSearchResult | null>(null);
+  const [cast, setCast] = useState<Array<{ external_id: string; name: string; image_url?: string | null }>>([]);
+  const [castLoading, setCastLoading] = useState(false);
+  const [castError, setCastError] = useState(false);
+  const castRequestId = useRef(0);
 
   const { results, isLoading } = useDebouncedSearch<ApiSearchResult>(
     query,
@@ -125,14 +140,38 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
   );
 
   const handleSelect = async (result: ApiSearchResult) => {
+    if (castPicker) {
+      // The work is the context for choosing a cast member, not the item being
+      // merged. Keep this popup mounted and replace its contents in place.
+      void ensureSkeletonCatalogEntry(result);
+      const requestId = ++castRequestId.current;
+      setDrilldownWork(result);
+      setCast([]);
+      setCastError(false);
+      setCastLoading(true);
+      try {
+        const members = await castPicker.loadCast(result);
+        if (requestId === castRequestId.current) setCast(members);
+      } catch (err) {
+        console.error('Failed to load cast in media search popup:', err);
+        if (requestId === castRequestId.current) setCastError(true);
+      } finally {
+        if (requestId === castRequestId.current) setCastLoading(false);
+      }
+      return;
+    }
+    const skeletonPromise = ensureSkeletonCatalogEntry(result);
+    // Notify the caller immediately so multi-step flows (e.g. choose a work,
+    // then choose one character from its cast) can mount their next panel
+    // without waiting for a catalog write/network round-trip.
+    onSelect(result);
     if (closeOnSelect) onClose();
     // Query and results are left as-is when the popup stays open — the
     // just-picked result disappears from the list on its own next render
     // (the parent adds its id to excludeIds), so the same search stays
     // usable to add several results in a row instead of forcing a retype
     // for every single pick.
-    await ensureSkeletonCatalogEntry(result);
-    onSelect(result);
+    await skeletonPromise;
   };
 
   const sortedResults = [...results].sort(SORT_FNS[sortBy]);
@@ -141,9 +180,57 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
     r => r.externalId,
   );
 
+  const returnToWorks = () => {
+    castRequestId.current += 1;
+    setDrilldownWork(null);
+    setCast([]);
+    setCastError(false);
+    setCastLoading(false);
+  };
+
   return createPortal(
     <div className="pr-editor-search-popup" onClick={e => { e.stopPropagation(); onClose(); }}>
       <div className="pr-editor-search-popup-content pr-editor-search-popup-content--wide" onClick={e => e.stopPropagation()}>
+        {castPicker && drilldownWork ? (
+          <>
+            <div className="pr-editor-search-drilldown-header">
+              <button type="button" className="pr-editor-search-back" onClick={returnToWorks}>
+                <span aria-hidden="true">←</span> {castPicker.backLabel}
+              </button>
+              <div className="pr-editor-search-drilldown-title">
+                <strong>{castPicker.title}</strong>
+                <span>{drilldownWork.titleMain || drilldownWork.externalId}</span>
+              </div>
+            </div>
+            <div className="pr-editor-search-results pr-editor-search-results--grid">
+              {castLoading && <div className="pr-editor-search-loading">{castPicker.loadingLabel}</div>}
+              {!castLoading && castError && <div className="pr-editor-search-empty">{castPicker.errorLabel}</div>}
+              {!castLoading && !castError && cast.length === 0 && <div className="pr-editor-search-empty">{castPicker.emptyLabel}</div>}
+              <div className="pr-editor-search-grid">
+                {cast.map(character => (
+                  <button
+                    key={character.external_id}
+                    type="button"
+                    className="pr-editor-search-result-card"
+                    onClick={() => {
+                      castPicker.onSelectCharacter(drilldownWork, character);
+                      onClose();
+                    }}
+                  >
+                    {character.image_url
+                      ? <img src={character.image_url} alt="" className="pr-editor-search-result-cover" />
+                      : <div className="pr-editor-search-result-cover pr-editor-search-result-cover--placeholder" aria-hidden="true">{character.name.charAt(0).toUpperCase()}</div>}
+                    <div className="pr-editor-search-result-info">
+                      <div className="pr-editor-search-result-id">{character.external_id}</div>
+                      <div className="pr-editor-search-result-title">{character.name}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+        <>
         <div className="pr-editor-search-controls">
           <input
             type="text"
@@ -205,6 +292,8 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             ))}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>,
     document.body,
