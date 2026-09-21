@@ -405,6 +405,7 @@ pub async fn get_media_characters(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_id: String,
 ) -> Result<Vec<MediaCharacter>, String> {
+    let mut rows: Vec<MediaCharacter> = {
     let conn = state.conn.lock().str_err()?;
 
     // Editions inherit the base game's cast for display only. Walk the
@@ -470,7 +471,7 @@ pub async fn get_media_characters(
                  CASE ca.relation_type WHEN 'MAIN' THEN 0 WHEN 'SUPPORTING' THEN 1 WHEN 'CAMEO' THEN 2 WHEN 'BACKGROUND' THEN 3 ELSE 4 END",
         )
         .str_err()?;
-    let mut rows: Vec<MediaCharacter> = stmt
+    let rows: Vec<MediaCharacter> = stmt
         .query_map([&cast_media_id], |row| {
             Ok(MediaCharacter {
                 external_id: row.get(0)?,
@@ -485,6 +486,8 @@ pub async fn get_media_characters(
         .filter_map(|r| r.ok())
         .collect();
     drop(stmt);
+    rows
+    };
     let data_dir = image_data_dir(&app_handle)?;
     for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
     Ok(rows)
@@ -702,6 +705,7 @@ pub async fn get_character_merges(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     canonical_character_external_id: String,
 ) -> Result<Vec<CharacterMerge>, String> {
+    let mut rows: Vec<CharacterMerge> = {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT m.source_character_external_id, COALESCE(c.name, m.source_character_external_id), c.image_url
@@ -710,7 +714,7 @@ pub async fn get_character_merges(
          WHERE m.canonical_character_external_id = ?1
          ORDER BY COALESCE(c.name, m.source_character_external_id)",
     ).str_err()?;
-    let mut rows: Vec<CharacterMerge> = stmt.query_map([&canonical_character_external_id], |row| {
+    let rows: Vec<CharacterMerge> = stmt.query_map([&canonical_character_external_id], |row| {
         Ok(CharacterMerge {
             external_id: row.get(0)?,
             name: row.get(1)?,
@@ -718,6 +722,8 @@ pub async fn get_character_merges(
         })
     }).str_err()?.filter_map(|row| row.ok()).collect();
     drop(stmt);
+    rows
+    };
     let data_dir = image_data_dir(&app_handle)?;
     for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
     Ok(rows)

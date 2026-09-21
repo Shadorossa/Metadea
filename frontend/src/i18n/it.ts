@@ -314,6 +314,7 @@ export const it = {
     no_entries: "Nessuna voce trovata nel catalogo.",
     edit_button: "Modifica",
     delete_button: "Elimina",
+    open_media_page: "Apri la pagina dell’opera",
     cancel_button: "Annulla",
     delete_confirm: "Eliminare \"{title}\"? Questa azione non può essere annullata.",
     source_local: "Il mio catalogo locale",

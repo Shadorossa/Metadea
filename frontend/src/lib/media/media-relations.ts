@@ -309,14 +309,13 @@ export async function mergeAndPersistRelations(
   // comment on its refreshSourceAdaptation option for why this one pair
   // needs an escape hatch from the usual "existing DB rows always win" rule.
   forceRefreshSourceAdaptation = false,
+  context?: { dbRelations?: DbMediaRelation[]; blockedIds?: readonly string[] },
 ): Promise<boolean> {
-  const { relations: dbRels } = await loadDbRelationsAndAuthors(rawId);
+  const dbRels = context?.dbRelations ?? (await loadDbRelationsAndAuthors(rawId)).relations;
 
   const normalizedDbRels = dbRels.map(normalizeLegacyDbRelation);
-  const [deletedRelationIds, blockedIds] = await Promise.all([
-    getDeletedRelations(rawId).catch(() => [] as string[]),
-    getBlockedExternalIds().catch(() => [] as string[]),
-  ]);
+  const deletedRelationIds = await getDeletedRelations(rawId).catch(() => [] as string[]);
+  const blockedIds = context?.blockedIds ?? await getBlockedExternalIds().catch(() => [] as string[]);
   const deletedIds = new Set(deletedRelationIds);
   const blocked = new Set(blockedIds);
 

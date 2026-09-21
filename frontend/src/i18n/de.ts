@@ -314,6 +314,7 @@ export const de = {
     no_entries: "Keine Einträge im Katalog gefunden.",
     edit_button: "Bearbeiten",
     delete_button: "Löschen",
+    open_media_page: "Werkseite öffnen",
     cancel_button: "Abbrechen",
     delete_confirm: "\"{title}\" löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
     source_local: "Mein lokaler Katalog",

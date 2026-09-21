@@ -27,8 +27,6 @@ export interface ImageCropModalOptions {
   /** Shows a left-aligned "remove" button (e.g. "Quitar imagen personalizada"). */
   removeLabel?: string;
   saveLabel?: string;
-  /** Keep a newly pasted/dropped web image as its URL instead of rasterizing it to a data URL. */
-  preserveSourceUrlOnSave?: boolean;
   /** Rasterize the visible crop using this image format. */
   outputMimeType?: 'image/png' | 'image/webp';
 }
@@ -77,7 +75,6 @@ function ImageCropModal({ opts, onResolve }: Props) {
   const [zoomMax, setZoomMax] = useState(DEFAULT_MAX_ZOOM);
 
   const hasCustomBgSizeRef = useRef(opts.initialBgSize != null);
-  const preserveSourceUrlRef = useRef(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const draggingRef = useRef(false);
@@ -157,7 +154,6 @@ function ImageCropModal({ opts, onResolve }: Props) {
   const loadDroppedFile = (file: File) => {
     if (!file.type.startsWith('image/')) return;
     hasCustomBgSizeRef.current = false;
-    preserveSourceUrlRef.current = false;
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') setImageUrl(reader.result);
@@ -175,7 +171,6 @@ function ImageCropModal({ opts, onResolve }: Props) {
     const url = getDroppedImageUrl(dataTransfer);
     if (!url) return false;
     hasCustomBgSizeRef.current = false;
-    preserveSourceUrlRef.current = true;
     setImageUrl(url);
     return true;
   };
@@ -199,9 +194,6 @@ function ImageCropModal({ opts, onResolve }: Props) {
   };
 
   const buildCroppedResult = (): Promise<Extract<ImageCropModalResult, { action: 'saved' }>> => {
-    if (opts.preserveSourceUrlOnSave && preserveSourceUrlRef.current && /^https?:\/\//i.test(imageUrl)) {
-      return Promise.resolve({ action: 'saved', imageUrl, bgSize: 100, posX: 50, posY: 50 });
-    }
     const fallback = { action: 'saved' as const, imageUrl, bgSize, posX, posY };
     return new Promise(resolve => {
       const viewportEl = viewportRef.current;
@@ -271,7 +263,6 @@ function ImageCropModal({ opts, onResolve }: Props) {
           onChange={e => {
             hasCustomBgSizeRef.current = false;
             const value = e.target.value.trim();
-            preserveSourceUrlRef.current = /^https?:\/\//i.test(value);
             setImageUrl(value);
           }}
         />

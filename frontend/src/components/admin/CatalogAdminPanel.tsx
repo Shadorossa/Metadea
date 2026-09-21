@@ -37,7 +37,8 @@ interface Props {
 
 type Source = 'local' | 'github' | 'add';
 type Entity = 'media' | 'saga' | 'character' | 'episodes';
-const ADMIN_PAGE_SIZE = 50;
+// Fifteen columns × three rows keeps each catalog page compact.
+const ADMIN_PAGE_SIZE = 45;
 
 export function CatalogAdminPanel({ i18n }: Props) {
   const gate = useOwnerGate();
@@ -152,7 +153,17 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const loadEntries = async () => {
     setLoading(true);
     try {
-      setEntries(await getAllCatalogEntriesForEditor());
+      const all = await getAllCatalogEntriesForEditor();
+      setEntries(all);
+      const map: Record<string, { title?: string; cover?: string; blocked?: boolean }> = {};
+      for (const entry of all) {
+        map[entry.external_id] = {
+          title: entry.title_main ?? undefined,
+          cover: entry.cover_url ?? undefined,
+          blocked: !!entry.blocked_at,
+        };
+      }
+      setCatalogInfoMap(map);
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to load entries:', err);
       setEntries([]);
@@ -280,17 +291,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
     loadSagas();
     loadCharacters();
     loadEpisodeGroups();
-    getAllCatalogEntriesForEditor().then(all => {
-      const map: Record<string, { title?: string; cover?: string; blocked?: boolean }> = {};
-      for (const e of all) {
-        map[e.external_id] = {
-          title: e.title_main ?? undefined,
-          cover: e.cover_url ?? undefined,
-          blocked: !!e.blocked_at,
-        };
-      }
-      setCatalogInfoMap(map);
-    }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -791,6 +791,10 @@ export function CatalogAdminPanel({ i18n }: Props) {
                           cover={show.coverUrl}
                           editLabel={t.edit_button}
                           deleteLabel={t.delete_button}
+                          openMediaLabel={t.open_media_page}
+                          mediaPageUrl={catalogInfoMap[show.externalId]?.blocked
+                            ? undefined
+                            : `/media?id=${encodeURIComponent(show.externalId)}`}
                           onEdit={() => openEpisodeDetails(show)}
                           onDelete={() => setEpisodesDeleteTarget({
                             external_id: show.externalId,
@@ -829,6 +833,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                             cover={cover}
                             editLabel={t.edit_button}
                             deleteLabel={t.delete_button}
+                            openMediaLabel={t.open_media_page}
+                            mediaPageUrl={info?.blocked ? undefined : `/media?id=${encodeURIComponent(group.external_id)}`}
                             onEdit={() => openEpisodeDetails({
                               externalId: group.external_id,
                               titleMain: title,
@@ -943,6 +949,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   cover={character.image_url}
                   editLabel={t.edit_button}
                   deleteLabel={t.delete_button}
+                  openMediaLabel={t.open_media_page}
                   onEdit={() => (window as any).openCharacterEditor?.(character.external_id)}
                   onDelete={() => source === 'github' ? alert(t.github_delete_error) : setCharacterDeleteTarget(character)}
                 />
@@ -987,6 +994,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   blocked={!!entry.blocked_at}
                   editLabel={t.edit_button}
                   deleteLabel={t.delete_button}
+                  openMediaLabel={t.open_media_page}
+                  mediaPageUrl={entry.blocked_at ? undefined : `/media?id=${encodeURIComponent(entry.external_id)}`}
                   onEdit={() => { setEditingNonGithubFields(undefined); setEditingId(entry.external_id); }}
                   onDelete={() => setDeleteTarget(entry)}
                 />
@@ -1062,6 +1071,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
                     blocked={!!info?.blocked}
                     editLabel={t.edit_button}
                     deleteLabel={t.delete_button}
+                    openMediaLabel={t.open_media_page}
+                    mediaPageUrl={info?.blocked ? undefined : `/media?id=${encodeURIComponent(fileExternalId)}`}
                     editDisabled={githubBusy}
                     onEdit={() => openGithubEntry(file)}
                     onDelete={() => setGithubDeleteTarget(file)}

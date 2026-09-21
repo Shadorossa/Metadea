@@ -314,6 +314,7 @@ export const ja = {
     no_entries: "カタログにエントリーが見つかりませんでした。",
     edit_button: "編集",
     delete_button: "削除",
+    open_media_page: "作品ページを開く",
     cancel_button: "キャンセル",
     delete_confirm: "「{title}」を削除しますか?この操作は取り消せません。",
     source_local: "ローカルカタログ",

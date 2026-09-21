@@ -37,7 +37,6 @@ pub struct StoryArc {
 // Year Blood War" arc's other 3 parts too, not just its own slice.
 fn story_arcs_for_media_ids(
     conn: &rusqlite::Connection,
-    data_dir: &std::path::Path,
     media_external_ids: &[String],
 ) -> Result<Vec<StoryArc>, String> {
     if media_external_ids.is_empty() {
@@ -109,10 +108,17 @@ fn story_arcs_for_media_ids(
         arc.items = items;
     }
 
-    for arc in &mut arcs {
+    Ok(arcs)
+}
+
+fn resolve_story_arc_images(
+    data_dir: &std::path::Path,
+    arcs: &mut [StoryArc],
+) -> Result<(), String> {
+    for arc in arcs {
         arc.image_base64 = crate::image_storage::resolve_image_value(data_dir, arc.image_base64.take())?;
     }
-    Ok(arcs)
+    Ok(())
 }
 
 #[tauri::command]
@@ -121,9 +127,13 @@ pub async fn get_story_arcs_for_media(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_id: String,
 ) -> Result<Vec<StoryArc>, String> {
-    let conn = state.conn.lock().str_err()?;
+    let mut arcs = {
+        let conn = state.conn.lock().str_err()?;
+        story_arcs_for_media_ids(&conn, &[media_external_id])?
+    };
     let data_dir = app_handle.path().app_data_dir().str_err()?;
-    story_arcs_for_media_ids(&conn, &data_dir, &[media_external_id])
+    resolve_story_arc_images(&data_dir, &mut arcs)?;
+    Ok(arcs)
 }
 
 // Batched counterpart of get_story_arcs_for_media — one query (one DB-mutex
@@ -140,9 +150,13 @@ pub async fn get_story_arcs_for_media_batch(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_ids: Vec<String>,
 ) -> Result<Vec<StoryArc>, String> {
-    let conn = state.conn.lock().str_err()?;
+    let mut arcs = {
+        let conn = state.conn.lock().str_err()?;
+        story_arcs_for_media_ids(&conn, &media_external_ids)?
+    };
     let data_dir = app_handle.path().app_data_dir().str_err()?;
-    story_arcs_for_media_ids(&conn, &data_dir, &media_external_ids)
+    resolve_story_arc_images(&data_dir, &mut arcs)?;
+    Ok(arcs)
 }
 
 // Upsert: empty id creates a new arc, an existing id updates name/image and

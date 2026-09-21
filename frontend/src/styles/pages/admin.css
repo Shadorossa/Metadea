@@ -1,42 +1,55 @@
 .catalog-admin-panel {
-  max-width: 1800px;
-  margin: 0 auto;
-  padding: clamp(3rem, 6vw, 5.5rem) clamp(0.75rem, 1.5vw, 1rem) clamp(1.5rem, 3vw, 2rem);
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: clamp(3rem, 6vw, 5.5rem) clamp(0.75rem, 1.25vw, 1.4rem) clamp(1.5rem, 3vw, 2rem);
+  box-sizing: border-box;
 }
 
 .catalog-admin-title {
   font-size: clamp(1.1rem, 2.2vw, 1.4rem);
-  margin-bottom: clamp(0.8rem, 1.8vw, 1.25rem);
+  margin: 0 0 clamp(1rem, 2vw, 1.5rem);
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 34%, transparent);
 }
 
 .catalog-admin-top-bar {
   display: flex;
   align-items: center;
-  gap: clamp(0.5rem, 1vw, 0.75rem);
-  margin-bottom: clamp(0.8rem, 1.8vw, 1.25rem);
+  gap: 0.7rem;
+  margin-bottom: clamp(1rem, 2vw, 1.5rem);
+  padding: 0.75rem;
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--bg-elevated, #1b1917) 82%, transparent);
   flex-wrap: wrap;
 }
 
 .catalog-admin-source-toggle {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border: 1px solid color-mix(in srgb, var(--border-color, #2d2a24) 80%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--bg-primary, #12110f) 70%, transparent);
+  flex-shrink: 0;
 }
 
 .catalog-admin-search-wrapper {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex: 1;
-  min-width: 260px;
+  min-width: min(260px, 100%);
 }
 
 .catalog-admin-search {
   width: 100%;
   padding: clamp(0.4rem, 0.8vw, 0.55rem) clamp(0.6rem, 1.3vw, 0.9rem);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9px;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-primary, #12110f);
   color: var(--text, #fff);
   margin-bottom: 0;
   font-size: clamp(0.7rem, 1vw, 0.85rem);
@@ -46,9 +59,9 @@
 
 .catalog-admin-type-select {
   height: clamp(32px, 5vw, 38px);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9px;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-primary, #12110f);
   color: var(--text-main, #e3e1db);
   padding: 0 clamp(0.5rem, 1vw, 0.75rem);
   font-size: clamp(0.7rem, 1vw, 0.85rem);
@@ -63,12 +76,12 @@
 }
 
 .catalog-admin-source-btn {
-  padding: 0.5rem 0.85rem;
-  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  border-radius: 7px;
   font-size: 0.82rem;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text-muted, #a0a0b8);
   white-space: nowrap;
   height: 38px;
@@ -82,6 +95,12 @@
   background: var(--accent, #7c6af7);
   border-color: var(--accent, #7c6af7);
   color: #fff;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent, #7c6af7) 24%, transparent);
+}
+
+.catalog-admin-source-btn:not(.active):hover {
+  color: var(--text-main, #e3e1db);
+  background: color-mix(in srgb, var(--text-main, #e3e1db) 7%, transparent);
 }
 
 .catalog-admin-hint {
@@ -144,43 +163,62 @@
 .catalog-admin-status {
   color: var(--text-muted, #a0a0b8);
   font-size: 0.95rem;
+  padding: 1.25rem;
+  border: 1px dashed var(--border-color, #2d2a24);
+  border-radius: 5px;
+  text-align: center;
 }
 
-/* Local-catalog and GitHub tab grids reuse .pr-editor-search-grid /
-   .pr-editor-search-result-info / .pr-editor-search-result-id /
-   .pr-editor-search-result-title (media.css) for the same look as the "Add
-   work" search — only the cover box and action buttons are admin-specific,
-   since these cards need two actions (edit/delete) instead of one click. */
+/* Catalog grids reuse the shared search-grid layout and typography from
+   media.css, with admin-specific cover and context-menu affordances. */
 .catalog-admin-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  border: 1px solid var(--border-color, #2d2a24);
-  background: var(--bg-elevated, #1b1917);
-  border-radius: var(--radius-sm, 4px);
-  padding: 0.5rem;
-  text-align: center;
+  gap: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--border-color, #2d2a24) 88%, transparent);
+  background: linear-gradient(155deg,
+    color-mix(in srgb, var(--bg-elevated, #1b1917) 96%, var(--accent, #7c6af7)),
+    var(--bg-elevated, #1b1917) 58%);
+  border-radius: 5px;
+  padding: 0.55rem;
+  text-align: left;
   /* Grid items default to min-width: auto (content-based) — a long
      unbroken id (character:tmdb:<hash>, no natural break point) would
      otherwise force this wider than its 1fr share regardless of the
      ellipsis/overflow rules below, since those never get a chance to
      apply to a box that never actually shrinks. */
   min-width: 0;
+  overflow: hidden;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.catalog-admin-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent, #7c6af7) 66%, var(--border-color, #2d2a24));
+  box-shadow: 0 9px 22px rgba(0, 0, 0, 0.2);
 }
 
 .catalog-admin-card--blocked {
-  box-shadow: inset 0 0 0 2px #dc3545;
+  border-color: rgba(220, 53, 69, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.6);
+}
+
+.catalog-admin-card--blocked:hover {
+  border-color: #dc3545;
+  box-shadow: inset 0 0 0 1px #dc3545, 0 9px 22px rgba(0, 0, 0, 0.2);
 }
 
 .catalog-admin-card-cover {
   width: 100%;
   aspect-ratio: 3 / 4;
-  border-radius: 2px;
+  border-radius: 4px;
   background: var(--bg-primary, #12110f);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
 }
 
 .catalog-admin-card-cover img {
@@ -194,22 +232,16 @@
   color: var(--text-dim, #7a726a);
 }
 
-.catalog-admin-card-actions {
-  display: flex;
-  gap: 0.4rem;
-  justify-content: center;
-}
-
 .catalog-admin-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 1.9rem;
   height: 1.9rem;
-  border-radius: 6px;
+  border-radius: 5px;
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--bg-primary, #12110f) 72%, transparent);
   color: var(--text, #fff);
 }
 
@@ -232,19 +264,91 @@
   cursor: not-allowed;
 }
 
+.catalog-admin-card-cover {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  appearance: none;
+  transition: filter 140ms ease;
+}
+
+.catalog-admin-card-cover:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.catalog-admin-card-cover:disabled {
+  cursor: progress;
+}
+
+.catalog-admin-context-menu {
+  position: fixed;
+  z-index: 10000;
+  width: 210px;
+  padding: 0.3rem;
+  border: 1px solid var(--border-color, #39352f);
+  border-radius: 4px;
+  background: var(--bg-elevated, #1b1917);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.48);
+}
+
+.catalog-admin-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 2.2rem;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text-main, #e3e1db);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.catalog-admin-context-menu-item:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
+  color: var(--accent, #7c6af7);
+}
+
+.catalog-admin-context-menu-item--delete {
+  color: #f87171;
+}
+
+.catalog-admin-context-menu-item--delete:hover {
+  background: rgba(248, 113, 113, 0.12);
+  color: #ff8585;
+}
+
+.catalog-admin-context-menu-item:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
 /* Sagas tab: a text list (name left, small cover right) that expands in
    place to show member works — no card grid, no editor modal. */
 .catalog-admin-saga-list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.8rem 1.5rem;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  gap: clamp(0.35rem, 0.6vw, 0.7rem);
 }
 
 .catalog-admin-saga-row {
   border: 1px solid var(--border-color, #2d2a24);
   background: var(--bg-elevated, #1b1917);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: 5px;
   min-width: 0;
+  overflow: hidden;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.catalog-admin-saga-row:hover {
+  border-color: color-mix(in srgb, var(--accent, #7c6af7) 55%, var(--border-color, #2d2a24));
 }
 
 .catalog-admin-saga-row-main {
@@ -502,9 +606,72 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 9px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Give catalog entities room to read like a browsable collection instead of
+   squeezing ten tiny columns into the page. The shared search grid is also
+   used by add/search modals, so keep this override scoped to this panel. */
+.catalog-admin-panel .pr-editor-search-grid {
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  gap: clamp(0.4rem, 0.65vw, 0.75rem);
+}
+
+.catalog-admin-panel .media-pagination {
+  margin: clamp(1rem, 1.5vw, 1.4rem) 0;
+}
+
+@media (max-width: 1500px) {
+  .catalog-admin-panel .pr-editor-search-grid,
+  .catalog-admin-saga-list {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .catalog-admin-panel .pr-editor-search-grid,
+  .catalog-admin-saga-list {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .catalog-admin-top-bar {
+    align-items: stretch;
+  }
+
+  .catalog-admin-source-toggle {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .catalog-admin-search-wrapper {
+    flex-basis: 100%;
+  }
+
+  .catalog-admin-panel .pr-editor-search-grid,
+  .catalog-admin-saga-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .catalog-admin-panel {
+    padding-top: 4.5rem;
+    padding-inline: 0.6rem;
+  }
+
+  .catalog-admin-source-btn {
+    padding-inline: 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .catalog-admin-panel .pr-editor-search-grid,
+  .catalog-admin-saga-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .catalog-admin-episode-info {

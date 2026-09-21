@@ -54,15 +54,16 @@ pub async fn get_user_image(
         "share_avatar" => "share_avatar_data",
         _ => return Err(format!("Invalid key: {}", key)),
     };
-    let conn = state.conn.lock().str_err()?;
-    let val: Option<String> = conn
-        .query_row(
+    let val: Option<String> = {
+        let conn = state.conn.lock().str_err()?;
+        conn.query_row(
             &format!("SELECT {} FROM user_profile WHERE id = 1", col),
             [],
             |row| row.get(0),
         )
         .optional()
-        .str_err()?;
+        .str_err()?
+    };
     crate::image_storage::resolve_image_value(&image_data_dir(&app_handle)?, val.filter(|s| !s.is_empty()))
 }
 

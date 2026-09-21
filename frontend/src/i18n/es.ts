@@ -319,6 +319,7 @@ export const es = {
     no_entries: "No se encontraron entradas en el catálogo.",
     edit_button: "Editar",
     delete_button: "Eliminar",
+    open_media_page: "Abrir página de la obra",
     cancel_button: "Cancelar",
     delete_confirm: "¿Eliminar \"{title}\"? Esta acción no se puede deshacer.",
     source_local: "Mi catálogo local",

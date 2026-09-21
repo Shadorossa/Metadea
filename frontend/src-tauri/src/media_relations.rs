@@ -202,12 +202,10 @@ pub async fn get_deleted_relations(
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-#[tauri::command]
-pub async fn get_media_relations(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    media_external_id: String,
+fn load_visible_media_relations(
+    conn: &rusqlite::Connection,
+    media_external_id: &str,
 ) -> Result<Vec<DbMediaRelation>, String> {
-    let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare(
             "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
@@ -220,7 +218,7 @@ pub async fn get_media_relations(
         .str_err()?;
 
     let rows = stmt
-        .query_map([&media_external_id], |row| {
+        .query_map([media_external_id], |row| {
             Ok(DbMediaRelation {
                 media_external_id: None, // this query is already scoped to one media_external_id param
                 related_media_external_id: row.get(0)?,
@@ -241,46 +239,24 @@ pub async fn get_media_relations(
     Ok(rows)
 }
 
-// Same as get_media_relations, except the owner may itself be blocked because
-// this is the explicit editor path. Related targets still use the visible
-// view: a blocked external_id must not leak into the editor as another work.
+#[tauri::command]
+pub async fn get_media_relations(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<DbMediaRelation>, String> {
+    let conn = state.conn.lock().str_err()?;
+    load_visible_media_relations(&conn, &media_external_id)
+}
+
+// Kept as a separate IPC command for callers that open the collaborative
+// editor on a blocked owner. Related works remain filtered in both paths.
 #[tauri::command]
 pub async fn get_media_relations_for_editor(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_id: String,
 ) -> Result<Vec<DbMediaRelation>, String> {
     let conn = state.conn.lock().str_err()?;
-    let mut stmt = conn
-        .prepare(
-            "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
-             FROM media_relations mr
-             JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
-             WHERE mr.media_external_id = ?1
-               AND UPPER(COALESCE(mc.format, '')) <> 'SUMMARY'
-             ORDER BY mr.rowid",
-        )
-        .str_err()?;
-
-    let rows = stmt
-        .query_map([&media_external_id], |row| {
-            Ok(DbMediaRelation {
-                media_external_id: None,
-                related_media_external_id: row.get(0)?,
-                relation_type: row.get(1)?,
-                type_label: row.get(2)?,
-                title: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
-                cover: row.get(4)?,
-                format: None,
-                release_day: row.get(5)?,
-                release_month: row.get(6)?,
-                release_year: row.get(7)?,
-            })
-        })
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    Ok(rows)
+    load_visible_media_relations(&conn, &media_external_id)
 }
 
 // Bulk fetch for the library grid's "group by edition/saga" toggle — grouping

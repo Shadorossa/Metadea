@@ -314,6 +314,7 @@ export const ca = {
     no_entries: "No s'han trobat entrades al catàleg.",
     edit_button: "Editar",
     delete_button: "Eliminar",
+    open_media_page: "Obrir la pàgina de l'obra",
     cancel_button: "Cancel·lar",
     delete_confirm: "Vols eliminar \"{title}\"? Aquesta acció no es pot desfer.",
     source_local: "El meu catàleg local",

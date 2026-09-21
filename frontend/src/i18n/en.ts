@@ -319,6 +319,7 @@ export const en = {
     no_entries: "No catalog entries found.",
     edit_button: "Edit",
     delete_button: "Delete",
+    open_media_page: "Open media page",
     cancel_button: "Cancel",
     delete_confirm: "Delete \"{title}\"? This cannot be undone.",
     source_local: "My local catalog",

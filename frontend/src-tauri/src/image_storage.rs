@@ -87,10 +87,6 @@ pub fn store_image_value(data_dir: &Path, namespace: &str, owner: &str, value: &
             file.write_all(&bytes).map_err(|e| e.to_string())?;
             file.sync_all().map_err(|e| e.to_string())?;
             fs::rename(&temp_path, &path).map_err(|e| e.to_string())?;
-            let persisted = fs::read(&path).map_err(|e| e.to_string())?;
-            if persisted != bytes {
-                return Err("Image file verification failed".into());
-            }
             Ok(())
         })();
         let _ = fs::remove_file(&temp_path);

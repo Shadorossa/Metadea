@@ -38,9 +38,17 @@ async function readImageSource(sourceUrl: string): Promise<Blob> {
 }
 
 async function webpBlobFromImageSource(sourceUrl: string): Promise<Blob> {
-  const source = await createImageBitmap(await readImageSource(sourceUrl));
+  const sourceBlob = await readImageSource(sourceUrl);
+  const source = await createImageBitmap(sourceBlob);
 
   try {
+    if (sourceBlob.type === 'image/webp'
+      && sourceBlob.size <= MAX_IMAGE_BYTES
+      && source.width <= MAX_EDGE
+      && source.height <= MAX_EDGE) {
+      return sourceBlob;
+    }
+
     const scale = Math.min(1, MAX_EDGE / Math.max(source.width, source.height));
     let width = Math.max(1, Math.round(source.width * scale));
     let height = Math.max(1, Math.round(source.height * scale));

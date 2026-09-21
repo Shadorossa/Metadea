@@ -300,8 +300,11 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
 }
 
 // Strips locally-blocked relations the live provider doesn't know about.
-async function filterBlockedRelations<T extends { relatedExternalId?: string }>(relations: T[]): Promise<T[]> {
-  const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+async function filterBlockedRelations<T extends { relatedExternalId?: string }>(
+  relations: T[],
+  knownBlockedIds?: readonly string[],
+): Promise<T[]> {
+  const blockedIds = knownBlockedIds ?? await getBlockedExternalIds().catch(() => [] as string[]);
   const blocked = new Set(blockedIds);
   return relations.filter(r => {
     const relation = r as T & { format?: string | null };
@@ -374,7 +377,8 @@ export async function fetchMediaData(
   // corrects it if it disagrees.
   opts?: { refreshAniListTotalCount?: boolean; refreshSourceAdaptation?: boolean },
 ): Promise<MediaPageData | null> {
-  if ((await getBlockedExternalIds().catch(() => [] as string[])).includes(rawId)) {
+  const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+  if (blockedIds.includes(rawId)) {
     invalidateCachedMediaData(rawId);
     return null;
   }
@@ -395,8 +399,8 @@ export async function fetchMediaData(
     // saved relations/authors, its catalog row) — none of them depend on
     // each other's result, only on `data` from the live fetch above, so
     // running them one after another was pure added latency for no reason.
-    const [filteredRelations, { authors: dbAuthors }, existing] = await Promise.all([
-      data.relations ? filterBlockedRelations(data.relations) : Promise.resolve(data.relations),
+    const [filteredRelations, { relations: dbRelations, authors: dbAuthors }, existing] = await Promise.all([
+      data.relations ? filterBlockedRelations(data.relations, blockedIds) : Promise.resolve(data.relations),
       loadDbRelationsAndAuthors(rawId),
       getCatalogEntry(rawId).catch(() => null),
     ]);
@@ -404,7 +408,13 @@ export async function fetchMediaData(
     applyStickyLocalFields(data, existing);
 
     // Checks deleted_relations so a deliberately-removed relation isn't silently re-added.
-    const relationsChanged = await mergeAndPersistRelations(rawId, data.relations, data.format, !!opts?.refreshSourceAdaptation);
+    const relationsChanged = await mergeAndPersistRelations(
+      rawId,
+      data.relations,
+      data.format,
+      !!opts?.refreshSourceAdaptation,
+      { dbRelations, blockedIds },
+    );
 
     await persistToCatalog(data, existing, relationsChanged, !!opts?.refreshAniListTotalCount);
 
