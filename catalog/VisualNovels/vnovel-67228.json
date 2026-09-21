@@ -1,0 +1,57 @@
+{
+  "media_catalog": {
+    "id": "b33920f272992eebb33920f272992eeb",
+    "external_id": "vnovel:67228",
+    "type": "vnovel",
+    "title_main": "Umineko no Naku Koro ni: Episode 3 - Banquet of the Golden Witch",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "vnovel:67228",
+      "related_media_external_id": "vnovel:272083",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Umineko no Naku Koro ni: Episode 3 - Banquet of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co78ne.jpg",
+      "format": null,
+      "release_day": 16,
+      "release_month": 12,
+      "release_year": 2010
+    },
+    {
+      "media_external_id": "vnovel:67228",
+      "related_media_external_id": "vnovel:272311",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "Umineko When They Cry: Episode 3 - Banquet of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78uw.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
+    },
+    {
+      "media_external_id": "vnovel:67228",
+      "related_media_external_id": "vnovel:79845",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Umineko no Naku Koro ni: Episode 2 - Turn of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78l8.jpg"
+    },
+    {
+      "media_external_id": "vnovel:67228",
+      "related_media_external_id": "vnovel:67170",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Umineko no Naku Koro ni: Episode 4 - Alliance of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78la.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Umineko no naku koro ni"
+}
