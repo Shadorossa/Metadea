@@ -1,0 +1,71 @@
+{
+  "character": {
+    "external_id": "character:cs:843171",
+    "name": "Laura",
+    "biography": "<b>Full Name::</b> Laura<br><small>(ローラ, <i> Rōra</i>)</small><br>\n<b>Gender::</b> Female<br>\n<b>Age::</b> 8<br>\n<b>Status::</b> Alive <small>(\"Leave\" ending)</small><br>Unknown <small>(other endings)</small><br>\n<b>Debut::</b> <i>Silent Hill 2</i><br>\n<b>Also In::</b> <i>Silent Hill: Downpour</i> <small>(cameo)</small><br><i>Silent Hill 2</i> <small>(2024 video game)</small><br>\n<br>\n<p>This article requires cleanup to meet quality standards. Please help Silent Hill Wiki by improving this article if you can.</p>\n<p>Laura is a young girl in Silent Hill 2 and is often seen wandering around Silent Hill, Maine. Like James Sunderland, she is also searching for Mary Shepherd-Sunderland and is unaware of her death because Laura misinterpreted Mary's \"I'm far away now. In a quiet, beautiful place\" in Mary's letter not as a peaceful afterlife, but Silent Hill.</p>\n<p>She is the only innocent human character in the town who does not hold any darkness in her heart, in contrast to James Sunderland, Angela Orosco, and Eddie Dombrowski. Because of her innocence, she does not see any monsters or serious abnormalities in the town, including Maria.</p>\n<p>Laura is an orphan who befriended Mary Shepherd-Sunderland a year prior to the events of Silent Hill 2, and she became very attached to and friendly with Mary. How Laura lost her parents and why she was in a hospital is never revealed. She and Mary were patients of the same unspecified hospital and under the care of the same nurse, identified as Rachel. Mary described Silent Hill as a beautiful place and showed Laura many pictures of the town during her hospitalization.</p>\n<p>Laura is a young girl with blue eyes, and long blonde hair pulled back into a ponytail via a pink scrunchie with a flower decoration. She wears a white long-sleeved shirt with blue and purple stripes, a denim jumper, and white shoes with a pink trim.</p>\n<p>Laura is rude and bratty to James Sunderland and Eddie Dombrowski, the two people she encounters consistently during her journey through the town, calling them a \"fartface\" and \"gutless fatso\" respectively. With James, she is motivated by the belief that he did not really love Mary, due to the fact that he rarely visited her in the hospital. Even though Laura is first perceived as impolite, she is not malevolent-spirited.</p>\n<p>As the game progresses, Laura becomes much less discourteous towards James. In the Lakeview Hotel, she gives him more details about Mary and runs away to find a letter from Mary that she dropped. In Room 312, she asks James to leave the hotel with her when they didn't find Mary there.</p>\n<p>Laura seems to love stuffed animals, such as teddy bears, and shows interest in drawing.</p>",
+    "image_url": "https://static.wikia.nocookie.net/silent/images/9/98/Lauraprofile.png/revision/latest?cb=20151108035440"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:481",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:222341",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "person:t5997868",
+      "name": "Jacquelyn Breckenridge",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a246011",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:t3131371",
+      "name": "Evie Templeton",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/1JV3FEULVnROl4APfkUprqTrFF6.jpg",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Sumire Moroboshi",
+      "name": "Sumire Moroboshi",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:t5997868",
+      "name": "Jacquelyn Breckenridge",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a246011",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:t3131371",
+      "name": "Evie Templeton",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/1JV3FEULVnROl4APfkUprqTrFF6.jpg",
+      "role": "voice",
+      "language": "Japanese"
+    }
+  ]
+}

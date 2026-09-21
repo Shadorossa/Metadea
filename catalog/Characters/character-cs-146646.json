@@ -1,0 +1,50 @@
+{
+  "character": {
+    "external_id": "character:cs:146646",
+    "name": "Eddie Dombrowski",
+    "biography": "<b>Full Name::</b> Eddie Dombrowski<br><small>(エディー・ドンブラウスキー <i>edī donburausukī</i>)</small><br>\n<b>Gender::</b> Male<br>\n<b>Age::</b> 23<br>\n<b>Occupation::</b> Part-time gas station employee<br>\n<b>Status::</b> Deceased<br>\n<b>Affiliations::</b> Mr. Dombrowski <small>(father)</small><br>\n<b>Debut::</b> <i>Silent Hill 2</i><br>\n<b>Also In::</b> <i>Silent Hill 2</i> <small>(2024 video game)</small><br>\n<b>Actor::</b> Danny Kirrane <small>(<i>SH2R</i>)</small><br>\n<br>\n<p>This article requires cleanup to meet quality standards. Please help Silent Hill Wiki by improving this article if you can.</p>\n<p>Eddie Dombrowski is a character from Silent Hill 2. He is an insecure, mentally disturbed, and severely bullied young man who is self-conscious about his weight and physical appearance after being laughed at and ridiculed his entire life.</p>\n<p>His troubled past draws him to Silent Hill. Like Angela Orosco, he is also currently homeless and has nowhere else to go in the world. After a stay in Silent Hill, Eddie becomes determined to kill the next one who laughs at him.</p>\n<p>Eddie is an overweight man in his early twenties with grayish eyes and short blond hair. He wears khaki shorts and a blue-and-white striped polo shirt, along with a navy-blue baseball cap turned backwards.</p>\n<p>Eddie worked part-time at a gas station.</p>\n<p>The novelization reveals Eddie believes his own life is \"shitty\", and he does not really care about the fact most women have no attraction to him; however, he despises being bullied.</p>\n<p>Due to being overweight, Eddie was often bullied by his peers. At times, Eddie was forced to get on his knees and beg for his life. He dislikes the body he was born with, feeling as if he \"lost the genetic lottery\", and was sick of being judged by his physical appearance. Eddie's attitude toward himself and his body are consistent with symptoms of body dysmorphic disorder. He may have also developed an excessive eating disorder to cope with his troubles.</p>\n<p>One bully, a football player, would not leave Eddie alone even after he graduated high school. Eddie became an easy target and a victim. Eventually, Eddie mentally snapped and proceeded to kill the bully's dog in retaliation. Afterwards, Eddie shot the bully in the knee using his father's revolver, crippling him, though Eddie did not kill him. Afterwards, Eddie fled, wandering for a while before coming to rest in Silent Hill, claiming that the town \"called\" him there. It is also ambiguous whether or not Eddie is on the run from police, as he claims he \"just ran because he was scared\".</p>",
+    "image_url": "https://static.wikia.nocookie.net/silent/images/c/c3/Eddie.png/revision/latest?cb=20160326173823"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:481",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:222341",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "person:t5997867",
+      "name": "David Schaufele",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a95317",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:t1898381",
+      "name": "Scott Haining",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/wuN9ZO6HPYQJqYVllM65bhXMkGm.jpg",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:t1251423",
+      "name": "Toru Nara",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/rrfvhZpmGsgGxmBSo7SJ6rUfuXP.jpg",
+      "role": "voice",
+      "language": "Japanese"
+    }
+  ],
+  "merged_character_external_ids": []
+}

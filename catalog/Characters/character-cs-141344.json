@@ -1,0 +1,62 @@
+{
+  "character": {
+    "external_id": "character:cs:141344",
+    "name": "Angela Orosco",
+    "biography": "<b>Full Name::</b> Angela Orosco<br><small>(アンジェラ・オラスコ <i>anjera orasuko</i>)</small><br>\n<b>Gender::</b> Female<br>\n<b>Age::</b> 19<br>\n<b>Occupation::</b> Waitress <small>(implied)</small><br>\n<b>Status::</b> Deceased<br>\n<b>Affiliations::</b> Mrs. Orosco <small>(mother)</small><br>Thomas Orosco <small>(father)</small><br>Brother<br>\n<b>Debut::</b> <i>Silent Hill 2</i><br>\n<b>Also In::</b> <i>Silent Hill 2</i> <small>(2024 video game)</small><br>\n<br>\n<p>This article requires cleanup to meet quality standards. Please help Silent Hill Wiki by improving this article if you can.</p>\n<p>Angela Orosco is a character in Silent Hill 2. She is a young woman searching the town for her missing mother and crosses paths with James Sunderland multiple times.</p>\n<p>Throughout the course of the game, she is revealed to have had a traumatic past that has affected her personality and mental health deeply, especially regarding her relationship with her father, Thomas, and her brother.</p>\n<p>Angela is a late teenager whose surname may suggest being of Spanish Basque heritage. Her hair is a very dark brown and shoulder-length, and she has brown eyes, often described to be baggy and making her look exhausted. She also wears a hair pin with a red jewel over her right ear.</p>\n<p>Angela wears a white or beige sweater with a loose turtle neck which reaches her waist. She has reddish-brown jeans. The shoes that she wears are casual and dark blue.</p>\n<p>The game's website describes Angela as \"shy to strangers, quiet and somber.\" It mentions that while she appears to be a regular teenage young woman, she is, \"clearly different from others on how she deals and relates to death and sexuality. Her sense of values is eccentric, and she has a scent of danger.\" Despite being in her late teens, Angela displays a childish lack of maturity contrasting with her more adulterated age, such as referring her parents as \"Mama\" and \"Daddy\" to other people. Having built a massive disdain for people and exhausted with living, she is asocial and introverted, often wanting to be alone even in the face of grave danger; she is especially weary, defensive and untrusting around men, James being no exception (i.e. reflexively taking a stance or freaking out when James reaches too close for the knife). She exhibits several common symptoms of severe long-term depression, complex post-traumatic stress disorder, and social anxiety.</p>\n<p>After countless years of enduring heavy family domestic abuse, Angela has subsequently become a distraught and traumatized individual. She is also suicidal, and prior to coming to Silent Hill, has attempted it many times through various violent and painful methods, all to no avail. She compares her suicide attempts \"to buying a mountain of candy and forcing herself to devour it all, eating to spit it back out, and spitting it out to eat more.\" Angela describes it as an endless cycle of binging and purging \"which could go on for days.\" She often feels that everything is hopeless, pointless and meaningless, having lost the will to live due to the constant abuse and mental trauma, and does not seem to care about or want anything in the world except death.</p>\n<p>It can be interpreted that her reasoning behind her desire for suicide is twofold – both as an escape from her suffering, and as a punishment for her \"wrongdoings\" or mistakes. What she personally believes she did \"wrong\" is not stated, but it is most likely being a victim of abuse (she states that her mother said that she deserved it, and seems to agree with that sentiment) or the act of murder on her family members (father and brother).</p>",
+    "image_url": "https://static.wikia.nocookie.net/silent/images/f/fb/Angela_SH2.png/revision/latest?cb=20181009182241"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:481",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:222341",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "person:a103348",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a95187",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:t2702654",
+      "name": "Gianna Kiehl",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/iEIlbXY4UKdRAThDONPZJKhwe0d.jpg",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a107282",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a103348",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a95187",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:t2702654",
+      "name": "Gianna Kiehl",
+      "name_native": null,
+      "image_url": "https://image.tmdb.org/t/p/w185/iEIlbXY4UKdRAThDONPZJKhwe0d.jpg",
+      "role": "voice",
+      "language": "Japanese"
+    }
+  ]
+}
