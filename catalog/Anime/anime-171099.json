@@ -7,32 +7,20 @@
     "source": "anilist",
     "created_at": "",
     "updated_at": "",
-    "blocked_at": "2026-09-21T07:11:11.132Z"
+    "blocked_at": null
   },
   "media_relations": [
     {
+      "media_external_id": "anime:171099",
       "related_media_external_id": "manga:111258",
       "relation_type": "SOURCE",
       "type_label": "Source Material",
       "title": "Bocchi the Rock!",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx111258-JWKMq8VGpdiL.jpg",
-      "media_external_id": "anime:171099"
-    },
-    {
-      "media_external_id": "anime:171099",
-      "related_media_external_id": "anime:165253",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Bocchi the Rock! Re:",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx165253-nAwyrMZm4jBA.jpg"
-    },
-    {
-      "media_external_id": "anime:171099",
-      "related_media_external_id": "anime:186712",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Bocchi the Rock! 2nd Season",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx186712-d5I2TjUQcHuI.jpg"
+      "format": null,
+      "release_day": 19,
+      "release_month": 3,
+      "release_year": 2018
     }
   ],
   "characters": [
