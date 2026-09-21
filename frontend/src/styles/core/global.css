@@ -61,6 +61,16 @@ input[type="checkbox"] {
   accent-color: var(--accent);
 }
 
+.info-indicator {
+  display: inline-block;
+  color: var(--text-muted);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.78rem;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1;
+}
+
 html {
   background-color: var(--bg-primary);
   -webkit-font-smoothing: antialiased;

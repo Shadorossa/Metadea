@@ -55,6 +55,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .status-dropdown-tray,
 [data-theme="newspaper-dark"] .reviews-search,
 [data-theme="newspaper-dark"] .review-card,
+[data-theme="newspaper-dark"] .pr-list-item,
 [data-theme="newspaper-dark"] .list-item-cover-link,
 [data-theme="newspaper-dark"] .friend-card-unfollow,
 [data-theme="newspaper-dark"] .igdb-picker-card {
@@ -64,6 +65,26 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   text-transform: capitalize !important;
   box-shadow: none !important;
   transition: all 0.2s ease !important;
+}
+
+[data-theme="newspaper-dark"] .pr-list-item {
+  border-left: 3px double var(--accent) !important;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 58%), var(--bg-card) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-list-item:hover {
+  border-color: var(--accent) !important;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%), var(--bg-card) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-list-item-title {
+  color: var(--text-main);
+  letter-spacing: 0.015em;
+}
+
+[data-theme="newspaper-dark"] .pr-list-item-meta {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 [data-theme="newspaper-dark"] .list-item-card {

@@ -128,3 +128,15 @@ export function isUnifySeasonsHighestRatedCoverEnabled(): boolean {
 export function setUnifySeasonsHighestRatedCoverEnabled(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.unifySeasonsHighestRatedCover, enabled.toString());
 }
+
+// Defaults to ON to preserve the current library behavior. This only affects
+// completed manga; active, paused, and dropped progress still uses its matching
+// next-volume issue cover, and comics are unaffected.
+export function isCompletedMangaIssueCoverEnabled(): boolean {
+  return typeof localStorage === 'undefined'
+    || localStorage.getItem(STORAGE_KEYS.completedMangaIssueCover) !== 'false';
+}
+
+export function setCompletedMangaIssueCoverEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.completedMangaIssueCover, enabled.toString());
+}

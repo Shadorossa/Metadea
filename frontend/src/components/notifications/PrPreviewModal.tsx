@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
 import { getT } from '../../i18n/client';
@@ -14,7 +14,7 @@ import { buildPreviewMediaPageData, fetchMediaDataInternal, mapMediaDataToCatalo
 import type { ProposalBundle, CharacterProposalBundle, CharacterProposalActor, CharacterProposalAppearance } from '../../lib/github/submitCollaborativeProposal';
 import type { MediaPageData } from '../../lib/media/types';
 import { CharacterPreviewCard, type CharacterPreviewAppearance, type CharacterPreviewChanges } from '../character/CharacterPreviewCard';
-import { IconChevronLeft, IconChevronRight, IconX } from '../local/ui/icons';
+import { IconCheck, IconChevronLeft, IconChevronRight, IconX } from '../local/ui/icons';
 import MediaPage from '../media/MediaPage';
 
 interface Props {
@@ -22,6 +22,10 @@ interface Props {
   token: string;
   externalId: string;
   i18n: Pick<Translations, 'media' | 'discord' | 'notifications'>;
+  onAccept: () => void;
+  onReject: () => void;
+  actioning: boolean;
+  actionError: string | null;
   onClose: () => void;
 }
 
@@ -553,9 +557,12 @@ function buildCharacterChangeSummary(
   };
 }
 
-export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) {
+export function PrPreviewModal({ pr, token, externalId, i18n, onAccept, onReject, actioning, actionError, onClose }: Props) {
   const t = i18n.notifications;
   const [state, setState] = useState<State>('loading');
+  const previewScreenRef = useRef<HTMLDivElement>(null);
+  const previewPageRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(1);
   const [previewFiles, setPreviewFiles] = useState<PreviewRecord[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewData, setPreviewData] = useState<MediaPageData | null>(null);
@@ -707,101 +714,171 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [previewFiles.length]);
 
+  // Fit the complete simulated page into its floating preview frame, rather
+  // than clipping its lower sections or measuring against the user's monitor.
+  // The frame can be wider than it is tall; only the page scale adapts.
+  useEffect(() => {
+    const screen = previewScreenRef.current;
+    const page = previewPageRef.current;
+    if (!screen || !page || state !== 'ready') {
+      setPreviewScale(1);
+      return;
+    }
+
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const width = page.scrollWidth;
+        const height = page.scrollHeight;
+        if (!width || !height) return;
+        const scale = Math.min(1, screen.clientWidth / width, screen.clientHeight / height);
+        setPreviewScale(current => Math.abs(current - scale) > 0.005 ? scale : current);
+      });
+    };
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(screen);
+    observer.observe(page);
+    window.addEventListener('resize', measure);
+    measure();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [state, activeIndex, previewCharacter, previewData, previewChanges]);
+
   const modal = (
     <div className="me-overlay pr-preview-overlay" onClick={onClose}>
-      <div className="pr-preview-container" onClick={e => e.stopPropagation()}>
-        <div className="pr-preview-banner">
-          <span>{t.preview_banner.replace('{number}', String(pr.number))}</span>
-          <button type="button" className="pr-preview-close" onClick={onClose} title={t.close_preview}>
-            <IconX size={18} />
-          </button>
-        </div>
-        {previewFiles.length > 1 && activeRecord && (
-          <div className="pr-preview-work-indicator" aria-live="polite">
-            <span>{getPreviewTitle(activeRecord)}</span>
-            <span>{activeIndex + 1} / {previewFiles.length}</span>
-          </div>
-        )}
-        {previewFiles.length > 1 && (
-          <>
-            <button
-              type="button"
-              className="pr-preview-work-arrow is-previous"
-              onClick={() => changeWork(-1)}
-              aria-label={t.preview_previous_work}
-              title={t.preview_previous_work}
-            >
-              <IconChevronLeft size={22} />
-            </button>
-            <button
-              type="button"
-              className="pr-preview-work-arrow is-next"
-              onClick={() => changeWork(1)}
-              aria-label={t.preview_next_work}
-              title={t.preview_next_work}
-            >
-              <IconChevronRight size={22} />
-            </button>
-          </>
-        )}
-        <div className="pr-preview-body">
-          {state === 'loading' && <div className="pr-preview-status">{t.preview_loading}</div>}
-          {state === 'error' && <div className="pr-preview-status">{t.preview_error}</div>}
-          {state === 'ready' && previewChanges && (
-            <section className="pr-preview-changes" aria-label={t.preview_changes_title}>
-              <div className="pr-preview-changes-heading">
-                <h2>{t.preview_changes_title}</h2>
-                {previewChanges.groups.length > 0 && (
-                  <ul className="pr-preview-change-list">
-                    {previewChanges.groups.map(group => (
-                      <li
-                        className={`pr-preview-change-item${group.removed > 0 ? ' has-removed' : group.updated > 0 ? ' has-updated' : ' has-added'}`}
-                        key={group.label}
-                      >
-                        <span className="pr-preview-change-label">{group.label}</span>
-                        <span className="pr-preview-change-counts">
-                          {group.added > 0 && <span className="pr-preview-change-count is-added" title={t.preview_added}>+{group.added}</span>}
-                          {group.updated > 0 && <span className="pr-preview-change-count is-updated" title={t.preview_updated}>~{group.updated}</span>}
-                          {group.removed > 0 && <span className="pr-preview-change-count is-removed" title={t.preview_removed}>−{group.removed}</span>}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="pr-preview-change-legend" aria-label={`${t.preview_added}, ${t.preview_updated}, ${t.preview_removed}`}>
-                  <span className="is-added">+ {t.preview_added}</span>
-                  <span className="is-updated">~ {t.preview_updated}</span>
-                  <span className="is-removed">- {t.preview_removed}</span>
+      <div
+        className="pr-preview-container"
+        onClick={e => {
+          const target = e.target;
+          const clickedPreviewContent = target instanceof Element
+            && target.closest('.pr-preview-screen, .pr-preview-header, .pr-preview-work-arrow');
+          if (!clickedPreviewContent) onClose();
+          e.stopPropagation();
+        }}
+      >
+        <div className="pr-preview-header">
+          <div className="pr-preview-header-row">
+            <div className="pr-preview-banner">
+              <span>{t.preview_banner.replace('{number}', String(pr.number))}</span>
+              <button type="button" className="pr-preview-close" onClick={onClose} title={t.close_preview}>
+                <IconX size={18} />
+              </button>
+            </div>
+            {state === 'ready' && previewChanges && (
+              <section className="pr-preview-changes" aria-label={t.preview_changes_title}>
+                <div className="pr-preview-changes-heading">
+                  <h2>{t.preview_changes_title}</h2>
+                  {previewChanges.groups.length > 0 && (
+                    <ul className="pr-preview-change-list">
+                      {previewChanges.groups.map(group => (
+                        <li
+                          className={`pr-preview-change-item${group.removed > 0 ? ' has-removed' : group.updated > 0 ? ' has-updated' : ' has-added'}`}
+                          key={group.label}
+                        >
+                          <span className="pr-preview-change-label">{group.label}</span>
+                          <span className="pr-preview-change-counts">
+                            {group.added > 0 && <span className="pr-preview-change-count is-added" title={t.preview_added}>+{group.added}</span>}
+                            {group.updated > 0 && <span className="pr-preview-change-count is-updated" title={t.preview_updated}>~{group.updated}</span>}
+                            {group.removed > 0 && <span className="pr-preview-change-count is-removed" title={t.preview_removed}>-{group.removed}</span>}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="pr-preview-change-legend" aria-label={`${t.preview_added}, ${t.preview_updated}, ${t.preview_removed}`}>
+                    <span className="is-added">+ {t.preview_added}</span>
+                    <span className="is-updated">~ {t.preview_updated}</span>
+                    <span className="is-removed">- {t.preview_removed}</span>
+                  </div>
                 </div>
-              </div>
-              {previewChanges.groups.length === 0 && <p className="pr-preview-no-changes">{t.preview_no_changes}</p>}
-              {previewChanges.removedItems.length > 0 && (
-                <div className="pr-preview-removed-relations" aria-label={t.preview_removed}>
-                  {previewChanges.removedItems.map(item => (
-                    <span className="pr-preview-removed-relation" key={item.id}>{item.title}</span>
-                  ))}
+                {previewChanges.groups.length === 0 && <p className="pr-preview-no-changes">{t.preview_no_changes}</p>}
+                {previewChanges.removedItems.length > 0 && (
+                  <div className="pr-preview-removed-relations" aria-label={t.preview_removed}>
+                    {previewChanges.removedItems.map(item => (
+                      <span className="pr-preview-removed-relation" key={item.id}>{item.title}</span>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+            <div className="pr-preview-action-controls">
+              <button type="button" className="pr-list-accept-btn" onClick={onAccept} disabled={actioning}>
+                <IconCheck size={15} strokeWidth={2.5} />
+                {t.accept_button}
+              </button>
+              <button type="button" className="pr-list-reject-btn" onClick={onReject} disabled={actioning}>
+                <IconX size={13} strokeWidth={2.5} />
+                {t.reject_button}
+              </button>
+              {actionError && <p className="pr-preview-action-error" role="alert">{actionError}</p>}
+            </div>
+          </div>
+          {previewFiles.length > 1 && activeRecord && (
+            <div className="pr-preview-work-indicator" aria-live="polite">
+              <span>{getPreviewTitle(activeRecord)}</span>
+              <span>{activeIndex + 1} / {previewFiles.length}</span>
+            </div>
+          )}
+        </div>
+        <div className="pr-preview-screen-stage">
+          {previewFiles.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="pr-preview-work-arrow is-previous"
+                onClick={() => changeWork(-1)}
+                aria-label={t.preview_previous_work}
+                title={t.preview_previous_work}
+              >
+                <IconChevronLeft size={22} />
+              </button>
+              <button
+                type="button"
+                className="pr-preview-work-arrow is-next"
+                onClick={() => changeWork(1)}
+                aria-label={t.preview_next_work}
+                title={t.preview_next_work}
+              >
+                <IconChevronRight size={22} />
+              </button>
+            </>
+          )}
+          <div className="pr-preview-screen" ref={previewScreenRef}>
+            <div className="pr-preview-body">
+              {state === 'loading' && <div className="pr-preview-status">{t.preview_loading}</div>}
+              {state === 'error' && <div className="pr-preview-status">{t.preview_error}</div>}
+              {state === 'ready' && (isCharacter ? previewCharacter : previewData) && (
+                <div
+                  className="media-page pr-preview-simulated-screen"
+                  ref={previewPageRef}
+                  style={{ transform: `scale(${previewScale})` }}
+                >
+                  {isCharacter && previewCharacter ? (
+                    <CharacterPreviewCard
+                      character={previewCharacter}
+                      appearances={previewAppearances}
+                      actors={previewActors}
+                      mergedCharacterIds={previewMergedCharacterIds}
+                      changes={previewChanges?.characterChanges}
+                    />
+                  ) : previewData ? (
+                    <MediaPage
+                      i18n={{ media: i18n.media, discord: i18n.discord }}
+                      previewData={previewData}
+                      previewMode
+                      previewAddedRelationIds={previewChanges?.newRelationIds}
+                      previewUpdatedRelationIds={previewChanges?.updatedRelationIds}
+                    />
+                  ) : null}
                 </div>
               )}
-            </section>
-          )}
-          {state === 'ready' && isCharacter && previewCharacter && (
-            <CharacterPreviewCard
-              character={previewCharacter}
-              appearances={previewAppearances}
-              actors={previewActors}
-              mergedCharacterIds={previewMergedCharacterIds}
-              changes={previewChanges?.characterChanges}
-            />
-          )}
-          {state === 'ready' && !isCharacter && previewData && (
-            <MediaPage
-              i18n={{ media: i18n.media, discord: i18n.discord }}
-              previewData={previewData}
-              previewMode
-              previewAddedRelationIds={previewChanges?.newRelationIds}
-              previewUpdatedRelationIds={previewChanges?.updatedRelationIds}
-            />
-          )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

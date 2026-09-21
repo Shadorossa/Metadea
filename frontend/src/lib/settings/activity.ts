@@ -5,6 +5,8 @@ import {
   setUnifySeasonsEnabled,
   isUnifySeasonsHighestRatedCoverEnabled,
   setUnifySeasonsHighestRatedCoverEnabled,
+  isCompletedMangaIssueCoverEnabled,
+  setCompletedMangaIssueCoverEnabled,
 } from './preferences';
 import { byId } from '../shared/dom';
 import { clearAllRatings } from '../tauri/library';
@@ -25,6 +27,15 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
     highestRatedCoverCheckbox.checked = isUnifySeasonsHighestRatedCoverEnabled();
     highestRatedCoverCheckbox.addEventListener('change', () => {
       setUnifySeasonsHighestRatedCoverEnabled(highestRatedCoverCheckbox.checked);
+      showToast();
+    });
+  }
+
+  const completedMangaIssueCoverCheckbox = byId<HTMLInputElement>('completed-manga-issue-cover');
+  if (completedMangaIssueCoverCheckbox) {
+    completedMangaIssueCoverCheckbox.checked = isCompletedMangaIssueCoverEnabled();
+    completedMangaIssueCoverCheckbox.addEventListener('change', () => {
+      setCompletedMangaIssueCoverEnabled(completedMangaIssueCoverCheckbox.checked);
       showToast();
     });
   }

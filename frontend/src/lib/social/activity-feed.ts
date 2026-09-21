@@ -67,8 +67,19 @@ async function refreshFeed(endpoint: string, cacheKey: string, lastFetchKey: str
     if (!res.ok) return;
 
     const { entries } = await res.json() as { entries: ActivityFeedEntry[] };
-    localStorage.setItem(cacheKey, JSON.stringify(completedOnly(entries)));
-    localStorage.setItem(lastFetchKey, String(Date.now()));
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(completedOnly(entries)));
+    } catch (error) {
+      // This is derived cache data; a full WebView storage quota must not
+      // turn a successful feed refresh into a failed request or erase the
+      // previous cache value.
+      console.warn(`[ActivityFeed] Could not update cache for ${endpoint}; keeping the previous cache:`, error);
+    }
+    try {
+      localStorage.setItem(lastFetchKey, String(Date.now()));
+    } catch (error) {
+      console.warn(`[ActivityFeed] Could not update refresh time for ${endpoint}:`, error);
+    }
     window.dispatchEvent(new Event('metadea:activity-feed-updated'));
   } catch (error) {
     console.warn(`[ActivityFeed] Refresh failed for ${endpoint}:`, error);

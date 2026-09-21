@@ -1,5 +1,5 @@
 ---
-import { ICON_STAR, ICON_RATING_FACES, ICON_HELP_CIRCLE } from "../../lib/shared/icon-strings";
+import { ICON_STAR, ICON_RATING_FACES } from "../../lib/shared/icon-strings";
 import type { Translations } from "../../i18n/index";
 import { LOCALES } from "../../i18n/index";
 
@@ -208,7 +208,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               data-i18n-title="settings.unify_seasons_hint"
               title={t.settings.unify_seasons_hint}
             >
-              <Fragment set:html={ICON_HELP_CIRCLE} />
+              <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
         </div>
@@ -230,7 +230,29 @@ const LANGUAGE_NAMES: Record<string, string> = {
               data-i18n-title="settings.unify_seasons_highest_rated_cover_hint"
               title={t.settings.unify_seasons_highest_rated_cover_hint}
             >
-              <Fragment set:html={ICON_HELP_CIRCLE} />
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+          </div>
+        </div>
+        <div class="settings-checkbox-group">
+          <div class="settings-checkbox-label-wrapper">
+            <label class="settings-checkbox-label">
+              <input
+                type="checkbox"
+                id="completed-manga-issue-cover"
+                class="settings-checkbox"
+              />
+              <span class="checkbox-label-text" data-i18n="settings.completed_manga_issue_cover"
+                >{t.settings.completed_manga_issue_cover}</span
+              >
+            </label>
+            <button
+              type="button"
+              class="settings-help-btn"
+              data-i18n-title="settings.completed_manga_issue_cover_hint"
+              title={t.settings.completed_manga_issue_cover_hint}
+            >
+              <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
         </div>
@@ -260,7 +282,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               data-i18n-title="settings.activity_adult_content_hint"
               title={t.settings.activity_adult_content_hint}
             >
-              <Fragment set:html={ICON_HELP_CIRCLE} />
+              <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
         </div>
@@ -280,7 +302,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               data-i18n-title="settings.clear_notes_hint"
               title={t.settings.clear_notes_hint}
             >
-              <Fragment set:html={ICON_HELP_CIRCLE} />
+              <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
         </div>

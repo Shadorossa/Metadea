@@ -745,6 +745,8 @@ export const es = {
     activity_section: "Actividad",
     unify_seasons_enabled: "Unificar temporadas",
     unify_seasons_hint: "Agrupa temporadas de anime relacionadas y temporadas de competiciones como una sola tarjeta en la biblioteca. Cada temporada sigue guardándose por separado en tu lista.",
+    completed_manga_issue_cover: "Usar la portada del último tomo en mangas completados",
+    completed_manga_issue_cover_hint: "Si está activado, la biblioteca muestra la portada del último tomo disponible de ComicVine en los mangas completados. Desactívalo para conservar la portada normal.",
     unify_seasons_highest_rated_cover: "Portada de la temporada mejor calificada",
     unify_seasons_highest_rated_cover_hint: "Muestra en la biblioteca la portada de la temporada mejor calificada por ti en lugar de la primera temporada (solo cuando la obra esté completada).",
     activity_adult_content: "Mostrar contenido +18",

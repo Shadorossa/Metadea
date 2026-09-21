@@ -5009,11 +5009,6 @@
   border: 0;
   background: transparent;
   color: var(--text-muted, #a7a29a);
-  cursor: pointer;
-  font-family: Georgia, serif;
-  font-size: 0.78rem;
-  font-style: italic;
-  line-height: 1;
   cursor: help;
 }
 
@@ -5022,35 +5017,26 @@
   color: var(--accent, #c084fc);
 }
 
-.pr-editor-merge-info::after {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 0.55rem);
-  left: 50%;
-  width: min(21rem, calc(100vw - 3rem));
+.pr-editor-merge-info:hover .info-indicator,
+.pr-editor-merge-info:focus-visible .info-indicator {
+  color: currentColor;
+}
+
+.pr-editor-merge-tooltip {
+  position: fixed;
+  z-index: 10002;
+  width: min(21rem, calc(100vw - 1.5rem));
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--border-color, #514c43);
   background: var(--bg-elevated, #1b1917);
   box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
   color: var(--text-main, #e3e1db);
-  content: attr(data-hint);
   font-family: inherit;
   font-size: 0.72rem;
-  font-style: normal;
-  font-weight: 400;
   line-height: 1.45;
-  opacity: 0;
+  max-height: calc(100vh - 1.5rem);
+  overflow-y: auto;
   pointer-events: none;
-  transform: translate(-50%, -0.2rem);
-  transition: opacity 120ms ease, transform 120ms ease;
-  visibility: hidden;
-}
-
-.pr-editor-merge-info:hover::after,
-.pr-editor-merge-info:focus-visible::after {
-  opacity: 1;
-  transform: translate(-50%, 0);
-  visibility: visible;
 }
 
 .pr-editor-character-merge-list,

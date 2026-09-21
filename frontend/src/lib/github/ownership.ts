@@ -1,8 +1,8 @@
 export const REPO_OWNER = 'Shadorossa';
 export const REPO_NAME = 'Metadea';
 
-function isRepoOwner(username: string): boolean {
-  return username.toLowerCase() === REPO_OWNER.toLowerCase();
+export function isRepoOwner(username: string | null | undefined): boolean {
+  return !!username && username.toLowerCase() === REPO_OWNER.toLowerCase();
 }
 
 // GitHub's own "does this account have write access" check — a collaborator

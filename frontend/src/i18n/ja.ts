@@ -737,6 +737,8 @@ export const ja = {
     activity_section: "アクティビティ",
     unify_seasons_enabled: "シーズンを統合する",
     unify_seasons_hint: "関連するアニメのシーズンと大会のシーズンをライブラリで1つのカードにまとめます。リスト上では各シーズンを個別に保存します。",
+    completed_manga_issue_cover: "完結した漫画に最終巻のカバーを使用",
+    completed_manga_issue_cover_hint: "有効にすると、完結した漫画のライブラリカードにComicVineで確認できる最後の巻のカバーを表示します。無効にすると通常のカバーを表示します。",
     activity_adult_content: "+18コンテンツを表示",
     activity_adult_content_hint: "AniListでのアダルトコンテンツ(アニメ・マンガ)の検索を有効にします。",
     clear_notes_btn: "評価を削除",

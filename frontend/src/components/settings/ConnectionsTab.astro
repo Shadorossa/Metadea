@@ -1,5 +1,5 @@
 ---
-import { ICON_GITHUB, ICON_HELP_CIRCLE, ICON_IMPORT_DOWNLOAD } from "../../lib/shared/icon-strings";
+import { ICON_GITHUB, ICON_IMPORT_DOWNLOAD } from "../../lib/shared/icon-strings";
 import type { Translations } from "../../i18n/index";
 
 interface Props {
@@ -24,7 +24,7 @@ const { t } = Astro.props;
             <div class="settings-auth-name-row">
               <span class="settings-auth-name">GitHub</span>
               <button class="settings-help-btn" data-help="github" title={t.settings.github_help_title}>
-                <Fragment set:html={ICON_HELP_CIRCLE} />
+                <span class="info-indicator" aria-hidden="true">i</span>
               </button>
             </div>
             <span id="github-user-status" class="settings-auth-status"
@@ -47,7 +47,7 @@ const { t } = Astro.props;
             <div class="settings-auth-name-row">
               <span class="settings-auth-name">AniList</span>
               <button class="settings-help-btn" data-help="anilist" title={t.settings.anilist_help_title}>
-                <Fragment set:html={ICON_HELP_CIRCLE} />
+                <span class="info-indicator" aria-hidden="true">i</span>
               </button>
             </div>
             <span id="anilist-user-status" class="settings-auth-status"

@@ -745,6 +745,8 @@ export const en = {
     activity_section: "Activity",
     unify_seasons_enabled: "Unify seasons",
     unify_seasons_hint: "Groups related anime seasons and competition seasons as one library card. Each season remains a separate entry in your list.",
+    completed_manga_issue_cover: "Use the last volume cover for completed manga",
+    completed_manga_issue_cover_hint: "When enabled, the library shows the cover of the last available ComicVine volume for completed manga. Turn it off to keep the regular cover.",
     unify_seasons_highest_rated_cover: "Highest rated season cover",
     unify_seasons_highest_rated_cover_hint: "Shows the cover of your highest rated season in the library instead of the base season cover (only when the work is completed).",
     activity_adult_content: "Show +18 content",

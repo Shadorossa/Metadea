@@ -46,6 +46,7 @@ export const STORAGE_KEYS = {
   emulatorsConfig: 'emulators_config',
   unifySeasonsEnabled: 'metadea_unify_seasons_enabled',
   unifySeasonsHighestRatedCover: 'metadea_unify_seasons_highest_rated_cover',
+  completedMangaIssueCover: 'metadea_completed_manga_issue_cover',
   mediaCoverPreferences: 'metadea_media_cover_preferences',
   libraryReleaseNotifications: 'metadea_library_release_notifications',
 } as const;

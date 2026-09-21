@@ -169,6 +169,10 @@
   text-align: center;
 }
 
+.catalog-admin-status--error {
+  color: #ff8585;
+}
+
 /* Catalog grids reuse the shared search-grid layout and typography from
    media.css, with admin-specific cover and context-menu affordances. */
 .catalog-admin-card {

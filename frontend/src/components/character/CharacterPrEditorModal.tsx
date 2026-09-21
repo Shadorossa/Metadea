@@ -208,6 +208,40 @@ export function CharacterPrEditorModal() {
   const [voiceActorSearchOpen, setVoiceActorSearchOpen] = useState(false);
   const [fandomModalOpen, setFandomModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'appearances' | 'voices'>('general');
+  const mergeInfoRef = useRef<HTMLButtonElement | null>(null);
+  const [mergeHintPosition, setMergeHintPosition] = useState<{ top: number; left: number } | null>(null);
+  const isMergeHintOpen = mergeHintPosition !== null;
+
+  const updateMergeHintPosition = () => {
+    const anchor = mergeInfoRef.current;
+    if (!anchor || typeof window === 'undefined') return;
+    const rect = anchor.getBoundingClientRect();
+    const width = Math.min(336, window.innerWidth - 24);
+    const left = Math.max(12, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 12));
+    const belowTop = rect.bottom + 8;
+    const top = belowTop + 96 > window.innerHeight ? Math.max(12, rect.top - 96) : belowTop;
+    setMergeHintPosition({ top, left });
+  };
+
+  useEffect(() => {
+    if (!isMergeHintOpen) return;
+    const reposition = () => {
+      const anchor = mergeInfoRef.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      const width = Math.min(336, window.innerWidth - 24);
+      const left = Math.max(12, Math.min(rect.left + rect.width / 2 - width / 2, window.innerWidth - width - 12));
+      const belowTop = rect.bottom + 8;
+      const top = belowTop + 96 > window.innerHeight ? Math.max(12, rect.top - 96) : belowTop;
+      setMergeHintPosition(previous => previous?.top === top && previous.left === left ? previous : { top, left });
+    };
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [isMergeHintOpen]);
 
   useEffect(() => {
     setMounted(true);
@@ -221,6 +255,7 @@ export function CharacterPrEditorModal() {
     setStatusMsg('');
     setAppearanceSearchOpen(false);
     setMergeMediaSearchOpen(false);
+    setMergeHintPosition(null);
     setMergeAppearanceIds({});
     setFandomModalOpen(false);
   };
@@ -854,12 +889,19 @@ export function CharacterPrEditorModal() {
                   <span className="pr-editor-section-title pr-editor-merge-title">
                     {t.merge_section}
                     {mergedCharactersChanged() && <span className="pr-editor-section-changed-dot" />}
-                    <span
+                    <button
+                      ref={mergeInfoRef}
+                      type="button"
                       className="pr-editor-merge-info"
-                      tabIndex={0}
                       aria-label={`${t.merge_info}: ${t.merge_hint}`}
-                      data-hint={t.merge_hint}
-                    >i</span>
+                      aria-describedby={mergeHintPosition ? 'character-merge-info-tooltip' : undefined}
+                      onMouseEnter={updateMergeHintPosition}
+                      onMouseLeave={() => {
+                        if (document.activeElement !== mergeInfoRef.current) setMergeHintPosition(null);
+                      }}
+                      onFocus={updateMergeHintPosition}
+                      onBlur={() => setMergeHintPosition(null)}
+                    ><span className="info-indicator" aria-hidden="true">i</span></button>
                   </span>
                 </div>
                 <button type="button" className="pr-editor-add-btn" onClick={() => setMergeMediaSearchOpen(true)}>
@@ -1016,6 +1058,18 @@ export function CharacterPrEditorModal() {
         </div>,
         document.body,
       )} */}
+
+      {/* Keep the hint outside the modal, whose overflow:hidden clips child tooltips. */}
+      {mergeHintPosition && (
+        <div
+          id="character-merge-info-tooltip"
+          className="pr-editor-merge-tooltip"
+          role="tooltip"
+          style={{ top: mergeHintPosition.top, left: mergeHintPosition.left }}
+        >
+          {t.merge_hint}
+        </div>
+      )}
 
       {voiceActorSearchOpen && (
         <VoiceActorSearchPopup

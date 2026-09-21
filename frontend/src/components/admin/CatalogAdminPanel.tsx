@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useDeferredValue } from 'react';
 import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../../lib/github/useOwnerGate';
+import { isRepoOwner } from '../../lib/github/ownership';
 import {
   getAllCatalogEntriesForEditor, deleteCatalogEntry, getCatalogEntry, getCatalogEntryForEditor, saveCatalogEntry,
   getAllSagas, getCommunitySagas, deleteSaga, type MediaCatalogEntry, type SagaListEntry,
@@ -90,6 +91,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [githubFiles, setGithubFiles] = useState<GitHubDirEntry[]>([]);
   const [githubLoading, setGithubLoading] = useState(true);
   const [githubDeleteTarget, setGithubDeleteTarget] = useState<GitHubDirEntry | null>(null);
+  const [githubActionError, setGithubActionError] = useState<string | null>(null);
   const [githubBusy, setGithubBusy] = useState(false);
   // GitHub's file listing only has raw filenames (no title, no cover) — most
   // merged entries are already synced into the local catalog (see
@@ -147,6 +149,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [editingNonGithubFields, setEditingNonGithubFields] = useState<Set<string> | undefined>(undefined);
 
   const isOwner = gate.state === 'owner';
+  const isRepoCreator = isRepoOwner(gate.username);
   const token = gate.token;
 
   // Loads the *whole* local catalog once — filtering as the user types
@@ -508,6 +511,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
   const openGithubEntry = async (file: GitHubDirEntry, initialTab: 'general' | 'cast' | 'relations' = 'general') => {
     if (!token || githubBusy) return;
+    setGithubActionError(null);
     setGithubBusy(true);
     try {
       const { content } = await getFileAtRef(token, file.path, 'main');
@@ -546,21 +550,22 @@ export function CatalogAdminPanel({ i18n }: Props) {
       setEditingId(bundle.media_catalog.external_id);
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to open GitHub entry:', err);
-      alert(t.github_open_error);
+      setGithubActionError(t.github_open_error);
     } finally {
       setGithubBusy(false);
     }
   };
 
   const confirmDeleteGithub = async () => {
-    if (!githubDeleteTarget || !token) return;
+    if (!isRepoCreator || !githubDeleteTarget || !token) return;
+    setGithubActionError(null);
     try {
       const { sha } = await getFileAtRef(token, githubDeleteTarget.path, 'main');
       await deleteFileFromMain(token, githubDeleteTarget.path, sha, `Delete ${githubDeleteTarget.path} via Metadea admin panel`);
       setGithubFiles(prev => prev.filter(f => f.path !== githubDeleteTarget.path));
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to delete GitHub entry:', err);
-      alert(t.github_delete_error);
+      setGithubActionError(t.github_delete_error);
     } finally {
       setGithubDeleteTarget(null);
     }
@@ -719,6 +724,10 @@ export function CatalogAdminPanel({ i18n }: Props) {
           )}
         </div>
       </div>
+
+      {source === 'github' && githubActionError && (
+        <p className="catalog-admin-status catalog-admin-status--error" role="alert">{githubActionError}</p>
+      )}
 
       {entity === 'episodes' && source === 'local' && (
         <>
@@ -955,7 +964,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   deleteLabel={t.delete_button}
                   openMediaLabel={t.open_media_page}
                   onEdit={() => (window as any).openCharacterEditor?.(character.external_id)}
-                  onDelete={() => source === 'github' ? alert(t.github_delete_error) : setCharacterDeleteTarget(character)}
+                  onDelete={source === 'github' ? undefined : () => setCharacterDeleteTarget(character)}
                 />
               ))}
             </div>
@@ -1087,7 +1096,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                     mediaPageUrl={info?.blocked ? undefined : `/media?id=${encodeURIComponent(fileExternalId)}`}
                     editDisabled={githubBusy}
                     onEdit={() => openGithubEntry(file)}
-                    onDelete={() => setGithubDeleteTarget(file)}
+                    onDelete={isRepoCreator ? () => setGithubDeleteTarget(file) : undefined}
                   />
                 );
               })}

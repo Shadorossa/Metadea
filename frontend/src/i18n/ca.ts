@@ -737,6 +737,8 @@ export const ca = {
     activity_section: "Activitat",
     unify_seasons_enabled: "Unificar temporades",
     unify_seasons_hint: "Agrupa temporades d'anime relacionades i temporades de competicions en una sola targeta de la biblioteca. Cada temporada continua desada per separat a la llista.",
+    completed_manga_issue_cover: "Usa la portada de l'últim volum en mangas completats",
+    completed_manga_issue_cover_hint: "Si està activada, la biblioteca mostra la portada de l'últim volum disponible a ComicVine en els mangas completats. Desactiva-la per conservar la portada normal.",
     unify_seasons_highest_rated_cover: "Portada de la temporada més ben valorada",
     unify_seasons_highest_rated_cover_hint: "Mostra a la biblioteca la portada de la temporada més ben valorada per tu en lloc de la primera temporada (només quan l'obra estigui completada).",
     activity_adult_content: "Mostrar contingut +18",

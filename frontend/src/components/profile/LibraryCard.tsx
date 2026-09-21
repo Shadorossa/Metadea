@@ -7,7 +7,7 @@ import {
 import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry, type DbMediaRelation } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
-import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled } from '../../lib/settings/preferences';
+import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled, isCompletedMangaIssueCoverEnabled } from '../../lib/settings/preferences';
 import { CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating, latestInProgressMember } from './library-grouping';
@@ -36,6 +36,7 @@ function nextReadingIssueCover(
   const type = item.type.split('_')[0];
   if (type !== 'manga' && type !== 'comic') return null;
   const isCompleted = item.status === 'completed';
+  if (type === 'manga' && isCompleted && !isCompletedMangaIssueCoverEnabled()) return null;
   if (!isCompleted && !isInProgressStatus(item.status) && item.status !== 'paused' && item.status !== 'dropped') return null;
 
   // Manga tracks volumes separately from chapters; Comic Vine comics track

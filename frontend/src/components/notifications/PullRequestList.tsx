@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
 import { listOpenProposalPulls, mergePull, closePull, type GitHubPull } from '../../lib/github/api';
 import { openUrlInBrowser } from '../../lib/github/submitCollaborativeProposal';
@@ -8,7 +9,7 @@ import { IconEye, IconExternalLink, IconCheck, IconX } from '../local/ui/icons';
 
 interface Props {
   token: string;
-  i18n: Pick<Translations, 'media' | 'discord' | 'notifications'>;
+  i18n: Pick<Translations, 'media' | 'discord' | 'notifications' | 'admin'>;
 }
 
 // branch name convention set by submitCollaborativeProposal.ts:
@@ -34,6 +35,13 @@ export function PullRequestList({ token, i18n }: Props) {
   const [pulls, setPulls] = useState<GitHubPull[]>([]);
   const [previewPr, setPreviewPr] = useState<GitHubPull | null>(null);
   const [actioningNumber, setActioningNumber] = useState<number | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ pr: GitHubPull; action: 'accept' | 'reject' } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const requestAction = (pr: GitHubPull, action: 'accept' | 'reject') => {
+    setActionError(null);
+    setPendingAction({ pr, action });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -61,29 +69,20 @@ export function PullRequestList({ token, i18n }: Props) {
 
   const previewExternalId = previewPr ? externalIdFromBranch(previewPr.head.ref, previewPr.user?.login) : null;
 
-  const handleAccept = async (pr: GitHubPull) => {
-    if (!window.confirm(t.accept_confirm)) return;
+  const performPendingAction = async () => {
+    if (!pendingAction) return;
+    const { pr, action } = pendingAction;
     setActioningNumber(pr.number);
+    setPendingAction(null);
+    setActionError(null);
     try {
-      await mergePull(token, pr.number);
+      if (action === 'accept') await mergePull(token, pr.number);
+      else await closePull(token, pr.number);
       setPulls(prev => prev.filter(p => p.number !== pr.number));
+      setPreviewPr(current => current?.number === pr.number ? null : current);
     } catch (err) {
-      console.error('[PullRequestList] Failed to merge PR:', err);
-      alert(t.accept_error);
-    } finally {
-      setActioningNumber(null);
-    }
-  };
-
-  const handleReject = async (pr: GitHubPull) => {
-    if (!window.confirm(t.reject_confirm)) return;
-    setActioningNumber(pr.number);
-    try {
-      await closePull(token, pr.number);
-      setPulls(prev => prev.filter(p => p.number !== pr.number));
-    } catch (err) {
-      console.error('[PullRequestList] Failed to close PR:', err);
-      alert(t.reject_error);
+      console.error(`[PullRequestList] Failed to ${action === 'accept' ? 'merge' : 'close'} PR:`, err);
+      setActionError(action === 'accept' ? t.accept_error : t.reject_error);
     } finally {
       setActioningNumber(null);
     }
@@ -92,6 +91,7 @@ export function PullRequestList({ token, i18n }: Props) {
   return (
     <div className="pr-list-panel">
       <h2 className="pr-list-title">{t.pr_list_title}</h2>
+      {actionError && <p className="pr-list-status pr-list-status--error" role="alert">{actionError}</p>}
 
       {state === 'loading' && <p className="pr-list-status">{t.loading_prs}</p>}
       {state === 'error' && <p className="pr-list-status">{t.preview_error}</p>}
@@ -120,7 +120,7 @@ export function PullRequestList({ token, i18n }: Props) {
                   type="button"
                   className="pr-list-accept-btn"
                   disabled={actioningNumber === pr.number}
-                  onClick={() => handleAccept(pr)}
+                  onClick={() => requestAction(pr, 'accept')}
                   title={t.accept_button}
                 >
                   <IconCheck size={15} strokeWidth={2.5} />
@@ -130,7 +130,7 @@ export function PullRequestList({ token, i18n }: Props) {
                   type="button"
                   className="pr-list-reject-btn"
                   disabled={actioningNumber === pr.number}
-                  onClick={() => handleReject(pr)}
+                  onClick={() => requestAction(pr, 'reject')}
                   title={t.reject_button}
                 >
                   <IconX size={13} strokeWidth={2.5} />
@@ -142,12 +142,43 @@ export function PullRequestList({ token, i18n }: Props) {
         </div>
       )}
 
+      {pendingAction && createPortal(
+        <div
+          className="pr-action-confirm-overlay"
+          onMouseDown={event => {
+            if (event.target === event.currentTarget) setPendingAction(null);
+          }}
+        >
+          <section className="pr-action-confirm" role="alertdialog" aria-modal="true">
+            <p>{pendingAction.action === 'accept' ? t.accept_confirm : t.reject_confirm}</p>
+            <div className="pr-action-confirm-buttons">
+              <button type="button" className="pr-action-confirm-cancel" onClick={() => setPendingAction(null)}>
+                {i18n.admin.cancel_button}
+              </button>
+              <button
+                type="button"
+                className={pendingAction.action === 'accept' ? 'pr-list-accept-btn' : 'pr-list-reject-btn'}
+                onClick={() => void performPendingAction()}
+                disabled={actioningNumber !== null}
+              >
+                {pendingAction.action === 'accept' ? t.accept_button : t.reject_button}
+              </button>
+            </div>
+          </section>
+        </div>,
+        document.body,
+      )}
+
       {previewPr && previewExternalId && (
         <PrPreviewModal
           pr={previewPr}
           token={token}
           externalId={previewExternalId}
           i18n={i18n}
+          onAccept={() => requestAction(previewPr, 'accept')}
+          onReject={() => requestAction(previewPr, 'reject')}
+          actioning={actioningNumber === previewPr.number}
+          actionError={actionError}
           onClose={() => setPreviewPr(null)}
         />
       )}

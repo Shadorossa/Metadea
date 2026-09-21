@@ -1546,6 +1546,11 @@
   color: var(--accent);
 }
 
+.settings-help-btn:hover .info-indicator,
+.settings-help-btn:focus-visible .info-indicator {
+  color: currentColor;
+}
+
 .env-service-header--api {
   position: relative;
   min-height: 1.5rem;
@@ -1582,15 +1587,6 @@
 .api-help-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.api-help-indicator {
-  color: currentColor;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.35rem;
-  font-style: italic;
-  font-weight: 700;
-  line-height: 1;
 }
 
 .env-actions-center { justify-content: center; margin-top: 1.5rem; }

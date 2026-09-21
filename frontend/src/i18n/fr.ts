@@ -737,6 +737,8 @@ export const fr = {
     activity_section: "Activité",
     unify_seasons_enabled: "Unifier les saisons",
     unify_seasons_hint: "Regroupe les saisons d’anime liées et les saisons de compétition dans une seule carte de bibliothèque. Chaque saison reste une entrée distincte dans la liste.",
+    completed_manga_issue_cover: "Utiliser la couverture du dernier volume pour les mangas terminés",
+    completed_manga_issue_cover_hint: "Lorsqu’elle est activée, la bibliothèque affiche la couverture du dernier volume ComicVine disponible pour les mangas terminés. Désactivez-la pour conserver la couverture habituelle.",
     activity_adult_content: "Afficher le contenu +18",
     activity_adult_content_hint: "Active la recherche de contenu adulte sur AniList (anime et manga).",
     clear_notes_btn: "Supprimer les notes",
