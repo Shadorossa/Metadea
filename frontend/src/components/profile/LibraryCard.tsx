@@ -11,7 +11,7 @@ import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighest
 import { CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating, latestInProgressMember } from './library-grouping';
-import { toMediumCover } from '../../lib/shared/small-cover';
+import { toMediumCover, toSmallCover } from '../../lib/shared/small-cover';
 import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { isInProgressStatus, pickAggregateStatus } from '../../lib/constants/media';
 import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../local/utils/constants';
@@ -187,7 +187,9 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   }, [hideGroupingUi, aggregateMembers, catalogMap]);
 
   const readingIssueCover = nextReadingIssueCover(item, issueRelations ?? [], meta);
-  const cover = toMediumCover(dynamicCover || readingIssueCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
+  const cover = readingIssueCover
+    ? toSmallCover(readingIssueCover)
+    : toMediumCover(dynamicCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
 
   // Same "which season is actually active" pick as inProgressCover above —
   // the card's own `item` is always the earliest-release season (see

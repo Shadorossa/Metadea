@@ -1,18 +1,7 @@
-// AniList, IGDB, TMDB and Open Library all serve the exact same cover image
-// at multiple sizes via a size keyword baked into the URL path itself,
-// rather than a separate endpoint per size — swapping that keyword lets any
-// grid of many small thumbnails (profile library, search results, ...)
-// request a lighter asset than whatever size the URL already points at, at
-// render time only. Nothing persisted (media_catalog.cover_url, a live
-// search result's own coverUrl) is ever touched, so every other context
-// (the media page's own big cover, etc.) keeps using the size it already had.
-//
-// Comic Vine deliberately isn't handled here: unlike the other four, its API
-// hands back separate medium_url/small_url strings rather than one URL with
-// a swappable size segment, and its real CDN path convention couldn't be
-// verified live (its API needs a key this environment doesn't have, and its
-// site 403s plain scraping) — guessing here risks silently broken comic
-// covers instead of just missing out on a smaller one.
+// AniList, IGDB, TMDB and Open Library serve covers at multiple sizes via a
+// size keyword baked into the URL path. Comic Vine uses scale_* upload paths.
+// Swapping the keyword requests a lighter asset at render time only; persisted
+// cover URLs are never changed.
 const ANILIST_COVER_SIZE_RE = /\/cover\/(?:large|medium|small)\//;
 // Any IGDB size template segment ("t_cover_big", "t_1080p", "t_screenshot_huge",
 // ...) — not just "_big" specifically. A stored cover_url isn't always
@@ -24,6 +13,7 @@ const ANILIST_COVER_SIZE_RE = /\/cover\/(?:large|medium|small)\//;
 const IGDB_SIZE_RE = /\/t_[a-z0-9_]+\//;
 const TMDB_SIZE_RE = /\/t\/p\/(?:w\d+|original)\//;
 const OPENLIBRARY_SIZE_RE = /-[SML]\.jpg$/i;
+const COMICVINE_SIZE_RE = /\/(uploads\/|api\/image\/)(?:scale_[a-z]+|original)\//i;
 
 export function toSmallCover(url: string | null | undefined): string {
   if (!url) return '';
@@ -31,6 +21,9 @@ export function toSmallCover(url: string | null | undefined): string {
   if (url.includes('images.igdb.com') && IGDB_SIZE_RE.test(url)) return url.replace(IGDB_SIZE_RE, '/t_cover_small/');
   if (TMDB_SIZE_RE.test(url)) return url.replace(TMDB_SIZE_RE, '/t/p/w185/');
   if (OPENLIBRARY_SIZE_RE.test(url)) return url.replace(OPENLIBRARY_SIZE_RE, '-S.jpg');
+  if (/comicvine\.(?:gamespot\.com|com)/i.test(url) && COMICVINE_SIZE_RE.test(url)) {
+    return url.replace(COMICVINE_SIZE_RE, '/$1scale_small/');
+  }
   return url;
 }
 
