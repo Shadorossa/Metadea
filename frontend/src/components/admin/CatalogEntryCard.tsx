@@ -141,7 +141,7 @@ export function CatalogEntryCard({
         }}
       >
         {cover
-          ? <img src={cover} alt="" loading="lazy" />
+          ? <img className="cover-image-fill" src={cover} alt="" loading="lazy" />
           : <span className="catalog-admin-card-no-cover">-</span>}
       </button>
       <div className="pr-editor-search-result-info">

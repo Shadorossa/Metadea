@@ -200,7 +200,7 @@ export function EpisodeSearchPopup({
                           <img
                             src={ep.cover_url || selectedShow.coverUrl!}
                             alt=""
-                            className="episode-search-thumb"
+                            className="cover-image-fill episode-search-thumb"
                             loading="lazy"
                           />
                         ) : (

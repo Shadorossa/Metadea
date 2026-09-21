@@ -2886,19 +2886,7 @@
 
 /* ── Custom Context Menu ────────────────────────────────────────────────────── */
 .act-context-menu {
-  position: absolute;
-  z-index: 9999;
-  background: var(--bg-primary, #0c0820);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
-  padding: 0.25rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
   min-width: 150px;
-}
-
-.act-context-menu-item.delete:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
 }
 
 /* ── Reviews Tab ─────────────────────────────────────────────────────────────── */
@@ -4088,7 +4076,7 @@
 /* The item's own slot in the grid while @dnd-kit is dragging it — the
    floating copy under the cursor is DragOverlay's own .is-dragging-card
    clone (see below), so this one just reads as an empty placeholder
-   left behind, the same visual role .list-item-placeholder used to play
+   left behind, the same visual role the old empty-list placeholder used to play
    as a separate synthetic DOM node. */
 .list-item-card.list-item-card--ghost .list-item-cover-link {
   border: 2px dashed var(--accent, #6366f1) !important;

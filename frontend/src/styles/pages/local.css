@@ -470,7 +470,7 @@
 
 /* Same convention as the navbar's own plain-text category links in this
    theme — serif, no boxed/double-border button treatment (that's reserved
-   for real .btn-style actions elsewhere). */
+   for real button actions elsewhere). */
 [data-theme="newspaper-dark"] .local-tab {
   font-family: 'Georgia', 'Times New Roman', serif;
 }
@@ -827,19 +827,7 @@
 /* ── Local game card right-click context menu (delete cover-less entry) ──────── */
 
 .local-context-menu {
-  position: absolute;
-  z-index: 9999;
-  background: var(--bg-primary, #0c0820);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
-  padding: 0.25rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
   min-width: 170px;
-}
-
-.local-context-menu-item.delete:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
 }
 
 /* ── Local media detail panel — actions + folder/episode match row ───────────── */
@@ -1269,23 +1257,9 @@
   white-space: nowrap;
 }
 
-/* Right-click on a history row — same look/behavior as Profile's own
-   activity-feed context menu (.act-context-menu, profile.css), duplicated
-   here since local.astro doesn't import that stylesheet. */
+/* Right-click on a history row */
 .local-history-context-menu {
-  position: absolute;
-  z-index: 9999;
-  background: var(--bg-primary, #0c0820);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
-  padding: 0.25rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
   min-width: 150px;
-}
-
-.local-history-context-menu-item.delete:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
 }
 
 .local-media-play-error {
@@ -1466,12 +1440,6 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   flex-shrink: 0;
-}
-
-.local-game-detail-header img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 /* Wraps whichever banner markup is showing (plain img, or the blurred-

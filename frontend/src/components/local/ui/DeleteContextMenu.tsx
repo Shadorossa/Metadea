@@ -47,7 +47,7 @@ export function DeleteContextMenu({ x, y, label, onDelete, onClose }: DeleteCont
       <div
         ref={refs.setFloating}
         style={floatingStyles}
-        className="local-context-menu"
+        className="context-menu local-context-menu"
         {...getFloatingProps({ onClick: e => e.stopPropagation() })}
       >
         <button

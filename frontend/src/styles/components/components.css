@@ -1,5 +1,17 @@
 /* Componentes reutilizables */
 
+/* Shared context-menu container. Page-specific menus keep only their sizing
+ * or action modifiers in the page stylesheet. */
+.context-menu {
+  position: absolute;
+  z-index: 9999;
+  background: var(--bg-primary, #0c0820);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.25rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
 /* Shared context-menu action */
 .context-menu-item {
   width: 100%;
@@ -20,6 +32,11 @@
 .context-menu-item:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-main);
+}
+
+.context-menu-item.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 /* Shared image treatment for cover-sized media */

@@ -215,7 +215,7 @@
   align-items: stretch;
 }
 
-/* Same fixed width as .settings-section--font — the only two "simple
+/* Same fixed width as the other simple
    single control" columns in this row, so they read as a matching pair
    bookending Avatar/Banner instead of the arbitrary auto-sized column this
    was before (the row's only column with no explicit width at all, next

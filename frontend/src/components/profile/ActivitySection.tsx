@@ -192,7 +192,7 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
         // .act-context-menu CSS class is already position:absolute, which
         // needs to resolve against the document (pageX/pageY), not whatever
         // positioned ancestor this component happens to render under.
-        <div className="act-context-menu" style={{ top: menu.y, left: menu.x }} onClick={e => e.stopPropagation()}>
+        <div className="context-menu act-context-menu" style={{ top: menu.y, left: menu.x }} onClick={e => e.stopPropagation()}>
           <button
             type="button"
             className="context-menu-item act-context-menu-item delete"

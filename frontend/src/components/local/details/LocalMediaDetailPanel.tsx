@@ -867,7 +867,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
             pixels instantly with no transition. */}
         <div className="local-game-detail-banner-wrap" key={item.externalId}>
           {bannerUrl ? (
-            <img src={bannerUrl} alt={item.title} />
+            <img className="cover-image-fill" src={bannerUrl} alt={item.title} />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
               <IconFolder />
@@ -1122,7 +1122,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
         {historyMenu && createPortal(
           <div
-            className="local-history-context-menu"
+            className="context-menu local-history-context-menu"
             style={{ top: historyMenu.y, left: historyMenu.x }}
             onClick={e => e.stopPropagation()}
           >

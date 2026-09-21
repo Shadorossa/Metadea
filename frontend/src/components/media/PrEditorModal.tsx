@@ -1098,7 +1098,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                       <div className="pr-editor-cover-uploader">
                         <div className="pr-editor-cover-preview-card">
                           {entry.cover_url ? (
-                            <img src={entry.cover_url} alt="" />
+                            <img className="cover-image-fill" src={entry.cover_url} alt="" />
                           ) : (
                             <span className="pr-editor-cover-placeholder">{pe.no_cover}</span>
                           )}

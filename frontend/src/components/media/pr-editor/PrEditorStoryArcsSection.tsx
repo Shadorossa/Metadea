@@ -598,7 +598,7 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
           <div className="pr-editor-arc-editor-header">
             <button type="button" className="pr-editor-arc-image-picker" onClick={handleImagePick}>
               {editingArc.imageBase64
-                ? <img src={editingArc.imageBase64} alt="" />
+                ? <img className="cover-image-fill" src={editingArc.imageBase64} alt="" />
                 : <span>{t.add_image}</span>}
             </button>
             <input

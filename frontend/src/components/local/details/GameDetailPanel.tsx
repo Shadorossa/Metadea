@@ -436,11 +436,11 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         <div className="local-game-detail-banner-wrap" key={contentKey}>
           {banner ? (
             isRealBanner ? (
-              <img src={banner} alt={game.name} />
+              <img className="cover-image-fill" src={banner} alt={game.name} />
             ) : (
               <>
-                <img className="local-game-detail-header-blur" src={banner} alt="" aria-hidden="true" />
-                <img className="local-game-detail-header-contain" src={banner} alt={game.name} />
+                <img className="cover-image-fill local-game-detail-header-blur" src={banner} alt="" aria-hidden="true" />
+                <img className="cover-image-fill local-game-detail-header-contain" src={banner} alt={game.name} />
               </>
             )
           ) : (
