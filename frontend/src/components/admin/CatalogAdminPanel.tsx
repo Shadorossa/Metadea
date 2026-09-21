@@ -30,6 +30,7 @@ import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillPr
 import { DIFF_FIELDS } from '../../lib/media/constants';
 import { getT } from '../../i18n/client';
 import { Pagination } from '../media/Pagination';
+import { SagaViewerModal } from '../media/SagaViewerModal';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
@@ -55,13 +56,12 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<MediaCatalogEntry | null>(null);
 
-  // Sagas state — a text list that expands in place to show member works
-  // (see visibleSagas' render below), not a card grid with an edit modal.
+  // Sagas use the shared cover-card style and the same viewer as media pages.
   const [sagaQuery, setSagaQuery] = useState('');
   const [sagas, setSagas] = useState<SagaListEntry[]>([]);
   const [sagaLoading, setSagaLoading] = useState(true);
   const [sagaDeleteTarget, setSagaDeleteTarget] = useState<SagaListEntry | null>(null);
-  const [expandedSagaId, setExpandedSagaId] = useState<string | null>(null);
+  const [sagaViewerExternalId, setSagaViewerExternalId] = useState<string | null>(null);
 
   // GitHub's own sagas (read-only peek at the community database.db, not the
   // local one) — fetched on demand, same reasoning as githubCharacters below.
@@ -137,6 +137,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   // every change here is meant to reach the shared catalog for every user,
   // not just stay on this machine.
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingInitialTab, setEditingInitialTab] = useState<'general' | 'cast' | 'relations'>('general');
   // Field names present locally but absent from the GitHub bundle that was
   // actually opened — passed to PrEditorModal so it can dim them. Cleared
   // whenever the editor is opened from anywhere other than the GitHub tab
@@ -497,7 +498,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   };
 
-  const openGithubEntry = async (file: GitHubDirEntry) => {
+  const openGithubEntry = async (file: GitHubDirEntry, initialTab: 'general' | 'cast' | 'relations' = 'general') => {
     if (!token || githubBusy) return;
     setGithubBusy(true);
     try {
@@ -533,7 +534,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
         }
       }
       setEditingNonGithubFields(localOnly);
-
+      setEditingInitialTab(initialTab);
       setEditingId(bundle.media_catalog.external_id);
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to open GitHub entry:', err);
@@ -557,7 +558,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   };
 
-  const handleEditorClose = () => { setEditingId(null); setEditingNonGithubFields(undefined); };
+  const handleEditorClose = () => {
+    setEditingId(null);
+    setEditingNonGithubFields(undefined);
+    setEditingInitialTab('general');
+  };
 
   const handleEditorSaved = () => {
     loadEntries();
@@ -867,58 +872,37 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
           {!(source === 'github' ? githubSagasLoading : sagaLoading) && visibleSagas.length > 0 && (
             <>
-            <div className="catalog-admin-saga-list">
+            <div className="pr-editor-search-grid">
               {pagedSagas.items.map(saga => {
-                const isExpanded = expandedSagaId === saga.id;
-                const pagedMembers = pageItems(`saga-members-${saga.id}`, saga.members);
+                const sagaFile = source === 'github'
+                  ? githubFiles.find(file => externalIdFromDatabaseFilename(file.name) === saga.id)
+                    ?? saga.members
+                      .map(member => githubFiles.find(file => externalIdFromDatabaseFilename(file.name) === member.external_id))
+                      .find((file): file is GitHubDirEntry => !!file)
+                  : undefined;
                 return (
-                  <div className="catalog-admin-saga-row" key={saga.id}>
-                    <div className="catalog-admin-saga-row-main">
-                      <button
-                        type="button"
-                        className="catalog-admin-saga-row-toggle"
-                        onClick={() => setExpandedSagaId(isExpanded ? null : saga.id)}
-                        aria-expanded={isExpanded}
-                      >
-                        <span className="catalog-admin-saga-row-name">
-                          {saga.name || saga.anchor_title || saga.id} ({saga.members.length})
-                        </span>
-                        <span className="catalog-admin-saga-row-cover">
-                          {saga.anchor_cover ? <img src={saga.anchor_cover} alt="" loading="lazy" /> : null}
-                        </span>
-                      </button>
-                      {source !== 'github' && (
-                        <button
-                          type="button"
-                          className="catalog-admin-icon-btn catalog-admin-icon-btn--delete"
-                          aria-label={t.delete_button}
-                          title={t.delete_button}
-                          onClick={() => setSagaDeleteTarget(saga)}
-                        >
-                          <IconTrash size={13} />
-                        </button>
-                      )}
-                    </div>
-                    {isExpanded && (
-                      <>
-                      <div className="catalog-admin-saga-members">
-                        {pagedMembers.items.map(member => (
-                          <a
-                            key={member.external_id}
-                            className="catalog-admin-saga-member"
-                            href={`/media?id=${encodeURIComponent(member.external_id)}`}
-                          >
-                            <span className="catalog-admin-saga-member-cover">
-                              {member.cover ? <img src={member.cover} alt="" loading="lazy" /> : null}
-                            </span>
-                            <span className="catalog-admin-saga-member-title">{member.title}</span>
-                          </a>
-                        ))}
-                      </div>
-                      {renderPagination(`saga-members-${saga.id}`, pagedMembers.totalPages, pagedMembers.currentPage)}
-                      </>
-                    )}
-                  </div>
+                  <CatalogEntryCard
+                    key={saga.id}
+                    id={saga.id}
+                    title={`${saga.name || saga.anchor_title || saga.id} (${saga.members.length})`}
+                    cover={saga.anchor_cover || saga.members[0]?.cover}
+                    editLabel={t.edit_button}
+                    deleteLabel={t.delete_button}
+                    openMediaLabel={t.open_media_page}
+                    viewLabel={t.view_saga}
+                    onView={() => setSagaViewerExternalId(saga.id)}
+                    onEdit={() => {
+                      if (source === 'github') {
+                        if (sagaFile) openGithubEntry(sagaFile, 'relations');
+                      } else {
+                        setEditingNonGithubFields(undefined);
+                        setEditingInitialTab('relations');
+                        setEditingId(saga.id);
+                      }
+                    }}
+                    onDelete={source === 'github' ? undefined : () => setSagaDeleteTarget(saga)}
+                    editDisabled={source === 'github' && (!sagaFile || githubBusy)}
+                  />
                 );
               })}
             </div>
@@ -996,7 +980,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   deleteLabel={t.delete_button}
                   openMediaLabel={t.open_media_page}
                   mediaPageUrl={entry.blocked_at ? undefined : `/media?id=${encodeURIComponent(entry.external_id)}`}
-                  onEdit={() => { setEditingNonGithubFields(undefined); setEditingId(entry.external_id); }}
+                  onEdit={() => {
+                    setEditingNonGithubFields(undefined);
+                    setEditingInitialTab('general');
+                    setEditingId(entry.external_id);
+                  }}
                   onDelete={() => setDeleteTarget(entry)}
                 />
               ))}
@@ -1135,6 +1123,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                 }
               }
               setEditingNonGithubFields(undefined);
+              setEditingInitialTab('general');
               setEditingId(externalId);
             }}
           />
@@ -1144,6 +1133,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
       {editingId && (
         <PrEditorModal
           externalId={editingId}
+          initialTab={editingInitialTab}
           onClose={handleEditorClose}
           onSaved={handleEditorSaved}
           nonGithubFields={editingNonGithubFields}
@@ -1196,6 +1186,14 @@ export function CatalogAdminPanel({ i18n }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {sagaViewerExternalId && (
+        <SagaViewerModal
+          externalId={sagaViewerExternalId}
+          i18n={i18n.media}
+          onClose={() => setSagaViewerExternalId(null)}
+        />
       )}
 
       {characterDeleteTarget && (

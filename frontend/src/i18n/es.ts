@@ -320,6 +320,7 @@ export const es = {
     edit_button: "Editar",
     delete_button: "Eliminar",
     open_media_page: "Abrir página de la obra",
+    view_saga: "Ver saga",
     cancel_button: "Cancelar",
     delete_confirm: "¿Eliminar \"{title}\"? Esta acción no se puede deshacer.",
     source_local: "Mi catálogo local",

@@ -315,6 +315,7 @@ export const fr = {
     edit_button: "Modifier",
     delete_button: "Supprimer",
     open_media_page: "Ouvrir la page de l’œuvre",
+    view_saga: "Voir la saga",
     cancel_button: "Annuler",
     delete_confirm: "Supprimer \"{title}\" ? Cette action est irréversible.",
     source_local: "Mon catalogue local",

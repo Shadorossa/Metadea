@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { IconExternalLink, IconPencil, IconTrash } from '../local/ui/icons';
+import { IconEye, IconExternalLink, IconPencil, IconTrash } from '../local/ui/icons';
 
 interface Props {
   id: string;
@@ -9,8 +9,10 @@ interface Props {
   editLabel: string;
   deleteLabel: string;
   openMediaLabel: string;
+  viewLabel?: string;
   onEdit: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
+  onView?: () => void;
   mediaPageUrl?: string;
   editDisabled?: boolean;
   blocked?: boolean;
@@ -20,7 +22,7 @@ interface Props {
 // its context menu contains edit, navigation, and delete actions.
 export function CatalogEntryCard({
   id, title, cover, editLabel, deleteLabel, openMediaLabel, onEdit, onDelete,
-  mediaPageUrl, editDisabled, blocked,
+  mediaPageUrl, viewLabel, onView, editDisabled, blocked,
 }: Props) {
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -50,10 +52,13 @@ export function CatalogEntryCard({
 
   const showMenuAt = (x: number, y: number) => {
     const menuWidth = 210;
-    const menuHeight = mediaPageUrl ? 142 : 100;
+    const menuItems = 1 + Number(!!onView || !!mediaPageUrl) + Number(!!onDelete);
+    const menuHeight = 10 + menuItems * 36;
+    const maxX = Math.max(4, window.innerWidth - menuWidth - 4);
+    const maxY = Math.max(4, window.innerHeight - menuHeight - 4);
     setMenuPosition({
-      x: Math.max(4, Math.min(x, window.innerWidth - menuWidth - 4)),
-      y: Math.max(4, Math.min(y, window.innerHeight - menuHeight - 4)),
+      x: Math.max(4, Math.min(x, maxX)),
+      y: Math.max(4, Math.min(y, maxY)),
     });
   };
 
@@ -71,6 +76,17 @@ export function CatalogEntryCard({
       style={{ left: menuPosition.x, top: menuPosition.y }}
       onClick={event => event.stopPropagation()}
     >
+      {onView && (
+        <button
+          type="button"
+          role="menuitem"
+          className="catalog-admin-context-menu-item"
+          onClick={() => { setMenuPosition(null); onView(); }}
+        >
+          <IconEye size={15} />
+          <span>{viewLabel}</span>
+        </button>
+      )}
       <button
         type="button"
         role="menuitem"
@@ -81,7 +97,7 @@ export function CatalogEntryCard({
         <IconPencil size={15} />
         <span>{editLabel}</span>
       </button>
-      {mediaPageUrl && (
+      {mediaPageUrl && !onView && (
         <a
           role="menuitem"
           className="catalog-admin-context-menu-item"
@@ -92,7 +108,7 @@ export function CatalogEntryCard({
           <span>{openMediaLabel}</span>
         </a>
       )}
-      <button
+      {onDelete && <button
         type="button"
         role="menuitem"
         className="catalog-admin-context-menu-item catalog-admin-context-menu-item--delete"
@@ -100,7 +116,7 @@ export function CatalogEntryCard({
       >
         <IconTrash size={15} />
         <span>{deleteLabel}</span>
-      </button>
+      </button>}
     </div>,
     document.body,
   ) : null;

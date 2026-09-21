@@ -315,6 +315,7 @@ export const ja = {
     edit_button: "編集",
     delete_button: "削除",
     open_media_page: "作品ページを開く",
+    view_saga: "シリーズを見る",
     cancel_button: "キャンセル",
     delete_confirm: "「{title}」を削除しますか?この操作は取り消せません。",
     source_local: "ローカルカタログ",

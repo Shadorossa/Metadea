@@ -3498,7 +3498,7 @@
 }
 
 .saga-strip-item:hover .saga-strip-item-cover {
-  transform: translateY(-5px) scale(1.03);
+  transform: translateY(-5px);
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.8);
 }
 

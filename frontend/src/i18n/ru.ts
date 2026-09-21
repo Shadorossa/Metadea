@@ -315,6 +315,7 @@ export const ru = {
     edit_button: "Редактировать",
     delete_button: "Удалить",
     open_media_page: "Открыть страницу произведения",
+    view_saga: "Посмотреть сагу",
     cancel_button: "Отмена",
     delete_confirm: "Удалить \"{title}\"? Это действие необратимо.",
     source_local: "Мой локальный каталог",

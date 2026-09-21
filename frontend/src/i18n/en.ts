@@ -320,6 +320,7 @@ export const en = {
     edit_button: "Edit",
     delete_button: "Delete",
     open_media_page: "Open media page",
+    view_saga: "View saga",
     cancel_button: "Cancel",
     delete_confirm: "Delete \"{title}\"? This cannot be undone.",
     source_local: "My local catalog",

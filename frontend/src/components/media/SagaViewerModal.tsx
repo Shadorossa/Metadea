@@ -7,6 +7,7 @@ import { lookupLabel } from '../../lib/media/mapper-utils';
 import { motion } from 'motion/react';
 import { loadSagaChain, loadSagaArcs } from '../../lib/media/sagaData';
 import type { StoryArc } from '../../lib/tauri/story-arcs';
+import { toMediumCover } from '../../lib/shared/small-cover';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
@@ -169,7 +170,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                     onClick={e => { if (isCurrent) e.preventDefault(); }}
                   >
                     <div className="saga-strip-item-bg">
-                      {entry.cover && <img src={entry.cover} alt="" />}
+                      {entry.cover && <img src={toMediumCover(entry.cover)} alt="" />}
                       <div className="saga-strip-item-overlay" />
                     </div>
 
@@ -177,7 +178,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
 
                     <div className="saga-strip-item-cover">
                       {entry.cover
-                        ? <img src={entry.cover} alt="" loading="lazy" />
+                        ? <img src={toMediumCover(entry.cover)} alt="" loading="lazy" />
                         : <div className="saga-strip-item-cover-fallback" />}
                     </div>
 
@@ -263,7 +264,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
             return (
               <div key={item.id} className="saga-arc-hover-row">
                 {meta.cover
-                  ? <img className="saga-arc-hover-row-cover" src={meta.cover} alt="" />
+                  ? <img className="saga-arc-hover-row-cover" src={toMediumCover(meta.cover)} alt="" />
                   : <div className="saga-arc-hover-row-cover saga-arc-hover-row-cover--fallback" />}
                 <div className="saga-arc-hover-row-text">
                   <span className="saga-arc-hover-row-title">{meta.title}</span>

@@ -55,6 +55,7 @@ export interface EditableRelation {
 
 interface Props {
   externalId: string;
+  initialTab?: 'general' | 'cast' | 'relations';
   onClose: () => void;
   onSaved?: () => void;
   onBlockedSubmitted?: (externalId: string) => void;
@@ -85,7 +86,7 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
-export function PrEditorModal({ externalId, onClose, onSaved, onBlockedSubmitted, mode = 'proposal', nonGithubFields }: Props) {
+export function PrEditorModal({ externalId, initialTab = 'general', onClose, onSaved, onBlockedSubmitted, mode = 'proposal', nonGithubFields }: Props) {
   const t = getT();
   const tm = t.media;
   const pe = t.pr_editor;
@@ -102,7 +103,10 @@ export function PrEditorModal({ externalId, onClose, onSaved, onBlockedSubmitted
   const igdbRelationMediaType = isVnovelExternalId(externalId) ? 'vnovel' as const : 'game' as const;
   const tPr = getT().pr_editor;
 
-  const [activeTab, setActiveTab] = useState<'general' | 'cast' | 'relations'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'cast' | 'relations'>(initialTab);
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [externalId, initialTab]);
   const [loading, setLoading] = useState(true);
   // Every 'proposal'-mode edit ends in a GitHub submission — checked up
   // front instead of only at the very end of handleSubmit, so a signed-out

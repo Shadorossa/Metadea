@@ -315,6 +315,7 @@ export const ca = {
     edit_button: "Editar",
     delete_button: "Eliminar",
     open_media_page: "Obrir la pàgina de l'obra",
+    view_saga: "Veure la saga",
     cancel_button: "Cancel·lar",
     delete_confirm: "Vols eliminar \"{title}\"? Aquesta acció no es pot desfer.",
     source_local: "El meu catàleg local",
