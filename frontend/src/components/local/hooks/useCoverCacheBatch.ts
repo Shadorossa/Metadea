@@ -16,8 +16,10 @@ export function useCoverCacheBatch(externalIds: string[]): Record<string, string
   const idsKey = externalIds.slice().sort().join('|');
   useEffect(() => {
     if (!idsKey) return;
+    const cacheIds = idsKey.split('|').filter(id => !/^(?:anime|manga|lnovel):/i.test(id));
+    if (!cacheIds.length) return;
     let cancelled = false;
-    getCachedCoversBatch(idsKey.split('|'))
+    getCachedCoversBatch(cacheIds)
       .then(map => { if (!cancelled) setHits(prev => ({ ...prev, ...map })); })
       .catch(() => {});
     return () => { cancelled = true; };

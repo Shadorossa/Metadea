@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
   type LocalGame, type GameInfo, type SteamAchievement, type LibraryEntry,
-  getCatalogEntry, getLibraryEntry,
+  getLibraryEntry,
   igdbGetGameDetail, getMediaCompanies, readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
@@ -19,7 +19,7 @@ import { parseCSV } from '../../../lib/shared/string-utils';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
 import { openMediaEditor } from '../../../lib/media/openMediaEditor';
-import { resolvePortRedirect } from '../../../lib/media/portRedirect';
+import { getLocalCatalogEntry, resolvePortRedirect } from '../../../lib/media/portRedirect';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
@@ -197,21 +197,26 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // alone silently missed every VN, which is exactly what made this panel's
   // own PREQUEL/SEQUEL lookup below come up empty for e.g. Higurashi.
   useEffect(() => {
+    let cancelled = false;
+    setCatalogEntry(null);
     if (knownExternalId) {
-      getCatalogEntry(knownExternalId).then(setCatalogEntry).catch(() => setCatalogEntry(null));
-      return;
+      getLocalCatalogEntry(knownExternalId)
+        .then(entry => { if (!cancelled) setCatalogEntry(entry); })
+        .catch(() => { if (!cancelled) setCatalogEntry(null); });
+      return () => { cancelled = true; };
     }
     if (!gameInfo?.igdb_id) { setCatalogEntry(null); return; }
     const igdbId = gameInfo.igdb_id;
     Promise.all([
-      getCatalogEntry(gameExternalId(igdbId, false)).catch(() => null),
-      getCatalogEntry(gameExternalId(igdbId, true)).catch(() => null),
-    ]).then(([g, v]) => setCatalogEntry(g ?? v ?? null));
+      getLocalCatalogEntry(gameExternalId(igdbId, false)).catch(() => null),
+      getLocalCatalogEntry(gameExternalId(igdbId, true)).catch(() => null),
+    ]).then(([g, v]) => { if (!cancelled) setCatalogEntry(g ?? v ?? null); });
+    return () => { cancelled = true; };
   }, [gameInfo?.igdb_id, knownExternalId]);
 
   // Same prequel/sequel neighbor row LocalMediaDetailPanel shows for
   // anime/manga/etc. — a Steam game's real catalog identity is whatever
-  // getCatalogEntry above actually resolved (falls back to "game:<id>" only
+  // getLocalCatalogEntry above actually resolved (falls back to "game:<id>" only
   // when that lookup found nothing, e.g. before it resolves on first mount).
   const relationsExternalId = catalogEntry?.external_id ?? knownExternalId ?? (gameInfo?.igdb_id ? gameExternalId(gameInfo.igdb_id, false) : undefined);
   const { prequel: prequelInfo, sequel: sequelInfo, bundleChildren } = useMediaNeighbors(relationsExternalId, game.name);
@@ -223,11 +228,17 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // relationsExternalId itself stays untouched — the neighbor row above
   // still reflects the port's own (already base-aware, single-hop)
   // prequel/sequel resolution, a separate concern from this one.
-  const [editTargetId, setEditTargetId] = useState<string | undefined>(relationsExternalId);
+  const [editTargetId, setEditTargetId] = useState<string | undefined>();
   useEffect(() => {
     if (!relationsExternalId) { setEditTargetId(undefined); return; }
     let cancelled = false;
-    resolvePortRedirect(relationsExternalId).then(id => { if (!cancelled) setEditTargetId(id); });
+    setEditTargetId(undefined);
+    resolvePortRedirect(relationsExternalId)
+      .then(id => { if (!cancelled) setEditTargetId(id ?? undefined); })
+      .catch(err => {
+        console.error('Failed to resolve Local catalog target', err);
+        if (!cancelled) setEditTargetId(undefined);
+      });
     return () => { cancelled = true; };
   }, [relationsExternalId]);
 
@@ -296,13 +307,14 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     ? (STORE_LABELS[effectiveStoreLink.platform]
       ?? t.local.view_on_store.replace('{platform}', effectiveStoreLink.platform.charAt(0).toUpperCase() + effectiveStoreLink.platform.slice(1)))
     : undefined;
-  // The catalog's own (IGDB-sourced) title, same precedence the header
-  // below already uses — game.name alone is a raw scanned name, which for
-  // a ROM is whatever its dump file happens to be called (region tags,
-  // language codes, release-group junk and all), not the real title. Used
-  // for Discord Rich Presence too, so "Playing X" always shows the actual
-  // work's name instead of that filename.
-  const displayTitle = catalogEntry?.title_main || gameInfo?.name || game.name;
+  // Steam owns the displayed identity for installed Steam games. The catalog
+  // entry may resolve to an earlier, unblocked edition for logging; that
+  // changes the media/log target, not the title of the installed game.
+  // Other launchers and ROMs still prefer the catalog's canonical title over
+  // a raw scanned filename.
+  const displayTitle = game.launcher === 'steam'
+    ? game.name
+    : catalogEntry?.title_main || gameInfo?.name || game.name;
   // A "Pendiente" entry with no real Steam/Epic/... install has nothing to
   // launch — the button still shows (same layout every other game gets)
   // but disabled, instead of silently failing a launchGame call with no
@@ -351,9 +363,15 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const developers = (catalogDevelopers && catalogDevelopers.length > 0) ? catalogDevelopers : gameInfo?.developers;
   const hasDevelopers = !!developers && developers.length > 0;
 
-  const handleEdit = () => {
-    if (!editTargetId) return;
-    const externalId = editTargetId;
+  const handleEdit = async () => {
+    if (!relationsExternalId) return;
+    // Do not rely on editTargetId's async effect having finished yet: a fast
+    // click on a blocked edition must never open the log editor on that id.
+    const externalId = await resolvePortRedirect(relationsExternalId).catch(err => {
+      console.error('Failed to resolve Local catalog target', err);
+      return null;
+    });
+    if (!externalId) return;
     // catalogEntry is the PORT's own data — only a valid hint for the editor
     // when no redirect actually happened; passing it mismatched against a
     // redirected externalId would flash the wrong title/cover until the
@@ -582,7 +600,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
                     <IconPencil />
                   </button>
-                  <CatalogLinkIcon externalId={editTargetId ?? relationsExternalId} />
+                  {editTargetId && <CatalogLinkIcon externalId={editTargetId} />}
                 </div>
               )}
             </div>

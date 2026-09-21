@@ -268,19 +268,22 @@ pub async fn get_deleted_relations(
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-fn load_visible_media_relations(
+fn load_media_relations(
     conn: &rusqlite::Connection,
     media_external_id: &str,
+    include_blocked: bool,
 ) -> Result<Vec<DbMediaRelation>, String> {
+    let catalog_table = if include_blocked { "media_catalog" } else { "visible_media_catalog" };
+    let query = format!(
+        "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
+         FROM media_relations mr
+         JOIN {catalog_table} mc ON mc.external_id = mr.related_media_external_id
+         WHERE mr.media_external_id = ?1
+           AND UPPER(COALESCE(mc.format, '')) <> 'SUMMARY'
+         ORDER BY mr.rowid"
+    );
     let mut stmt = conn
-        .prepare(
-            "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
-             FROM media_relations mr
-             JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
-             WHERE mr.media_external_id = ?1
-               AND UPPER(COALESCE(mc.format, '')) <> 'SUMMARY'
-             ORDER BY mr.rowid",
-        )
+        .prepare(&query)
         .str_err()?;
 
     let rows = stmt
@@ -311,21 +314,69 @@ pub async fn get_media_relations(
     media_external_id: String,
 ) -> Result<Vec<DbMediaRelation>, String> {
     let conn = state.conn.lock().str_err()?;
-    load_visible_media_relations(&conn, &media_external_id)
+    load_media_relations(&conn, &media_external_id, false)
 }
 
-// Kept as a separate IPC command for callers that open the collaborative
-// editor on a blocked owner. Related works remain filtered in both paths.
+// The collaborative editor and Local's blocked-edition fallback need the
+// complete BASE_EDITION chain, including intermediate blocked works.
 #[tauri::command]
 pub async fn get_media_relations_for_editor(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_id: String,
 ) -> Result<Vec<DbMediaRelation>, String> {
     let conn = state.conn.lock().str_err()?;
-    load_visible_media_relations(&conn, &media_external_id)
+    load_media_relations(&conn, &media_external_id, true)
 }
 
-// Bulk fetch for the library grid's "group by edition/saga" toggle — grouping
+// Semantic BASE_EDITION parents for Local's blocked-edition fallback. Older
+// catalog data can store the edge on the base entry as REMASTER/REMAKE/etc.
+// rather than on the edition as BASE_EDITION, so include both directions.
+// Tombstones suppress the direction the curator removed. In particular, a
+// tombstone on the base's reciprocal must not erase the blocked edition's
+// still-present outgoing edge.
+#[tauri::command]
+pub async fn get_base_edition_candidates_for_redirect(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<String>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(
+        "SELECT candidate_external_id FROM (
+             SELECT mr.related_media_external_id AS candidate_external_id,
+                    0 AS direction_priority, mr.rowid AS relation_order
+             FROM media_relations mr
+             JOIN media_catalog candidate ON candidate.external_id = mr.related_media_external_id
+             WHERE mr.media_external_id = ?1
+               AND UPPER(TRIM(mr.relation_type)) = 'BASE_EDITION'
+               AND UPPER(COALESCE(candidate.format, '')) <> 'SUMMARY'
+               AND NOT EXISTS (
+                   SELECT 1 FROM deleted_relations dr
+                   WHERE dr.media_external_id = ?1
+                     AND dr.related_media_external_id = mr.related_media_external_id
+               )
+             UNION ALL
+             SELECT mr.media_external_id AS candidate_external_id,
+                    1 AS direction_priority, mr.rowid AS relation_order
+             FROM media_relations mr
+             JOIN media_catalog candidate ON candidate.external_id = mr.media_external_id
+             WHERE mr.related_media_external_id = ?1
+               AND UPPER(TRIM(mr.relation_type)) IN ('REMASTER', 'REMAKE', 'EXPANDED_GAME', 'DLC', 'EXPANSION', 'STANDALONE')
+               AND UPPER(COALESCE(candidate.format, '')) <> 'SUMMARY'
+               AND NOT EXISTS (
+                   SELECT 1 FROM deleted_relations dr
+                   WHERE (dr.media_external_id = mr.media_external_id AND dr.related_media_external_id = ?1)
+                      OR (dr.media_external_id = ?1 AND dr.related_media_external_id = mr.media_external_id)
+               )
+         )
+         ORDER BY direction_priority, relation_order",
+    ).str_err()?;
+    let rows = stmt
+        .query_map([&media_external_id], |row| row.get::<_, String>(0))
+        .str_err()?;
+    Ok(rows.filter_map(|row| row.ok()).collect())
+}
+
+// Bulk fetch for the library grid's "group by edition/saga" toggle - grouping
 // anime/manga/lnovel by SEQUEL/PREQUEL needs every relation up front to build
 // the parent/child map client-side, instead of one get_media_relations round
 // trip per library item (which is what the per-media query above is for).

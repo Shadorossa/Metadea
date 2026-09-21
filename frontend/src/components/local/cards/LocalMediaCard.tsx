@@ -34,6 +34,10 @@ interface LocalMediaCardProps {
 }
 
 export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete, launchGame }: LocalMediaCardProps) {
+  // AniList works use their catalog URL directly in Local; only other
+  // catalog media types need the app's disk cover cache.
+  const usesCatalogCoverDirectly = ['anime', 'manga', 'lnovel'].includes(item.libraryEntry.type);
+  const usableCachedPath = usesCatalogCoverDirectly ? undefined : cachedPath;
   // Visual novels AND games both log progress as hours played (see
   // getProgressConfig in MediaEditorModal), not a discrete episode/chapter
   // count, so the badge needs its own unit here instead of falling into
@@ -47,11 +51,9 @@ export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete, lau
     ? 'Pendiente'
     : isHourBased ? `${effectiveHours}h` : `${unitLabel} ${item.progress}`;
 
-  // Catalog covers (AniList/TMDB/IGDB/Open Library) used to be re-fetched
-  // straight from their remote CDN on every single load — this caches each
-  // one to disk as webp the first time (see get_cached_cover, mirrors what
-  // Videojuegos already does for matched Steam games), so later loads read
-  // a local asset:// file instead of depending on that CDN's latency again.
+  // Most catalog covers are cached to disk as webp on first load. Anime,
+  // manga and light novels intentionally bypass this cache and use the
+  // medium-sized URL stored in media_catalog directly.
   // Starts null (shows the placeholder) rather than the raw remote URL, to
   // avoid paying for the same download twice (once here, once in Rust).
   const [coverSrc, setCoverSrc] = useState<string | null>(null);
@@ -61,9 +63,9 @@ export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete, lau
   // concurrent IPC calls the instant it mounted. A card whose cover is
   // already known via the parent's batch prefetch (cachedPath) skips this
   // wait entirely, same as it skips the round trip itself below.
-  const [inView, setInView] = useState(!!cachedPath);
+  const [inView, setInView] = useState(!!usableCachedPath);
   useEffect(() => {
-    if (cachedPath || inView) return;
+    if (usableCachedPath || inView) return;
     const el = cardRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -72,17 +74,21 @@ export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete, lau
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [cachedPath, inView]);
+  }, [usableCachedPath, inView]);
 
   useEffect(() => {
-    if (cachedPath) { setCoverSrc(wrapAssetUrl(cachedPath)); return; }
+    if (usesCatalogCoverDirectly) {
+      setCoverSrc(item.cover && inView ? toMediumCover(item.cover) : null);
+      return;
+    }
+    if (usableCachedPath) { setCoverSrc(wrapAssetUrl(usableCachedPath)); return; }
     if (!item.cover || !inView) return;
     let cancelled = false;
     getCachedCover(item.externalId, toMediumCover(item.cover))
       .then(path => { if (!cancelled) setCoverSrc(wrapAssetUrl(path)); })
       .catch(() => { if (!cancelled) setCoverSrc(item.cover); });
     return () => { cancelled = true; };
-  }, [item.cover, item.externalId, cachedPath, inView]);
+  }, [item.cover, item.externalId, usesCatalogCoverDirectly, usableCachedPath, inView]);
 
   return (
     <MediaCardShell

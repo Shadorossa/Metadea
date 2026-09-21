@@ -244,7 +244,13 @@ export async function getMediaRelationsForEditor(mediaExternalId: string): Promi
   return tauriCmd<DbMediaRelation[]>('get_media_relations_for_editor', [], { mediaExternalId });
 }
 
-// Per-pair tombstones (deleted_relations) — related_media_external_ids the
+// Semantic BASE_EDITION parents for Local's blocked-edition fallback,
+// including older reverse-stored edition links (base -> remaster).
+export async function getBaseEditionCandidatesForRedirect(mediaExternalId: string): Promise<string[]> {
+  return tauriCmd<string[]>('get_base_edition_candidates_for_redirect', [], { mediaExternalId });
+}
+
+// Per-pair tombstones (deleted_relations) - related_media_external_ids the
 // user has deliberately removed from mediaExternalId's relations, that a
 // live/community relation merge must not silently re-add. Written
 // automatically by save_media_relations whenever a previously-saved pair is

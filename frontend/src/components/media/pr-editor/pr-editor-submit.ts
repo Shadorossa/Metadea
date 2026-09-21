@@ -271,8 +271,16 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
 
   // Editable Relations already carries every pre-existing relation outside the saga chain.
   const currentChainRows = chainRelations.filter(r => r.media_external_id === externalId);
+  // Blocking removes this entry from the visible saga, but its own outgoing
+  // chain edges are still needed for source/base ancestry (e.g. Local can walk
+  // past blocked editions). Neighbor entries are rewritten below without the
+  // blocked id, making the edge intentionally one-sided in the saved catalog.
+  const blockedOwnedChainRows = removeBlockedWorkFromSaga
+    ? (await getMediaRelationsForEditor(externalId).catch(() => []))
+      .filter(r => ALL_CHAIN_RELATION_TYPES.includes(r.relation_type))
+    : [];
   const currentFinalRelations: DbMediaRelation[] = dedupeRelations(
-    [...editableDbRelations, ...issueDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows]
+    [...editableDbRelations, ...issueDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows, ...blockedOwnedChainRows]
   );
   await saveMediaRelations(externalId, currentFinalRelations)
     .catch(err => console.error('Failed to save relations:', err));
@@ -552,10 +560,10 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   const proposalEntries: ProposalFileEntry[] = [
     {
       kind: 'media', externalId, bundle,
-      removedRelationIds: [...new Set([
-        ...p.removedRelationIds,
-        ...(removeBlockedWorkFromSaga ? p.originalSagaOrder.filter(id => id !== externalId) : []),
-      ])],
+      // A blocked entry keeps its own outgoing relation rows for ancestry and
+      // fallback lookup. The reciprocal rows are removed from visible
+      // neighbors above and their own proposal entries carry those removals.
+      removedRelationIds: [...new Set(p.removedRelationIds)],
       removedCharacterIds: p.removedCharacterIds,
       removedAuthorIds: p.removedAuthorIds,
       removedArcIds: p.removedArcIds,

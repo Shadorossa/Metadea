@@ -232,6 +232,7 @@ pub fn run() {
             media_relations::replace_issue_relations,
             media_relations::get_media_relations,
             media_relations::get_media_relations_for_editor,
+            media_relations::get_base_edition_candidates_for_redirect,
             media_relations::get_deleted_relations,
             media_relations::get_all_media_relations,
             media_relations::get_anilist_pre_sequel_checked,
