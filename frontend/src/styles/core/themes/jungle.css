@@ -86,7 +86,6 @@ body[data-theme="jungle"], html[data-theme="jungle"] body {
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.2) !important;
 }
 
-[data-theme="jungle"] .media-card,
 [data-theme="jungle"] .hof-card,
 [data-theme="jungle"] .media-relation-card {
   border: 1px solid #233a27 !important;
@@ -95,7 +94,6 @@ body[data-theme="jungle"], html[data-theme="jungle"] body {
   border-radius: 8px !important;
 }
 
-[data-theme="jungle"] .media-card:hover,
 [data-theme="jungle"] .media-relation-card:hover {
   border-color: #10b981 !important;
   box-shadow: 0 10px 20px rgba(16, 185, 129, 0.1), 0 6px 12px rgba(0,0,0,0.5) !important;

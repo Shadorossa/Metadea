@@ -735,21 +735,6 @@
   justify-content: center;
 }
 
-.env-service-header--compact {
-  margin-bottom: 0.5rem;
-}
-
-.env-service-name {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.env-service-hint {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
-
 .env-fields {
   display: flex;
   flex-direction: column;
@@ -798,12 +783,6 @@
 .env-input:focus {
   border-color: var(--accent);
 }
-
-.env-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
 
 /* ── Rating System Picker ──────────────────────────────────────────────── */
 .rating-system-picker {
@@ -1015,17 +994,6 @@
      leaving a gap on the right instead of a merely-shorter box). Default
      align-items:stretch from the parent still fills the full width. */
   box-sizing: border-box;
-}
-
-/* Service logos hover effect */
-.env-service-logo {
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease, opacity 0.2s ease !important;
-}
-
-.env-service-logo:hover {
-  transform: scale(1.1) !important;
-  opacity: 1 !important;
-  filter: none !important;
 }
 
 /* ── Checkbox Group ───────────────────────────────────────────────────────── */

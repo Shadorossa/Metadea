@@ -30,7 +30,6 @@
 .onboarding-step h2 { margin: 0 0 0.6rem; color: var(--text-main); font-size: 1.25rem; }
 .onboarding-step p { margin: 0; }
 .onboarding-section-intro { margin-bottom: 1.5rem; }
-.onboarding-settings-content,
 .onboarding-config-slot { min-width: 0; }
 .onboarding-basic-grid { display: grid; grid-template-columns: minmax(14rem, 0.7fr) minmax(0, 1.3fr); gap: clamp(1.25rem, 3vw, 2.5rem); align-items: start; }
 .onboarding-profile-slot,

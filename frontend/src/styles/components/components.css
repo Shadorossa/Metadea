@@ -1,9 +1,5 @@
 /* Componentes reutilizables */
 
-/* ── Utilities ──────────────────────────────────────────────────────────── */
-.hide-scroll::-webkit-scrollbar { display: none; }
-.hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-
 /* ── Media cards ─────────────────────────────────────────────────────────── */
 /* Fixed 3:4 box via the classic "padding-bottom" technique instead of the
  * `aspect-ratio` property — every result card (any media type/provider:
@@ -61,47 +57,6 @@
   white-space: nowrap;
 }
 
-/* Quick actions drawer */
-.media-quick-actions {
-  position: absolute;
-  top: 0.375rem;
-  right: -1.75rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.25rem;
-  z-index: 30;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--anim-fast) var(--anim-ease), right var(--anim-fast) var(--anim-ease);
-  background: rgba(13, 13, 24, 0.95);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-}
-.group:hover .media-quick-actions {
-  opacity: 1;
-  right: 0.25rem;
-  pointer-events: auto;
-}
-
-.media-quick-btn {
-  width: 1.5rem;
-  height: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  font-size: 0.65rem;
-  transition: background var(--anim-fast), color var(--anim-fast);
-  cursor: pointer;
-}
-.media-quick-btn:hover {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
 /* ── Auth modal ──────────────────────────────────────────────────────────── */
 .auth-modal {
   background: transparent;
@@ -136,9 +91,6 @@
   animation: fade-in 0.2s var(--anim-ease) both;
 }
 
-
-.auth-panel { display: flex; flex-direction: column; gap: 0.85rem; }
-.auth-panel.hidden { display: none; }
 
 .modal-title {
   font-size: 0.9rem;
@@ -243,14 +195,6 @@
   border-color: rgba(248, 113, 113, 0.25);
   background: rgba(248, 113, 113, 0.06);
 }
-
-/* Accent outline — "ya en biblioteca", estados secundarios con acento */
-.btn--accent-outline {
-  background: var(--bg-elevated);
-  color: var(--accent);
-  border: 1px solid var(--accent-border);
-}
-.btn--accent-outline:hover { background: var(--accent-soft); transform: none; }
 
 /* ── Section label ───────────────────────────────────────────────────────── */
 /* Cabecera de sección: SINOPSIS, PERSONAJES, RELACIONADOS, etc. */
@@ -363,16 +307,6 @@
 .list-btn--ghost:hover {
   color: var(--text-main);
   border-color: rgba(255, 255, 255, 0.2);
-}
-
-.list-btn--danger {
-  background: transparent;
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
-.list-btn--danger:hover {
-  background: rgba(239, 68, 68, 0.08);
 }
 
 /* ── Image crop modal (shared) ──────────────────────────────────────────────

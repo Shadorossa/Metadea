@@ -1,4 +1,3 @@
-@import '../core/utilities.css';
 @import '../components/activity-card.css';
 
 @keyframes profileFadeIn {
@@ -234,7 +233,6 @@
 .reviews-layout,
 .lists-layout,
 .stats-layout,
-.overview-layout,
 .profile-stats-bar,
 .profile-bottom-grid,
 .profile-empty {
@@ -1758,50 +1756,6 @@
   margin-left: auto;
 }
 
-/* Icon type filters grid */
-.library-type-filters {
-  display: grid;
-  /* One column per media type (game/anime/manga/lnovel/vnovel/series/movie/
-     book/comic = 9) so every icon fits on a single row instead of the 9th
-     wrapping onto its own row. */
-  grid-template-columns: repeat(9, 1fr);
-  gap: 0.25rem;
-  width: 100%;
-}
-
-.library-type-btn {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  height: 30px;
-  width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all var(--anim-fast);
-  padding: 0;
-}
-
-.library-type-btn span {
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.library-type-btn:hover {
-  border-color: var(--accent);
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.library-type-btn.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .library-edition-filters {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -2616,16 +2570,6 @@
   letter-spacing: -0.5px;
 }
 
-.stats-block {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: clamp(1rem, 2.5vw, 1.5rem);
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.8rem, 2vw, 1.25rem);
-}
-
 .stats-block-title {
   font-size: clamp(0.6rem, 1.2vw, 0.72rem);
   font-weight: 800;
@@ -2732,19 +2676,6 @@
   width: clamp(24px, 4vw, 36px);
   text-align: right;
   flex-shrink: 0;
-}
-
-.stats-grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(0.7rem, 1.5vw, 1rem);
-}
-
-@media (max-width: 768px) {
-  .stats-grid-3 {
-    grid-template-columns: repeat(2, 1fr);
-    gap: clamp(0.7rem, 1.5vw, 1rem);
-  }
 }
 
 
@@ -3623,39 +3554,6 @@
   text-align: center;
 }
 
-.list-input {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  color: var(--text-main);
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.list-input:focus {
-  border-color: var(--accent);
-}
-
-.list-create-form {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.list-create-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 0.25rem;
-}
-
 .list-detail-layout {
   display: flex;
   flex-direction: column;
@@ -3795,14 +3693,6 @@
   gap: 0.75rem;
 }
 
-.list-settings-section-title {
-  font-size: 0.66rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-}
-
 .list-settings-type-wrapper {
   position: relative;
   display: inline-flex;
@@ -3892,12 +3782,6 @@
 .list-settings-type-check {
   color: var(--accent);
   flex-shrink: 0;
-}
-
-.list-settings-hint {
-  font-size: 0.66rem;
-  color: var(--text-dim);
-  line-height: 1.25;
 }
 
 .list-settings-divider {
@@ -4002,16 +3886,6 @@
   border-color: var(--accent);
   background: rgba(255, 255, 255, 0.04);
   box-shadow: 0 0 0 1px var(--accent-soft);
-}
-
-.list-meta-private-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  cursor: pointer;
-  flex-shrink: 0;
 }
 
 .list-detail-desc {
@@ -4316,98 +4190,6 @@
 
 .list-item-card.is-dragging-card .list-item-cover-link {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent) !important;
-}
-
-.list-add-panel {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.list-add-search-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.list-add-search {
-  flex: 1;
-  background: transparent;
-  border: none;
-  font-size: 0.82rem;
-  color: var(--text-main);
-  outline: none;
-}
-
-.list-add-results {
-  max-height: 260px;
-  overflow-y: auto;
-}
-
-.list-add-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.45rem 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.025);
-  transition: background 0.1s;
-}
-
-.list-add-item:last-child {
-  border-bottom: none;
-}
-
-.list-add-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.list-add-cover {
-  width: 30px;
-  height: 42px;
-  object-fit: cover;
-  border-radius: 3px;
-  flex-shrink: 0;
-  background: var(--bg-elevated);
-}
-
-.list-add-cover--fallback {
-  width: 30px;
-  height: 42px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-.list-add-title {
-  flex: 1;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.list-add-btn {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-}
-
-.list-add-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
 }
 
 /* ── Advanced Stats ───────────────────────────────────────────────────────────── */

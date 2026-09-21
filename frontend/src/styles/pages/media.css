@@ -1,6 +1,5 @@
 /* ── Media detail page ───────────────────────────────────────────────────── */
 
-@import '../core/utilities.css';
 @import '../components/character-lang-buttons.css';
 
 .media-page {
@@ -398,50 +397,6 @@
   white-space: nowrap;
 }
 
-.media-meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.media-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.2rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: var(--bg-elevated);
-  color: var(--text-muted);
-  border: 1px solid var(--border-color);
-  width: fit-content;
-}
-
-.media-badge--status-airing {
-  color: var(--color-completed);
-  border-color: rgba(52, 211, 153, 0.3);
-  background: rgba(52, 211, 153, 0.08);
-}
-
-.media-badge--status-finished {
-  color: var(--text-dim);
-}
-
-.media-badge--status-upcoming {
-  color: var(--color-paused);
-  border-color: rgba(96, 165, 250, 0.3);
-  background: rgba(96, 165, 250, 0.08);
-}
-
-.media-studio {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
 /* ── Body: 3 columnas ────────────────────────────────────────────────────── */
 .media-body {
   display: grid;
@@ -751,19 +706,6 @@
 /* Long-form values (a character's per-work spoiler trivia, say) — label on
    its own line, value below spanning the full row width instead of jammed
    into the same line's right-aligned half. */
-.media-stat-item--stacked {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.3rem;
-}
-
-.media-stat-item--stacked .media-stat-value {
-  text-align: left;
-  font-weight: 400;
-  line-height: 1.6;
-  width: 100%;
-}
-
 /* Two real columns (e.g. "Episodios 65 | Temporadas 5") instead of one
    label + a crammed value string — each half is its own label/value pair,
    styled identically, split by a subtle centered divider. */
@@ -1852,12 +1794,6 @@
   opacity: 1;
 }
 
-/* IntersectionObserver anchor only (see MediaPage.tsx) — reveals 3 more
-   rows once it scrolls into view, no visible height of its own. */
-.media-users-sentinel {
-  height: 1px;
-}
-
 /* formatRatingHtml's own <span class="media-user-score"> — sized down from
    its default (built for the bigger rating-input widget) to fit a compact
    5-column grid. */
@@ -1930,14 +1866,6 @@
 }
 
 /* ── Store links ─────────────────────────────────────────────────────────── */
-.media-store-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  justify-content: center;
-}
-
 .media-store-link {
   display: flex;
   align-items: center;
@@ -2450,38 +2378,6 @@
   width: 120px;
 }
 
-.me-header-field-input--edition {
-  width: 190px;
-  max-width: 190px;
-  cursor: pointer;
-  color-scheme: dark;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255, 255, 255, 0.04)), color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255, 255, 255, 0.04))),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a0a0b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.4rem center;
-  background-size: 12px;
-  padding-right: 1.6rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.me-header-field-input--edition optgroup {
-  background: var(--bg-card, #1a1a1a);
-  color: var(--accent, #7c6af7);
-  font-weight: 700;
-  font-style: normal;
-  font-size: 0.75rem;
-}
-
-.me-header-field-input--edition option {
-  background: var(--bg-card, #1a1a1a);
-  color: var(--text-main, #fff);
-}
-
 /* Remove number input spinner arrows */
 .me-header-field-input[type=number]::-webkit-outer-spin-button,
 .me-header-field-input[type=number]::-webkit-inner-spin-button {
@@ -2720,28 +2616,6 @@
 
 /* ── Inputs ──────────────────────────────────────────────────────────────── */
 
-.me-input {
-  background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255, 255, 255, 0.04));
-  border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
-  border-radius: 0px;
-  color: var(--text-main);
-  font-size: 0.875rem;
-  padding: 0.45rem 0.7rem;
-  width: 100%;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.me-input:focus {
-  border-color: var(--accent, #7c6af7);
-}
-
-.me-input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0.4;
-  cursor: pointer;
-  filter: invert(1);
-}
-
 .me-textarea {
   background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255, 255, 255, 0.04));
   border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
@@ -2852,23 +2726,6 @@
 
 .me-btn--save:hover:not(:disabled) {
   opacity: 0.88;
-}
-
-.me-btn--close {
-  background: transparent;
-  color: var(--text-muted);
-  border-color: color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-}
-
-.me-btn--close:hover:not(:disabled) {
-  color: var(--text-main);
-  border-color: color-mix(in srgb, var(--accent, #7c6af7) 55%, transparent);
-  background: color-mix(in srgb, var(--accent, #7c6af7) 8%, transparent);
 }
 
 .me-btn--delete {
@@ -3147,48 +3004,6 @@
 
 
 
-/* Log Selector inside modal */
-.me-log-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.35rem;
-  border-radius: var(--radius-sm, 6px);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
-}
-
-.me-log-tab-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted, #a0a0b8);
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.45rem 0.65rem;
-  cursor: pointer;
-  border-radius: calc(var(--radius-sm, 6px) - 2px);
-  transition: all var(--anim-fast, 120ms);
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  min-width: 0;
-  /* flex items don't shrink below their content size by default */
-  box-sizing: border-box;
-}
-
-.me-log-tab-btn:hover {
-  color: var(--text-main, #fff);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.me-log-tab-btn.active {
-  color: #fff;
-  background: var(--accent, #7c6af7);
-  box-shadow: 0 2px 8px rgba(var(--accent-rgb, 124, 106, 247), 0.35);
-}
-
 /* Versions tabs at top of editor */
 .me-versions-tabs {
   display: flex;
@@ -3312,15 +3127,8 @@
   letter-spacing: 0.1em;
 }
 
-.saga-strip-subtitle {
-  font-size: 0.7rem;
-  color: var(--text-dim, #666);
-  font-weight: 500;
-}
-
 /* Switches which row .saga-strip-body shows (Saga / Arcos Argumentales)
-   instead of always stacking both — same visual slot .saga-strip-subtitle
-   used to occupy alone. */
+   instead of always stacking both. */
 .saga-strip-tab {
   appearance: none;
   -webkit-appearance: none;
@@ -3356,9 +3164,8 @@
 }
 
 /* Newspaper-dark styles most buttons as a double-border "vintage ad" box
-   (see its own .btn/.hof-btn/... rule) — these two are meant to read as
-   plain text tabs instead, same as the .saga-strip-subtitle label they
-   replaced, so they're deliberately excluded from that treatment. */
+   (see its own .btn/.hof-btn/... rule) — these are plain text tabs instead,
+   so they're deliberately excluded from that treatment. */
 [data-theme="newspaper-dark"] .saga-strip-tab {
   border: none !important;
   background: none !important;
@@ -4738,29 +4545,6 @@
   min-width: 0;
 }
 
-.pr-editor-section-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-
-.pr-editor-section-chevron {
-  display: inline-block;
-  font-size: 0.7rem;
-  color: var(--text-muted, #a0a0b8);
-  transition: transform var(--anim-fast, 120ms);
-}
-
-.pr-editor-section-chevron--open {
-  transform: rotate(90deg);
-}
-
 .pr-editor-media-card {
   display: flex;
   flex-direction: column;
@@ -4959,18 +4743,6 @@
   line-height: 1;
 }
 
-.character-preview-merge-target {
-  position: absolute;
-  right: 0.35rem;
-  bottom: 0.3rem;
-  max-width: calc(100% - 0.7rem);
-  overflow: hidden;
-  color: var(--accent, #c084fc);
-  font-size: 0.62rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .pr-editor-character-merges {
   margin-top: 1.5rem;
   padding-top: 1.1rem;
@@ -4983,14 +4755,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.pr-editor-character-merges-hint {
-  max-width: 44rem;
-  margin: 0.35rem 0 0;
-  color: var(--text-muted, #a7a29a);
-  font-size: 0.74rem;
-  line-height: 1.5;
 }
 
 .pr-editor-merge-title {
@@ -5160,21 +4924,6 @@
 .pr-editor-merge-cast-option:hover {
   border-color: var(--accent, #c084fc);
   background: rgba(192, 132, 252, 0.09);
-}
-
-.character-preview-merge-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-}
-
-.character-preview-merge-id {
-  max-width: 100%;
-  padding: 0.3rem 0.5rem;
-  overflow-wrap: anywhere;
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.18));
-  color: var(--text-main, #e3e1db);
-  font-size: 0.7rem;
 }
 
 /* ── Custom relation-type dropdown (replaces the native <select> — Windows/
@@ -5361,14 +5110,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-}
-
-.pr-editor-subsection-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted, #a0a0b8);
 }
 
 .pr-editor-bundle-children-hint {
@@ -5733,23 +5474,6 @@
   pointer-events: none;
 }
 
-.pr-editor-arc-ungroup-btn {
-  font-size: 0.6rem;
-  padding: 0.1rem 0.3rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border-color, #2d2a24);
-  color: var(--text-dim, #9b9a95);
-  border-radius: 3px;
-  cursor: pointer;
-  margin-top: 0.1rem;
-}
-
-.pr-editor-arc-ungroup-btn:hover {
-  color: var(--text-main, #fff);
-  border-color: var(--accent, #7c6af7);
-  background: rgba(124, 106, 247, 0.15);
-}
-
 .pr-editor-arc-item-actions {
   display: flex;
   flex-direction: column;
@@ -5951,7 +5675,6 @@
   line-height: 1.3;
 }
 
-.pr-editor-arc-ep-global-num,
 .pr-editor-arc-ep-season-num {
   font-weight: 700;
   color: var(--accent, #a69a7d);
@@ -6115,24 +5838,12 @@
   min-width: 220px;
 }
 
-.pr-editor-field-row>.pr-editor-field--fixed {
-  flex: 0 0 300px;
-}
-
 .pr-editor-subgroup {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   flex: 1;
   min-width: 220px;
-}
-
-.pr-editor-subgroup-label {
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted, #a0a0b8);
 }
 
 .pr-editor-subgroup-fields {
@@ -6262,16 +5973,6 @@
   box-shadow: none;
   border-radius: var(--radius-md, 8px);
   /* .rounded-md utility */
-}
-
-/* Fixed 10-per-row instead of auto-fill — the admin panel is wide enough
-   (unlike the popup's fixed 900px width) that letting covers grow to fill
-   available space looked sparse; a fixed column count keeps them a
-   consistent, compact size regardless of container width. Scoped to the
-   whole admin panel (not just "Add work") so the local-catalog and GitHub
-   tabs' grids match it too. */
-.catalog-admin-panel .pr-editor-search-grid {
-  grid-template-columns: repeat(10, 1fr);
 }
 
 .pr-editor-search-controls {
@@ -6754,17 +6455,6 @@
 }
 
 /* Cover URL preview */
-.pr-editor-cover-preview {
-  flex-shrink: 0;
-  width: 42px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: var(--radius-sm, 4px);
-  /* .rounded-sm utility */
-  border: 1px solid var(--border-color, #2d2a24);
-  background: var(--bg-elevated, #1b1917);
-}
-
 /* Banner URLs — image-preview slots instead of text pills */
 .pr-editor-slots-box--preview {
   align-items: flex-start;

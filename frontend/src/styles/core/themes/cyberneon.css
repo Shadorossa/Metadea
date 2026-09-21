@@ -75,7 +75,6 @@ body[data-theme="cyberneon"], html[data-theme="cyberneon"] body {
   transform: translate(1px, 1px);
 }
 
-[data-theme="cyberneon"] .media-card,
 [data-theme="cyberneon"] .hof-card,
 [data-theme="cyberneon"] .media-relation-card {
   border: 2px solid #1a1a3a !important;
@@ -85,7 +84,6 @@ body[data-theme="cyberneon"], html[data-theme="cyberneon"] body {
   transition: all 0.15s cubic-bezier(0.19, 1, 0.22, 1) !important;
 }
 
-[data-theme="cyberneon"] .media-card:hover,
 [data-theme="cyberneon"] .media-relation-card:hover {
   border-color: #00f0ff !important;
   box-shadow: 0 0 20px rgba(0, 240, 255, 0.3) !important;

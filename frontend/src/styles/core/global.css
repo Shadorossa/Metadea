@@ -182,15 +182,6 @@ body {
 }
 
 
-/* ── Utility classes ────────────────────────────────────────────────────── */
-.transition-smooth {
-  transition: all var(--anim-base) var(--anim-ease);
-}
-
-.transition-fast {
-  transition: all var(--anim-fast) var(--anim-ease);
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -233,10 +224,6 @@ body {
 /* Utility classes — prefer these over writing inline animations in page CSS */
 .animate-fade-in {
   animation: fade-in 0.25s var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)) both;
-}
-
-.animate-slide-in-right {
-  animation: slide-in-right 0.3s var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1));
 }
 
 /* Film grain */

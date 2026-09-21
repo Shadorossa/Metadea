@@ -1,4 +1,3 @@
-@import '../core/utilities.css';
 @import '../components/character-lang-buttons.css';
 
 .character-grid {
@@ -315,7 +314,7 @@
 }
 
 /* Spoilers */
-.spoiler, .markdown-spoiler, .markdown_spoiler {
+.spoiler, .markdown_spoiler {
   background: #3f3f46;
   color: transparent !important;
   cursor: pointer;
@@ -324,7 +323,7 @@
   border-radius: 4px;
 }
 
-.spoiler:hover, .markdown-spoiler:hover, .markdown_spoiler:hover {
+.spoiler:hover, .markdown_spoiler:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-main) !important;
 }
@@ -335,11 +334,11 @@
    child's own color always beats an ancestor's — without this override the
    name read as already revealed, floating clear of the redacted text
    around it instead of staying hidden until the spoiler itself is hovered. */
-.spoiler a, .markdown-spoiler a, .markdown_spoiler a {
+.spoiler a, .markdown_spoiler a {
   color: transparent !important;
 }
 
-.spoiler:hover a, .markdown-spoiler:hover a, .markdown_spoiler:hover a {
+.spoiler:hover a, .markdown_spoiler:hover a {
   color: var(--accent) !important;
 }
 

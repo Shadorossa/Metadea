@@ -253,18 +253,6 @@
               0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
-/* Navbar-transparente: sin fondo propio en botones, los iconos dependen del
-   drop-shadow de arriba para no perderse sobre portadas/artwork claro. */
-.navbar--transparent .nav-icon-btn {
-  background: color-mix(in srgb, var(--bg-elevated) 35%, transparent);
-  border-color: transparent;
-}
-
-.navbar--transparent .nav-icon-btn:hover {
-  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
-  border-color: color-mix(in srgb, var(--border-color) 60%, transparent);
-}
-
 .nav-browse-link {
   margin-left: clamp(0.15rem, 0.4vw, 0.45rem);
   color: var(--text-main);
@@ -283,19 +271,6 @@
 
 .nav-browse-link.active {
   color: var(--accent);
-}
-
-.nav-tier-s {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: clamp(0.95rem, 1.3vw, 1.15rem);
-  height: clamp(0.95rem, 1.3vw, 1.15rem);
-  font-size: clamp(0.58rem, 0.85vw, 0.72rem);
-  font-weight: 800;
-  line-height: 1;
-  border-radius: 0.3rem;
-  border: 1.5px solid currentColor;
 }
 
 .nav-icon-btn--avatar {

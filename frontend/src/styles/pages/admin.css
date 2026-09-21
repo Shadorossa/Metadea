@@ -381,64 +381,6 @@
   filter: brightness(1.1);
 }
 
-/* Episodes manager */
-.catalog-admin-episode-card-count {
-  font-size: 0.76rem;
-  color: var(--accent, #7c6af7);
-  margin-top: 0.2rem;
-  font-weight: 500;
-}
-
-.catalog-admin-episodes-modal {
-  background: var(--bg-elevated, #16161c);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 12px;
-  width: 90%;
-  max-width: 700px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
-}
-
-.catalog-admin-episodes-header {
-  padding: 1rem 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
-}
-
-.catalog-admin-episodes-header h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text, #fff);
-}
-
-.catalog-admin-episodes-close {
-  background: none;
-  border: none;
-  color: var(--text-muted, #a0a0b8);
-  cursor: pointer;
-  padding: 0.3rem;
-  font-size: 1.1rem;
-  border-radius: 6px;
-}
-
-.catalog-admin-episodes-close:hover {
-  color: var(--text, #fff);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.catalog-admin-episode-search-bar {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
 .catalog-admin-episode-back {
   display: flex;
   align-items: center;

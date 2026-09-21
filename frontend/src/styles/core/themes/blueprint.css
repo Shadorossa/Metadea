@@ -66,7 +66,6 @@ body[data-theme="blueprint"], html[data-theme="blueprint"] body {
   transform: rotate(-0.8deg) !important;
 }
 
-[data-theme="blueprint"] .media-card,
 [data-theme="blueprint"] .hof-card,
 [data-theme="blueprint"] .media-relation-card {
   border: 1px dashed #1a2f66 !important;
@@ -74,7 +73,6 @@ body[data-theme="blueprint"], html[data-theme="blueprint"] body {
   transition: all 0.2s ease !important;
 }
 
-[data-theme="blueprint"] .media-card:hover,
 [data-theme="blueprint"] .media-relation-card:hover {
   border-style: solid !important;
   border-color: #64ffda !important;

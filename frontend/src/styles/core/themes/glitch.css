@@ -99,7 +99,6 @@ body[data-theme="glitch"], html[data-theme="glitch"] body {
   box-shadow: 0 0 10px rgba(255, 0, 127, 0.4) !important;
 }
 
-[data-theme="glitch"] .media-card,
 [data-theme="glitch"] .hof-card,
 [data-theme="glitch"] .media-relation-card {
   border: 1px solid #1c0e30 !important;
@@ -107,7 +106,6 @@ body[data-theme="glitch"], html[data-theme="glitch"] body {
   box-shadow: 3px 3px 0px rgba(57, 255, 20, 0.1) !important;
 }
 
-[data-theme="glitch"] .media-card:hover,
 [data-theme="glitch"] .media-relation-card:hover {
   border-color: #ff007f !important;
   box-shadow: 4px 4px 0px #39ff14 !important;

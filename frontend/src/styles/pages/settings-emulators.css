@@ -286,12 +286,6 @@
     gap: 1rem;
   }
 
-  .form-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
   .emulator-config-row {
     display: grid;
     grid-template-columns: auto auto auto 1fr auto;
@@ -319,35 +313,6 @@
     flex-direction: row;
     gap: 0.5rem;
     align-items: center;
-  }
-
-  .emulator-config-left {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    grid-column: 1;
-    grid-row: 1 / 3;
-  }
-
-  .form-group-inline {
-    display: flex;
-    flex-direction: row;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .form-group-inline .form-label {
-    white-space: nowrap;
-    margin: 0;
-    font-size: 0.85rem;
-  }
-
-  .form-group-inline .form-input {
-    flex: 1;
-  }
-
-  .emulator-config-left .form-select {
-    width: 180px;
   }
 
   .form-select.compact {
@@ -422,26 +387,6 @@
     margin: 0;
   }
 
-  .emulator-config-right {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    grid-column: 4;
-    grid-row: 1 / 3;
-  }
-
-  .emulator-config-right .form-label {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-main);
-  }
-
-  .emulator-config-right .form-input {
-    width: 100%;
-    height: 40px;
-    box-sizing: border-box;
-  }
-
   .form-label {
     font-size: 0.85rem;
     font-weight: 500;
@@ -464,36 +409,6 @@
   .form-select:focus {
     outline: none;
     border-color: var(--platform-color, var(--accent));
-  }
-
-  .folder-input-group {
-    display: flex;
-    gap: 0.5rem;
-    align-items: stretch;
-  }
-
-  .folder-input-group .form-input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .folder-browse-btn {
-    padding: 0.6rem 1rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    color: var(--text-main);
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--anim-base) var(--anim-ease);
-    white-space: nowrap;
-  }
-
-  .folder-browse-btn:hover {
-    background: var(--bg-elevated);
-    border-color: var(--platform-color, var(--accent));
-    color: var(--platform-color, var(--accent));
   }
 
   .rom-folder-display {

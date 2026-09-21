@@ -388,28 +388,6 @@
   min-width: 200px;
 }
 
-.search-filter-chip {
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all var(--anim-fast) var(--anim-ease);
-}
-.search-filter-chip:hover {
-  color: var(--text-main);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-.search-filter-chip.active {
-  color: var(--bg-primary);
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
 .search-filter-select {
   flex: 1;
   /* Explicit height + border-box so this lines up exactly with the year
@@ -592,22 +570,6 @@
 }
 .search-filter-clear:hover {
   text-decoration: underline;
-}
-
-.search-filter-apply {
-  margin-left: auto;
-  padding: 0.4rem 0.9rem;
-  background: var(--accent);
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--bg-primary);
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity var(--anim-fast);
-}
-.search-filter-apply:hover {
-  opacity: 0.85;
 }
 
 

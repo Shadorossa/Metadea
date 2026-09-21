@@ -1,4 +1,3 @@
-@import '../core/utilities.css';
 
 /* ── Local Library page ─────────────────────────────────────────────────────── */
 
@@ -790,12 +789,6 @@
 
 /* ── Folder entry grid ───────────────────────────────────────────────────────── */
 
-.local-folder-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.75rem;
-}
-
 /* ── Local media (anime/manga/lnovel/books/series/movies) status badge ───────── */
 
 .local-media-status-badge {
@@ -1582,7 +1575,6 @@
 /* Header's 3 circular buttons (back/edit/close) — identical box/colors,
    only their position differs. One base rule + a position modifier each,
    instead of the same declaration block copy-pasted 3 times. */
-.local-game-detail-close,
 .local-game-detail-edit,
 .local-game-detail-back {
   position: absolute;
@@ -1601,20 +1593,17 @@
   z-index: 2;
 }
 
-.local-game-detail-close:hover,
 .local-game-detail-edit:hover,
 .local-game-detail-back:hover {
   background: rgba(0, 0, 0, 0.8);
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-.local-game-detail-close svg,
 .local-game-detail-back svg {
   width: 16px;
   height: 16px;
 }
 
-.local-game-detail-close { right: 0.75rem; }
 .local-game-detail-back  { left: 0.75rem; }
 .local-game-detail-edit  { left: 3.25rem; }
 
@@ -2710,11 +2699,6 @@ html.comic-reader-active body::-webkit-scrollbar {
   height: 0 !important;
 }
 
-.comic-reader-header-btn--active {
-  color: var(--accent) !important;
-  border-color: var(--accent) !important;
-}
-
 .comic-context-menu {
   position: fixed;
   z-index: 600;
@@ -2764,10 +2748,6 @@ html.comic-reader-active body::-webkit-scrollbar {
 .comic-context-menu-item:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
-}
-
-.comic-context-menu-item--accent {
-  color: var(--accent);
 }
 
 .comic-context-menu-item svg {

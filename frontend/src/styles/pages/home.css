@@ -1,6 +1,5 @@
 /* ── Home page ────────────────────────────────────────────────────────────── */
 
-@import '../core/utilities.css';
 @import '../components/activity-card.css';
 
 .home-page-container {
@@ -383,19 +382,6 @@
 
 .act-card-date {
   margin-left: auto;
-}
-
-.home-activity-text {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-activity-text strong {
-  color: var(--text-main);
 }
 
 /* Generic card wrapper — same look as profile's .stats-block-custom, kept as

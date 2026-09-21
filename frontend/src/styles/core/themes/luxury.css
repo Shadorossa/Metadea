@@ -69,7 +69,6 @@ body[data-theme="luxury"], html[data-theme="luxury"] body {
   font-weight: bold;
 }
 
-[data-theme="luxury"] .media-card,
 [data-theme="luxury"] .hof-card,
 [data-theme="luxury"] .media-relation-card {
   border: 1px solid rgba(216, 178, 60, 0.15) !important;
@@ -79,7 +78,6 @@ body[data-theme="luxury"], html[data-theme="luxury"] body {
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
 }
 
-[data-theme="luxury"] .media-card:hover,
 [data-theme="luxury"] .media-relation-card:hover {
   border-color: #d8b23c !important;
   box-shadow: 0 15px 30px rgba(216, 178, 60, 0.15), 0 10px 20px rgba(0,0,0,0.6) !important;

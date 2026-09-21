@@ -68,7 +68,6 @@ body[data-theme="gothic"], html[data-theme="gothic"] body {
   color: #fff !important;
 }
 
-[data-theme="gothic"] .media-card,
 [data-theme="gothic"] .hof-card,
 [data-theme="gothic"] .media-relation-card {
   border: 1px solid #441a1a !important;
@@ -78,7 +77,6 @@ body[data-theme="gothic"], html[data-theme="gothic"] body {
   box-shadow: 0 12px 24px rgba(0,0,0,0.9) !important;
 }
 
-[data-theme="gothic"] .media-card:hover,
 [data-theme="gothic"] .media-relation-card:hover {
   border-color: #b71c1c !important;
   transform: translateY(-4px) !important;

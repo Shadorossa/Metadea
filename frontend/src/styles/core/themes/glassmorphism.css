@@ -127,7 +127,6 @@ body[data-theme="glassmorphism"], html[data-theme="glassmorphism"] body {
   background-color: rgba(217, 70, 239, 0.06) !important;
 }
 
-[data-theme="glassmorphism"] .media-card:hover,
 [data-theme="glassmorphism"] .media-relation-card:hover {
   background-color: rgba(255, 255, 255, 0.08) !important;
   border-color: rgba(217, 70, 239, 0.4) !important;

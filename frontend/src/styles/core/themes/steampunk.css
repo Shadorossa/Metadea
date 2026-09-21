@@ -97,7 +97,6 @@ body[data-theme="steampunk"], html[data-theme="steampunk"] body {
 }
 
 /* Placas de metal victoriano para tarjetas */
-[data-theme="steampunk"] .media-card,
 [data-theme="steampunk"] .media-relation-card {
   border: 2px solid #5c3f24 !important;
   background-color: #211812 !important;
@@ -118,7 +117,6 @@ body[data-theme="steampunk"], html[data-theme="steampunk"] body {
   border-radius: 4px !important;
 }
 
-[data-theme="steampunk"] .media-card:hover,
 [data-theme="steampunk"] .media-relation-card:hover {
   border-color: #d4a373 !important;
   transform: translateY(-4px) !important;
