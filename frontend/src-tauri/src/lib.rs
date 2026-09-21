@@ -229,6 +229,7 @@ pub fn run() {
             story_arcs::reorder_story_arcs,
             story_arcs::delete_story_arc,
             media_relations::save_media_relations,
+            media_relations::replace_issue_relations,
             media_relations::get_media_relations,
             media_relations::get_media_relations_for_editor,
             media_relations::get_deleted_relations,

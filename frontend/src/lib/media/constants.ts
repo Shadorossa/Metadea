@@ -13,6 +13,7 @@ export const DIFF_FIELDS: ReadonlyArray<readonly [keyof MediaCatalogEntry, strin
   ['synopsis', 'Synopsis'], ['cover_url', 'Cover URL'], ['banners_csv', 'Banner URLs'],
   ['release_year', 'Release Year'], ['release_month', 'Release Month'], ['release_day', 'Release Day'],
   ['total_count', 'Episodes/Chapters'], ['total_count_2', 'Seasons/Volumes'],
+  ['episode_source_id', 'TMDB episode source'], ['issue_source_id', 'ComicVine issue source'],
   ['genres_csv', 'Genres'], ['genres_tag_csv', 'Themes/Tags'],
   ['platforms_csv', 'Platforms'], ['shop_links_csv', 'Shop Links'],
 ];

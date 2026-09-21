@@ -552,15 +552,13 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
 
   return (
     <div className="pr-editor-section">
-      <div className="pr-editor-section-header-row">
-        <span className="pr-editor-section-title">{t.title}</span>
-        {!editingArc && <button type="button" className="pr-editor-add-btn" onClick={startNewArc}>{t.new_arc}</button>}
-      </div>
-
       {!editingArc && (
-        arcs.length === 0 ? (
-          <p className="pr-editor-bundle-children-hint">{t.empty}</p>
-        ) : (
+        <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
+          <button type="button" className="pr-editor-add-btn" onClick={startNewArc}>{t.new_arc}</button>
+        </div>
+      )}
+
+      {!editingArc && arcs.length > 0 && (
           <div className="pr-editor-arcs-list">
             {arcs.map((arc, index) => (
               <div key={arc.id} className="pr-editor-arc-card">
@@ -593,7 +591,6 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
               </div>
             ))}
           </div>
-        )
       )}
 
       {editingArc && (

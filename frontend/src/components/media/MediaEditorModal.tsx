@@ -211,8 +211,8 @@ function HoursField({ label, value, max, onChange }: {
   );
 }
 
-function NumberField({ label, value, max, step, disabled, onChange }: {
-  label: string; value: number; max?: number; step: number; disabled?: boolean; onChange: (v: number) => void;
+function NumberField({ label, value, max, step, disabled, unknownMax, onChange }: {
+  label: string; value: number; max?: number; step: number; disabled?: boolean; unknownMax?: boolean; onChange: (v: number) => void;
 }) {
   return (
     <HeaderField label={label}>
@@ -227,8 +227,8 @@ function NumberField({ label, value, max, step, disabled, onChange }: {
           }}
           placeholder="0" />
         {/* Same always-rendered reserved slot as HoursField above. */}
-        <span className={`me-header-field-max${max === undefined ? ' me-header-field-max--hidden' : ''}`}>
-          / {max !== undefined ? max : ''}
+        <span className={`me-header-field-max${max === undefined && !unknownMax ? ' me-header-field-max--hidden' : ''}`}>
+          / {max !== undefined ? max : unknownMax ? '?' : ''}
         </span>
       </div>
     </HeaderField>
@@ -1377,6 +1377,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     ) : (
                     <NumberField label={progLabel} value={isGeneralTab ? generalProgress : activeLog.progress} step={progStep}
                       max={activeTotalCount && activeTotalCount > 0 ? activeTotalCount : undefined}
+                      unknownMax={data.status === 'RELEASING' && !(activeTotalCount && activeTotalCount > 0)}
                       disabled={isGeneralTab}
                       onChange={v => {
                         const updates: Partial<LogState> = { progress: v };
@@ -1415,9 +1416,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         the competition's season count; match progress stays
                         independent and is aggregated from each season. */}
                     {label2 && !activeSeriesSeasonInfo && (
-                      isGeneralTab
-                        ? (isUnifiedEvent ? eventSeasons.length : animeSeasonChain.length) > 0
-                        : (data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0)
+                      (data.type === 'manga' || data.type === 'lnovel') && data.format !== 'ISSUE'
+                        ? true
+                        : isGeneralTab
+                          ? (isUnifiedEvent ? eventSeasons.length : animeSeasonChain.length) > 0
+                          : (data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0)
                     ) && (
                       <NumberField label={label2}
                         value={isGeneralTab ? generalSeasonsCompleted : activeLog.progressCount2}
@@ -1425,6 +1428,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         max={isGeneralTab
                           ? (isUnifiedEvent ? eventSeasons.length : animeSeasonChain.length)
                           : (data.totalCount_2 ?? undefined)}
+                        unknownMax={data.status === 'RELEASING' && !isGeneralTab && !(data.totalCount_2 && data.totalCount_2 > 0)}
                         disabled={isGeneralTab}
                         onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progressCount2: v } })} />
                     )}

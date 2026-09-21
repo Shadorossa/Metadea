@@ -30,6 +30,17 @@ import { isLocalMediaItemPlayable, toLocalMediaItem } from './library-playabilit
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
 
+function normalizeAniListLibraryTypes(items: Items | null): Items | null {
+  if (!items) return items;
+  return items.map(item => {
+    const prefix = item.external_id.slice(0, item.external_id.indexOf(':'));
+    if ((prefix === 'anime' || prefix === 'manga' || prefix === 'lnovel') && item.type !== prefix) {
+      return { ...item, type: prefix };
+    }
+    return item;
+  });
+}
+
 // A fixed subset of media_catalog.format values — anything else (or unset) passes through untouched.
 // .library-edition-filters is a single-column list (one button per row) —
 // OVA/ONA are the one deliberate exception, rendered as their own shared
@@ -95,6 +106,7 @@ export function LibrarySection({
   ], [p]);
 
   const [items, setItems] = useState<Items | null>(overrideItems ?? null);
+  const libraryItems = useMemo(() => normalizeAniListLibraryTypes(items), [items]);
   const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
   const [sagaRelations, setSagaRelations] = useState<DbMediaRelation[]>(overrideSagaRelations ?? []);
   const [sagaNames, setSagaNames] = useState<Record<string, string>>(overrideSagaNames ?? {});
@@ -166,12 +178,12 @@ export function LibrarySection({
   // the configured category folder for media entries. Until detection ends,
   // no play icon is shown rather than advertising an unavailable action.
   useEffect(() => {
-    if (readOnly || !items) {
+    if (readOnly || !libraryItems) {
       setPlayableResumeIds(new Set());
       return;
     }
     setPlayableResumeIds(new Set());
-    const candidates = items.filter(entry => isInProgressStatus(entry.status));
+    const candidates = libraryItems.filter(entry => isInProgressStatus(entry.status));
     if (candidates.length === 0) {
       setPlayableResumeIds(new Set());
       return;
@@ -231,7 +243,7 @@ export function LibrarySection({
 
     detectPlayableItems().catch(error => console.error('[LibrarySection] Local playability detection failed:', error));
     return () => { cancelled = true; };
-  }, [items, catalogMap, sagaRelations, readOnly]);
+  }, [libraryItems, catalogMap, sagaRelations, readOnly]);
 
   useEffect(() => {
     if (overrideItems) return;
@@ -309,7 +321,7 @@ export function LibrarySection({
   }, [sagaRelations]);
 
   const sections = useMemo(() => {
-    if (!items) return null;
+    if (!libraryItems) return null;
 
     const nameVal = deferredNameFilter.toLowerCase().trim();
     const statusKey = STATUS_LIST[statusIndex].key;
@@ -317,7 +329,7 @@ export function LibrarySection({
     const endTsExclusive = endDateFilter ? new Date(endDateFilter).getTime() + 24 * 60 * 60 * 1000 : null;
 
     // Precompute filter predicates to avoid repeated function calls
-    const filtered = items.filter(item => {
+    const filtered = libraryItems.filter(item => {
       const meta = catalogMap.get(item.external_id);
       const title = (meta?.title_main ?? item.external_id).toLowerCase();
       if (nameVal && !title.includes(nameVal)) return false;
@@ -420,7 +432,7 @@ export function LibrarySection({
     // dropped/pending/paused/in-progress ones — each of those stays its own
     // individual entry instead of being folded together, since "Completado"
     // already represents that saga/bundle's own real anchor point.
-    const completedIds = new Set((items ?? []).filter(i => i.status === 'completed').map(i => i.external_id));
+    const completedIds = new Set((libraryItems ?? []).filter(i => i.status === 'completed').map(i => i.external_id));
 
     // Places each unified season card in the same section its winning
     // member's own status would normally land in — same rules sectionsData
@@ -488,13 +500,13 @@ export function LibrarySection({
 
         return { title: sec.title, cards, isCurrently: sec.isCurrently };
       });
-  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, deferredNameFilter, activeTypeTab, selectedEditionFormats, statusIndex, startDateFilter, endDateFilter, sortBy, groupByEdition, groupByBundle, dualRatingEnabled, ratingSlot, STATUS_LIST, p]);
+  }, [libraryItems, catalogMap, sagaRelations, sagaComponentOf, sagaNames, deferredNameFilter, activeTypeTab, selectedEditionFormats, statusIndex, startDateFilter, endDateFilter, sortBy, groupByEdition, groupByBundle, dualRatingEnabled, ratingSlot, STATUS_LIST, p]);
 
   const presentTypes = useMemo(() => {
-    if (!items) return [];
-    const present = new Set(items.map(i => i.type));
+    if (!libraryItems) return [];
+    const present = new Set(libraryItems.map(i => i.type));
     return ALL_MEDIA_TYPES.filter(t => present.has(t));
-  }, [items]);
+  }, [libraryItems]);
 
   if (items === null) return null;
 

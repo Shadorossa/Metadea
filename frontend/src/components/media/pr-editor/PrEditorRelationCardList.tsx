@@ -23,8 +23,8 @@ export function PrEditorRelationCardList({
   relations, draggedIndex, dragHandlers, onRemove,
 }: Props) {
   return (
-    <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '100%' }}>
-      <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six">
+    <div className="pr-editor-subsection pr-editor-subsection--bundled">
+      <div className="pr-editor-media-group-cards pr-editor-media-group-cards--twelve">
         {relations.map((r, index) => (
           <div
             key={r.external_id}

@@ -14,10 +14,10 @@ import { getCatalogEntry } from '../tauri/catalog';
 // (sometimes just "Episode 12", occasionally missing the "Episode" word
 // entirely for a one-shot/movie) — there's no separate numeric field.
 const EPISODE_TITLE_RE = /Episode\s+(\d+(?:\.\d+)?)\s*(?:[-–—]\s*(.+))?/i;
-const ANIME_EPISODE_MAPPING_VERSION = 'anime-episode-map-v7';
+const ANIME_EPISODE_MAPPING_VERSION = 'anime-episode-map-v8';
 const SERIES_EPISODE_MAPPING_VERSION = 'series-episode-map-v1';
 
-async function animeEpisodeMappingKey(rawId: string): Promise<string> {
+async function animeEpisodeMappingKey(rawId: string, forcedTmdbId?: string | null): Promise<string> {
   // This is intentionally recalculated from local relation rows. A curator
   // can change a PREQUEL/SEQUEL chain while the app is open, and reusing an
   // in-memory signature would let the old episode mapping survive.
@@ -25,7 +25,7 @@ async function animeEpisodeMappingKey(rawId: string): Promise<string> {
   const signature = chain.map(entry =>
     `${entry.externalId}:${entry.totalCount}:${entry.format ?? ''}`
   ).join('|');
-  return `${ANIME_EPISODE_MAPPING_VERSION}:${signature || rawId}`;
+  return `${ANIME_EPISODE_MAPPING_VERSION}:${forcedTmdbId || 'auto'}:${signature || rawId}`;
 }
 
 const TMDB_LANGUAGE_REGIONS: Record<string, string> = {
@@ -101,8 +101,8 @@ async function fetchFromAniList(numericId: number, externalId: string, episodeOf
 }
 
 // Numbers episodes continuously (e.g., continuing after prequels' episode counts).
-async function fetchAnimeEpisodesFromTmdb(rawId: string, externalId: string, episodeOffset = 0, mappingKey?: string): Promise<MediaEpisode[]> {
-  const match = await matchTmdbSeasonsForAnime(rawId);
+async function fetchAnimeEpisodesFromTmdb(rawId: string, externalId: string, episodeOffset = 0, mappingKey?: string, forcedTmdbId?: number): Promise<MediaEpisode[]> {
+  const match = await matchTmdbSeasonsForAnime(rawId, forcedTmdbId);
   if (!match) return [];
 
   const seasonNumbers = [...new Set(match.slices.map(s => s.season_number))];
@@ -143,8 +143,9 @@ async function fetchAnimeEpisodes(
   cached: MediaEpisode[],
   mappingKey?: string,
   expectedCount = 0,
+  forcedTmdbId?: number,
 ): Promise<MediaEpisode[]> {
-  const tmdbEpisodes = await fetchAnimeEpisodesFromTmdb(rawId, rawId, episodeOffset, mappingKey).catch(() => []);
+  const tmdbEpisodes = await fetchAnimeEpisodesFromTmdb(rawId, rawId, episodeOffset, mappingKey, forcedTmdbId).catch(() => []);
   let fresh = tmdbEpisodes;
 
   // TMDB sometimes has the right season split but only generic "Episode N"
@@ -245,11 +246,11 @@ export async function fetchMediaEpisodes(
   if (!numericId) return [];
 
   const episodeOffset = type === 'anime' ? await getAnimePrequelEpisodeOffset(rawId).catch(() => 0) : 0;
-  const catalogEntry = type === 'anime' ? await getCatalogEntry(rawId).catch(() => null) : null;
+  const catalogEntry = type === 'anime' || type === 'series' ? await getCatalogEntry(rawId).catch(() => null) : null;
   const mappingKey = type === 'anime'
-    ? await animeEpisodeMappingKey(rawId)
+    ? await animeEpisodeMappingKey(rawId, catalogEntry?.episode_source_id)
     : type === 'series'
-      ? `${SERIES_EPISODE_MAPPING_VERSION}:${numericId}`
+      ? `${SERIES_EPISODE_MAPPING_VERSION}:${catalogEntry?.episode_source_id || numericId}`
       : undefined;
   const cachedEpisodes = await getMediaEpisodes(rawId).catch(() => []);
   // Older rows have no provenance. Treat them as stale rather than letting
@@ -303,6 +304,7 @@ export async function fetchMediaEpisodes(
       reusableCachedEpisodes,
       mappingKey,
       expectedAnimeCount,
+      catalogEntry?.episode_source_id ? Number(catalogEntry.episode_source_id) : undefined,
     );
     const boundedEpisodes = expectedAnimeCount > 0 ? ownEpisodes.slice(0, expectedAnimeCount) : ownEpisodes;
     await saveMediaEpisodes(rawId, boundedEpisodes).catch(err => console.error('Failed to refresh standalone anime episodes', err));
@@ -331,9 +333,11 @@ export async function fetchMediaEpisodes(
 
   let fresh: MediaEpisode[] = [];
   if (type === 'anime') {
-    fresh = await fetchAnimeEpisodes(rawId, numericId, episodeOffset, reusableCachedEpisodes, mappingKey, expectedAnimeCount);
+    fresh = await fetchAnimeEpisodes(rawId, numericId, episodeOffset, reusableCachedEpisodes, mappingKey, expectedAnimeCount,
+      catalogEntry?.episode_source_id ? Number(catalogEntry.episode_source_id) : undefined);
   } else if (type === 'series') {
-    fresh = await fetchFromTmdb(numericId, rawId, knownSeasonCount, mappingKey).catch(() => []);
+    const sourceId = catalogEntry?.episode_source_id ? Number(catalogEntry.episode_source_id) : numericId;
+    fresh = await fetchFromTmdb(sourceId, rawId, catalogEntry?.episode_source_id ? undefined : knownSeasonCount, mappingKey).catch(() => []);
   } else {
     return [];
   }

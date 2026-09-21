@@ -85,6 +85,7 @@ commands.allow = [
   "get_community_sagas",
   "delete_saga",
   "save_media_relations",
+  "replace_issue_relations",
   "get_media_relations",
   "get_media_relations_for_editor",
   "get_deleted_relations",

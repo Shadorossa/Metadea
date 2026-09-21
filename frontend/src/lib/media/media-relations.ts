@@ -129,7 +129,7 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
       relationType: r.relation_type,
       title: r.title,
       cover: r.cover || undefined,
-      url: `/media?id=${r.related_media_external_id}`,
+      url: r.relation_type === 'ISSUE' ? undefined : `/media?id=${r.related_media_external_id}`,
       // Needed so mergeRelationGraph's dedup Set sees DB-sourced rows too.
       relatedExternalId: r.related_media_external_id,
     })),

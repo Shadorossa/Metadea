@@ -25,7 +25,7 @@ export function PrEditorSagaOrderSection({
   const pe = getT().pr_editor;
   return (
     <div className="pr-editor-subsection pr-editor-subsection--saga">
-      <div className="pr-editor-media-group-cards pr-editor-media-group-cards--seven" style={{ marginBottom: '1.25rem' }}>
+      <div className="pr-editor-media-group-cards pr-editor-media-group-cards--twelve">
         {sagaOrder.map((id, index) => {
           const meta = resolveMeta(id);
           return (

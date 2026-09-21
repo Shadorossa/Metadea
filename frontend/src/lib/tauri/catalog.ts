@@ -4,6 +4,10 @@ import { getPreferredCover } from '../media/cover-preferences';
 export interface MediaCatalogEntry {
   id:                   string;
   external_id:          string;
+  /** Curated ComicVine volume id used to resolve this work's issue list. */
+  issue_source_id?:     string | null;
+  /** Curated TMDB TV id used to resolve this work's episode list. */
+  episode_source_id?:   string | null;
   banners_csv?:         string | null;
   /** Set via PrEditorModal to reserve this external_id (so it can never be
    *  re-added as "new" from a live search result) while hiding the row
@@ -221,6 +225,10 @@ export interface DbMediaRelation {
 
 export async function saveMediaRelations(mediaExternalId: string, relations: DbMediaRelation[]): Promise<void> {
   return tauriRun('save_media_relations', { mediaExternalId, relations });
+}
+
+export async function replaceIssueRelations(mediaExternalId: string, relations: DbMediaRelation[]): Promise<void> {
+  return tauriRun('replace_issue_relations', { mediaExternalId, relations });
 }
 
 export async function getMediaRelations(mediaExternalId: string): Promise<DbMediaRelation[]> {

@@ -80,7 +80,7 @@ pub async fn sync_community_catalog(
                 "release_month", "release_year", "score_global",
                 "shop_links_csv", "source", "source_url", "status", "synopsis",
                 "time_length", "title_english", "title_main", "title_native", "title_romaji", "total_count", "total_count_2",
-                "type"
+                "type", "issue_source_id", "episode_source_id"
             ];
 
             let mut select_cols = Vec::new();
@@ -168,6 +168,24 @@ pub async fn sync_community_catalog(
                      FROM community.character_merges m",
                     [],
                 ).str_err()? as i64;
+            }
+
+            // Curator-selected provider mappings are shared catalog data,
+            // unlike local episode caches. The community value is canonical
+            // (including an explicit clear), so apply corrections to rows
+            // that already existed locally instead of INSERT OR IGNORE alone.
+            for col in ["issue_source_id", "episode_source_id"] {
+                if attached_db_has_column(&conn, "community", "media_catalog", col) {
+                    changes += conn.execute(
+                        &format!(
+                            "UPDATE media_catalog
+                             SET {col} = (SELECT c.{col} FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                             WHERE EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                               AND {col} IS NOT (SELECT c.{col} FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)"
+                        ),
+                        [],
+                    ).str_err()? as i64;
+                }
             }
 
             // Actors (voice/live-action) — same fill-gaps merge as characters above.

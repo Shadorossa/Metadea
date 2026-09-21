@@ -28,20 +28,39 @@ const LIBRARY_MEDIA_ICONS: Record<string, LucideIcon> = {
   comic: BookImage,
 };
 
-function nextReadingIssueCover(item: LibraryEntry, issueRelations: DbMediaRelation[]): string | null {
+function nextReadingIssueCover(
+  item: LibraryEntry,
+  issueRelations: DbMediaRelation[],
+  catalogEntry?: MediaCatalogEntry,
+): string | null {
   const type = item.type.split('_')[0];
-  if (!isInProgressStatus(item.status) || (type !== 'manga' && type !== 'comic')) return null;
+  if (type !== 'manga' && type !== 'comic') return null;
+  const isCompleted = item.status === 'completed';
+  if (!isCompleted && !isInProgressStatus(item.status) && item.status !== 'paused' && item.status !== 'dropped') return null;
 
   // Manga tracks volumes separately from chapters; Comic Vine comics track
-  // issue numbers in the primary progress field.
+  // issue numbers in the primary progress field. Completed works use the
+  // final known volume/issue instead of asking for a nonexistent next one.
   const completedCount = type === 'manga' ? item.progress_2 : item.progress;
-  const nextIssueNumber = Math.floor(completedCount) + 1;
-  if (!Number.isSafeInteger(nextIssueNumber) || nextIssueNumber < 1) return null;
+  const issueNumbers = issueRelations
+    .filter(relation => relation.relation_type === 'ISSUE' && !!relation.cover)
+    .map(relation => Number(relation.title.match(/^#\s*(\d+(?:\.\d+)?)/)?.[1]))
+    .filter(number => Number.isFinite(number) && number > 0);
+  const lastAvailableIssue = issueNumbers.length ? Math.max(...issueNumbers) : null;
+  const catalogTotal = type === 'manga' ? catalogEntry?.total_count_2 : catalogEntry?.total_count;
+  const targetIssueNumber = isCompleted
+    ? catalogTotal && catalogTotal > 0
+      ? catalogTotal
+      : completedCount > 0
+        ? Math.floor(completedCount)
+        : lastAvailableIssue
+    : Math.floor(completedCount) + 1;
+  if (targetIssueNumber == null || !Number.isSafeInteger(targetIssueNumber) || targetIssueNumber < 1) return null;
 
   const match = issueRelations.find(relation => {
     if (relation.relation_type !== 'ISSUE' || !relation.cover) return false;
     const issueNumber = relation.title.match(/^#\s*(\d+(?:\.\d+)?)/)?.[1];
-    return issueNumber != null && Number(issueNumber) === nextIssueNumber;
+    return issueNumber != null && Number(issueNumber) === targetIssueNumber;
   });
   return match?.cover ?? null;
 }
@@ -167,7 +186,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     return () => { cancelled = true; };
   }, [hideGroupingUi, aggregateMembers, catalogMap]);
 
-  const readingIssueCover = nextReadingIssueCover(item, issueRelations ?? []);
+  const readingIssueCover = nextReadingIssueCover(item, issueRelations ?? [], meta);
   const cover = toMediumCover(dynamicCover || readingIssueCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
 
   // Same "which season is actually active" pick as inProgressCover above —

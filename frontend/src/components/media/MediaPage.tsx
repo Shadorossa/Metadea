@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes, fetchMediaThemes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
-import { getCatalogEntry, getLibraryEntry, getMediaRelations, saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
+import { getCatalogEntry, getLibraryEntry, getMediaRelations, replaceIssueRelations, saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
 import type { LibraryEntry, MediaEpisode, MediaTheme } from '../../lib/tauri';
 import type { MediaPageData, MediaSeasonInfo } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -1277,7 +1277,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     if (!currentId || retryingSync) return;
     setRetryingSync(true);
     invalidateCachedMediaData(currentId);
-    fetchMediaData(currentId, { refreshAniListTotalCount: true, refreshSourceAdaptation: true }).then(fresh => {
+    fetchMediaData(currentId, { refreshAniListTotalCount: true, refreshSourceAdaptation: true }).then(async fresh => {
       if (fresh) {
         setData(fresh);
         if (!fresh.charactersInheritedFromBase && fresh.characters && fresh.characters.length > 0) {
@@ -1320,6 +1320,46 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         fetchMediaThemes(currentId, true).then(t => {
           if (t.length > 0) setThemes(t);
         }).catch(console.error);
+      }
+
+      // Retry also refreshes ComicVine issues. Replace only ISSUE rows so a
+      // corrected volume mapping removes its previous #1/#2 cards without
+      // disturbing curated relations of any other kind.
+      if (fresh && ['comic', 'manga', 'lnovel'].includes(fresh.type)) {
+        const issueResult = await fetchComicIssues(
+          currentId,
+          fresh.relations,
+          tm.relations.ISSUE,
+          fresh.titleMain,
+          fresh.titleRomaji || fresh.titleEnglish,
+        ).catch(error => {
+          console.error('Failed to refresh ComicVine issues', error);
+          return null;
+        });
+
+        if (issueResult?.relations) {
+          const refreshedIssues = issueResult.relations.filter(relation => relation.relationType === 'ISSUE');
+          const refreshedRelations = [
+            ...fresh.relations.filter(relation => relation.relationType !== 'ISSUE'),
+            ...refreshedIssues,
+          ];
+          patchCachedRelations(currentId, refreshedRelations);
+          setData(prev => prev?.externalId === currentId ? { ...prev, relations: refreshedRelations } : prev);
+
+          await replaceIssueRelations(currentId,
+            refreshedIssues.flatMap(relation => relation.relatedExternalId ? [{
+              related_media_external_id: relation.relatedExternalId,
+              relation_type: 'ISSUE',
+              type_label: relation.typeLabel,
+              title: relation.title,
+              cover: relation.cover ?? null,
+              format: relation.format ?? null,
+              release_day: relation.releaseDay ?? null,
+              release_month: relation.releaseMonth ?? null,
+              release_year: relation.releaseYear ?? null,
+            }] : []),
+          ).catch(console.error);
+        }
       }
     }).finally(() => setRetryingSync(false));
   }, [currentId, retryingSync, unifySeasonsEnabled]);

@@ -208,25 +208,27 @@ function matchChainAgainstSeasons(chain: AnimeChainEntry[], seasons: TmdbSeasonC
 // pages of the same anime within a session only does this once.
 const chainMatchCache = new Map<string, { signature: string; result: Promise<{ tmdbId: number; originalLanguage?: string; mapping: Map<string, TmdbEpisodeSlice[]> } | null> }>();
 
-async function resolveChainMatch(chain: AnimeChainEntry[]): Promise<{ tmdbId: number; originalLanguage?: string; mapping: Map<string, TmdbEpisodeSlice[]> } | null> {
+async function resolveChainMatch(chain: AnimeChainEntry[], forcedTmdbId?: number): Promise<{ tmdbId: number; originalLanguage?: string; mapping: Map<string, TmdbEpisodeSlice[]> } | null> {
   const headId = chain[0].externalId;
-  const signature = chain.map(entry => `${entry.externalId}:${entry.totalCount}:${entry.releaseYear ?? ''}:${entry.titles.join(',')}`).join('|');
+  const signature = `${forcedTmdbId ?? 'auto'}:${chain.map(entry => `${entry.externalId}:${entry.totalCount}:${entry.releaseYear ?? ''}:${entry.titles.join(',')}`).join('|')}`;
   let cached = chainMatchCache.get(headId);
   if (!cached || cached.signature !== signature) {
-    cached = { signature, result: computeChainMatch(chain) };
+    cached = { signature, result: computeChainMatch(chain, forcedTmdbId) };
     chainMatchCache.set(headId, cached);
   }
   return cached.result;
 }
 
-async function computeChainMatch(chain: AnimeChainEntry[]): Promise<{ tmdbId: number; originalLanguage?: string; mapping: Map<string, TmdbEpisodeSlice[]> } | null> {
+async function computeChainMatch(chain: AnimeChainEntry[], forcedTmdbId?: number): Promise<{ tmdbId: number; originalLanguage?: string; mapping: Map<string, TmdbEpisodeSlice[]> } | null> {
   // A sequel chain can begin with a movie or one-off special which TMDB
   // doesn't include in the TV episode stream. Search using its first actual
   // TV entry, while still matching the candidate against the whole chain.
   const firstTvEntry = chain.find(entry => contributesToTvEpisodeStream(entry) && entry.totalCount > 0);
   if (!firstTvEntry) return null;
 
-  const candidates = await searchEntryCandidates(firstTvEntry);
+  const candidates = forcedTmdbId
+    ? [{ id: forcedTmdbId }]
+    : await searchEntryCandidates(firstTvEntry);
   if (!candidates.length) return null;
   const chainStartYear = firstTvEntry.releaseYear;
 
@@ -334,19 +336,19 @@ function normalizeTitle(value: string): string {
   return value.normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 }
 
-export async function matchTmdbSeasonsForAnime(rawId: string): Promise<TmdbSeasonMatch | null> {
+export async function matchTmdbSeasonsForAnime(rawId: string, forcedTmdbId?: number): Promise<TmdbSeasonMatch | null> {
   const { type } = parseExternalId(rawId);
   if (type !== 'anime') return null;
 
   const chain = await buildAnimeChain(rawId);
   if (chain.length > 0) {
-    const chainMatch = await resolveChainMatch(chain);
+    const chainMatch = await resolveChainMatch(chain, forcedTmdbId);
     const ownEntry = chain.find(entry => entry.externalId === rawId);
     // Some sequels are separate TMDB shows even when an episode-count split
     // could place them plausibly inside the predecessor's long-running show.
     // Prefer a title/year/count-validated distinct record over that positional
     // slice (e.g. a short sequel with its own TV listing).
-    if (ownEntry && chainMatch?.mapping.has(rawId)) {
+    if (!forcedTmdbId && ownEntry && chainMatch?.mapping.has(rawId)) {
       const standaloneMatch = await matchStandaloneEntry(ownEntry);
       if (standaloneMatch && standaloneMatch.tmdbId !== chainMatch.tmdbId) return standaloneMatch;
     }
@@ -356,6 +358,10 @@ export async function matchTmdbSeasonsForAnime(rawId: string): Promise<TmdbSeaso
         return { tmdbId: chainMatch.tmdbId, originalLanguage: chainMatch.originalLanguage, slices };
       }
     }
+
+    // An explicit curator mapping must never silently fall back to another
+    // fuzzy TMDB match if its selected show cannot cover this chain entry.
+    if (forcedTmdbId) return null;
 
     if (ownEntry) {
       const standaloneMatch = await matchStandaloneEntry(ownEntry);
@@ -369,6 +375,14 @@ export async function matchTmdbSeasonsForAnime(rawId: string): Promise<TmdbSeaso
   // Fallback: standalone search on TMDB by the entry's own titles if not covered by the main saga
   const self = await getCatalogEntry(rawId).catch(() => null);
   if (!self) return null;
+
+  if (forcedTmdbId) {
+    const manualChainMatch = await resolveChainMatch([toChainEntry(self)], forcedTmdbId);
+    const slices = manualChainMatch?.mapping.get(rawId);
+    return slices?.length && manualChainMatch
+      ? { tmdbId: manualChainMatch.tmdbId, originalLanguage: manualChainMatch.originalLanguage, slices }
+      : null;
+  }
 
   return matchStandaloneEntry(toChainEntry(self));
 }

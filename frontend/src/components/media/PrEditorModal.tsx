@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
 import { getCatalogEntryForEditor, getBlockedExternalIds, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
@@ -13,8 +13,10 @@ import { loadPrEditorRelationsAndSaga } from './pr-editor/pr-editor-load';
 import { buildPrEditorChangeSummary } from './pr-editor/pr-editor-change-summary';
 import { mergeResyncFields, buildResyncCharacters, appendResyncRelations, appendResyncRecommendations } from './pr-editor/pr-editor-resync';
 import { MediaSearchPopup } from './MediaSearchPopup';
+import { MediaSourceMappingSearchPopup, type MediaSourceMappingKind } from './MediaSourceMappingSearchPopup';
 import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { generateCustomCharacterId } from '../../lib/character/customCharacter';
+import { comicVineGetIssues } from '../../lib/tauri/comicvine';
 import { SlotInput } from './SlotInput';
 import {
   EDITABLE_RELATION_OPTIONS,
@@ -75,6 +77,7 @@ interface Props {
 
 
 const DEFAULT_NEW_RELATION_TYPE = 'REL_ADAPTATION';
+type RelationsSubtab = 'saga' | 'relations' | 'recommendations' | 'bundled' | 'arcs' | 'issues' | 'episodes' | 'bundle-children' | 'contains';
 
 // True when two string records differ after normalizing each value (missing
 // keys fall back through `normalize`), regardless of which record a key is in.
@@ -104,6 +107,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
   const tPr = getT().pr_editor;
 
   const [activeTab, setActiveTab] = useState<'general' | 'cast' | 'relations'>(initialTab);
+  const [relationsSubtab, setRelationsSubtab] = useState<RelationsSubtab>('saga');
   useEffect(() => {
     setActiveTab(initialTab);
   }, [externalId, initialTab]);
@@ -152,7 +156,11 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
   // collapsible section since their titles are often just a bare issue
   // number, which used to clutter the general Relations grid.
   const [issueRelations, setIssueRelations] = useState<BundledRelation[]>([]);
+  const [originalIssueRelations, setOriginalIssueRelations] = useState<BundledRelation[]>([]);
   const [originalIssueIds, setOriginalIssueIds] = useState<Set<string>>(new Set());
+  const [isLoadingIssuePreview, setIsLoadingIssuePreview] = useState(false);
+  const [issuePreviewError, setIssuePreviewError] = useState<string | null>(null);
+  const issuePreviewRequest = useRef(0);
 
   // Saga — one single ordered chain (chronological order), including this
   // entry itself. Every adjacent pair in this order gets a SEQUEL edge
@@ -189,14 +197,28 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
   // characters/authors get — the section reports its own removals instead.
   const [removedArcIds, setRemovedArcIds] = useState<string[]>([]);
 
-  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | 'recommendations' | 'bundle-children' | 'issues' | null>(null);
+  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | 'recommendations' | 'bundle-children' | null>(null);
+  const [sourceMappingSearch, setSourceMappingSearch] = useState<MediaSourceMappingKind | null>(null);
 
-  // Collapsible sections — Issues (ComicVine's numbered-title relations)
-  // starts collapsed since a comic volume can have dozens of them; Relations
-  // stays open since it's usually just a handful of named entries.
-  const [relationsExpanded, setRelationsExpanded] = useState(true);
-  const [recommendationsExpanded, setRecommendationsExpanded] = useState(false);
-  const [issuesExpanded, setIssuesExpanded] = useState(false);
+  const relationsSubtabs = useMemo(() => {
+    const tabs: Array<{ id: RelationsSubtab; label: string; visible: boolean }> = [
+      { id: 'saga', label: 'Saga', visible: true },
+      { id: 'relations', label: 'Relaciones', visible: true },
+      { id: 'recommendations', label: 'Recomendados', visible: true },
+      { id: 'bundled', label: 'Incluida en', visible: true },
+      { id: 'arcs', label: 'Arcos', visible: true },
+      { id: 'issues', label: 'Issues', visible: !!entry && (issueRelations.length > 0 || ['comic', 'manga', 'lnovel'].includes(entry.type)) },
+      { id: 'episodes', label: 'Episodios', visible: !!entry && ['anime', 'series'].includes(entry.type) },
+      { id: 'bundle-children', label: 'Contenido', visible: bundledRelations.length > 0 },
+      { id: 'contains', label: 'Contiene', visible: entry?.format === 'BUNDLE' },
+    ];
+    return tabs.filter(tab => tab.visible);
+  }, [entry?.type, entry?.format, issueRelations.length, bundledRelations.length]);
+
+  useEffect(() => {
+    if (relationsSubtabs.some(tab => tab.id === relationsSubtab)) return;
+    setRelationsSubtab(relationsSubtabs[0]?.id ?? 'saga');
+  }, [relationsSubtabs, relationsSubtab]);
 
   useEffect(() => {
     if (mode === 'local') return;
@@ -257,6 +279,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
         setRecommendations(result.recommendations);
         setOriginalRecommendationIds(result.originalRecommendationIds);
         setIssueRelations(result.issueRelations);
+        setOriginalIssueRelations(result.issueRelations);
         setOriginalIssueIds(result.originalIssueIds);
         if (result.currentEntry) {
           setEntry(result.currentEntry);
@@ -545,15 +568,6 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
 
   // ── Issue (ComicVine) relation handlers ───────────────────────────────────
 
-  const addIssueRelation = (result: ApiSearchResult) => {
-    if (!issueRelations.some(r => r.external_id === result.externalId)) {
-      setIssueRelations([...issueRelations, {
-        external_id: result.externalId,
-        title: result.titleMain,
-        cover: result.coverUrl,
-      }]);
-    }
-  };
   const removeIssueRelation = (id: string) =>
     setIssueRelations(prev => prev.filter(r => r.external_id !== id));
   const reorderIssueRelations = (fromIndex: number, toIndex: number) => {
@@ -569,6 +583,55 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
   const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
     setEntry({ ...entry, [field]: value === '' ? null : value });
+  };
+
+  const setProviderSource = async (kind: MediaSourceMappingKind, result: ApiSearchResult) => {
+    if (!entry) return;
+    const id = result.externalId.split(':').pop() || '';
+    setEntry({
+      ...entry,
+      [kind === 'episodes' ? 'episode_source_id' : 'issue_source_id']: id || null,
+    });
+
+    if (kind !== 'issues' || !id) return;
+
+    const volumeId = Number(id);
+    if (!Number.isInteger(volumeId) || volumeId <= 0) return;
+
+    const requestId = ++issuePreviewRequest.current;
+    setIsLoadingIssuePreview(true);
+    setIssuePreviewError(null);
+    try {
+      const issues = await comicVineGetIssues(volumeId);
+      if (requestId !== issuePreviewRequest.current) return;
+      const baseType = entry.external_id.split(':')[0];
+      const mappedIssues = issues.flatMap(issue => {
+        const cover = issue.image?.medium_url || issue.image?.small_url;
+        if (!cover) return [];
+        const number = issue.issue_number ? `#${issue.issue_number}` : '';
+        const name = issue.name ? ` - ${issue.name}` : '';
+        return [{
+          external_id: `${baseType}:issue-${issue.id}`,
+          title: number + name || `#${issue.id}`,
+          cover,
+        }];
+      });
+      setIssueRelations(mappedIssues);
+    } catch (error) {
+      if (requestId !== issuePreviewRequest.current) return;
+      console.error('Failed to preview ComicVine issues', error);
+      setIssuePreviewError('No se pudieron cargar las issues del volumen seleccionado.');
+    } finally {
+      if (requestId === issuePreviewRequest.current) setIsLoadingIssuePreview(false);
+    }
+  };
+
+  const resetIssueSource = () => {
+    issuePreviewRequest.current += 1;
+    setIsLoadingIssuePreview(false);
+    setIssuePreviewError(null);
+    handleChange('issue_source_id', null);
+    setIssueRelations(originalIssueRelations);
   };
 
   const [isResyncing, setIsResyncing] = useState(false);
@@ -694,7 +757,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
   };
 
   const handleSubmit = async () => {
-    if (!entry) return;
+    if (!entry || isLoadingIssuePreview || issuePreviewError) return;
     setSubmitting(true);
     setErrorMsg('');
 
@@ -771,13 +834,13 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
     return createPortal(
       <div className="pr-editor-overlay" onClick={onClose}>
         <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
-          <div className="pr-editor-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', textAlign: 'center', padding: '3rem 2rem' }}>
+          <div className="pr-editor-body pr-editor-login-required">
             <p className="pr-editor-title">{pe.login_required_title}</p>
             <p className="pr-editor-subtitle">
               Cualquier edición aquí se propone como una Pull Request al catálogo comunitario —
               inicia sesión con GitHub en Settings antes de continuar.
             </p>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div className="pr-editor-login-actions">
               <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose}>{pe.close}</button>
               <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { window.location.href = '/settings'; }}>
                 Ir a Settings
@@ -842,7 +905,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
     if (!isGameOrVn) {
       return (
         <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
-          <input type="text" value={mediaTypesDict[currentType] || currentType || ''} disabled style={{ opacity: 0.7 }} />
+          <input type="text" value={mediaTypesDict[currentType] || currentType || ''} disabled className="pr-editor-readonly-input" />
         </Field>
       );
     }
@@ -874,7 +937,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
     allowed?: string[]; restrict?: boolean; preview?: boolean; fullWidth?: boolean; dotClass?: string;
     transformNewItem?: (raw: string) => string;
   }) => (
-    <div style={{ position: 'relative' }} className={isLocalOnly(field) ? 'pr-editor-field--dim' : undefined}>
+    <div className={`pr-editor-field-wrap${isLocalOnly(field) ? ' pr-editor-field--dim' : ''}`}>
       <SlotInput label={label} value={entry[field] as string | undefined} onChange={v => handleChange(field, v)}
         allowedSuggestions={opts?.allowed} restrictToSuggestions={opts?.restrict}
         preview={opts?.preview} fullWidth={opts?.fullWidth} transformNewItem={opts?.transformNewItem} />
@@ -1089,17 +1152,31 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
           )}
 
           {activeTab === 'relations' && (
-            <div className="pr-editor-relations-grid">
+            <div className="pr-editor-relations-content">
+              <div className="pr-editor-subtabs" role="tablist" aria-label="Apartados de relaciones">
+                {relationsSubtabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={relationsSubtab === tab.id}
+                    className={`pr-editor-subtab-btn${relationsSubtab === tab.id ? ' active' : ''}`}
+                    onClick={() => setRelationsSubtab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <div className="pr-editor-relations-grid">
+              {relationsSubtab === 'saga' && (
               <div className="pr-editor-section">
                 <div className="pr-editor-section-header-row">
-                  {sectionTitle('Saga', [])}
                   <input
                     type="text"
                     placeholder={pe.saga_name_placeholder}
                     value={sagaName}
                     onChange={e => setSagaName(e.target.value)}
-                    className="pr-editor-media-card-group-input"
-                    style={{ flex: 1, maxWidth: '200px', fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
+                    className="pr-editor-media-card-group-input pr-editor-saga-name-input"
                   />
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>{tPr.add_to_saga}</button>
                 </div>
@@ -1114,49 +1191,37 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                   resolveMeta={resolveMeta}
                 />
               </div>
+              )}
 
-              <div className="pr-editor-section">
-                <div className="pr-editor-section-header-row">
-                  <button type="button" className="pr-editor-section-toggle" onClick={() => setRelationsExpanded(v => !v)}>
-                    <span className={`pr-editor-section-chevron${relationsExpanded ? ' pr-editor-section-chevron--open' : ''}`}>▸</span>
-                    {sectionTitle('Relations', [])}
-                  </button>
+              {relationsSubtab === 'relations' && <div className="pr-editor-section">
+                <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>{tPr.add_relation}</button>
                 </div>
-                {relationsExpanded && (
-                  <PrEditorRelationsSection
-                    editableRelations={editableRelations}
-                    relationOptions={EDITABLE_RELATION_OPTIONS}
-                    relationLabels={canonicalRelationLabels}
-                    draggedIndex={draggedRelationIndex}
-                    dragHandlers={relationDragHandlers}
-                    onRemove={removeEditableRelation}
-                    onUpdateType={updateEditableRelationType}
-                  />
-                )}
-              </div>
+                <PrEditorRelationsSection
+                  editableRelations={editableRelations}
+                  relationOptions={EDITABLE_RELATION_OPTIONS}
+                  relationLabels={canonicalRelationLabels}
+                  draggedIndex={draggedRelationIndex}
+                  dragHandlers={relationDragHandlers}
+                  onRemove={removeEditableRelation}
+                  onUpdateType={updateEditableRelationType}
+                />
+              </div>}
 
-              <div className="pr-editor-section">
-                <div className="pr-editor-section-header-row">
-                  <button type="button" className="pr-editor-section-toggle" onClick={() => setRecommendationsExpanded(v => !v)}>
-                    <span className={`pr-editor-section-chevron${recommendationsExpanded ? ' pr-editor-section-chevron--open' : ''}`}>▸</span>
-                    {sectionTitle(recommendationLabel, [])}
-                  </button>
+              {relationsSubtab === 'recommendations' && <div className="pr-editor-section">
+                <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('recommendations')}>{tPr.add_generic}</button>
                 </div>
-                {recommendationsExpanded && (
-                  <PrEditorRelationCardList
-                    relations={recommendations}
-                    draggedIndex={draggedRecommendationIndex}
-                    dragHandlers={recommendationDragHandlers}
-                    onRemove={removeRecommendation}
-                  />
-                )}
-              </div>
+                <PrEditorRelationCardList
+                  relations={recommendations}
+                  draggedIndex={draggedRecommendationIndex}
+                  dragHandlers={recommendationDragHandlers}
+                  onRemove={removeRecommendation}
+                />
+              </div>}
 
-              <div className="pr-editor-section">
-                <div className="pr-editor-section-header-row">
-                  {sectionTitle('Bundled In', [])}
+              {relationsSubtab === 'bundled' && <div className="pr-editor-section">
+                <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>{tPr.add_generic}</button>
                 </div>
                 <PrEditorRelationCardList
@@ -1165,31 +1230,35 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                   dragHandlers={bundledDragHandlers}
                   onRemove={removeBundledRelation}
                 />
-              </div>
+              </div>}
 
-              <PrEditorStoryArcsSection
+              {relationsSubtab === 'arcs' && <PrEditorStoryArcsSection
                 externalId={externalId}
                 currentTitle={entry.title_main || externalId}
                 currentCover={entry.cover_url || null}
                 sagaOrder={sagaOrder}
                 resolveSagaMeta={resolveMeta}
                 onArcDeleted={arcId => setRemovedArcIds(prev => [...prev, arcId])}
-              />
+              />}
 
-              {/* ComicVine issues — split out into their own collapsible
+              {/* ComicVine issues - split out into their own
                   section since their titles are often just a bare issue
-                  number, which used to clutter the general Relations grid.
-                  Collapsed by default: a comic volume can have dozens. */}
-              {(issueRelations.length > 0 || entry.type === 'comic' || entry.type === 'manga' || entry.type === 'lnovel') && (
+                  number, which used to clutter the general Relations grid. */}
+              {relationsSubtab === 'issues' && (issueRelations.length > 0 || entry.type === 'comic' || entry.type === 'manga' || entry.type === 'lnovel') && (
                 <div className="pr-editor-section">
-                  <div className="pr-editor-section-header-row">
-                    <button type="button" className="pr-editor-section-toggle" onClick={() => setIssuesExpanded(v => !v)}>
-                      <span className={`pr-editor-section-chevron${issuesExpanded ? ' pr-editor-section-chevron--open' : ''}`}>▸</span>
-                      {sectionTitle('Issues (ComicVine)', [])}
-                    </button>
-                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('issues')}>{tPr.add_generic}</button>
-                  </div>
-                  {issuesExpanded && (
+                  {(entry.type === 'comic' || entry.type === 'manga') && (
+                    <div className="pr-editor-source-mapping-row">
+                      <span>Fuente ComicVine: {entry.issue_source_id ? `#${entry.issue_source_id}` : 'automática'}</span>
+                      <button type="button" className="pr-editor-add-btn" onClick={() => setSourceMappingSearch('issues')}>Seleccionar volumen</button>
+                      {entry.issue_source_id && <button type="button" className="pr-editor-add-btn" onClick={resetIssueSource}>Restablecer</button>}
+                    </div>
+                  )}
+                  {isLoadingIssuePreview && <div className="pr-editor-search-loading">Cargando issues de ComicVine…</div>}
+                  {issuePreviewError && <div className="pr-editor-search-empty">{issuePreviewError}</div>}
+                  {!isLoadingIssuePreview && issueRelations.length === 0 && entry.issue_source_id && !issuePreviewError && (
+                    <div className="pr-editor-search-empty">El volumen seleccionado no tiene issues con portada disponibles.</div>
+                  )}
+                  {!isLoadingIssuePreview && (
                     <PrEditorRelationCardList
                       relations={issueRelations}
                       draggedIndex={draggedIssueIndex}
@@ -1200,14 +1269,23 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                 </div>
               )}
 
+              {relationsSubtab === 'episodes' && (entry.type === 'anime' || entry.type === 'series') && (
+                <div className="pr-editor-section">
+                  <div className="pr-editor-source-mapping-row">
+                    <span>Fuente TMDB: {entry.episode_source_id ? `#${entry.episode_source_id}` : 'automática'}</span>
+                    <button type="button" className="pr-editor-add-btn" onClick={() => setSourceMappingSearch('episodes')}>Seleccionar serie</button>
+                    {entry.episode_source_id && <button type="button" className="pr-editor-add-btn" onClick={() => handleChange('episode_source_id', null)}>Restablecer</button>}
+                  </div>
+                </div>
+              )}
+
               {/* Only shown once a bundle is actually referenced above — lets
                   you fill in the rest of that bundle's own contents right
                   here (this entry is already implied) instead of having to
                   separately open the bundle's own editor afterward. */}
-              {bundledRelations.length > 0 && (
+              {relationsSubtab === 'bundle-children' && bundledRelations.length > 0 && (
                 <div className="pr-editor-section">
-                  <div className="pr-editor-section-header-row">
-                    {sectionTitle(`Contenido de "${bundledRelations[0].title || bundledRelations[0].external_id}"`, [])}
+                  <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
                     <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundle-children')}>{tPr.add_generic}</button>
                   </div>
                   <p className="pr-editor-bundle-children-hint">
@@ -1225,10 +1303,9 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
               {/* Contains only makes sense for an entry that's itself a
                   container (format BUNDLE) — anything else "containing"
                   other works doesn't apply. */}
-              {entry.format === 'BUNDLE' && (
+              {relationsSubtab === 'contains' && entry.format === 'BUNDLE' && (
                 <div className="pr-editor-section">
-                  <div className="pr-editor-section-header-row">
-                    {sectionTitle('Contains', [])}
+                  <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
                     <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('contains')}>{tPr.add_generic}</button>
                   </div>
                   <PrEditorRelationCardList
@@ -1239,6 +1316,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                   />
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>
@@ -1247,7 +1325,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
           <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose} disabled={submitting}>
             Cancel
           </button>
-          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanges()}>
+          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || isLoadingIssuePreview || !!issuePreviewError || !hasChanges()}>
             {submitting ? 'Submitting...' : 'Submit Proposal'}
           </button>
         </div>
@@ -1332,12 +1410,12 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
         />
       )}
 
-      {searchPopupMode === 'issues' && (
-        <MediaSearchPopup
-          onSelect={addIssueRelation}
-          onClose={() => setSearchPopupMode(null)}
-          excludeIds={[externalId, ...issueRelations.map(r => r.external_id)]}
-          closeOnSelect={false}
+      {sourceMappingSearch && (
+        <MediaSourceMappingSearchPopup
+          kind={sourceMappingSearch}
+          preferredIssueCount={sourceMappingSearch === 'issues' ? entry.total_count_2 : undefined}
+          onSelect={result => setProviderSource(sourceMappingSearch, result)}
+          onClose={() => setSourceMappingSearch(null)}
         />
       )}
 

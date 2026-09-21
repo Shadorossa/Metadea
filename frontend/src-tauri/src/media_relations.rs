@@ -186,6 +186,72 @@ pub async fn save_media_relations(
     Ok(())
 }
 
+/// Replace provider-derived issue relations without writing user-deletion
+/// tombstones. Issue lists are regenerated from ComicVine and may change when
+/// a manga is remapped to a different volume; that is not a manual deletion.
+#[tauri::command]
+pub async fn replace_issue_relations(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+    relations: Vec<DbMediaRelation>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+    let now = Utc::now().to_rfc3339();
+    let deleted_issue_ids: HashSet<String> = {
+        let mut stmt = tx.prepare(
+            "SELECT related_media_external_id FROM deleted_relations WHERE media_external_id = ?1",
+        ).str_err()?;
+        let rows = stmt.query_map([&media_external_id], |row| row.get::<_, String>(0)).str_err()?;
+        rows.filter_map(|row| row.ok()).collect()
+    };
+
+    tx.execute(
+        "DELETE FROM media_relations WHERE media_external_id = ?1 AND relation_type = 'ISSUE'",
+        [&media_external_id],
+    )
+    .str_err()?;
+
+    for rel in relations.into_iter().filter(|relation| relation.relation_type == "ISSUE") {
+        if rel.related_media_external_id == media_external_id
+            || deleted_issue_ids.contains(&rel.related_media_external_id)
+        {
+            continue;
+        }
+
+        tx.execute(
+            "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+             VALUES (?1, ?2, 'ISSUE', ?3)",
+            rusqlite::params![&media_external_id, &rel.related_media_external_id, &rel.type_label],
+        )
+        .str_err()?;
+
+        tx.execute(
+            "INSERT OR IGNORE INTO media_catalog (
+                id, external_id, type, source, format, title_main, cover_url, release_day, release_month, release_year, created_at, updated_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            rusqlite::params![
+                crate::db::generate_id(),
+                &rel.related_media_external_id,
+                infer_type_from_id(&rel.related_media_external_id),
+                infer_source_from_id(&rel.related_media_external_id),
+                &rel.format,
+                &rel.title,
+                &rel.cover,
+                &rel.release_day,
+                &rel.release_month,
+                &rel.release_year,
+                &now,
+                &now,
+            ],
+        )
+        .str_err()?;
+    }
+
+    tx.commit().str_err()?;
+    Ok(())
+}
+
 // Read side of the deleted_relations tombstone table — mergeAndPersistRelations
 // (TS) calls this before merging a live/community relation list back in, so
 // it can skip re-adding any pair the user deliberately removed here.

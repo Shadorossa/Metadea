@@ -348,6 +348,7 @@ export async function syncFromAniList(
       const existing = existingMap.get(importId);
 
       const newStatus = ANILIST_TO_APP_STATUS[mediaItem.status] ?? 'planning';
+      const newType = mapMediaType(mediaType, format);
       const newRating = mediaItem.score && mediaItem.score > 0 ? (mediaItem.score as number) : null;
       const newProgress = mediaItem.progress ?? 0;
       const newProgress2 = mediaItem.progressVolumes ?? 0;
@@ -357,6 +358,7 @@ export async function syncFromAniList(
 
       if (existing) {
         const changed =
+          existing.type !== newType ||
           existing.status !== newStatus ||
           (existing.rating ?? null) !== newRating ||
           existing.progress !== newProgress ||
@@ -368,6 +370,7 @@ export async function syncFromAniList(
         if (changed) {
           await saveLibraryEntry({
             ...existing,
+            type: newType,
             status: newStatus,
             rating: newRating,
             progress: newProgress,
@@ -379,7 +382,7 @@ export async function syncFromAniList(
           updated++;
         }
       } else {
-        const entryType = mapMediaType(mediaType, format);
+        const entryType = newType;
         const entry: LibraryEntry = {
           id: '',
           user_id: 'local',

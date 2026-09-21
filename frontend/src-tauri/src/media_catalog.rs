@@ -206,6 +206,8 @@ pub struct MediaCatalogEntry {
     pub title_romaji: Option<String>,
     pub total_count: Option<i32>,
     pub total_count_2: Option<i32>,
+    pub issue_source_id: Option<String>,
+    pub episode_source_id: Option<String>,
     pub r#type: String,
     pub created_at: String,
     pub updated_at: String,
@@ -219,7 +221,7 @@ const SELECT_ALL: &str = "
            release_month, release_year, score_global,
            shop_links_csv, source, source_url, status, synopsis,
            time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
-           type, created_at, updated_at
+           type, created_at, updated_at, issue_source_id, episode_source_id
     FROM media_catalog";
 
 // Same as SELECT_ALL but excludes blocked rows (visible_media_catalog view,
@@ -232,7 +234,7 @@ const SELECT_VISIBLE: &str = "
            release_month, release_year, score_global,
            shop_links_csv, source, source_url, status, synopsis,
            time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
-           type, created_at, updated_at
+           type, created_at, updated_at, issue_source_id, episode_source_id
     FROM visible_media_catalog";
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
@@ -272,6 +274,8 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
         r#type:              row.get::<_, Option<String>>(32)?.unwrap_or_default(),
         created_at:          row.get::<_, Option<String>>(33)?.unwrap_or_default(),
         updated_at:          row.get::<_, Option<String>>(34)?.unwrap_or_default(),
+        issue_source_id:     row.get(35)?,
+        episode_source_id:   row.get(36)?,
     })
 }
 
@@ -322,8 +326,8 @@ pub async fn save_catalog_entry(
             release_month, release_year, score_global,
             shop_links_csv, source, source_url, status, synopsis,
             time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
-            type, created_at, updated_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            type, created_at, updated_at, issue_source_id, episode_source_id
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         rusqlite::params![
             &entry.id,
             &entry.external_id,
@@ -360,6 +364,8 @@ pub async fn save_catalog_entry(
             &entry.r#type,
             &entry.created_at,
             &entry.updated_at,
+            &entry.issue_source_id,
+            &entry.episode_source_id,
         ],
     ).str_err()?;
 

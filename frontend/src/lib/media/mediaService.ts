@@ -1,11 +1,11 @@
 import { fetchAniListDetail, fetchAniListRemainingCharacters } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
-import { fetchComicVineVolume, fetchComicVineIssue } from '../search/providers/comicvine';
+import { fetchComicVineVolume } from '../search/providers/comicvine';
 import { fetchApiSportsEvent } from '../search/providers/apisports';
 import { mapAniListToMedia, mapAniListCharacterEdges } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
-import { mapComicVineToMedia, mapComicVineIssueToMedia } from './comicvine-mapper';
+import { mapComicVineToMedia } from './comicvine-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, getBlockedExternalIds, getSyncState, setSyncState, markSyncFailed } from '../tauri';
@@ -69,10 +69,9 @@ export async function fetchMediaDataInternal(rawId: string, allowBlocked = false
   // since e.g. "manga" would otherwise match the AniList branch.
   const idStr = rawId.slice(rawId.indexOf(':') + 1);
   if (idStr.startsWith('issue-')) {
-    const issueId = parseInt(idStr.slice('issue-'.length), 10);
-    if (!Number.isFinite(issueId)) return null;
-    const issue = await fetchComicVineIssue(issueId);
-    return issue ? mapComicVineIssueToMedia(issue, rawId) : null;
+    // Issues are child cards, not standalone catalog works; they deliberately
+    // have no independent media page.
+    return null;
   }
 
   if (ANILIST_TYPES.includes(type)) {
@@ -278,6 +277,8 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       // auto-blocked the first time it's fetched (see isRecompilationFilm),
       // no curator review needed for a purely mechanical text match.
       blocked_at: existing?.blocked_at ?? (data.source === 'anilist' && isRecompilationFilm(data.description) ? new Date().toISOString() : null),
+      issue_source_id: existing?.issue_source_id ?? null,
+      episode_source_id: existing?.episode_source_id ?? null,
       created_at: '',
       updated_at: '',
     };
@@ -339,6 +340,8 @@ function applyStickyLocalFields(data: MediaPageData, existing: MediaCatalogEntry
   if (existing.platforms_csv) data.platforms = existing.platforms_csv.split(',').filter(Boolean);
   if (existing.country_code) data.countryOfOrigin = existing.country_code;
   if (existing.source_url) data.sourceUrl = existing.source_url;
+  if (existing.issue_source_id) data.issueSourceId = existing.issue_source_id;
+  if (existing.episode_source_id) data.episodeSourceId = existing.episode_source_id;
   if (existing.status) data.status = existing.status;
   if (existing.release_year != null) data.releaseYear = existing.release_year;
   if (existing.release_month != null) data.releaseMonth = existing.release_month;

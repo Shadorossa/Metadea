@@ -317,6 +317,7 @@ export interface TmdbTvSearchHit {
   id: number;
   name?: string;
   first_air_date?: string;
+  poster_path?: string | null;
 }
 
 export async function searchTvIncludingAnime(query: string, signal: AbortSignal): Promise<TmdbTvSearchHit[]> {

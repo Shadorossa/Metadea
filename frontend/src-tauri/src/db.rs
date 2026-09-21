@@ -1292,6 +1292,12 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         mark_migration(conn, 66)?;
     }
 
+    if v < 67 {
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN issue_source_id TEXT", []);
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN episode_source_id TEXT", []);
+        mark_migration(conn, 67)?;
+    }
+
     Ok(())
 }
 
@@ -1535,6 +1541,8 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     title_romaji         TEXT DEFAULT '',
     total_count          INTEGER,
     total_count_2        INTEGER,
+    issue_source_id      TEXT,
+    episode_source_id    TEXT,
     type                 TEXT,
     created_at           TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at           TEXT DEFAULT CURRENT_TIMESTAMP

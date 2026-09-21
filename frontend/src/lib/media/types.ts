@@ -153,6 +153,8 @@ export interface MediaPageData {
   format?: string;             // GAME, REMAKE, REMASTER, EXPANSION...
   source?: string;             // igdb, anilist, openlibrary, tmdb, comicvine
   sourceUrl?: string;          // this work's own page on that provider's website
+  issueSourceId?: string;      // curator-selected ComicVine volume id
+  episodeSourceId?: string;    // curator-selected TMDB TV id
   releaseYear?: number;
   releaseMonth?: number;
   releaseDay?: number;

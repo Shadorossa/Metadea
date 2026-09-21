@@ -40,8 +40,8 @@ export function PrEditorRelationsSection({
   );
 
   return (
-    <div className="pr-editor-subsection pr-editor-subsection--saga" style={{ flex: 1, minWidth: '200px' }}>
-      <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six" style={{ marginBottom: '1.25rem' }}>
+    <div className="pr-editor-subsection pr-editor-subsection--saga">
+      <div className="pr-editor-media-group-cards pr-editor-media-group-cards--twelve">
         {editableRelations.map((r, index) => (
           <div
             key={r.related_media_external_id}
