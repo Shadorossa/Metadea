@@ -57,6 +57,7 @@ interface Props {
   externalId: string;
   onClose: () => void;
   onSaved?: () => void;
+  onBlockedSubmitted?: (externalId: string) => void;
   // 'local' (admin catalog panel) writes straight to the local DB and skips
   // branch/PR creation entirely — everything up to and including onSaved()
   // already writes locally regardless of mode, so this only gates the
@@ -84,7 +85,7 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
-export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal', nonGithubFields }: Props) {
+export function PrEditorModal({ externalId, onClose, onSaved, onBlockedSubmitted, mode = 'proposal', nonGithubFields }: Props) {
   const t = getT();
   const tm = t.media;
   const pe = t.pr_editor;
@@ -719,6 +720,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         removedArcIds,
         changeSummary: buildChangeSummary(resolveMeta),
         onSaved,
+        onBlockedSubmitted: entry.blocked_at ? onBlockedSubmitted : undefined,
         onClose,
         setStatusMsg,
       });

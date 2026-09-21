@@ -122,6 +122,7 @@ export interface SubmitPrEditorParams {
   removedArcIds: string[];
   changeSummary: string;
   onSaved?: () => void;
+  onBlockedSubmitted?: (externalId: string) => void;
   onClose: () => void;
   setStatusMsg: (msg: string) => void;
 }
@@ -531,7 +532,10 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     ...dedupedOtherEntries.values(),
   ];
   const prUrl = await submitCollaborativeProposal(externalId, proposalEntries, p.changeSummary, p.setStatusMsg);
-  if (prUrl) openUrlInBrowser(prUrl);
+  if (prUrl) {
+    openUrlInBrowser(prUrl);
+    if (entry.blocked_at) p.onBlockedSubmitted?.(externalId);
+  }
 
   setTimeout(() => p.onClose(), 1500);
 }

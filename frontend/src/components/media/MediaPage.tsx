@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes, fetchMediaThemes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
-import { getCatalogEntry, getLibraryEntry, saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
+import { getCatalogEntry, getLibraryEntry, getMediaRelations, saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
 import type { LibraryEntry, MediaEpisode, MediaTheme } from '../../lib/tauri';
 import type { MediaPageData, MediaSeasonInfo } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -1324,6 +1324,28 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     }).finally(() => setRetryingSync(false));
   }, [currentId, retryingSync, unifySeasonsEnabled]);
 
+  const handleBlockedProposalSubmitted = useCallback(async (blockedExternalId: string) => {
+    const relationRows = await getMediaRelations(blockedExternalId).catch(() => null);
+    const pageRelations = data?.externalId === blockedExternalId ? data.relations : [];
+    const baseEditionId = relationRows
+      ? relationRows.find(relation => relation.relation_type === 'BASE_EDITION')?.related_media_external_id
+      : pageRelations.find(relation => relation.relationType === 'BASE_EDITION')?.relatedExternalId;
+    const prequelId = relationRows
+      ? relationRows.find(relation => relation.relation_type === 'PREQUEL')?.related_media_external_id
+      : pageRelations.find(relation => relation.relationType === 'PREQUEL')?.relatedExternalId;
+    const destinationId = baseEditionId || prequelId;
+
+    if (destinationId) {
+      // Drop any cached relation graph so the destination reloads against
+      // the visible catalog view, which filters this newly blocked entry.
+      invalidateCachedMediaData(destinationId);
+      window.location.replace(`/media?id=${encodeURIComponent(destinationId)}`);
+      return;
+    }
+
+    window.location.replace('/profile');
+  }, [data]);
+
   // Closing without saving: roll back any optimistic quick-click draft to
   // the last confirmed DB state, so a re-open (or the hero widget) doesn't
   // keep showing changes that were never actually persisted.
@@ -1753,6 +1775,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       {!previewMode && showPrEditor && (
         <PrEditorModal
           externalId={currentId}
+          onBlockedSubmitted={handleBlockedProposalSubmitted}
           onClose={() => setShowPrEditor(false)}
           onSaved={() => {
             // Reload page data to reflect saved changes
