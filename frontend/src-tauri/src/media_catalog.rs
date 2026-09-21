@@ -524,50 +524,6 @@ pub async fn delete_catalog_entry(
         .str_err()
 }
 
-#[derive(Debug, Serialize)]
-pub struct CatalogOrphanEntry {
-    pub external_id: String,
-    pub title_main: String,
-    pub r#type: String,
-}
-
-fn row_to_orphan_entry(row: &rusqlite::Row) -> rusqlite::Result<CatalogOrphanEntry> {
-    Ok(CatalogOrphanEntry {
-        external_id: row.get(0)?,
-        title_main: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
-        r#type: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
-    })
-}
-
-// Settings > Entorno's orphan scan - read-only. An orphan is a visible
-// catalog row that is neither in a user list/library nor referenced by
-// relations, characters, sagas, or child editions.
-#[tauri::command]
-pub async fn find_catalog_orphans(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-) -> Result<Vec<CatalogOrphanEntry>, String> {
-    let conn = state.conn.lock().str_err()?;
-
-    let mut orphan_stmt = conn.prepare(
-        "SELECT mc.external_id, mc.title_main, mc.type
-         FROM visible_media_catalog mc
-         WHERE NOT EXISTS (SELECT 1 FROM user_library ul WHERE ul.external_id = mc.external_id)
-           AND NOT EXISTS (SELECT 1 FROM user_list_items uli WHERE uli.external_id = mc.external_id)
-           AND NOT EXISTS (SELECT 1 FROM tier_list_items tli WHERE tli.external_id = mc.external_id)
-           AND NOT EXISTS (SELECT 1 FROM media_relations mr WHERE mr.media_external_id = mc.external_id OR mr.related_media_external_id = mc.external_id)
-           AND NOT EXISTS (SELECT 1 FROM character_appearances ca WHERE ca.media_external_id = mc.external_id)
-           AND NOT EXISTS (SELECT 1 FROM saga_relations sr WHERE sr.media_external_id = mc.external_id)
-           AND NOT EXISTS (SELECT 1 FROM media_catalog child WHERE child.parent_id = mc.external_id)
-         ORDER BY mc.updated_at DESC",
-    ).str_err()?;
-    let orphans = orphan_stmt
-        .query_map([], row_to_orphan_entry)
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
-    Ok(orphans)
-}
-
 #[tauri::command]
 pub async fn get_all_catalog_entries(
     state: tauri::State<'_, crate::db::MetadeaDb>,

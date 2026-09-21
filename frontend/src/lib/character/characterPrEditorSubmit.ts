@@ -7,7 +7,7 @@ import { saveCharacter, saveCharacterAppearances, type CharacterEntry } from '..
 import { saveCharacterMerges } from '../tauri/characters';
 import { saveCharacterActors } from '../tauri/actors';
 import { markSynced } from '../tauri';
-import { submitCollaborativeProposal, type CharacterProposalBundle } from '../github/submitCollaborativeProposal';
+import { submitCollaborativeProposal, type CharacterProposalBundle, type SubmittedProposal } from '../github/submitCollaborativeProposal';
 import { buildBiographyHtml, type ParsedCharacteristic } from './biography-parser';
 import { uploadImageToSharedCatalog } from './sharedCharacterImageStorage';
 import { normField } from '../../components/shared/PrEditorField';
@@ -67,7 +67,7 @@ export interface SubmitCharacterEditorParams {
   statusPreparingProposal: string;
 }
 
-export async function submitCharacterProposal(p: SubmitCharacterEditorParams): Promise<string | null> {
+export async function submitCharacterProposal(p: SubmitCharacterEditorParams): Promise<SubmittedProposal | null> {
   p.setStatusMsg(p.statusSavingLocal);
 
   const reassembledBiography = buildBiographyHtml(p.characteristics, p.cleanBiography);

@@ -73,7 +73,6 @@ commands.allow = [
   "delete_catalog_entry",
   "get_all_catalog_entries",
   "get_all_catalog_entries_for_editor",
-  "find_catalog_orphans",
   "search_catalog",
   "get_cached_cover",
   "get_cached_saga",

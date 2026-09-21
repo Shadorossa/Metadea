@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { openUrlInBrowser } from '../../lib/github/submitCollaborativeProposal';
+import { openSubmittedProposal } from '../../lib/github/submitCollaborativeProposal';
 import { getDroppedImageUrl, openImageCropModal } from '../shared/ImageCropModal';
 import { getCharacterMergeTarget, getCharacterMerges, getMediaCharacters, type CharacterEntry, type CharacterMerge } from '../../lib/tauri/characters';
 import type { AniListStaffSearchResult } from '../../lib/search/providers/anilist';
@@ -494,7 +494,7 @@ export function CharacterPrEditorModal() {
         setStatusMsg(t.pr_success);
         await new Promise(r => setTimeout(r, 1500));
         delete characterCacheRef.current[currentId];
-        await openUrlInBrowser(prUrl);
+        openSubmittedProposal(prUrl);
         handleClose();
       }
     } catch (err: any) {

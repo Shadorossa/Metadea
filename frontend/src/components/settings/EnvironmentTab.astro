@@ -245,17 +245,4 @@ const { t, onboarding = false } = Astro.props;
     </button>
   </div>
 
-  <!-- Catalog maintenance -->
-  <div class="settings-section env-catalog-maintenance" hidden={onboarding}>
-    <h3 class="settings-section-title">{t.settings.catalog_health_title}</h3>
-    <p class="settings-hint">{t.settings.catalog_health_hint}</p>
-    <button class="btn btn--sm btn--ghost env-catalog-health-btn" id="catalog-health-btn">
-      🔍 {t.settings.catalog_health_btn}
-    </button>
-    <div
-      id="catalog-health-results"
-      class="settings-modal catalog-health-results"
-    ></div>
-  </div>
-
 </div>

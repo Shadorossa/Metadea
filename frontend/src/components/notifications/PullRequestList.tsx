@@ -46,6 +46,19 @@ export function PullRequestList({ token, i18n }: Props) {
     return () => { cancelled = true; };
   }, [token]);
 
+  useEffect(() => {
+    if (state !== 'ready') return;
+    const currentUrl = new URL(window.location.href);
+    const requestedNumber = Number(currentUrl.searchParams.get('preview'));
+    if (!Number.isInteger(requestedNumber) || requestedNumber <= 0) return;
+
+    const requestedPull = pulls.find(pr => pr.number === requestedNumber);
+    if (requestedPull) setPreviewPr(requestedPull);
+
+    currentUrl.searchParams.delete('preview');
+    window.history.replaceState(window.history.state, '', `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+  }, [state, pulls]);
+
   const previewExternalId = previewPr ? externalIdFromBranch(previewPr.head.ref, previewPr.user?.login) : null;
 
   const handleAccept = async (pr: GitHubPull) => {

@@ -100,6 +100,17 @@ export function LibrarySection({
   const [sagaNames, setSagaNames] = useState<Record<string, string>>(overrideSagaNames ?? {});
   const [playableResumeIds, setPlayableResumeIds] = useState<ReadonlySet<string>>(() => new Set());
 
+  const issueRelationsByMedia = useMemo(() => {
+    const byMedia = new Map<string, DbMediaRelation[]>();
+    for (const relation of sagaRelations) {
+      if (relation.relation_type !== 'ISSUE' || !relation.media_external_id) continue;
+      const issues = byMedia.get(relation.media_external_id) ?? [];
+      issues.push(relation);
+      byMedia.set(relation.media_external_id, issues);
+    }
+    return byMedia;
+  }, [sagaRelations]);
+
   const [nameFilter, setNameFilter] = useState('');
   const deferredNameFilter = useDeferredValue(nameFilter);
   const [activeTypeTab, setActiveTypeTab] = useState('');
@@ -712,6 +723,7 @@ export function LibrarySection({
                     readOnly={readOnly}
                     showResumeAction={sec.isCurrently}
                     playableResumeIds={playableResumeIds}
+                    issueRelations={issueRelationsByMedia.get(item.external_id)}
                     ratingSlot={dualRatingEnabled ? ratingSlot : 'rating'}
                   />
                 )}

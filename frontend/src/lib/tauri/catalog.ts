@@ -118,16 +118,6 @@ export async function getCatalogEntryForEditor(externalId: string): Promise<Medi
   return entry ? { ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) } : null;
 }
 
-export interface CatalogOrphanEntry {
-  external_id: string;
-  title_main: string;
-  type: string;
-}
-
-export async function findCatalogOrphans(): Promise<CatalogOrphanEntry[]> {
-  return tauriCmd<CatalogOrphanEntry[]>('find_catalog_orphans', []);
-}
-
 export async function searchCatalog(query: string): Promise<MediaCatalogEntry[]> {
   return tauriCmd<MediaCatalogEntry[]>('search_catalog', [], { query });
 }

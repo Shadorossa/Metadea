@@ -64,6 +64,13 @@ export interface CharacterProposalBundle {
   merged_character_external_ids?: string[];
 }
 
+export interface SubmittedProposal {
+  url: string;
+  number: number | null;
+  /** Same write-access gate that exposes the Notifications preview panel. */
+  previewInNotifications: boolean;
+}
+
 export type ProposalFileEntry =
   | {
       kind: 'media';
@@ -246,7 +253,7 @@ export async function submitCollaborativeProposal(
   entries: ProposalFileEntry[],
   changeSummary: string,
   onStatus: (message: string) => void,
-): Promise<string | null> {
+): Promise<SubmittedProposal | null> {
   if (entries.length === 0) return null;
   const primary = entries.find(e => e.externalId === primaryExternalId) ?? entries[0];
 
@@ -404,6 +411,7 @@ export async function submitCollaborativeProposal(
   });
 
   let prUrl: string | null = null;
+  let prNumber: number | null = null;
   if (!prRes.ok) {
     const prData = await prRes.json().catch(() => ({} as { message?: string; errors?: Array<{ message?: string }> }));
     const message = prData.errors?.[0]?.message || prData.message || '';
@@ -415,8 +423,9 @@ export async function submitCollaborativeProposal(
         { headers: { 'Authorization': `token ${token}` } },
       );
       if (existingRes.ok) {
-        const existing = await existingRes.json();
+        const existing = await existingRes.json() as Array<{ html_url?: string; number?: number }>;
         prUrl = existing?.[0]?.html_url ?? null;
+        prNumber = existing?.[0]?.number ?? null;
       }
     } else if (message.toLowerCase().includes('no commits between')) {
       // The branch already carries this exact content (e.g. an earlier
@@ -433,11 +442,12 @@ export async function submitCollaborativeProposal(
     }
   } else {
     onStatus('Proposal submitted successfully!');
-    const prData = await prRes.json();
+    const prData = await prRes.json() as { html_url?: string; number?: number };
     prUrl = prData.html_url ?? null;
+    prNumber = prData.number ?? null;
   }
 
-  return prUrl;
+  return prUrl ? { url: prUrl, number: prNumber, previewInNotifications: isOwner } : null;
 }
 
 export function openUrlInBrowser(url: string): void {
@@ -447,4 +457,14 @@ export function openUrlInBrowser(url: string): void {
   } else {
     window.open(url, '_blank');
   }
+}
+
+export function openSubmittedProposal(proposal: SubmittedProposal): void {
+  if (proposal.previewInNotifications && proposal.number != null) {
+    const url = new URL('/notifications', window.location.origin);
+    url.searchParams.set('preview', String(proposal.number));
+    window.location.assign(url.toString());
+    return;
+  }
+  openUrlInBrowser(proposal.url);
 }

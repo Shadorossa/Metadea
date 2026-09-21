@@ -11,7 +11,7 @@ import type { SagaEntry } from '../../../lib/anilist/saga';
 import { removeSagaMember, saveCachedSaga } from '../../../lib/tauri/catalog';
 import { invalidateCachedMediaData } from '../../../lib/media/mediaService';
 import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../../lib/media/sagaGrouping';
-import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle, type ProposalFileEntry } from '../../../lib/github/submitCollaborativeProposal';
+import { submitCollaborativeProposal, openSubmittedProposal, type ProposalBundle, type ProposalFileEntry } from '../../../lib/github/submitCollaborativeProposal';
 import { REL_TYPE_TO_PAIR } from '../../../lib/media/constants';
 import { ALL_CHAIN_RELATION_TYPES, type SagaRelationType } from '../../../lib/media/sagaTypes';
 import { setField } from '../../../lib/shared/object-utils';
@@ -562,9 +562,9 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     },
     ...dedupedOtherEntries.values(),
   ];
-  const prUrl = await submitCollaborativeProposal(externalId, proposalEntries, p.changeSummary, p.setStatusMsg);
-  if (prUrl) {
-    openUrlInBrowser(prUrl);
+  const proposal = await submitCollaborativeProposal(externalId, proposalEntries, p.changeSummary, p.setStatusMsg);
+  if (proposal) {
+    openSubmittedProposal(proposal);
     if (entry.blocked_at) p.onBlockedSubmitted?.(externalId);
   }
 

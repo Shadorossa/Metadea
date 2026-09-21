@@ -131,7 +131,6 @@ const version = pkg.version;
   import { initUpdater } from "../lib/settings/updater";
   import { initCommunityCatalogSync } from "../lib/settings/community-catalog";
   import { initFixCharacterIds } from "../lib/settings/fix-character-ids";
-  import { initCatalogHealthCheck } from "../lib/settings/catalog-health";
   import { initSettingsTabs } from "../lib/settings/tabs";
   import { getT } from "../i18n/client";
   import { initBackupRestore } from "../lib/settings/backup-restore";
@@ -291,7 +290,6 @@ const version = pkg.version;
     initUpdater(defaultVersion);
     initCommunityCatalogSync();
     initFixCharacterIds();
-    initCatalogHealthCheck();
     initSettingsTabs();
     initBackupRestore();
 

@@ -4,7 +4,7 @@ import {
   BookImage, BookMarked, BookOpen, BookText, Clapperboard, Gamepad2,
   MessageSquareText, Tv, TvMinimalPlay, type LucideIcon,
 } from 'lucide-react';
-import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry } from '../../lib/tauri';
+import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry, type DbMediaRelation } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
 import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled } from '../../lib/settings/preferences';
@@ -28,6 +28,24 @@ const LIBRARY_MEDIA_ICONS: Record<string, LucideIcon> = {
   comic: BookImage,
 };
 
+function nextReadingIssueCover(item: LibraryEntry, issueRelations: DbMediaRelation[]): string | null {
+  const type = item.type.split('_')[0];
+  if (!isInProgressStatus(item.status) || (type !== 'manga' && type !== 'comic')) return null;
+
+  // Manga tracks volumes separately from chapters; Comic Vine comics track
+  // issue numbers in the primary progress field.
+  const completedCount = type === 'manga' ? item.progress_2 : item.progress;
+  const nextIssueNumber = Math.floor(completedCount) + 1;
+  if (!Number.isSafeInteger(nextIssueNumber) || nextIssueNumber < 1) return null;
+
+  const match = issueRelations.find(relation => {
+    if (relation.relation_type !== 'ISSUE' || !relation.cover) return false;
+    const issueNumber = relation.title.match(/^#\s*(\d+(?:\.\d+)?)/)?.[1];
+    return issueNumber != null && Number(issueNumber) === nextIssueNumber;
+  });
+  return match?.cover ?? null;
+}
+
 export function LibraryTypeIcon({ type, size = 16 }: { type: string; size?: number }) {
   const baseType = type.split('_')[0] || 'book';
   const Icon = LIBRARY_MEDIA_ICONS[baseType] ?? BookText;
@@ -49,7 +67,7 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, mediaExternalId, catalogMap, p, readOnly, ratingSlot = 'rating', showResumeAction, playableResumeIds }: {
+export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, mediaExternalId, catalogMap, p, readOnly, ratingSlot = 'rating', showResumeAction, playableResumeIds, issueRelations }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
@@ -80,6 +98,8 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   showResumeAction?: boolean;
   /** External IDs confirmed playable by Local / Play. */
   playableResumeIds?: ReadonlySet<string>;
+  /** Cached Comic Vine issue relations for this work, used for a display-only reading cover. */
+  issueRelations?: DbMediaRelation[];
 }) => {
   const meta = catalogMap.get(item.external_id);
   const rawTitle = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
@@ -147,7 +167,8 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     return () => { cancelled = true; };
   }, [hideGroupingUi, aggregateMembers, catalogMap]);
 
-  const cover = toMediumCover(dynamicCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
+  const readingIssueCover = nextReadingIssueCover(item, issueRelations ?? []);
+  const cover = toMediumCover(dynamicCover || readingIssueCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
 
   // Same "which season is actually active" pick as inProgressCover above —
   // the card's own `item` is always the earliest-release season (see
