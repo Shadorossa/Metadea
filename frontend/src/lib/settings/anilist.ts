@@ -5,6 +5,7 @@ import { showAuthConnected, showAuthDisconnected } from './auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
 import { byId } from '../shared/dom';
 import { getT } from '../../i18n/client';
+import { showToast } from '../shared/toast';
 
 const DISCONNECTED_AVATAR_HTML = `<img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />`;
 
@@ -15,32 +16,6 @@ const ls = {
 };
 
 const TOKEN_KEY = STORAGE_KEYS.anilistToken;
-
-function showToast(message: string, type: 'error' | 'success' = 'success') {
-  try {
-    const toast = document.createElement('div');
-    const bgColor = type === 'error' ? '#ef4444' : '#10b981';
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: ${bgColor};
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 14px;
-      z-index: 9999;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      animation: slideUp 0.3s ease-out;
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
-  } catch (e) {
-    console.warn('Failed to show toast:', e);
-  }
-}
 
 export function initAniListAuth() {
   const t = getT().settings;

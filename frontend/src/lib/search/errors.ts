@@ -1,3 +1,5 @@
+import { showToast } from '../shared/toast';
+
 // Thrown by a search provider when the search couldn't run because its
 // required API key(s) aren't configured yet (as opposed to a network/API
 // failure) — lets the UI show a "go configure it" prompt instead of a
@@ -29,27 +31,10 @@ export function showAniListSearchErrorPopup(error: AniListSearchError): void {
     const t = (window as any).__i18n?.settings;
     const message = t?.[error.i18nKey] || error.message;
 
-    const toast = document.createElement('div');
-    const bgColor = '#ef4444';
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: ${bgColor};
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 14px;
-      z-index: 9999;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      animation: slideUp 0.3s ease-out;
-      max-width: 90%;
-      word-wrap: break-word;
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+    showToast(message, {
+      wide: true,
+      warningLabel: 'Failed to show AniList search error:',
+    });
   } catch (e) {
     console.warn('Failed to show AniList search error:', e);
   }
