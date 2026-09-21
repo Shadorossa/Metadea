@@ -126,7 +126,7 @@ export default function TierIndex() {
                       const cover = meta?.cover_url;
                       const fallback = HOF_GRADIENTS[meta?.type ?? 'anime'] ?? 'linear-gradient(160deg,#374151,#1f2937)';
                       return cover
-                        ? <img key={i} className="tier-index-card-collage-img" src={cover} alt="" loading="lazy" />
+                        ? <img key={i} className="tier-index-card-collage-img cover-image-fill" src={cover} alt="" loading="lazy" />
                         : <div key={i} className="tier-index-card-collage-img tier-index-card-collage-fallback" style={{ background: fallback }} />;
                     })
                   : <span className="tier-index-card-empty-icon">🏆</span>

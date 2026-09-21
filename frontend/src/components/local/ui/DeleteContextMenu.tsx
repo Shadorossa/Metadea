@@ -54,7 +54,7 @@ export function DeleteContextMenu({ x, y, label, onDelete, onClose }: DeleteCont
           ref={itemRef}
           type="button"
           role="menuitem"
-          className="local-context-menu-item delete"
+          className="context-menu-item local-context-menu-item delete"
           onClick={onDelete}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>

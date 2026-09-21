@@ -815,7 +815,7 @@ export function CharacterPrEditorModal() {
                 <div key={a.media_external_id} className="pr-editor-media-card">
                   <div className="pr-editor-media-card-cover">
                     {a.cover
-                      ? <img src={a.cover} alt="" />
+                      ? <img className="cover-image-fill" src={a.cover} alt="" />
                       : <div className="pr-editor-media-card-placeholder" />}
                     <button
                       type="button"

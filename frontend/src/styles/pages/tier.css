@@ -145,13 +145,6 @@
   transform: translateY(-2px);
 }
 
-.tier-index-card-collage-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
 .tier-index-card-collage-fallback {
   width: 100%;
   height: 100%;
@@ -189,7 +182,8 @@
 
 /* ── Create tier list modal ──────────────────────────────────────────────── */
 
-.tier-create-backdrop {
+.tier-create-backdrop,
+.tier-picker-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.55);
@@ -503,16 +497,6 @@
 }
 
 /* ── Add-works picker modal ──────────────────────────────────────────────── */
-
-.tier-picker-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
 
 .tier-picker-modal {
   width: 640px;

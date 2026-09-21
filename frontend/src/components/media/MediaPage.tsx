@@ -225,7 +225,7 @@ const UserScoreCard = memo(function UserScoreCard({ score: f, ratingSystem }: Us
         title={f.name}
       >
         {f.avatar
-          ? <img src={f.avatar} alt="" loading="lazy" />
+          ? <img className="cover-image-fill" src={f.avatar} alt="" loading="lazy" />
           : <div className="media-user-avatar-placeholder">{f.name[0]?.toUpperCase()}</div>}
       </button>
       <span dangerouslySetInnerHTML={{ __html: formatRatingHtml(f.score / 10, ratingSystem, 'media-user-score') }} />
@@ -1930,7 +1930,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
               )}
             >
               {displayCover && (
-                <img className="media-cover-img" src={displayCover} alt={data.titleMain} />
+                <img className="media-cover-img cover-image-fill" src={displayCover} alt={data.titleMain} />
               )}
               <div className="media-cover-overlay">
                 <div className="media-cover-overlay-inner">

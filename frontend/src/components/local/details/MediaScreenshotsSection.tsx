@@ -216,6 +216,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
                       aria-label={`${t.local.screenshots} ${absoluteIndex + 1}`}
                     >
                       <img
+                        className="cover-image-fill"
                         src={wrapAssetUrl(screenshot.thumbnail_path)}
                         alt={`${t.local.screenshots} ${absoluteIndex + 1}`}
                         loading="lazy"

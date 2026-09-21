@@ -178,7 +178,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
 
                     <div className="saga-strip-item-cover">
                       {entry.cover
-                        ? <img src={toMediumCover(entry.cover)} alt="" loading="lazy" />
+                        ? <img className="cover-image-fill" src={toMediumCover(entry.cover)} alt="" loading="lazy" />
                         : <div className="saga-strip-item-cover-fallback" />}
                     </div>
 
@@ -224,7 +224,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
 
                     <div className="saga-strip-item-cover">
                       {arc.image_base64
-                        ? <img src={arc.image_base64} alt="" loading="lazy" />
+                        ? <img className="cover-image-fill" src={arc.image_base64} alt="" loading="lazy" />
                         : <div className="saga-strip-item-cover-fallback" />}
                     </div>
 

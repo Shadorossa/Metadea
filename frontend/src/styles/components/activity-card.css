@@ -6,7 +6,7 @@
 .activity-feed {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.15rem;
 }
 
 .act-empty {
@@ -70,7 +70,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.15rem;
 }
 
 .act-card-text {
@@ -109,14 +109,16 @@
 .act-card-type-icon {
   width: 12px;
   height: 12px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  opacity: 0.5;
 }
 
 .act-card-bold-title {
-  font-weight: 600;
+  color: var(--text-main);
+  font-weight: 700;
 }
 
 .act-card:hover .act-card-bold-title {

@@ -344,10 +344,6 @@
 }
 
 /* Home-specific: activity content with tighter gap */
-.act-card-content {
-  gap: 0.15rem;
-}
-
 .act-card-text {
   font-size: clamp(0.65rem, 0.8vw, 0.8rem);
   color: var(--text-muted);
@@ -359,20 +355,9 @@
   -webkit-box-orient: vertical;
 }
 
-.act-card-bold-title {
-  color: var(--text-main);
-  font-weight: 700;
-}
-
 .act-card-meta {
   gap: clamp(0.2rem, 0.3vw, 0.3rem);
   font-size: clamp(0.55rem, 0.65vw, 0.65rem);
-}
-
-.act-card-type-icon {
-  display: flex;
-  align-items: center;
-  opacity: 0.5;
 }
 
 .act-card-type-label {

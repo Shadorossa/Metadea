@@ -36,7 +36,7 @@ export function PrEditorSagaOrderSection({
             >
               <div className="pr-editor-media-card-cover">
                 {meta.cover
-                  ? <img src={meta.cover} alt="" draggable={false} />
+                  ? <img className="cover-image-fill" src={meta.cover} alt="" draggable={false} />
                   : <div className="pr-editor-media-card-placeholder" />}
                 {id !== externalId && (
                   <button

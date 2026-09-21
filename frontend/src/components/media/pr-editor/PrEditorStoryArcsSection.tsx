@@ -653,14 +653,14 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
                       <div className="pr-editor-arc-stacked-covers">
                         {unit.items.slice(0, 3).map((item, idx) => (
                           <div key={item.media_external_id} className="pr-editor-arc-stacked-covers-item">
-                            {item.cover ? <img src={item.cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
+                            {item.cover ? <img className="cover-image-fill" src={item.cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
                           </div>
                         ))}
                         <span className="pr-editor-arc-group-count-badge">{unit.items.length} obras</span>
                       </div>
                     ) : (
                       <div className="pr-editor-arc-item-cover">
-                        {unit.items[0].cover ? <img src={unit.items[0].cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
+                        {unit.items[0].cover ? <img className="cover-image-fill" src={unit.items[0].cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
                       </div>
                     )}
 

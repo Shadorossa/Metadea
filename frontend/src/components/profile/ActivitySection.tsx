@@ -195,7 +195,7 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
         <div className="act-context-menu" style={{ top: menu.y, left: menu.x }} onClick={e => e.stopPropagation()}>
           <button
             type="button"
-            className="act-context-menu-item delete"
+            className="context-menu-item act-context-menu-item delete"
             onClick={() => handleDelete(menu.event)}
           >
             <span style={{ marginRight: 6, display: 'inline-flex' }}><IconTrash /></span>

@@ -1128,7 +1128,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           >
             <button
               type="button"
-              className="local-history-context-menu-item delete"
+              className="context-menu-item local-history-context-menu-item delete"
               onClick={() => handleDeleteHistoryEntry(historyMenu.entry)}
             >
               <span style={{ marginRight: 6, display: 'inline-flex' }}><IconTrash /></span>

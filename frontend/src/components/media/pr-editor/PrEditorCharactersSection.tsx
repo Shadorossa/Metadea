@@ -38,7 +38,7 @@ export function PrEditorCharactersSection({ t, characters, changed, onRemove, on
           <div key={c.external_id} className="pr-editor-media-card">
             <div className="pr-editor-media-card-cover">
               {c.image_url
-                ? <img src={c.image_url} alt="" />
+                ? <img className="cover-image-fill" src={c.image_url} alt="" />
                 : <div className="pr-editor-media-card-placeholder" />}
               <button
                 type="button"

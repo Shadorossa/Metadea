@@ -46,7 +46,7 @@ export function GameCard({ game, coverCache, onClick, status, onRequestDelete, d
       onClick={() => onClick(game)}
       onContextMenu={onRequestDelete ? e => {
         e.preventDefault();
-        onRequestDelete(game, e.pageX, e.pageY);
+        onRequestDelete(game, e.clientX, e.clientY);
       } : undefined}
       lazyImage
     />

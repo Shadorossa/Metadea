@@ -50,7 +50,7 @@ export function PrEditorRelationsSection({
           >
             <div className="pr-editor-media-card-cover">
               {r.cover
-                ? <img src={r.cover} alt="" draggable={false} />
+                ? <img className="cover-image-fill" src={r.cover} alt="" draggable={false} />
                 : <div className="pr-editor-media-card-placeholder" />}
               <button
                 type="button"
