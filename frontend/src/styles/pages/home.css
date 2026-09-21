@@ -264,7 +264,8 @@
   margin-bottom: clamp(0.5rem, 0.75vw, 0.75rem);
 }
 
-.home-activity-title {
+.home-activity-title,
+.home-card-title {
   font-size: clamp(0.58rem, 0.72vw, 0.72rem);
   font-weight: 800;
   text-transform: uppercase;
@@ -379,15 +380,6 @@
   padding: clamp(0.85rem, 1.25vw, 1.25rem);
   box-sizing: border-box;
   width: 100%;
-}
-
-.home-card-title {
-  font-size: clamp(0.58rem, 0.72vw, 0.72rem);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-  margin: 0;
 }
 
 /* Calendar card layout */

@@ -1790,7 +1790,8 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
-.library-edition-btn.active {
+.library-edition-btn.active,
+.library-group-toggle-btn.active {
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
@@ -1878,12 +1879,6 @@
 /* Just a color change (var(--accent)) reads as barely-there in themes like
    newspaper-dark, where --accent and --text-muted are nearly the same
    value — background + border make the on/off state actually legible. */
-.library-group-toggle-btn.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 /* Doble calificación (Settings > Preferencias) — which of the two ratings
    this view sorts/displays by; only rendered when that setting is enabled.
    Same column layout as .library-group-toggles/.select-sort (label on top,
@@ -3760,7 +3755,9 @@
   transition: background 0.15s, border-color 0.15s;
 }
 
-.list-detail-title--editable:hover {
+.list-detail-title--editable:hover,
+.list-detail-desc--editable:hover,
+.list-detail-desc-add:hover {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.025);
 }
@@ -3788,7 +3785,8 @@
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
-.list-detail-title-input:focus {
+.list-detail-title-input:focus,
+.list-detail-desc-input:focus {
   border-color: var(--accent);
   background: rgba(255, 255, 255, 0.04);
   box-shadow: 0 0 0 1px var(--accent-soft);
@@ -3817,12 +3815,6 @@
   transition: background 0.15s, border-color 0.15s;
 }
 
-.list-detail-desc--editable:hover,
-.list-detail-desc-add:hover {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.025);
-}
-
 .list-detail-desc-add {
   color: var(--text-dim);
   font-style: italic;
@@ -3846,12 +3838,6 @@
   width: 100%;
   max-width: 600px;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
-}
-
-.list-detail-desc-input:focus {
-  border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 0 0 1px var(--accent-soft);
 }
 
 .list-detail-content {

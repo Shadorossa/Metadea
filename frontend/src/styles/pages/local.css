@@ -297,7 +297,9 @@
 }
 
 .local-platform-icon svg,
-.local-platform-icon img {
+.local-platform-icon img,
+.local-launcher-icon svg,
+.local-launcher-icon img {
   width: 100%;
   height: 100%;
   filter: brightness(0) invert(1) opacity(0.82);
@@ -650,14 +652,6 @@
   flex-shrink: 0;
 }
 
-.local-launcher-icon svg,
-.local-launcher-icon img {
-  width: 100%;
-  height: 100%;
-  filter: brightness(0) invert(1) opacity(0.82);
-  object-fit: contain;
-}
-
 .local-launcher-count {
   margin-left: 0.25rem;
   font-size: 0.75rem;
@@ -918,7 +912,8 @@
 }
 
 
-[data-theme="newspaper-dark"] .local-media-detail-locate-menu {
+[data-theme="newspaper-dark"] .local-media-detail-locate-menu,
+[data-theme="newspaper-dark"] .locate-preview-modal {
   border: 3px double var(--border-color) !important;
   border-radius: 0 !important;
 }
@@ -1020,11 +1015,6 @@
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 1rem;
-}
-
-[data-theme="newspaper-dark"] .locate-preview-modal {
-  border: 3px double var(--border-color) !important;
-  border-radius: 0 !important;
 }
 
 .local-media-info-row {

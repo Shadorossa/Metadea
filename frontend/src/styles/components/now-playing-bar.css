@@ -12,7 +12,8 @@
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.now-playing-progress-track {
+.now-playing-progress-track,
+.now-reading-progress-track {
   height: 2px;
   width: 100%;
   background: color-mix(in srgb, var(--border-color) 60%, transparent);
@@ -144,12 +145,6 @@
 /* Shifts up when NowPlayingBar is also visible (z-index: 200) */
 .now-reading-bar--above-player {
   bottom: 60px;
-}
-
-.now-reading-progress-track {
-  height: 2px;
-  width: 100%;
-  background: color-mix(in srgb, var(--border-color) 60%, transparent);
 }
 
 .now-reading-progress-fill {
