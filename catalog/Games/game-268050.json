@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "11a444527d7dbb1f11a444527d7dbb1f",
+    "external_id": "game:268050",
+    "type": "game",
+    "title_main": "The Legend of Heroes: Sora no Kiseki SC Kai - HD",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-21T06:43:59.205Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:16665",
+      "relation_type": "PARENT",
+      "type_label": "Parent Story",
+      "title": "The Legend of Heroes: Trails in the Sky SC",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co74em.jpg",
+      "media_external_id": "game:268050"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
