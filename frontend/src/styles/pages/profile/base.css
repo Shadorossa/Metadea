@@ -1,0 +1,7 @@
+/* Profile base entrypoint. Feature-specific rules live in base/. */
+@import '../../components/activity-card.css';
+@import './base/navigation.css';
+@import './base/favorites.css';
+@import './base/friends.css';
+@import './base/lists.css';
+@import './base/custom.css';

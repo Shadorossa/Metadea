@@ -1,0 +1,199 @@
+.igdb-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.igdb-picker-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  width: min(680px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.igdb-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.igdb-picker-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  line-height: 1;
+}
+.igdb-picker-close:hover { color: var(--text-main); }
+
+.igdb-picker-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.igdb-picker-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font-size: 0.875rem;
+}
+.igdb-picker-search-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+
+.igdb-picker-search-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0;
+  line-height: 1;
+}
+.igdb-picker-search-clear:hover { color: var(--text-main); }
+
+.igdb-picker-loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.igdb-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.igdb-picker-card {
+  background: var(--bg-elevated);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  transition: border-color var(--anim-base) var(--anim-ease), transform var(--anim-base) var(--anim-ease);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.igdb-picker-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.igdb-picker-card.loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.igdb-picker-cover {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  display: block;
+}
+
+.igdb-picker-info {
+  padding: 0.5rem 0.6rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.igdb-picker-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.igdb-picker-name {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: calc(0.74rem * 1.35 * 2);
+  flex: 1;
+}
+
+.igdb-picker-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.igdb-picker-badge.vn {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+.igdb-picker-badge.bundle {
+  background: rgba(234, 179, 8, 0.18);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+}
+
+.igdb-picker-badge.port {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.igdb-picker-badge.remake,
+.igdb-picker-badge.remaster,
+.igdb-picker-badge.expanded {
+  background: rgba(20, 184, 166, 0.18);
+  color: #2dd4bf;
+  border: 1px solid rgba(20, 184, 166, 0.35);
+}
+
+.igdb-picker-badge.db {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.igdb-picker-cover-placeholder {
+  background: var(--bg-surface, #1e293b);
+}
+
+.igdb-picker-meta {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+

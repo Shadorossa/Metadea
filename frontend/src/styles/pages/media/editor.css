@@ -1,0 +1,5 @@
+/* Media editor entrypoint. Feature-specific rules live in editor/. */
+@import './editor/modal.css';
+@import './editor/pr.css';
+@import './editor/arcs.css';
+@import './editor/search.css';

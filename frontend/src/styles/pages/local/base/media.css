@@ -1,0 +1,250 @@
+.local-steam-media {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.local-steam-media-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.local-steam-media-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  margin-bottom: -1px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom-color: var(--border-color);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.local-steam-media-tab:hover,
+.local-steam-media-tab.active {
+  color: var(--text-main);
+}
+
+.local-steam-media-tab.active {
+  border-bottom: 2px solid var(--accent);
+}
+
+.local-steam-media-count {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.local-steam-media-panel {
+  min-height: 2rem;
+}
+
+.local-steam-media-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.local-steam-media-page-btn {
+  padding: 0.25rem 0.55rem;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  font: inherit;
+  cursor: pointer;
+}
+
+.local-steam-media-page-btn:hover:not(:disabled) {
+  color: var(--text-main);
+  border-color: var(--accent);
+}
+
+.local-steam-media-page-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.local-steam-screenshots-empty {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.local-steam-screenshots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.5rem;
+}
+
+.local-steam-screenshots-filter {
+  width: 4.75rem;
+  max-width: 45%;
+  padding: 0 0.9rem 0.1rem 0.1rem;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  font: inherit;
+  font-size: 0.62rem;
+  line-height: 1;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+
+.local-steam-screenshots-filter option {
+  text-align: center;
+}
+
+.local-steam-screenshots-heading {
+  position: relative;
+  margin-bottom: 0.6rem;
+}
+
+.local-steam-screenshots-heading .local-steam-media-title {
+  margin-bottom: 0;
+}
+
+.local-steam-screenshots-heading .local-steam-screenshots-filter {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.local-steam-media-tabs .local-steam-screenshots-filter {
+  flex-shrink: 0;
+  margin-left: auto;
+  background: transparent;
+}
+
+.local-steam-screenshot-thumb {
+  display: block;
+  min-width: 0;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.local-steam-screenshot-thumb:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.local-steam-screenshot-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.88);
+}
+
+.local-steam-screenshot-viewer-content {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  width: min(1100px, 100%);
+  max-height: 100%;
+}
+
+.local-steam-screenshot-frame {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  min-width: 0;
+  max-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.local-steam-screenshot-vlc-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px #000;
+}
+
+.local-steam-screenshot-vlc-label span {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.local-steam-screenshot-full {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  max-height: calc(100vh - 9rem);
+  object-fit: contain;
+}
+
+.local-steam-screenshot-close,
+.local-steam-screenshot-nav {
+  display: grid;
+  place-items: center;
+  color: var(--text-main);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.local-steam-screenshot-close:hover,
+.local-steam-screenshot-nav:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.local-steam-screenshot-close {
+  position: absolute;
+  top: -2.5rem;
+  right: 0;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.35rem;
+}
+
+.local-steam-screenshot-nav {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.8rem;
+}
+
+.local-steam-screenshot-counter {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: center;
+  color: var(--text-main);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 600px) {
+  .local-steam-screenshot-viewer { padding: 0.75rem; }
+  .local-steam-screenshot-viewer-content { gap: 0.4rem; }
+  .local-steam-screenshot-nav { width: 2rem; height: 2rem; }
+}
+

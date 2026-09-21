@@ -1,0 +1,320 @@
+/* The list detail panel is a permanent part of this layout, not something
+   that pops in on selecting a list - .lists-layout (the grid + its header)
+   always shares width with it, and the panel itself always renders (either
+   the open list, or an empty-state prompt), so there's no entrance of its
+   own to animate; picking a list just fills in content that was already
+   sitting there. */
+.lists-page-layout {
+  display: flex;
+  align-items: flex-start;
+}
+
+.lists-page-layout .lists-layout {
+  flex: 1 1 0%;
+  min-width: 0;
+  padding-right: 1.5rem;
+}
+
+.list-detail-panel {
+  position: sticky;
+  top: 64px;
+  width: 60vw;
+  max-width: 980px;
+  min-width: 380px;
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+  flex-shrink: 0;
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-color);
+  padding: 0.5rem 0 1.25rem 1.5rem;
+}
+
+.list-detail-panel-empty {
+  height: 100%;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.list-card--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.lists-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0.5rem 0 2rem;
+}
+
+.lists-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 30px;
+}
+
+.lists-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.lists-filter-selector {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.lists-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 23px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  opacity: 0.45;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, opacity 0.15s;
+}
+
+.lists-filter-btn:hover {
+  color: var(--text-main);
+  opacity: 0.8;
+}
+
+.lists-filter-btn--active {
+  background: var(--accent);
+  color: #fff;
+  opacity: 1;
+}
+
+.lists-filter-btn--active:hover {
+  background: var(--accent);
+  color: #fff;
+  opacity: 0.9;
+}
+
+.lists-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.lists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 1rem;
+}
+
+.list-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.list-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-2px);
+}
+
+.list-card-collage {
+  aspect-ratio: 2 / 1.4;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.list-card-collage--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-card-collage-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--bg-elevated);
+}
+
+.list-card-collage-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.list-card-empty-icon {
+  font-size: 2rem;
+}
+
+.list-card-info {
+  padding: 0.6rem 0.75rem;
+}
+
+.list-card-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-card-count {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  display: block;
+  margin-top: 0.1rem;
+}
+
+.lists-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+
+
+.friends-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.friends-tabs {
+  display: flex;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+}
+
+.friends-tab {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: color var(--anim-fast);
+}
+
+.friends-tab:hover {
+  color: var(--text-main);
+}
+
+.friends-tab.active {
+  color: var(--accent);
+}
+
+.friends-tab-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+
+.friends-tab.active .friends-tab-count {
+  color: var(--accent);
+}
+
+.friends-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 1rem;
+}
+
+/* Compact follower/following card with a square avatar and restrained corner
+   rounding, rather than the circular Story bubble used before. */
+.friend-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s;
+}
+
+.friend-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.friend-card-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  width: 100%;
+  text-decoration: none;
+}
+
+.friend-card-avatar-wrap {
+  width: 60px;
+  height: 60px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.friend-card-avatar {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 4px;
+  object-fit: cover;
+  display: block;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+}
+
+.friend-card-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.friend-card-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+

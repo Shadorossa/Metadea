@@ -1,0 +1,1248 @@
+
+@keyframes profileFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.profile-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  animation: profileFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+
+.profile-banner {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  height: clamp(280px, 40vw, 380px);
+  background:
+    radial-gradient(ellipse 120% 100% at 50% 0%, rgba(120, 50, 220, 0.25) 0%, transparent 60%),
+    linear-gradient(180deg, #0e0820 0%, #07070e 100%);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color);
+  background-size: cover;
+  background-position: center;
+}
+
+/* Custom banner image */
+.profile-banner.has-custom-bg::after {
+  display: none;
+}
+
+/* Subtle grid texture on banner */
+.profile-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* Avatar + username inside banner */
+.profile-banner-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  z-index: 1;
+  padding: calc(8.5rem - 46px) 1rem 0;
+}
+
+.profile-avatar {
+  height: clamp(200px, 35vw, 340px);
+  width: auto;
+  max-width: clamp(400px, 60vw, 740px);
+  border-radius: var(--radius-md);
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.profile-avatar-placeholder {
+  height: clamp(200px, 35vw, 340px);
+  width: clamp(200px, 35vw, 340px);
+  border-radius: var(--radius-md);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-size: clamp(1.2rem, 2.5vw, 1.75rem);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.profile-username-large {
+  font-size: clamp(3.5rem, 8vw, 5.5rem);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin: 0;
+  text-align: center;
+  text-shadow:
+    -2px -2px 0 rgba(0, 0, 0, 0.6),
+    2px -2px 0 rgba(0, 0, 0, 0.6),
+    -2px 2px 0 rgba(0, 0, 0, 0.6),
+    2px 2px 0 rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(192, 132, 252, 0.3);
+}
+
+
+.profile-tabs-divider {
+  display: flex;
+  justify-content: center;
+  padding: clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2vw, 1.5rem) 0;
+}
+
+.profile-divider-line {
+  width: 85%;
+  height: 1px;
+  background: var(--border-color);
+}
+
+
+.profile-tabs {
+  display: flex;
+  justify-content: center;
+  gap: clamp(0.3rem, 0.8vw, 0.5rem);
+  padding: clamp(0.6rem, 1.5vw, 1rem) clamp(1rem, 2vw, 1.5rem);
+  position: relative;
+  z-index: 10;
+}
+
+.profile-tab {
+  width: clamp(2.5rem, 4vw, 3.25rem);
+  height: clamp(2.5rem, 4vw, 3.25rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--anim-fast), color var(--anim-fast), border-color var(--anim-fast), box-shadow var(--anim-fast);
+  position: relative;
+}
+
+.profile-tab svg {
+  width: clamp(15px, 1.5vw, 20px);
+  height: clamp(15px, 1.5vw, 20px);
+  flex-shrink: 0;
+}
+
+.profile-tab:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.profile-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.profile-tab:active {
+  transform: scale(0.92);
+}
+
+/* Tooltip */
+.profile-tab[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 20, 0.95);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 0.65rem;
+  white-space: nowrap;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--anim-fast);
+}
+
+.profile-tab:hover[data-tooltip]::after {
+  opacity: 1;
+}
+
+
+.profile-tab-content {
+  flex: 1;
+  padding: clamp(0.8rem, 2vw, 1.25rem) clamp(2rem, 8vw, 7rem);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* The flex column + gap used to live on .profile-tab-content itself, back
+   when each tab's sections were its own direct children - now they're
+   nested one level deeper inside this permanent per-tab pane (see
+   profile.astro), so the layout that spaces them apart has to live here.
+   [hidden] must win over the plain class rule below - an author-stylesheet
+   `display: flex` on .profile-tab-pane otherwise beats the UA stylesheet's
+   `[hidden] { display: none }` regardless of specificity, since UA rules
+   always lose to author rules. Without this override every tab pane stayed
+   visible and stacked at once, hidden attribute or not. */
+.profile-tab-pane[hidden] {
+  display: none;
+}
+
+@keyframes profilePaneFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.profile-tab-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  opacity: 0;
+}
+
+.profile-tab-pane.pane-ready {
+  animation: profilePaneFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.library-section,
+.fav-layout,
+.reviews-layout,
+.lists-layout,
+.stats-layout,
+.profile-stats-bar,
+.profile-bottom-grid,
+.profile-empty {
+  animation: profilePaneFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-tab-pane {
+    transition: none;
+  }
+}
+
+
+.profile-stats-bar {
+  display: flex;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: clamp(1.5rem, 4vw, 5rem);
+  padding: 1.75rem 0 0.25rem;
+  position: relative;
+}
+
+.profile-stats-bar::before {
+  content: '';
+  position: absolute;
+  width: 70%;
+  height: 1px;
+  background: var(--border-color);
+  left: 15%;
+  top: 0;
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 1;
+  min-width: 0;
+  cursor: default;
+}
+
+.profile-stat-value {
+  font-size: clamp(1.2rem, 2.8vw, 2.5rem);
+  font-weight: 900;
+  color: var(--text-main);
+  line-height: 1;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.profile-stat-label {
+  font-size: clamp(0.5rem, 0.85vw, 0.65rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+
+.profile-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.65rem;
+}
+
+.profile-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.profile-section-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+/* Monthly history's "obras" / "personaje" view toggle */
+.mh-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.mh-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast);
+}
+
+.mh-view-btn:hover:not(:disabled) {
+  color: var(--text-main);
+}
+
+.mh-view-btn.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.mh-view-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.mh-view-toggle-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border-color);
+}
+
+
+
+.hof-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 1rem;
+}
+
+.hof-btn {
+  width: clamp(2rem, 3vw, 2.5rem);
+  height: clamp(2rem, 3vw, 2.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background var(--anim-fast), color var(--anim-fast);
+  flex-shrink: 0;
+}
+
+.hof-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.hof-btn--active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.hof-sidebar-divider {
+  width: 1px;
+  height: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hof-card {
+  /* Exposed as custom properties (not just bare px below) so
+     HofSection.tsx's custom-image background-size can reference the exact
+     same expanded-box dimensions via var() instead of a hardcoded '285px
+     380px' duplicate that would silently drift out of sync with these. */
+  --hof-card-h: 380px;
+  --hof-card-w-hover: 285px; 
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 110px; /* Ancho base estable de 110px para que encaje compacto sin huecos */
+  height: var(--hof-card-h);
+  width: 110px;
+  min-width: 32px;
+  max-width: var(--hof-card-w-hover);
+  cursor: default;
+  transition: flex 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s ease;
+  border-radius: var(--radius-sm);
+}
+
+.hof-card:hover {
+  flex: 0 0 var(--hof-card-w-hover);
+  width: var(--hof-card-w-hover);
+  z-index: 2;
+}
+
+.hof-card--empty {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Cover image layer - a real <img> for raw covers (or a background-image
+   div for custom crops, since those need bg_size/pos_x/pos_y percentages).
+   Kept as its own element instead of a background-image on .hof-card. */
+.hof-card-bg {
+  display: block;
+  position: absolute;
+  /* Render every raw cover at the expanded card's dimensions from the
+     start. The closed card clips this fixed-size layer, so object-fit does
+     not recalculate its crop halfway through the hover-width transition. */
+  top: -1px;
+  /* Keep the expanded image centered while the card grows, instead of
+     pinning it to the left edge and revealing it in one direction only. */
+  left: calc((100% - var(--hof-card-w-hover)) / 2 - 1px);
+  width: calc(var(--hof-card-w-hover) + 2px);
+  height: calc(var(--hof-card-h) + 2px);
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
+.hof-card-bg--custom {
+  background-repeat: no-repeat;
+  /* Same fix as .library-card-thumb img / .library-card-stack-extra-item
+     img - a saved crop shrunk down into this card's small box can make
+     Chromium/WebView2 fall back to a jaggier ("dientes de sierra") scaling
+     path unless the layer gets its own GPU compositing. background-image
+     doesn't take image-rendering the way an <img> does, but promoting the
+     div itself still forces the higher-quality downscale path. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.hof-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  transition: background 0.4s ease;
+  pointer-events: none;
+}
+
+.hof-card:hover .hof-card-overlay {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.hof-card-rank {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  font-size: 0.58rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 2px 5px;
+  border-radius: 4px;
+  z-index: 10;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.hof-card:hover .hof-card-rank {
+  opacity: 0;
+}
+
+.hof-card-label {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  rotate: 180deg;
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  max-height: 85%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.hof-card:hover .hof-card-label {
+  opacity: 0;
+}
+
+.hof-card-content {
+  position: absolute;
+  inset: 0;
+  padding: 1rem;
+  opacity: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.4) 55%, transparent 100%);
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hof-card:hover .hof-card-content {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.35s;
+}
+
+.hof-card-type {
+  font-size: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 0.2rem;
+}
+
+.hof-card-id {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+
+.profile-bottom-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.profile-bottom-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  /* Grid items default to min-width: auto, which honors their content's
+     min-content size - the month row's `width: max-content` zigzag could
+     still force this column (and therefore the whole grid) wider than its
+     2fr share, shoving Actividad Reciente to the right, even though
+     .mh-scroll's own min-width: 0 lets it scroll internally. */
+  min-width: 0;
+}
+
+
+.stat-help-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  cursor: help;
+}
+
+.stat-help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  transition: all var(--anim-fast);
+}
+
+.stat-help-wrap:hover .stat-help-icon {
+  background: var(--accent);
+  color: #fff;
+}
+
+.stat-tooltip {
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: rgba(19, 19, 31, 0.96);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform, backdrop-filter;
+  z-index: 100;
+  transition: opacity var(--anim-fast) var(--anim-ease), transform var(--anim-fast) var(--anim-ease);
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-help-wrap:hover .stat-tooltip {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.stat-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.68rem;
+  color: var(--text-main);
+  gap: 1rem;
+}
+
+.stat-tooltip-row--sub {
+  padding-left: 0.85rem;
+  font-size: 0.62rem;
+  opacity: 0.85;
+}
+
+.stat-tooltip-label {
+  font-weight: 500;
+  text-transform: capitalize;
+  color: var(--text-muted);
+}
+
+.stat-tooltip-value {
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.library-layout {
+  display: grid;
+  /* clamp(), not a fixed 260px - the sidebar column now narrows smoothly
+     as the window does, same as its own contents (see .library-filters),
+     instead of staying full width right up until a single breakpoint
+     snapped it to 190px. */
+  grid-template-columns: clamp(150px, 18vw, 260px) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0 3rem;
+}
+.library-filters {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  /* clamp(), not a fixed value stepped at a breakpoint - scales down
+     continuously as the window narrows (and the sidebar column along
+     with it) instead of jumping abruptly at one width. */
+  gap: clamp(1rem, 2.5vw, 1.5rem);
+  position: sticky;
+  top: 90px;
+}
+
+.library-filters-title {
+  font-size: clamp(0.68rem, 1.6vw, 0.85rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  margin: 0;
+  text-align: center;
+}
+
+.library-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.library-filter-label {
+  font-size: clamp(0.62rem, 1.3vw, 0.72rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.library-filter-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: clamp(0.4rem, 1vw, 0.6rem) clamp(0.4rem, 1.5vw, 0.8rem);
+  font-size: clamp(0.68rem, 1.5vw, 0.8rem);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: all var(--anim-fast);
+  text-align: center;
+}
+
+.library-filter-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.library-date-range {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.library-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.library-date-field-label {
+  font-size: clamp(0.58rem, 1.1vw, 0.65rem);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.library-filter-date-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: clamp(0.32rem, 0.9vw, 0.45rem) clamp(0.2rem, 1vw, 0.4rem);
+  font-size: clamp(0.6rem, 1.25vw, 0.7rem);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: all var(--anim-fast);
+  width: 100%;
+  min-width: 0;
+}
+
+.library-filter-date-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Subpages-by-type tab bar (Settings > Preferencias toggle) - underline-style
+   tabs instead of boxed filter buttons, since these switch the whole view
+   rather than toggle a filter on top of it. Shares the sort row's bottom
+   border instead of having its own (see .library-content-header). */
+.library-type-tabs {
+  display: flex;
+  align-items: flex-end;
+  align-self: stretch;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+}
+
+.library-type-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  border-radius: 0;
+  transition: color var(--anim-fast);
+}
+
+.library-type-tab svg {
+  opacity: 0.7;
+  transition: opacity var(--anim-fast);
+}
+
+.library-type-tab:hover {
+  color: var(--text-main);
+}
+
+.library-type-tab.active {
+  color: var(--accent);
+}
+
+.library-type-tab.active svg {
+  opacity: 1;
+}
+
+/* Active indicator sits flush on the header's own bottom border (see
+   .library-content-header below) instead of a border-bottom on the tab
+   itself, which would draw a separate line just above it. */
+.library-type-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0.4rem;
+  right: 0.4rem;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* When viewport narrows and tabs wrap into 3+ rows, show only icons */
+@media (max-width: 900px) {
+  .library-type-tab {
+    padding: 0.65rem 0.5rem;
+    gap: 0;
+    font-size: 0;
+  }
+
+  .library-type-tab svg {
+    margin: 0;
+  }
+}
+
+/* Header bar for sorting - also hosts the type tabs (when enabled) on the
+   left, sharing this same row and bottom border instead of stacking above it. */
+.library-content-header {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.library-content-header .library-group-toggles,
+.library-content-header .select-sort,
+.library-content-header .library-rating-slot-toggle {
+  /* Matches .library-type-tab's own bottom padding so every column in this
+     row keeps the same gap between its content and the shared border line. */
+  padding-bottom: 0.65rem;
+}
+
+/* Whichever of these two comes first in the markup is the one that should
+   eat the leftover space - .library-rating-slot-toggle only renders before
+   .library-group-toggles (see LibrarySection.tsx), so when it's present it
+   claims the auto margin instead, keeping both pinned to the right and
+   sitting flush against each other rather than leaving a gap between them. */
+.library-content-header .library-rating-slot-toggle {
+  margin-left: auto;
+}
+
+.library-content-header .library-rating-slot-toggle ~ .library-group-toggles {
+  margin-left: 0;
+}
+
+.library-content-header .library-group-toggles {
+  margin-left: auto;
+}
+
+.library-edition-filters {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem;
+  width: 100%;
+}
+
+/* Two columns stop being worth it once the sidebar itself has narrowed
+   enough that each button's own label starts fighting for space - one
+   column per row instead, same width as every other filter. */
+@media (max-width: 1080px) {
+  .library-edition-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ONA + OVA's own shared cell - one slot in the outer 2-column grid above,
+   itself split into 2 sub-columns. Different enough from each other to
+   want separate toggles, but similar enough that giving each their own
+   full slot (like every other format) felt like wasted space. */
+.library-edition-pair {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem;
+}
+
+.library-edition-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: clamp(0.62rem, 1.3vw, 0.7rem);
+  font-weight: 600;
+  padding: clamp(0.28rem, 0.8vw, 0.35rem) clamp(0.25rem, 1vw, 0.4rem);
+  box-sizing: border-box;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--anim-fast);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.library-edition-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.library-edition-btn.active,
+.library-group-toggle-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Status Cycler */
+.library-status-cycler {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  height: clamp(32px, 4vw, 38px);
+}
+
+.library-status-arrow {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-weight: bold;
+  font-size: clamp(0.75rem, 1.6vw, 0.85rem);
+  cursor: pointer;
+  padding: 0 clamp(0.5rem, 1.5vw, 0.8rem);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--anim-fast);
+}
+
+.library-status-arrow:hover {
+  opacity: 0.8;
+}
+
+.library-status-val {
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+  font-weight: 700;
+  color: var(--text-main);
+  text-align: center;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Group-by-saga/bundle toggles - icon-only, label shown via title tooltip
+   on hover, sitting in the sort row (left of "Ordenar por") instead of the
+   filters sidebar. */
+.library-group-toggles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.library-group-toggles .library-sort-label {
+  text-align: center;
+}
+
+.library-group-toggle-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.library-group-toggle-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  padding: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--anim-fast);
+}
+
+.library-group-toggle-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Just a color change (var(--accent)) reads as barely-there in themes like
+   newspaper-dark, where --accent and --text-muted are nearly the same
+   value - background + border make the on/off state actually legible. */
+
+.library-rating-slot-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+
+.select-sort {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.library-sort-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.library-header-divider {
+  align-self: stretch;
+  width: 1px;
+  background: var(--border-color);
+  margin: 0 0.9rem 0.65rem;
+}
+
+.library-sort-options {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.library-sort-btn {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  padding: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--anim-fast);
+  box-shadow: none !important;
+}
+
+.library-sort-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Same reasoning as .library-group-toggle-btn.active - a color-only change
+   barely reads in themes where --accent sits close to --text-muted. */
+.library-sort-btn.active {
+  background: var(--accent-soft) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.library-empty-filtered {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Library sections grouping */
+.library-sections-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.library-section {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.library-section + .library-section {
+  margin-top: 1rem;
+}
+
+.library-section-title {
+  font-size: clamp(0.9rem, 1.8vw, 1.1rem);
+  font-weight: 800;
+  color: var(--text-main);
+  border-left: 3px solid var(--accent);
+  padding-left: clamp(0.5rem, 1vw, 0.75rem);
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+
+.fav-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: calc(100% + 30rem);
+  /* .profile-tab-content (shared by every tab) has a fixed 15rem side padding
+     tuned for narrower, text-centric tabs. Favorites is a media grid that
+     needs far more width to fit 10 cover-sized cards per row without
+     shrinking them, so cancel that padding out here and apply a much
+     smaller one of our own. */
+  margin: 0 -15rem;
+  padding: 0 2rem;
+  box-sizing: border-box;
+}
+
+/* The +30rem/-15rem breakout above is only safe when the viewport has
+   30rem (480px) to spare beyond the normal column - below that, the box
+   became wider than the window itself with no scrollbar to reach the
+   part that fell off both edges (a card cropped at the left edge with no
+   way to scroll to it). Disabling the breakout here just falls back to
+   .profile-tab-content's own (narrower, but always on-screen) column;
+   .fav-grid's auto-fit already reflows to fewer columns on its own.
+   .fav-tabs-row's matching override lives just after its own base rule
+   below, so it wins the cascade against it. */
+@media (max-width: 1400px) {
+  .fav-layout {
+    width: 100%;
+    margin: 0;
+  }
+}
+
+@media (max-width: 1024px) {
+  .fav-layout {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .fav-layout {
+    padding: 0 0.5rem;
+  }
+}
+
+/* Pill Navigation Tabs Row */
+.fav-tabs-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 1rem;
+  /* .fav-layout deliberately overflows its normal column by 30rem (see its
+     own comment) so the card grid below can fit more columns - but that
+     same extra width, inherited via a plain 100%, pushed this row's own
+     box 15rem past the visible edge on each side. The reorder button's
+     `right: 0` then landed 15rem off-screen instead of next to the last
+     tab. Undoing the expansion here and re-centering keeps this row (and
+     the button positioned against its real edge) where the pills visually
+     sit, without affecting the grid's own intentional overflow. */
+  width: calc(100% - 30rem);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Matches .fav-layout's own breakout-disabling override above. */
+@media (max-width: 1400px) {
+  .fav-tabs-row {
+    width: 100%;
+  }
+}
+
+.fav-tabs-row::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  max-width: 680px;
+  height: 1px;
+  background: var(--border-color);
+  opacity: 0.45;
+}
+
+.fav-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* When tabs need to wrap into 2+ rows, show only icons */
+@media (max-width: 900px) {
+  .fav-tab-btn {
+    padding: 0.4rem 0.25rem !important;
+    gap: 0 !important;
+    font-size: 0 !important;
+  }
+}
+
+.fav-tab-btn {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-muted);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: color var(--anim-fast);
+  box-shadow: none !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fav-tab-btn svg {
+  opacity: 0.7;
+}
+
+.fav-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.fav-tab-btn.active {
+  color: var(--accent) !important;
+}
+

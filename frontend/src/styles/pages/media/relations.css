@@ -1,0 +1,1054 @@
+/* Relations - grid of horizontal blurred cards */
+.media-relations-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 96px;
+  align-content: start;
+  gap: 0.75rem;
+  min-height: calc(3 * 96px + 2 * 0.75rem);
+  margin-bottom: 1.5rem;
+}
+
+/* Anime openings/endings ("Temas" tab, animethemes.moe) - same relation
+   cover-card grid as Episodios (media-relation-card), a badge (OP1/ED1/...)
+   standing in for the episode-card's own "#N" pill since there's no cover
+   image to show; clicking one opens theme-player-overlay below instead of
+   navigating anywhere. The card's own background is a live muted preview
+   (ThemePreviewCardVideo) filling the whole card - there's no cover art for
+   a song, but there IS the actual clip - instead of the relation grid's own
+   img.media-relation-bg-layer (a faint 0.08-opacity blurred backdrop): this
+   one IS the card's main visual, so it needs its own full-strength rule
+   rather than inheriting that dim one.  */
+.media-theme-card--playable {
+  cursor: pointer;
+}
+
+.media-theme-bg-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.media-theme-preview-img,
+.media-theme-preview-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.media-theme-preview-img {
+  z-index: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.media-theme-preview-img.is-hidden {
+  opacity: 0 !important;
+}
+
+.media-theme-preview-video {
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  filter: none;
+  transform: translateZ(0);
+}
+
+.media-theme-preview-video.is-playing {
+  opacity: 0.7;
+}
+
+.media-theme-preview-video.is-idle {
+  opacity: 0;
+}
+
+.media-theme-badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm);
+  color: #fff;
+}
+
+.media-theme-badge--op {
+  background: var(--accent, #7c6af7);
+}
+
+.media-theme-badge--ed {
+  background: #d97757;
+}
+
+.media-theme-artist {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/* Theme player - a lightweight modal (not the full me-overlay/me-modal
+   editor chrome) portaled straight to <body>, since MediaPage's own layout
+   has no ancestor with room for a centered video. */
+.theme-player-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  will-change: backdrop-filter;
+}
+
+.theme-player-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 980px;
+  position: relative;
+}
+
+.theme-player-nav {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(22, 20, 18, 0.85);
+  backdrop-filter: blur(8px);
+  color: var(--text-main, #fff);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.theme-player-nav:hover:not(:disabled) {
+  background: rgba(45, 42, 38, 0.95);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: scale(1.08);
+}
+
+.theme-player-nav:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.theme-player-nav:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.theme-player-version-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.2rem 0.3rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.theme-player-version-tab {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #a1a1aa);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+}
+
+.theme-player-version-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.theme-player-version-tab.active {
+  color: var(--accent, #7c6af7);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.theme-player-season-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.35rem 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  margin-left: auto;
+  max-width: 220px;
+  flex-shrink: 0;
+  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theme-player-season-card:hover {
+  border-color: var(--accent, #7c6af7);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.theme-player-season-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.theme-player-season-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  opacity: 0.7;
+  filter: blur(1px);
+  transform: scale(1.05) translateZ(0);
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.theme-player-season-card:hover .theme-player-season-bg img {
+  transform: scale(1.12) translateZ(0);
+  opacity: 0.85;
+}
+
+.theme-player-season-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.45) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.theme-player-season-title {
+  position: relative;
+  z-index: 2;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.theme-player-season-card+.theme-player-episodes {
+  margin-left: 0;
+}
+
+.theme-player-episodes {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #a1a1aa);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+}
+
+.theme-player-episodes--interactive {
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.theme-player-episodes--interactive:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.theme-player-modal {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.theme-player-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-player-close:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.theme-player-video-wrap {
+  position: relative;
+  width: 100%;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+}
+
+.theme-player-video {
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+  display: block;
+}
+
+.theme-player-spinner-overlay,
+.theme-player-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+
+.theme-player-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent-color, #e0b06b);
+  border-radius: 50%;
+  animation: theme-spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes theme-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.theme-player-error-text {
+  font-size: 0.9rem;
+  color: var(--text-dim, #ccc);
+  margin: 0;
+}
+
+.theme-player-retry-btn {
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  background: var(--bg-surface, #222);
+  color: var(--text-main, #fff);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.theme-player-retry-btn:hover {
+  background: var(--accent-color, #e0b06b);
+  color: #000;
+  border-color: transparent;
+}
+
+.theme-player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.theme-player-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.theme-player-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-player-artist {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Pagination */
+.media-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.media-pagination-page {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.35rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--anim-base) var(--anim-ease);
+}
+
+.media-pagination-page:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.media-pagination-gap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  user-select: none;
+}
+
+/* The active page button turns into this in-place when clicked, so typing a
+   page number happens right where "7" was instead of a separate box.
+   display:flex (inherited from .media-pagination-page) only centers an
+   input's own box, not the text rendered inside it - that still needs an
+   explicit line-height/text-align, hence overriding display here too. */
+.media-pagination-page--editing {
+  display: block;
+  box-sizing: border-box;
+  text-align: center;
+  line-height: 34px;
+  padding: 0;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.media-pagination-page--editing:focus {
+  outline: none;
+}
+
+.media-pagination-page.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.media-relation-card {
+  position: relative;
+  height: 96px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  display: block;
+  text-decoration: none;
+  transition: border-color var(--anim-base) var(--anim-ease), box-shadow var(--anim-base) var(--anim-ease);
+}
+
+.media-relation-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Not a real link (e.g. manga's ComicVine issues) - no hover affordance. */
+.media-relation-card--static {
+  cursor: default;
+}
+
+.media-relation-card--static:hover {
+  border-color: var(--border-color);
+  box-shadow: none;
+}
+
+.media-match-card .media-relation-card-content {
+  align-items: flex-end;
+}
+
+.media-match-card .media-relation-info {
+  gap: 0.2rem;
+}
+
+.media-match-score {
+  color: var(--accent, #c084fc);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.media-match-venue {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-relation-card--added,
+.media-relation-card--added:hover,
+.media-relation-card--added.media-relation-card--static:hover {
+  border-color: #d8b44f;
+  box-shadow: inset 0 0 0 1px rgba(216, 180, 79, 0.35);
+}
+
+.media-relation-card--updated,
+.media-relation-card--updated:hover,
+.media-relation-card--updated.media-relation-card--static:hover {
+  border-color: #b477f2;
+  box-shadow: inset 0 0 0 1px rgba(180, 119, 242, 0.38);
+}
+
+.media-relation-card--static:hover .media-relation-bg-layer img {
+  transform: translateZ(0);
+  opacity: 0.08;
+}
+
+.media-relation-bg-layer img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.08;
+  filter: blur(2px);
+  transition: transform var(--anim-base) var(--anim-ease), opacity var(--anim-base) var(--anim-ease);
+  /* Same GPU-layer fix as .media-relation-thumb img below - this is also a
+     large cover downscaled to fill the card, just blurred on top. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.media-relation-card:hover .media-relation-bg-layer img {
+  /* translateZ(0) kept alongside the hover scale - a single `transform`
+     declaration replaces the base rule's GPU-layer hack entirely otherwise. */
+  transform: scale(1.05) translateZ(0);
+  opacity: 0.15;
+}
+
+/* Episodios ("Temas" tab's sibling) - the cover fills the whole card as its
+   own main visual instead of the generic .media-relation-bg-layer img's
+   faint 0.08-opacity blurred backdrop (that treatment is for cards that
+   already have a separate sharp thumb next to the title; this card doesn't
+   have one anymore). Same opacity as the Temas tab's video preview so both
+   read consistently. */
+.media-episode-bg-layer img,
+.media-relation-card--static:hover .media-episode-bg-layer img,
+.media-relation-card:hover .media-episode-bg-layer img,
+.media-theme-bg-layer img:not(.is-hidden),
+.media-relation-card--static:hover .media-theme-bg-layer img:not(.is-hidden),
+.media-relation-card:hover .media-theme-bg-layer img:not(.is-hidden) {
+  opacity: 0.7;
+  filter: none;
+  transform: translateZ(0);
+}
+
+.media-theme-bg-layer img.is-hidden,
+.media-relation-card--static:hover .media-theme-bg-layer img.is-hidden,
+.media-relation-card:hover .media-theme-bg-layer img.is-hidden {
+  opacity: 0 !important;
+}
+
+.media-relation-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  height: 100%;
+}
+
+.media-relation-thumb {
+  width: 52px;
+  height: 78px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+  transition: transform var(--anim-base) var(--anim-ease);
+}
+
+.media-relation-card:hover .media-relation-thumb {
+  transform: scale(1.03);
+  border-color: var(--accent-border);
+}
+
+.media-relation-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Same fix as .library-card-thumb img (profile.css): covers are saved at
+     their largest available size and shown here at 52x78 - a large enough
+     downscale that Chromium/WebView2 can fall back to a cheaper, jaggier
+     ("dientes de sierra") scaling path instead of properly filtering.
+     Promoting the image to its own GPU layer forces the higher-quality
+     raster/downscale path. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: auto;
+}
+
+.media-relation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Pinned to the card's top-right corner as a hanging bookmark ribbon
+   (same notched-bottom shape as .library-card-tag-badge elsewhere in the
+   app) instead of sitting inline above the title. */
+.media-relation-type {
+  position: absolute;
+  top: 0;
+  right: 0.35rem;
+  z-index: 2;
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fff;
+  background: var(--accent);
+  padding: 0.3rem 0.55rem 0.65rem;
+  width: max-content;
+  /* A real triangular point (not a subtle notch), but shallow enough it
+     doesn't hang halfway down the card. */
+  clip-path: polygon(0 0, 100% 0, 100% 75%, 50% 100%, 0 75%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.media-relation-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  /* Episode covers and theme preview videos now fill the whole card at
+     0.7 opacity (not just a faint blurred backdrop) - a light offset
+     shadow keeps the title readable over a busy frame instead of relying
+     solely on the card-overlay gradient. */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/* Characters + Users share one row below the 3-col grid - Users pinned to
+   the same width as the Datos column (.media-body's 1.1fr / 3fr / 0.9fr
+   ratio: 4.1fr here is the synopsis+related share combined, 0.9fr matches
+   Datos exactly), so a much shorter friends list doesn't have to stretch
+   across the whole page width the way Characters does. */
+.media-chars-users-row {
+  display: grid;
+  grid-template-columns: 4.1fr 0.9fr;
+  gap: 2.5rem;
+  padding: 0 15% 3rem;
+  align-items: start;
+}
+
+.media-chars-section,
+.media-users-section {
+  min-width: 0;
+}
+
+/* When Characters has nothing to show, Users is the row's only DOM child -
+   grid auto-placement would otherwise drop it into column 1 (the wide 4.1fr
+   share meant for Characters) instead of leaving it pinned to its own 0.9fr
+   column, stretching it across most of the page width. */
+.media-users-section:only-child {
+  grid-column: 2;
+}
+
+/* No friends-scores data to show next to it - Characters takes the row's
+   full width instead of leaving the reserved Users column empty. */
+.media-chars-section--full {
+  grid-column: 1 / -1;
+}
+
+/* Caps the Users grid to exactly 3 rows (max-height set in JS, measured off
+   the real card height - see MediaPage.tsx) and scrolls internally for the
+   rest, instead of growing the page indefinitely. No visible scrollbar;
+   a top/bottom fade (same mask-image technique as .mh-scroll in
+   profile.css) signals whether there's more content in that direction,
+   toggled via the .at-top/.at-bottom classes JS adds on scroll. */
+.media-users-grid-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  --uf-fade: 30px;
+  mask-image: linear-gradient(to bottom, transparent 0%, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent 100%);
+}
+
+.media-users-grid-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.media-users-grid-scroll.at-top {
+  mask-image: linear-gradient(to bottom, black, black calc(100% - var(--uf-fade)), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black, black calc(100% - var(--uf-fade)), transparent);
+}
+
+.media-users-grid-scroll.at-bottom {
+  mask-image: linear-gradient(to bottom, transparent, black var(--uf-fade), black);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black var(--uf-fade), black);
+}
+
+.media-users-grid-scroll.at-top.at-bottom {
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+.media-users-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.85rem;
+  /* Leaves room for the hover name tooltip above the first row without it
+     getting clipped by the scroll container. */
+  padding-top: 0.5rem;
+}
+
+.media-user-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.media-user-card--skeleton {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  animation: media-user-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes media-user-skeleton-pulse {
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.media-user-avatar {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  transition: border-color var(--anim-fast), transform var(--anim-fast);
+  /* It's a <button> now (opens the user's AniList profile) - strip the
+     native button chrome so it still looks like a plain avatar tile. */
+  display: block;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.media-user-card:hover .media-user-avatar {
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.media-user-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.media-user-score {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Name only shows on hover, as a tooltip (same mechanism as
+   .heatmap-cell's data-tooltip in profile.css) - the avatar + score below
+   it are the only always-visible content. Anchored below the card, not
+   above: .media-users-grid-scroll clips/fades its own overflow, so a
+   tooltip above the first row got clipped out (rendered but invisible)
+   before it ever reached the visible area. */
+.media-user-card::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.95);
+  color: #fff;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+}
+
+.media-user-card:hover::after {
+  opacity: 1;
+}
+
+/* formatRatingHtml's own <span class="media-user-score"> - sized down from
+   its default (built for the bigger rating-input widget) to fit a compact
+   5-column grid. */
+.media-user-score {
+  font-size: 0.62rem !important;
+  display: inline-flex !important;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* The star system renders 5 raw <svg> siblings inside .media-user-score at
+   their hardcoded 14px size - too wide for a 5-per-row grid, forcing them
+   onto two lines. Shrink them down instead of letting them wrap. */
+.media-user-score svg {
+  width: 9px !important;
+  height: 9px !important;
+}
+
+.media-user-score.emoji-rating {
+  font-size: 0.85rem !important;
+}
+
+/* Characters grid */
+.media-chars-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Load more button */
+.media-section-header-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  /* Fixed to the tallest possible content (the store-link icon row) so
+     Sinopsis/Relacionados/Datos's header lines all sit at the same Y
+     position - without this, a header row with no icons is shorter than
+     one with them, and each row's own vertical centering then puts its
+     line at a different absolute height across the 3 columns. */
+  min-height: 24px;
+}
+
+.media-section-header-row .section-label {
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.media-section-header-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.85) !important;
+  /* Pure white line with slight opacity */
+}
+
+/* Short segment between two labels sharing one header row (e.g. "Related"
+   ---- "Recommended" --------------) instead of the usual single label + line. */
+.media-section-header-line--short {
+  flex: none;
+  width: 2rem;
+}
+
+.media-store-links-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+
+.media-store-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: transparent;
+  cursor: pointer;
+  transition: opacity var(--anim-fast) var(--anim-ease), transform var(--anim-fast) var(--anim-ease);
+  opacity: 0.8;
+}
+
+.media-store-icon {
+  max-height: 24px;
+  width: auto;
+  height: auto;
+  aspect-ratio: auto;
+  filter: brightness(0) invert(1);
+}
+
+.media-store-link:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Floating badges container */
+.media-banner-badges-container {
+  position: absolute;
+  top: 19rem;
+  right: 15%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Floating date badge on the banner */
+.media-banner-date-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--bg-primary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+}
+
+.media-banner-pr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  background: var(--bg-primary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all var(--anim-fast, 120ms);
+}
+
+.media-banner-pr-btn:hover {
+  color: var(--accent, #7c6af7);
+  border-color: var(--accent, #7c6af7);
+  background: var(--bg-elevated);
+}
+
+.media-banner-pr-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.media-banner-pr-btn--spinning svg {
+  animation: media-retry-spin 0.9s linear infinite;
+}
+
+@keyframes media-retry-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.media-banner-developer-badge {
+  position: absolute;
+  top: 19rem;
+  left: 15%;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--bg-primary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+}
+
+.media-hero--game .media-banner-developer-badge {
+  top: calc(19rem + 200px);
+}

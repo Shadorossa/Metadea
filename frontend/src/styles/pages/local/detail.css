@@ -1,0 +1,418 @@
+
+
+.local-media-detail-top-row {
+  display: flex;
+  align-items: center;
+  
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.local-media-detail-edit-icon,
+.local-media-detail-locate-btn,
+.local-media-detail-catalog-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--anim-base) var(--anim-ease);
+}
+
+.local-media-detail-locate-wrap {
+  position: relative;
+}
+
+.local-media-detail-edit-icon:hover,
+.local-media-detail-locate-btn:hover,
+.local-media-detail-catalog-icon:hover {
+  color: var(--accent);
+}
+
+.local-media-detail-locate-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.local-media-detail-locate-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+/* Rendered into a body-level portal (see LocalMediaDetailPanel.tsx) instead
+   of positioned relative to .local-media-detail-locate-wrap - that wrapper
+   sits inside .local-game-detail-content's own overflow-y:auto, which
+   clipped this dropdown regardless of z-index. top/left come from the
+   button's own measured rect; translateX(-50%) centers it under the
+   button instead of the old right-aligned placement. */
+.local-media-detail-locate-menu--portal {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
+.local-media-detail-locate-menu button {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.local-media-detail-locate-menu button:hover {
+  background: rgba(124, 106, 247, 0.12);
+  color: var(--accent);
+}
+
+
+[data-theme="newspaper-dark"] .local-media-detail-locate-menu,
+[data-theme="newspaper-dark"] .locate-preview-modal {
+  border: 3px double var(--border-color) !important;
+  border-radius: 0 !important;
+}
+
+
+
+.locate-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.locate-preview-modal {
+  width: 100%;
+  max-width: 640px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.locate-preview-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.locate-preview-hint {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.locate-preview-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem;
+  background: var(--bg-primary, #12110f);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.locate-preview-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+
+.locate-preview-row--folder {
+  background: rgba(124, 106, 247, 0.08);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.locate-preview-row--related {
+  background: rgba(255, 190, 90, 0.08);
+}
+
+.locate-preview-old {
+  color: var(--text-dim, #666);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: line-through;
+}
+
+.locate-preview-arrow {
+  color: var(--accent, #7c6af7);
+  flex-shrink: 0;
+}
+
+.locate-preview-new {
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locate-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.local-media-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.local-media-left-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+/* Same reasoning as the play button below - .local-media-left-col's
+   align-items:flex-start otherwise shrinks this to its content's width
+   instead of the column's full width, which is what actually let the 3
+   stats bunch up on the left with dead space to their right. */
+.local-media-left-col .local-game-detail-bottom {
+  width: 100%;
+}
+
+.local-media-left-col .local-game-detail-play {
+  width: 100%;
+  justify-content: center;
+}
+
+.local-media-divider-line {
+  width: 100%;
+  height: 1px;
+  background: var(--border-color);
+  margin-top: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+.local-media-neighbors-row {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.local-media-neighbors-grid {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.local-media-neighbors-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: auto 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color var(--anim-fast, 120ms);
+}
+
+.local-media-neighbors-arrow:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.local-media-neighbors-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Cover-forward, no box - a plain vertical stack (label, cover, title)
+   instead of a bordered card, so it reads as "here's the related work"
+   rather than another clickable panel section of its own. */
+.local-media-neighbor-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: center;
+}
+
+.local-media-neighbor-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.local-media-neighbor-cover {
+  /* Fixed, small - at full width these read as their own big cards; small
+     and side-by-side they sit more like a footnote next to the entry they
+     belong to. Fixed rather than % now that the row is flex, not grid
+     columns - a percentage here would resolve against the link's own
+     shrink-to-fit width instead of anything meaningful. */
+  width: 64px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  object-fit: cover;
+  background: var(--bg-primary, #12110f);
+  transition: opacity var(--anim-fast, 120ms);
+}
+
+.local-media-neighbor-link:hover .local-media-neighbor-cover {
+  opacity: 0.85;
+}
+
+.local-media-neighbor-cover--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+[data-theme="newspaper-dark"] .local-media-neighbor-label {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-style: italic;
+}
+
+[data-theme="newspaper-dark"] .local-media-neighbor-cover {
+  border: 2px double var(--border-color) !important;
+  border-radius: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .local-media-neighbor-link:hover .local-media-neighbor-cover {
+  border-color: var(--accent) !important;
+  opacity: 1;
+}
+
+.local-media-history {
+  margin-top: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.local-media-history-screenshots-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.local-media-history-screenshots-layout.has-history {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.local-media-history-screenshots-layout .local-steam-media {
+  min-width: 0;
+  margin-top: 0.5rem;
+  padding-top: 0.25rem;
+  border-top: 0;
+}
+
+@media (max-width: 760px) {
+  .local-media-history-screenshots-layout.has-history {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* "HISTORIAL" centered directly on the dividing line itself (flanked by two
+   flex-grown rule segments) instead of a separate border-top with the label
+   sitting underneath it. */
+.local-media-history-title,
+.local-steam-media-title {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin: 0 0 0.6rem;
+  white-space: nowrap;
+}
+
+.local-media-history-title::before,
+.local-media-history-title::after,
+.local-steam-media-title::before,
+.local-steam-media-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.local-media-history-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.local-media-history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-main);
+}
+
+.local-media-history-item svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-completed, var(--accent));
+}
+
+/* Truncates instead of wrapping/pushing the date out of the row now that a
+   line can include the media's own (potentially long) title. */
+.local-media-history-item > span:not(.local-media-history-date) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.local-media-history-date {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}

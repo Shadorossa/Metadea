@@ -1,0 +1,123 @@
+/* DragOverlay's own floating clone, following the cursor. */
+.list-item-card.is-dragging-card {
+  cursor: grabbing !important;
+}
+
+.list-item-card.is-dragging-card .list-item-cover-link {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent) !important;
+}
+
+
+
+.stats-histogram {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.25rem, 0.6vw, 0.45rem);
+  margin-top: clamp(0.5rem, 1vw, 0.75rem);
+  width: 100%;
+}
+
+.stats-hist-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.3rem, 0.6vw, 0.5rem);
+  width: 100%;
+  min-width: 0;
+}
+
+.stats-hist-label {
+  font-size: clamp(0.58rem, 0.9vw, 0.7rem);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: clamp(65px, 10vw, 95px);
+  min-width: 0;
+}
+
+.stats-hist-bar-outer {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1;
+  min-width: 0;
+  height: clamp(7px, 1vw, 10px);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.stats-hist-bar-outer::-webkit-progress-bar {
+  background: transparent;
+}
+
+.stats-hist-bar-outer::-webkit-progress-value {
+  min-width: 2px;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.stats-hist-bar-outer--score::-webkit-progress-value {
+  background: color-mix(in srgb, var(--accent) 65%, #818cf8);
+}
+
+.stats-hist-bar-outer--year::-webkit-progress-value {
+  background: color-mix(in srgb, var(--accent) 50%, #a78bfa);
+}
+
+.stats-hist-count {
+  font-size: clamp(0.52rem, 0.85vw, 0.65rem);
+  color: var(--text-dim);
+  width: clamp(18px, 2.5vw, 24px);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Favorite custom-image editor styling now lives in the shared, page-agnostic
+   .img-crop-* rules (styles/components/components.css) - reused by the
+   character photo editor too. See lib/shared/image-crop-modal.ts. */
+
+@media (max-width: 768px) {
+  .reviews-sort {
+    margin-left: 0;
+  }
+
+  .lists-grid {
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  }
+}
+
+.list-detail-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.list-settings-menu-wrapper {
+  order: 1;
+}
+
+.list-sort-control {
+  order: 2;
+}
+
+/* Use the same compact, text-like selector as Local/Play.  The Local page
+   owns the original rule, so profile needs the shared visual treatment here
+   as well instead of falling back to the browser's native white select. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+

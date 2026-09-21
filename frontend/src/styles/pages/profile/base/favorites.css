@@ -1,0 +1,556 @@
+.fav-reorder-btn {
+  /* Taken out of the flex row so it doesn't skew .fav-tabs off-center -
+     without this, .fav-tabs only centers within (row width - button width),
+     shifting the pill tabs left of true center. */
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+.fav-tab-count {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+/* Favorites Grid & Cards */
+.fav-grid {
+  display: grid;
+  /* Centered cover cards supporting 10 columns per row on desktop.
+     Two things matter here together:
+      - auto-fit (not auto-fill): auto-fill still creates the extra
+        empty tracks the container has room for, and they keep their
+        share of the row's width - invisible, but shifting the
+        visible cards left of true center. auto-fit collapses those
+        empty tracks to 0 instead.
+      - a capped track max (150px, not 1fr): without a cap, auto-fit
+        lets the few *populated* tracks swallow all the width the
+        collapsed empty ones freed up - with a single favorite, that
+        one card would stretch to fill the entire row. Capping the
+        max keeps every card the same size regardless of how many
+        there are; justify-content: center takes care of centering
+        whatever total width that leaves. */
+  grid-template-columns: repeat(auto-fit, minmax(clamp(110px, 12vw, 135px), clamp(120px, 14vw, 150px)));
+  justify-content: center;
+  gap: clamp(0.7rem, 1.5vw, 1rem);
+  width: 100%;
+  max-width: 1650px;
+  margin: 0 auto;
+}
+
+.fav-card {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.fav-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.2);
+}
+
+.fav-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+/* Crown button styles */
+.fav-crown-btn {
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 50% !important;
+  color: var(--text-dim) !important;
+  width: 22px !important;
+  height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  transition: opacity var(--anim-fast) ease, color var(--anim-fast) ease, background var(--anim-fast) ease !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  z-index: 10;
+}
+
+/* Icon toolbar (edit-image + crown + remove) top-right of a favorite card -
+   two rows (crown+remove, then edit-image below) instead of one cramped row
+   of three, since cards are only 135-150px wide. */
+.fav-card-icons {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.fav-card-icons-row {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.fav-edit-image-btn,
+.fav-remove-btn {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--anim-fast);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fav-card:hover .fav-edit-image-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fav-edit-image-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.fav-card:hover .fav-remove-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fav-remove-btn:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.fav-cover-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  /* Same fix as .library-card-thumb img - covers are saved at their largest
+     available size and shown here at card size (~150px), a big enough
+     downscale that Chromium/WebView2 can fall back to a jaggier scaling
+     path unless the layer is promoted to its own GPU layer. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: auto;
+  transition: transform 0.3s ease;
+}
+
+/* bg_size/pos_x/pos_y (from the shared pan/zoom crop editor, image-crop-
+   modal.ts) are CSS background-size/background-position percentages by
+   design - its own live preview sets `backgroundSize = '${bgSize}%'`.
+   Rendering them on an <img> with `width` + `object-fit: none` instead (as
+   this used to) ignores that: object-fit's fixed keywords don't support an
+   arbitrary percentage zoom, so the image rendered at native, unscaled
+   resolution - oversized and misaligned custom covers. */
+.fav-cover-wrap--custom {
+  background-repeat: no-repeat;
+}
+
+.fav-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  background: var(--bg-elevated);
+  /* Same downscale-smoothing fix as .library-card-thumb img. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: auto;
+}
+
+.fav-card:hover .fav-cover,
+.fav-card:hover .fav-cover-wrap--custom {
+  transform: scale(1.05) translateZ(0);
+}
+
+.fav-no-cover {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.06) 100%);
+  color: var(--text-dim);
+  font-weight: 800;
+  font-size: 1.5rem;
+}
+
+.fav-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-main);
+  backdrop-filter: blur(4px);
+}
+
+.fav-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0.8rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 5;
+  /* Purely decorative (title label) - without this it sits above
+     .fav-card-link (z-index 2) at full card size and swallows every click
+     before the anchor underneath ever sees it, breaking click-to-navigate. */
+  pointer-events: none;
+}
+
+.fav-card:hover .fav-overlay {
+  opacity: 1;
+}
+
+.fav-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fav-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 5rem 2rem;
+  color: var(--text-muted);
+  gap: 1rem;
+}
+
+.fav-empty-icon {
+  opacity: 0.4;
+  color: var(--accent);
+}
+
+.fav-empty-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.fav-empty-text {
+  font-size: 0.85rem;
+  max-width: 320px;
+  margin: 0;
+}
+
+
+@keyframes fav-wiggle {
+  0% {
+    rotate: -1deg;
+  }
+
+  50% {
+    rotate: 1deg;
+  }
+
+  100% {
+    rotate: -1deg;
+  }
+}
+
+.fav-card.reordering {
+  cursor: grab;
+  outline: 1px dashed var(--border-color);
+  outline-offset: -1px;
+  animation: fav-wiggle 1.6s ease-in-out infinite;
+  touch-action: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fav-card.reordering:hover {
+  transform: none;
+}
+
+.fav-card.reordering .fav-card-link {
+  pointer-events: none;
+}
+
+.fav-card.reordering:active {
+  cursor: grabbing;
+}
+
+.fav-grid.is-dragging .fav-card {
+  animation: none !important;
+}
+
+.fav-card.drag-source {
+  animation: none !important;
+  border: 1px dashed var(--accent) !important;
+  background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent) !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+.fav-card.drag-source > * {
+  visibility: hidden;
+}
+
+.fav-card.fav-card--overlay {
+  cursor: grabbing;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent);
+  pointer-events: none;
+}
+
+
+
+.act-context-menu {
+  min-width: 150px;
+}
+
+
+
+.reviews-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 0 2rem;
+}
+
+.reviews-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reviews-search {
+  flex: 1 1 180px;
+  min-width: 140px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text-main);
+  outline: none;
+}
+
+.reviews-search:focus {
+  border-color: var(--accent);
+}
+
+.reviews-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.reviews-type-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 99px;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.reviews-type-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.reviews-sort {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.reviews-sort-btn {
+  padding: 0.3rem 0.6rem;
+  border-radius: 99px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.reviews-sort-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.reviews-count {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+/* Masonry via CSS multi-column layout instead of one full-width row per
+   review (the old flex column) - column-width lets the browser pick however
+   many columns fit, and break-inside:avoid keeps each card from splitting
+   across two columns. No JS masonry library needed: cards pack by their own
+   natural height (driven by note length now, see .review-card-note below),
+   which is what actually fills the empty space a fixed-height row used to
+   leave next to a short note. */
+.reviews-list {
+  column-width: 280px;
+  column-gap: 0.85rem;
+}
+
+.review-card {
+  display: inline-block;
+  width: 100%;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  margin-bottom: 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  transition: border-color 0.15s;
+}
+
+.review-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.review-card-top {
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 0.6rem;
+}
+
+.review-card-cover-link {
+  flex-shrink: 0;
+}
+
+.review-card-cover {
+  width: 44px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: calc(var(--radius-sm) - 1px);
+  display: block;
+  background: var(--bg-elevated);
+}
+
+.review-card-cover--fallback {
+  width: 44px;
+  height: 62px;
+  border-radius: calc(var(--radius-sm) - 1px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.review-card-headinfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+.review-card-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-main);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.review-card-title:hover {
+  color: var(--accent);
+}
+
+.review-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+
+.review-card-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.review-card-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.review-card-rating svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.review-card-date {
+  margin-left: auto;
+}
+
+.review-card-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  /* Capped, not clamped to a short 4 lines like before - masonry's whole
+     point is packing by each card's real height, but an outlier essay-length
+     review would still dominate the layout without some ceiling. */
+  display: -webkit-box;
+  -webkit-line-clamp: 10;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

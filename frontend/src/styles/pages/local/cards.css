@@ -1,0 +1,95 @@
+
+
+.local-game-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: transform var(--anim-base) var(--anim-ease);
+}
+
+.local-game-card:hover {
+  transform: scale(1.02);
+}
+
+.local-game-cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  transition: border-color var(--anim-base) var(--anim-ease),
+              transform     var(--anim-base) var(--anim-ease);
+}
+
+.local-game-card:hover .local-game-cover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+
+/* transform: translateZ(0) forces this <img> onto its own compositor layer -
+   without it, the WebView (WebView2/Chromium) sometimes never repaints a
+   cover once its async-assigned src finishes loading (see LocalMediaCard.tsx,
+   which sets src well after mount instead of it being present from the very
+   first paint), leaving a blank box until something else forces a reflow
+   (moving the mouse). An element with its own layer gets composited as soon
+   as its content is ready, without needing a page-wide repaint. */
+.local-game-cover img { width: 100%; height: 100%; object-fit: cover; background: var(--bg-elevated); transform: translateZ(0); }
+
+.local-game-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-dim);
+}
+
+.local-game-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+
+
+
+
+.local-media-status-badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #fff;
+  background: color-mix(in srgb, var(--color-completed) 85%, black 15%);
+  line-height: 1.4;
+}
+
+.local-media-status-badge--planning {
+  background: color-mix(in srgb, var(--color-planning) 85%, black 15%);
+}
+
+.local-media-status-badge--completed {
+  background: color-mix(in srgb, var(--color-completed) 85%, black 15%);
+}
+
+.local-media-status-badge--paused {
+  background: color-mix(in srgb, var(--color-paused) 85%, black 15%);
+}
+
+.local-media-status-badge--dropped {
+  background: color-mix(in srgb, var(--color-dropped) 85%, black 15%);
+}
+
+.local-media-status-badge--progress {
+  background: color-mix(in srgb, var(--color-watching) 85%, black 15%);
+}

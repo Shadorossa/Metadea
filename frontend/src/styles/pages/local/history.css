@@ -1,0 +1,172 @@
+/* Right-click on a history row */
+.local-history-context-menu {
+  min-width: 150px;
+}
+
+.local-media-play-error {
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--color-error);
+}
+
+.local-media-match-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: nowrap;
+  padding: 0;
+  font-size: 0.78rem;
+  /* Same reasoning as .local-game-detail-bottom above - .local-media-left-col's
+     align-items:flex-start otherwise shrinks this to its own content width,
+     which left the margin-left:auto below only pushing the edit/catalog
+     icons to the edge of that shrunk box instead of all the way to the
+     neighbors column (Precuela/Secuela) next to it. */
+  width: 100%;
+}
+
+
+.local-media-match-row-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.local-media-match-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-main);
+}
+
+.local-media-match-chip--labeled {
+  align-items: center;
+  min-height: 2.5em;
+}
+
+.local-media-match-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.local-media-match-chip.ok    { color: var(--color-completed); }
+.local-media-match-chip.fail  { color: var(--color-error); }
+
+.local-media-match-chip svg { flex-shrink: 0; }
+.local-media-match-chip strong {
+  min-width: 0;
+  color: var(--text-main);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.25;
+}
+
+.local-media-match-chip.fail strong {
+  color: inherit;
+}
+
+.spinner--sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.local-folder-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: border-color var(--anim-base) var(--anim-ease),
+              background   var(--anim-base) var(--anim-ease);
+}
+
+.local-folder-entry:hover {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+
+.local-folder-entry-icon { flex-shrink: 0; color: var(--text-dim); }
+.local-folder-entry:hover .local-folder-entry-icon { color: var(--accent); }
+
+.local-folder-entry-info { min-width: 0; flex: 1; }
+
+.local-folder-entry-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.local-folder-entry-meta {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  margin-top: 0.15rem;
+}
+
+
+
+.local-games-container {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.local-game-detail-panel {
+  /* `fixed`, not `sticky`+a flex-sibling slot reserved for it - the panel
+     takes no layout space of its own now; LocalLibrary.tsx reserves that
+     space on .local-main-content directly (a plain margin driven straight
+     off panelOpen) instead of through this element's own presence in the
+     flex row. That's what makes opening and closing reciprocal: closing
+     used to only free the grid's space once THIS element's own 300ms exit
+     slide finished and got removed from the tree, which never re-rendered
+     the (sibling) games grid to notice - the grid's own reflow (see
+     GamesGrid's launcher-title rule/controls) only ever animated on
+     open, snapping instantly on close. Fixed positioning needs no sticky
+     parent behavior to land in the right spot, just top/right below. */
+  position: fixed;
+  top: 48px;               /* sits just below the navbar */
+  right: 0;
+  width: 60vw;
+  max-width: 860px;
+  min-width: 320px;
+  /* A fixed height (not max-height) claims its full vertical space the
+     instant it opens, regardless of how much content the selected item
+     actually has - summary/achievements/neighbors arrive from several
+     independent async fetches, each one previously grew the panel a bit
+     more as it resolved (max-height only caps growth, it doesn't reserve
+     it upfront). Overflow scrolls inside this fixed box instead. */
+  height: calc(100vh - 48px);
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  /* Entrance/exit (was a CSS `animation: slide-in-right`/a `--closing`
+     modifier class playing its reverse) is now driven by DetailPanelShell's
+     own motion.div - see that component's doc comment for why: this panel
+     is a persistent instance reused across selections, and the old
+     setTimeout-based close had no way to notice a new selection arriving
+     mid-close, so it could force-close a panel the user had just reopened
+     on a different item. Motion's AnimatePresence ties the exit animation
+     to this element's own actual removal instead of an independent timer. */
+  /* The panel itself no longer scrolls - see .local-game-detail-content,
+     which owns overflow instead. Sharing one scroll container between the
+     full-width header and the content below meant a scrollbar appearing
+     mid-load (once streamed-in content pushed height past the viewport)
+     claimed width from that shared box, visibly shrinking the
+     aspect-ratio-locked header. Scoping overflow to just the content below
+     the header keeps the header's width constant no matter what scrolls. */
+  overflow: hidden;
+  /* Above the games grid it now overlaps while sliding in/out. */
+  z-index: 5;
+}

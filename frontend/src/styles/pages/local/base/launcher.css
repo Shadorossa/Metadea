@@ -1,0 +1,234 @@
+.local-launcher-section {
+  margin-bottom: 3rem;
+  margin-top: 2rem;
+  scroll-margin-top: 150px;
+}
+
+.local-launcher-title {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  border-bottom: none !important;
+}
+
+.local-launcher-title-label {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+
+.local-launcher-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fills whatever space is left between the label and the sort/refresh
+   controls with a thin rule, so those controls always land flush at the
+   right end of the SAME line - "label left, rule continuing right, controls
+   at the very end" - instead of risking a wrap onto their own row below. */
+.local-launcher-title-rule {
+  flex: 1;
+  min-width: 1rem;
+  height: 1px;
+  background: #fff;
+}
+
+.local-launcher-title-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.local-launcher-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.local-launcher-count {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+
+
+.local-games-grid {
+  display: grid;
+  /* Fixed track size, not minmax(120px, 1fr) - the 1fr max meant every
+     column stretched to fill whatever row width was left over, so fewer
+     columns (the detail panel narrowing .local-main-content) made EVERY
+     remaining card visibly wider, not just relocated. Cards now stay
+     exactly 120px regardless of how many columns fit; the panel
+     opening/closing only ever changes how many fit per row, never their
+     own size. */
+  grid-template-columns: repeat(auto-fill, 120px);
+  /* Any leftover row width (fixed 120px cards essentially never divide the
+     available width evenly) is absorbed by widening the detail panel
+     instead - see useEvenPanelWidth - so cards themselves and the gap
+     between them (`gap` below) never need to stretch to compensate. */
+  justify-content: start;
+  gap: 1rem;
+}
+
+/* VirtualCardGrid's virtualized variant (see useVirtualCardGrid.ts) -
+   CARD_WIDTH/CARD_GAP there must keep matching the 120px/1rem above. Row
+   positioning is done by hand via inline transforms instead of CSS grid, so
+   this only needs to stop being a grid and become the positioned ancestor
+   those absolute children measure their offsets against. */
+.local-games-grid.local-games-grid--virtual {
+  display: block;
+  position: relative;
+}
+
+/* Watching/Planning/Sin estrenar sections reuse profile's own
+   .library-section(-title) classes for visual consistency - but Local
+   tends to have more, shorter sections stacked closer together than
+   Profile does, so its default spacing/weight reads as cramped here. Scoped
+   to Local only, not the shared class itself, so Profile's own look is
+   untouched. */
+.local-games-container .library-section {
+  margin-bottom: 3rem;
+  gap: 1.25rem;
+}
+
+.local-games-container .library-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  opacity: 0.85;
+  /* Platform-grouped sections (see LocalMediaSection's backlogByPlatform)
+     prepend a .local-launcher-icon logo - it's display:flex on its own, so
+     without this the title would otherwise stay a plain block and push
+     that icon onto its own line above the text instead of beside it. */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  /* .library-section's own flex gap already adds space above the grid, but
+     the title's shared base rule only has a 0.5rem margin-bottom of its
+     own - bumped here so the divider line doesn't sit right on top of the
+     first row of covers. */
+  margin-bottom: 1.5rem !important;
+}
+
+.local-games-container .library-section-title:has(.local-launcher-title-rule)::after {
+  display: none !important;
+}
+
+
+
+.local-context-menu {
+  min-width: 170px;
+}
+
+.local-game-detail-header {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Wraps whichever banner markup is showing (plain img, or the blurred-
+   backdrop + contained-artwork pair) - remounted via a per-item React key
+   on selection change so this animation actually replays as a crossfade
+   instead of the same <img> node just swapping its src instantly. */
+.local-game-detail-banner-wrap {
+  position: absolute;
+  inset: 0;
+  animation: fade-in 0.35s var(--anim-ease);
+}
+
+/* Used instead of the plain img above whenever there's no real (wide,
+   header-shaped) banner cached - just a portrait box-art cover, which
+   object-fit:cover stretched pixelated/blown-up across the full header
+   width. A blurred, cropped copy fills the backdrop; the same image sits
+   on top at its own aspect ratio (never upscaled beyond its native size),
+   same "blurred backdrop + contained artwork" treatment Spotify/Steam use
+   for a missing hero banner. */
+.local-game-detail-header-blur {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(8px) brightness(0.6);
+  transform: scale(1.1);
+}
+
+.local-game-detail-header-contain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-width: 60%;
+  max-height: 85%;
+  margin: auto;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
+}
+
+.local-game-detail-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Stays clear over most of the banner, then ramps steeply dark toward
+     the bottom edge - keeps the title (sitting just below) readable even
+     against a very light/washed-out banner, instead of a flat linear ramp
+     that left the last inch barely darker than the middle. */
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 45%,
+    rgba(var(--bg-card-rgb, 25, 25, 39), 0.55) 75%,
+    rgba(var(--bg-card-rgb, 25, 25, 39), 0.97) 100%
+  );
+}
+
+/* Header's 3 circular buttons (back/edit/close) - identical box/colors,
+   only their position differs. One base rule + a position modifier each,
+   instead of the same declaration block copy-pasted 3 times. */
+.local-game-detail-edit,
+.local-game-detail-back {
+  position: absolute;
+  top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  color: white;
+  cursor: pointer;
+  transition: all var(--anim-base) var(--anim-ease);
+  z-index: 2;
+}
+
+.local-game-detail-edit:hover,
+.local-game-detail-back:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.local-game-detail-back svg {
+  width: 16px;
+  height: 16px;
+}
+
+.local-game-detail-back  { left: 0.75rem; }
+.local-game-detail-edit  { left: 3.25rem; }
+

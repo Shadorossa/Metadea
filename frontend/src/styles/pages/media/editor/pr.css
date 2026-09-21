@@ -1,0 +1,1541 @@
+/* Collaborative Catalog Editor (PrEditorModal) */
+.pr-editor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+/* CharacterPrEditorModal's own two overlay roots (loading + real content)
+   use this modifier alongside .pr-editor-overlay above - it can be opened
+   nested inside an already-open PrEditorModal ("+ Crear personaje"), and
+   both share the exact same base class/z-index, so which one painted on top
+   used to depend on DOM insertion order (which React root's portal
+   committed to <body> last) instead of anything deterministic. Matches
+   .pr-editor-search-popup's own z-index below, the same "must always sit
+   above the PrEditorModal that can spawn it" requirement. */
+.pr-editor-overlay--nested {
+  z-index: 10000;
+}
+
+.pr-editor-modal {
+  width: 97vw;
+  max-width: 1850px;
+  height: 90vh;
+  background: var(--bg-primary, #12110f);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: 4px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: pr-editor-in var(--anim-medium, 220ms) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pr-editor-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pr-editor-modal--loading {
+  height: 200px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Narrower than the default 97vw - leaves room for
+   .pr-editor-changelog-panel to sit beside it (only PrEditorModal, the
+   collaborative catalog editor, uses this modifier; CharacterPrEditorModal
+   reuses the same base .pr-editor-modal class but not this one). */
+.pr-editor-modal--narrow {
+  width: 74vw;
+  max-width: 1500px;
+}
+
+.pr-editor-changelog-panel {
+  width: 280px;
+  flex-shrink: 0;
+  height: 90vh;
+  background: var(--bg-primary, #12110f);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: 4px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  animation: pr-editor-in var(--anim-medium, 220ms) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pr-editor-changelog-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.pr-editor-changelog-empty {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.pr-editor-changelog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pr-editor-changelog-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-color, #2d2a24);
+}
+
+.pr-editor-changelog-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pr-editor-changelog-item-text {
+  font-size: 0.74rem;
+  color: var(--text-main);
+}
+
+.pr-editor-changelog-item-time {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.pr-editor-header {
+  padding: 0.5rem 1.5rem;
+  border-bottom: 1px solid var(--border-color, #2d2a24);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Only PrEditorModal's header needs the title block and action buttons on
+   one row - CharacterPrEditorModal reuses the base .pr-editor-header
+   without this modifier, so it keeps the plain column layout above. */
+.pr-editor-header--row {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pr-editor-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pr-editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pr-editor-header-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--accent, #7c6af7);
+}
+
+.pr-editor-header-status-spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+.pr-editor-block-btn--icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pr-editor-spin {
+  animation: spin 1s linear infinite;
+}
+
+.pr-editor-title {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main, #e3e1db);
+}
+
+.pr-editor-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted, #a0a0b8);
+}
+
+
+.pr-editor-tabs {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.75rem 1.5rem 0;
+  border-bottom: 1px solid var(--border-color, #2d2a24);
+}
+
+.pr-editor-tab-btn {
+  position: relative;
+  background: none;
+  border: none;
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--anim-fast, 120ms), border-color var(--anim-fast, 120ms);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pr-editor-tab-btn:hover {
+  color: var(--text-main, #e3e1db);
+}
+
+.pr-editor-tab-btn.active {
+  color: var(--accent, #7c6af7);
+  border-bottom-color: var(--accent, #7c6af7);
+}
+
+.pr-editor-tab-changed-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent, #7c6af7);
+  flex-shrink: 0;
+}
+
+.pr-editor-body {
+  padding: 1.75rem 2rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.pr-editor-body--grid {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.pr-editor-body--grid-2col {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Saga / Relations / Bundled In / Contains - one grid instead of a single
+   column stacking all four with 1px divider lines between them. */
+.pr-editor-relations-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 2rem;
+  align-items: start;
+}
+
+/* Underlined style for inputs and slots to avoid box saturation */
+.pr-editor-field input[type="text"],
+.pr-editor-field input[type="number"],
+.pr-editor-field textarea,
+.pr-editor-field select,
+.pr-editor-cover-uploader input,
+.pr-editor-richtext {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid var(--border-color, #2d2a24) !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding-left: 2px !important;
+  box-shadow: none !important;
+}
+
+
+.pr-editor-richtext-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.pr-editor-richtext {
+  width: 100%;
+  min-height: 6.5rem;
+  /* No fixed height/overflow - grows with its content instead of scrolling
+     internally, so the field always shows fully from the top. */
+  color: var(--text-main, #e3e1db);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding-top: 4px;
+  outline: none;
+  cursor: text;
+}
+
+.pr-editor-richtext:focus {
+  border-color: var(--accent, #7c6af7) !important;
+}
+
+.pr-editor-richtext p {
+  margin: 0 0 0.5em;
+}
+
+/* Explicit instead of relying on the browser's own UA defaults for these -
+   makes bold/italic/underline/link formatting applied via the toolbar
+   clearly visible against this dark theme instead of a barely-there
+   default. Link styling matches .media-description-text a, the same tags'
+   real read-only rendering on the actual media page. */
+.pr-editor-richtext b,
+.pr-editor-richtext strong {
+  font-weight: 700;
+}
+
+.pr-editor-richtext i,
+.pr-editor-richtext em {
+  font-style: italic;
+}
+
+.pr-editor-richtext u {
+  text-decoration: underline;
+}
+
+/* Spoiler-marked text stays visible while editing - the transparent-until-
+   hover treatment (character.css's own .markdown_spoiler, used on the
+   published character page) would make it impossible to read or fix your
+   own spoiler text here. A subtle background + dashed underline flags it
+   as spoiler-wrapped without hiding it. */
+.pr-editor-richtext .markdown_spoiler {
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px dashed var(--text-dim, #6b6b7d);
+  border-radius: 3px;
+  padding: 0 2px;
+  color: inherit;
+}
+
+.pr-editor-richtext a {
+  color: var(--accent, #7c6af7);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent, #7c6af7) 40%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.pr-editor-richtext:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-dim, #6b6b7d);
+  pointer-events: none;
+}
+
+.pr-editor-richtext-toolbar {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  gap: 0.15rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.25rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+}
+
+.pr-editor-richtext-toolbar button {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-sm, 4px) - 2px);
+  color: var(--text-main, #e3e1db);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background var(--anim-fast, 120ms);
+}
+
+.pr-editor-richtext-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent, #7c6af7);
+}
+
+/* Right-click format menu - a Discord-style vertical dropdown instead of
+   the toolbar's row of icon-only buttons, since this one opens at an
+   arbitrary click point rather than always right above a selection, and
+   benefits from a label next to each icon for a menu someone might not
+   have used before. */
+.pr-editor-richtext-ctxmenu {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.3rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 20;
+}
+
+.pr-editor-richtext-ctxmenu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-sm, 4px) - 2px);
+  color: var(--text-main, #e3e1db);
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--anim-fast, 120ms);
+}
+
+.pr-editor-richtext-ctxmenu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent, #7c6af7);
+}
+
+/* The classic Word-style boxed letter (B/I/U) instead of just relying on
+   the button's own bold/italic/underline styling to read as a format
+   icon - a plain bold "B" next to the word "Negrita" doesn't parse as an
+   icon at a glance the way a small boxed glyph does. */
+.pr-editor-richtext-ctxmenu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: calc(var(--radius-sm, 4px) - 2px);
+  font-size: 0.72rem;
+  font-style: normal;
+  text-decoration: none;
+}
+
+.pr-editor-richtext-ctxmenu-sep {
+  height: 1px;
+  margin: 0.3rem 0.2rem;
+  background: var(--border-color, #2d2a24);
+}
+
+.pr-editor-char-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  grid-auto-flow: dense;
+}
+
+.pr-editor-char-row--wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 640px) {
+  .pr-editor-char-row--wide {
+    grid-column: 1;
+  }
+}
+
+.pr-editor-char-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  background: var(--bg-elevated);
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.pr-editor-char-input {
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-main) !important;
+  border-radius: 0 !important;
+  padding: 0.2rem 0.3rem !important;
+  font-size: 0.8rem !important;
+  line-height: 1.4 !important;
+  font-family: inherit !important;
+  box-shadow: none !important;
+  outline: none !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  align-self: center;
+}
+
+.pr-editor-char-row .pr-editor-char-input {
+  flex: 0 0 105px !important;
+  min-width: 75px !important;
+  max-width: 130px !important;
+  width: auto !important;
+  font-weight: 600 !important;
+  align-self: center !important;
+}
+
+.pr-editor-char-input:focus {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.pr-editor-char-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-color);
+  opacity: 0.5;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.pr-editor-char-row>.pr-editor-richtext-wrap {
+  flex: 1 1 0%;
+  min-width: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+}
+
+.pr-editor-char-richtext {
+  min-height: 0 !important;
+  max-height: 6rem;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0.2rem 0.3rem !important;
+  font-size: 0.8rem !important;
+  line-height: 1.4 !important;
+  border-bottom: none !important;
+  width: 100%;
+}
+
+.pr-editor-char-richtext p {
+  margin: 0 !important;
+}
+
+.pr-editor-char-richtext small,
+.pr-editor-char-richtext sup {
+  font-size: 0.76em;
+  color: var(--text-muted);
+  font-weight: 500;
+  vertical-align: baseline;
+}
+
+.pr-editor-char-richtext::-webkit-scrollbar {
+  display: none;
+}
+
+.pr-editor-char-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-dim, #999);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pr-editor-char-remove:hover {
+  color: var(--color-error, #f87171);
+}
+
+.pr-editor-va-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.6rem 0.55rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: relative;
+  min-width: 0;
+  transition: border-color 120ms ease;
+}
+
+.pr-editor-va-card:hover {
+  border-color: var(--accent-border, var(--border-color));
+}
+
+.pr-editor-va-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.15rem 0.2rem;
+  margin-top: 0.25rem;
+  user-select: none;
+  transition: border-color 120ms ease;
+}
+
+.pr-editor-va-stepper:hover {
+  border-color: var(--accent);
+}
+
+.pr-editor-va-stepper-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm, 3px);
+  line-height: 1;
+  transition: all 120ms ease;
+}
+
+.pr-editor-va-stepper-btn:hover {
+  background: var(--accent-soft, rgba(255, 255, 255, 0.08));
+  color: var(--text-main);
+}
+
+.pr-editor-va-stepper-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  text-align: center;
+  flex: 1;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pr-editor-va-stepper-label:hover {
+  color: var(--text-main);
+}
+
+/* Character voice actor buttons now imported from character-lang-buttons.css */
+
+.pr-editor-field textarea {
+  padding-top: 4px !important;
+  resize: vertical;
+}
+
+/* Native <select> arrow/option list look out of place against the dark
+   underlined inputs around it (default browser chrome: light dropdown,
+   plain arrow) - same custom-arrow treatment as .pr-editor-media-card-select
+   elsewhere in this file, plus explicit option colors so the open list
+   itself stays dark instead of falling back to the browser's white default. */
+.pr-editor-field select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  cursor: pointer;
+  padding-right: 1.4rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%23a0a0b8' d='M2.5 4.5l3.5 3.5 3.5-3.5z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.1rem center !important;
+  background-size: 9px !important;
+}
+
+.pr-editor-field select option {
+  background: var(--bg-elevated, #1b1917);
+  color: var(--text-main, #e3e1db);
+}
+
+.pr-editor-slots-box {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid var(--border-color, #2d2a24) !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  box-shadow: none !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border: 1px solid var(--border-color, #2d2a24);
+  min-height: 2.2rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-elevated, #1b1917);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.pr-editor-slots-box:focus-within {
+  border-bottom-color: var(--accent, #7c6af7) !important;
+}
+
+/* Indicators */
+.pr-editor-field label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pr-editor-changed-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent, #7c6af7);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent, #7c6af7);
+  animation: pr-dot-pulse 1.5s infinite ease-in-out;
+}
+
+.pr-editor-changed-dot--slot {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+}
+
+.pr-editor-changed-dot--banner {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  z-index: 10;
+}
+
+.pr-editor-section-changed-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background-color: var(--accent, #7c6af7);
+  border-radius: 50%;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+@keyframes pr-dot-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+    box-shadow: 0 0 12px var(--accent, #7c6af7);
+  }
+
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+}
+
+/* Cover Uploader Card */
+.pr-editor-cover-uploader {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+}
+
+.pr-editor-cover-preview-card {
+  width: 70px;
+  height: 100px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated, #1a1816);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pr-editor-cover-placeholder {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.pr-editor-char-photo-wrap {
+  position: relative;
+  width: 110px;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated, #1a1816);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pr-editor-char-photo-wrap:hover,
+.pr-editor-char-photo-wrap:focus-visible {
+  border-color: var(--accent, #7c6af7);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.pr-editor-char-photo-wrap.is-dragging {
+  border-color: var(--accent, #7c6af7);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #7c6af7) 32%, transparent);
+}
+
+.pr-editor-char-photo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.pr-editor-char-photo-wrap:hover img,
+.pr-editor-char-photo-wrap:focus-visible img {
+  transform: scale(1.04);
+  filter: brightness(0.8);
+}
+
+.pr-editor-photo-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+  padding: 0.5rem;
+  text-align: center;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.pr-editor-photo-hover-overlay span {
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.pr-editor-char-photo-wrap:hover .pr-editor-photo-hover-overlay,
+.pr-editor-char-photo-wrap:focus-visible .pr-editor-photo-hover-overlay {
+  opacity: 1;
+}
+
+.pr-editor-cover-uploader input {
+  flex: 1;
+  height: 36px;
+}
+
+/* Custom Grids inside columns */
+.pr-editor-classification-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+/* Smooth Focus States for Inputs */
+.pr-editor-field input[type="text"],
+.pr-editor-field input[type="number"],
+.pr-editor-field textarea,
+.pr-editor-field select,
+.pr-editor-cover-uploader input {
+  transition: border-color var(--anim-fast) ease, box-shadow var(--anim-fast) ease;
+}
+
+.pr-editor-field input[type="text"]:focus,
+.pr-editor-field input[type="number"]:focus,
+.pr-editor-field textarea:focus,
+.pr-editor-field select:focus,
+.pr-editor-cover-uploader input:focus {
+  border-color: var(--accent, #7c6af7) !important;
+  box-shadow: 0 0 8px rgba(124, 106, 247, 0.25) !important;
+}
+
+.pr-editor-alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.pr-editor-alert--error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgb(239, 68, 68);
+  color: rgb(239, 68, 68);
+}
+
+/* Sections group related fields with breathing room between them, instead
+   of every field in the form competing for attention in one dense grid. */
+.pr-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Scoped to .pr-editor-col (General tab's two vertical stacks) - inside
+   .pr-editor-relations-grid the four sections are grid cells, not a single
+   vertical stack, so this divider-between-siblings look would misalign
+   there instead of just separating one section from the next. */
+.pr-editor-col .pr-editor-section+.pr-editor-section {
+  margin-top: 2rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border-color, #2d2a24);
+}
+
+.pr-editor-section-title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main, #e3e1db);
+}
+
+/* Section title + its own "+ Add"/name-field controls, one row instead of
+   the add button sitting in its own row further down (which used to land
+   far from the title, roughly centered under whatever content was below it
+   instead of clearly belonging to that title). */
+.pr-editor-section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.pr-editor-section-header-row--actions-right {
+  justify-content: flex-end;
+}
+
+.pr-editor-source-mapping-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color, #2d2a24);
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.75rem;
+}
+
+.pr-editor-source-mapping-row > span {
+  flex: 1 1 auto;
+  min-width: 10rem;
+}
+
+.pr-editor-login-required {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.pr-editor-login-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.pr-editor-readonly-input {
+  opacity: 0.7;
+}
+
+.pr-editor-field-wrap {
+  position: relative;
+}
+
+.pr-editor-saga-name-input {
+  flex: 1;
+  max-width: 200px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgba(124, 106, 247, 0.3);
+  font-size: 0.75rem;
+}
+
+.pr-editor-relations-content {
+  min-width: 0;
+}
+
+.pr-editor-subtabs {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  margin: 0 0 1.15rem;
+  padding: 0 0 0.45rem;
+  border-bottom: 1px solid var(--border-color, #2d2a24);
+  scrollbar-width: thin;
+}
+
+.pr-editor-subtab-btn {
+  flex: 0 0 auto;
+  padding: 0.48rem 0.8rem;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted, #a0a0b8);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: color var(--anim-fast, 120ms), background var(--anim-fast, 120ms), border-color var(--anim-fast, 120ms);
+}
+
+.pr-editor-subtab-btn:hover {
+  color: var(--text-main, #e3e1db);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.pr-editor-subtab-btn.active {
+  border-color: var(--border-color, #2d2a24);
+  border-bottom-color: var(--accent-color, #c9a96e);
+  color: var(--text-main, #e3e1db);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.pr-editor-relations-content > .pr-editor-relations-grid {
+  display: block;
+}
+
+.pr-editor-relations-content > .pr-editor-relations-grid > .pr-editor-section {
+  min-width: 0;
+}
+
+.pr-editor-media-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  cursor: grab;
+  width: 100%;
+  touch-action: none;
+  /* Grid items default to `min-width: auto`, meaning a track won't shrink
+     below its content's natural width - a long title (e.g. "Resident Evil
+     Code: Veronica X") could force its 1fr column wider than a neighboring
+     card's, even though both are nominally the same fraction, making covers
+     render at different sizes. This lets every column actually share space
+     equally, same-size covers guaranteed regardless of title length. */
+  min-width: 0;
+}
+
+.pr-editor-media-card:active {
+  cursor: grabbing;
+}
+
+.pr-editor-media-card--dragging {
+  opacity: 0.4;
+}
+
+.pr-editor-media-card-cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm, 4px);
+  overflow: hidden;
+  border: 1px solid rgba(124, 106, 247, 0.3);
+  background: var(--bg-elevated, #1b1917);
+}
+
+.pr-editor-media-card--current .pr-editor-media-card-cover {
+  border-color: var(--accent, #7c6af7);
+  border-width: 2px;
+}
+
+.pr-editor-media-card-placeholder {
+  width: 100%;
+  height: 100%;
+  background: rgba(124, 106, 247, 0.1);
+}
+
+.pr-editor-media-card-remove {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 120ms;
+}
+
+.pr-editor-media-card-remove:hover {
+  opacity: 1;
+}
+
+.pr-editor-media-card-title {
+  font-size: 0.68rem;
+  color: var(--text-main, #e3e1db);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.25;
+  height: 2.5em;
+  min-height: 2.5em;
+  flex-shrink: 0;
+}
+
+.pr-editor-media-card-select {
+  width: 100%;
+  margin-top: auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 1.35rem 0.3rem 0.5rem;
+  border: 1px solid rgba(124, 106, 247, 0.4);
+  background-color: rgba(124, 106, 247, 0.08);
+  color: var(--accent, #7c6af7);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%237c6af7' d='M2.5 4.5l3.5 3.5 3.5-3.5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.4rem center;
+  background-size: 9px;
+  text-overflow: ellipsis;
+  transition: border-color 120ms, background-color 120ms;
+}
+
+.pr-editor-media-card-select:hover {
+  border-color: var(--accent, #7c6af7);
+  background-color: rgba(124, 106, 247, 0.16);
+}
+
+.pr-editor-media-card-select:focus {
+  outline: none;
+  border-color: var(--accent, #7c6af7);
+  box-shadow: 0 0 0 2px rgba(124, 106, 247, 0.25);
+}
+
+.pr-editor-media-card-select option {
+  color: var(--text-main, #e3e1db);
+  background: var(--bg-elevated, #1b1917);
+  font-weight: 400;
+}
+
+.pr-editor-appearance-merges {
+  margin-top: 1.1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+}
+
+.pr-editor-appearance-merge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 2.3rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.pr-editor-appearance-merge-work {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main, #e3e1db);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.pr-editor-appearance-merge-label {
+  min-width: 0;
+  max-width: 15rem;
+  overflow: hidden;
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-label.is-empty {
+  color: var(--text-dim, #77736d);
+}
+
+.pr-editor-appearance-merge-btn,
+.pr-editor-appearance-merge-clear {
+  border: 0;
+  background: transparent;
+  color: var(--accent, #c084fc);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  padding: 0.15rem 0;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-btn:hover,
+.pr-editor-appearance-merge-clear:hover {
+  color: var(--text-main, #e3e1db);
+  text-decoration: underline;
+}
+
+.pr-editor-appearance-merge-clear {
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.pr-editor-character-merges {
+  margin-top: 1.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.16));
+}
+
+.pr-editor-character-merges-header,
+.pr-editor-merge-cast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pr-editor-merge-title {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pr-editor-merge-info {
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted, #a7a29a);
+  cursor: help;
+}
+
+.pr-editor-merge-info:hover,
+.pr-editor-merge-info:focus-visible {
+  color: var(--accent, #c084fc);
+}
+
+.pr-editor-merge-info:hover .info-indicator,
+.pr-editor-merge-info:focus-visible .info-indicator {
+  color: currentColor;
+}
+
+.pr-editor-merge-tooltip {
+  position: fixed;
+  z-index: 10002;
+  width: min(21rem, calc(100vw - 1.5rem));
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color, #514c43);
+  background: var(--bg-elevated, #1b1917);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
+  color: var(--text-main, #e3e1db);
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  max-height: calc(100vh - 1.5rem);
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.pr-editor-character-merge-list,
+.pr-editor-merge-cast-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.pr-editor-character-merge-item,
+.pr-editor-merge-cast-option {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-main, #e3e1db);
+  text-align: left;
+}
+
+.pr-editor-character-merge-item > img,
+.pr-editor-character-merge-placeholder,
+.pr-editor-merge-cast-option > img,
+.pr-editor-merge-cast-option > .pr-editor-character-merge-placeholder {
+  width: 2.5rem;
+  height: 2.9rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  background: var(--bg-elevated, #1b1917);
+}
+
+.pr-editor-character-merge-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--accent, #c084fc);
+  font-weight: 700;
+}
+
+.pr-editor-character-merge-name,
+.pr-editor-merge-cast-option > span:last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.pr-editor-character-merge-name strong,
+.pr-editor-merge-cast-option strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-character-merge-name small,
+.pr-editor-merge-cast-option small,
+.pr-editor-merge-cast-header small {
+  overflow: hidden;
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-character-merge-item > button,
+.pr-editor-merge-cast-header > button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted, #a7a29a);
+  cursor: pointer;
+  font-size: 1.05rem;
+}
+
+.pr-editor-character-merge-item > button:hover,
+.pr-editor-merge-cast-header > button:hover {
+  color: var(--text-main, #fff);
+}
+
+.pr-editor-character-merges-empty {
+  padding: 1rem 0.25rem;
+  color: var(--text-muted, #a7a29a);
+  font-size: 0.78rem;
+}
+
+.pr-editor-merge-cast-overlay {
+  z-index: 10001;
+}
+
+.pr-editor-merge-cast-modal {
+  width: min(38rem, calc(100vw - 2rem));
+  max-height: min(80vh, 48rem);
+  overflow: auto;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border-color, #514c43);
+  background: var(--bg-elevated, #1b1917);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.55);
+}
+
+.pr-editor-merge-cast-header {
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+}
+
+.pr-editor-merge-cast-header > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.pr-editor-merge-cast-option {
+  width: 100%;
+  cursor: pointer;
+}
+
+.pr-editor-merge-cast-option:hover {
+  border-color: var(--accent, #c084fc);
+  background: rgba(192, 132, 252, 0.09);
+}
+
+
+
+.rel-type-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgba(124, 106, 247, 0.4);
+  background-color: rgba(124, 106, 247, 0.08);
+  color: var(--accent, #7c6af7);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: border-color 120ms, background-color 120ms;
+}
+
+.rel-type-select-trigger:hover {
+  border-color: var(--accent, #7c6af7);
+  background-color: rgba(124, 106, 247, 0.16);
+}
+
+.rel-type-select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rel-type-select-chevron {
+  flex-shrink: 0;
+  color: var(--accent, #7c6af7);
+}
+
+.rel-type-select-panel {
+  position: fixed;
+  z-index: 10000;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.rel-type-select-option {
+  text-align: left;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-main, #e3e1db);
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 100ms;
+}
+
+.rel-type-select-option:hover {
+  background: rgba(124, 106, 247, 0.16);
+}
+
+.rel-type-select-option.active {
+  background: rgba(124, 106, 247, 0.28);
+  color: var(--accent, #7c6af7);
+  font-weight: 700;
+}
+
+/* Groups options by the label the OTHER work ends up showing once one of
+   them is picked (see sagaTypes.ts's groupRelationOptions) - a thin
+   separator line between groups, not extra padding, so the panel doesn't
+   grow much taller than the flat list it replaced. */
+.rel-type-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rel-type-select-group+.rel-type-select-group {
+  border-top: 1px solid var(--border-color, #2d2a24);
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+}
+
+.rel-type-select-group-header {
+  padding: 0.25rem 0.6rem 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim, #8a877e);
+}
+
+.pr-editor-media-card-group-input {
+  width: 100%;
+  font-size: 0.65rem;
+  margin-top: 0.15rem;
+  padding: 0.15rem 0.25rem;
+  border: 1px solid rgba(124, 106, 247, 0.4);
+  background: transparent;
+  color: var(--accent, #7c6af7);
+  border-radius: 2px;
+}
+
+.pr-editor-media-card-group-input::placeholder {
+  color: var(--text-dim, #6b6b7d);
+}
+
+.pr-editor-media-group-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* Wider variant for sections that span the modal's full body width instead
+   of sharing the narrow 3-column layout (e.g. character editor's
+   Apariciones) - same card, more columns since there's room for them. */
+.pr-editor-characters-grid {
+  display: grid;
+  /* 6 made sense when this was squeezed into the left column of a 3-column
+     grid - now that Personajes is its own full-width tab, 12 fits without
+     feeling sparse. */
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+  /* Without this, a container taller than its one row of content (this used
+     to carry a fixed min-height to keep the pagination row from jumping
+     between a 1-row and a 2-row page) stretches that row to fill it, and
+     since .pr-editor-media-card-select has margin-top:auto, every card's
+     role dropdown got pushed to the bottom of that stretched row - a big
+     empty gap under the name instead of sitting right below it. */
+  align-content: start;
+}
