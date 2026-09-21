@@ -1,0 +1,675 @@
+{
+  "media_catalog": {
+    "id": "e05414745bcda0b3e05414745bcda0b3",
+    "external_id": "anime:130003",
+    "type": "anime",
+    "title_main": "Bocchi the Rock!",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "manga:111258",
+      "relation_type": "SOURCE",
+      "type_label": "Source Material",
+      "title": "Bocchi the Rock!",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx111258-JWKMq8VGpdiL.jpg",
+      "media_external_id": "anime:130003"
+    },
+    {
+      "media_external_id": "anime:130003",
+      "related_media_external_id": "anime:186712",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Bocchi the Rock! 2nd Season",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx186712-d5I2TjUQcHuI.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:257562",
+      "name": "Hitori Gotou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b257562-Ru35NYPfsqhY.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:261674",
+      "name": "Nijika Ijichi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b261674-a8tJYvtzqWgC.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:264529",
+      "name": "Ryou Yamada",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b264529-BvEusZnJLD2Y.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:266041",
+      "name": "Ikuyo Kita",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b266041-1HKgjJGP2MmM.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289054",
+      "name": "Seika Ijichi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289054-UnScwd5RkqBk.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:291639",
+      "name": "Kikuri Hiroi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b291639-VYrixXvuwLqx.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289055",
+      "name": "PA-san",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289055-khOP70WdXl2V.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289059",
+      "name": "Futari Gotou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289059-AbMjfO2YoThz.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289057",
+      "name": "Naoki Gotou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289057-kxpKjfUu0KDi.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289058",
+      "name": "Michiyo Gotou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289058-5RE0lhteKG3P.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289056",
+      "name": "Jimihen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289056-Eob1bSBYL1ry.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293861",
+      "name": "Shima Iwashita",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b293861-9JlcvpPnUblL.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293862",
+      "name": "Eliza Shimizu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b293862-sMo65ZZ69lC5.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293863",
+      "name": "Ginjirou Yoshida",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b293863-Q8ct4HoAcnGm.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:291640",
+      "name": "Hitori no Fan 1-gou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b291640-Xr48HmvalScG.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:291641",
+      "name": "Hitori no Fan 2-gou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b291641-dfxBEtM7tiBA.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293877",
+      "name": "Yoyoko Ootsuki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b293877-qzpgrc6BeaDY.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289545",
+      "name": "Kita no Yuujin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289545-9ic2u07cZEQZ.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289546",
+      "name": "Kita no Yuujin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289546-HnJ67v7Tovpu.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289549",
+      "name": "Death Metal Voice",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289549-lFZItZsHofCS.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289548",
+      "name": "Interviewer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289548-SWdRZVgD45Zf.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289557",
+      "name": "Salaryman",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289557-IaIrTOSMvcVt.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289558",
+      "name": "Salaryman no Tsuma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289558-4BUU7WKXcWIy.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289559",
+      "name": "Salaryman no Musume",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289559-XeSyZZviq7e9.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289567",
+      "name": "Saibankan",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289567-Q2pv1i6EgtdE.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289568",
+      "name": "Kenji",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289568-UDMcmIOwulRd.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293450",
+      "name": "Takkun",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b293450-W94oY611j1qk.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293451",
+      "name": "Miitan",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b293451-320HJK0lvICU.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293452",
+      "name": "Umi no Ie no Tenin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b293452-h5d4TXGiR452.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:295148",
+      "name": "Gakki-ten no Tenchou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b295148-iEVZKZ68alkT.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:295149",
+      "name": "Gakki-ten no Tennin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b295149-8LyuvWH43x9M.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:295150",
+      "name": "Mousou no Tenin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b295150-8JlG5l4446Eu.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289547",
+      "name": "Bandman",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289550",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289551",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289552",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289556",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289562",
+      "name": "Comment",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289563",
+      "name": "Enji",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289565",
+      "name": "TV-nai Onsei",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289566",
+      "name": "TV-nai Onsei",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289569",
+      "name": "Bandman",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289570",
+      "name": "Okyaku-san",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b289570-CSeWmL8US673.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289571",
+      "name": "Okyaku-san",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289572",
+      "name": "Okyaku-san",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:289573",
+      "name": "Okyaku-san",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:290046",
+      "name": "Okyaku-san",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292216",
+      "name": "Ryou no Classmate",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292217",
+      "name": "Ryou no Classmate",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292218",
+      "name": "Seikimatsu Classmate",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292219",
+      "name": "Kishouyohoushi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292879",
+      "name": "Okyaku-san",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292880",
+      "name": "Okyaku-san",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292881",
+      "name": "Salaryman",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292882",
+      "name": "Salaryman",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292883",
+      "name": "Izakaya Tenshu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292884",
+      "name": "Mousou no Joushi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292885",
+      "name": "Mousou no Douryou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:292886",
+      "name": "Houmon Eigyousaki no Yanushi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293453",
+      "name": "Uchuu no Kaisetsu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293865",
+      "name": "Seito Kaichou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293866",
+      "name": "Bunkasai Gyou Iin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293867",
+      "name": "Bunkasai Gyou Iin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293868",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293870",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293871",
+      "name": "Mousou no Moto Doukyuusei",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293872",
+      "name": "Mousou no AD",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293873",
+      "name": "Live no Kankyaku",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293874",
+      "name": "Live no Kankyaku",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293875",
+      "name": "Live no Kankyaku",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:293876",
+      "name": "Seishun Danshi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294510",
+      "name": "Seikatsu Otoko",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294511",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294512",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294513",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294514",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294515",
+      "name": "Dansei",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294968",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294969",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:294970",
+      "name": "Seito",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null,
+      "merged_character_external_id": null
+    }
+  ],
+  "media_authors": [],
+  "saga_name": "Bocchi the Rock!",
+  "story_arcs": []
+}
