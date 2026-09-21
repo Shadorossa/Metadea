@@ -51,6 +51,7 @@ export type EntryAction =
   | { type: 'SET_VERSION';  value: string; baseId: string }
   | { type: 'LOAD_HISTORY'; history: Record<string, string[]>; foundKey: string | null }
   | { type: 'SET_MONTH';    ids: string[]; primaryId: string; key: string | null; year: number }
+  | { type: 'SET_SELECTED_YEAR'; year: number }
   | { type: 'SET_YEAR';     delta: 1 | -1 };
 
 // UI state: loading flags, tag input, anilist feedback
@@ -155,6 +156,8 @@ export function entryReducer(state: EntryState, action: EntryAction): EntryState
     }
     case 'SET_YEAR':
       return { ...state, selectedYear: state.selectedYear + action.delta };
+    case 'SET_SELECTED_YEAR':
+      return { ...state, selectedYear: action.year };
     case 'SET_MONTH': {
       // `ids` is every external_id that represents this same game (base +
       // every known edition/version) — clearing *all* of them, not just

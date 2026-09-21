@@ -24,7 +24,7 @@ import { motion } from 'motion/react';
 import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnifySeasonsEnabled, type RatingSlot } from '../../lib/settings/preferences';
 import { loadSagaChain } from '../../lib/media/sagaData';
 import type { SagaEntry } from '../../lib/anilist/saga';
-import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mapper-utils';
+import { stripSeasonSuffix, seriesSeasonExternalId, isSeriesSeasonSyntheticId } from '../../lib/media/mapper-utils';
 import { getCoverPreference, setCoverPreference } from '../../lib/media/cover-preferences';
 import { igdbGetLocalizedCovers } from '../../lib/tauri/igdb';
 import { toLargeCover } from '../../lib/shared/small-cover';
@@ -292,10 +292,26 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     }
     const missing = [...ids].filter(id => !(id in monthMediaInfo));
     if (missing.length === 0) return;
-    Promise.all(missing.map(id => getCatalogEntry(id).then(e => [id, e] as const))).then(results => {
+    Promise.all(missing.map(async id => {
+      if (isSeriesSeasonSyntheticId(id)) {
+        const match = id.match(/^(.*):season:(\d+)$/);
+        const baseId = match?.[1];
+        const seasonNumber = match?.[2];
+        const baseEntry = baseId ? await getCatalogEntry(baseId) : null;
+        return [id, {
+          title: `${baseEntry?.title_main ?? baseId ?? id} · T${seasonNumber ?? '?'}`,
+          cover: baseEntry?.cover_url ?? '',
+        }] as const;
+      }
+      const catalogEntry = await getCatalogEntry(id);
+      return [id, {
+        title: catalogEntry?.title_main ?? id,
+        cover: catalogEntry?.cover_url ?? '',
+      }] as const;
+    })).then(results => {
       setMonthMediaInfo(prev => {
         const next = { ...prev };
-        for (const [id, e] of results) next[id] = { title: e?.title_main ?? id, cover: e?.cover_url ?? '' };
+        for (const [id, info] of results) next[id] = info;
         return next;
       });
     });
@@ -1005,23 +1021,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     [baseId, externalId, allAvailableEditions],
   );
 
-  // Derived instead of stored: recomputing from monthlyHistory + sameGameIds
-  // on every render means it self-corrects once allAvailableEditions loads
-  // (async, slightly after mount), instead of freezing on whatever the
-  // initial exact-externalId-only search found.
-  const selectedMonthKey = useMemo(() => {
-    for (const [key, ids] of Object.entries(entry.monthlyHistory)) {
-      if (ids.some(id => sameGameIds.has(id))) return key;
-    }
-    return null;
-  }, [entry.monthlyHistory, sameGameIds]);
-
-  const handleMonthClick = useCallback((monthIndex: number) => {
-    const targetKey = `${entry.selectedYear}-${String(monthIndex).padStart(2, '0')}`;
-    const newKey = selectedMonthKey === targetKey ? null : targetKey;
-    dispatchEntry({ type: 'SET_MONTH', ids: [...sameGameIds], primaryId: baseId, key: newKey, year: entry.selectedYear });
-  }, [sameGameIds, baseId, entry.selectedYear, selectedMonthKey]);
-
   // Which season (if any) the currently active tab is — undefined on the
   // series' own general tab or when the season tabs aren't active at all.
   const activeSeriesSeasonInfo = useMemo(() => {
@@ -1043,6 +1042,47 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     if (!isUnifiedAnime) return undefined;
     return animeSeasonChain.find(s => s.externalId === entry.activeLogId);
   }, [isUnifiedAnime, animeSeasonChain, entry.activeLogId]);
+
+  // Track monthly history per active season instead of collapsing every
+  // unified-season tab into the same general work id.
+  const activeUnifiedSeasonId = activeAnimeSeasonEntry?.externalId
+    ?? activeEventSeasonInfo?.externalId
+    ?? (activeSeriesSeasonInfo
+      ? seriesSeasonExternalId(externalId, activeSeriesSeasonInfo.seasonNumber)
+      : undefined);
+  useEffect(() => {
+    if (!activeUnifiedSeasonId) return;
+    const existingKey = Object.entries(entry.monthlyHistory)
+      .find(([, ids]) => ids.includes(activeUnifiedSeasonId))?.[0];
+    const year = existingKey ? Number(existingKey.split('-')[0]) : 0;
+    if (year && year !== entry.selectedYear) {
+      dispatchEntry({ type: 'SET_SELECTED_YEAR', year });
+    }
+  }, [activeUnifiedSeasonId, entry.monthlyHistory, entry.selectedYear]);
+
+  const monthlyHistoryIds = useMemo(
+    () => activeUnifiedSeasonId ? new Set([activeUnifiedSeasonId]) : sameGameIds,
+    [activeUnifiedSeasonId, sameGameIds],
+  );
+
+  const selectedMonthKey = useMemo(() => {
+    for (const [key, ids] of Object.entries(entry.monthlyHistory)) {
+      if (ids.some(id => monthlyHistoryIds.has(id))) return key;
+    }
+    return null;
+  }, [entry.monthlyHistory, monthlyHistoryIds]);
+
+  const handleMonthClick = useCallback((monthIndex: number) => {
+    const targetKey = `${entry.selectedYear}-${String(monthIndex).padStart(2, '0')}`;
+    const newKey = selectedMonthKey === targetKey ? null : targetKey;
+    dispatchEntry({
+      type: 'SET_MONTH',
+      ids: activeUnifiedSeasonId ? [activeUnifiedSeasonId] : [...sameGameIds],
+      primaryId: activeUnifiedSeasonId ?? baseId,
+      key: newKey,
+      year: entry.selectedYear,
+    });
+  }, [activeUnifiedSeasonId, sameGameIds, baseId, entry.selectedYear, selectedMonthKey]);
 
   function isFutureDate(year: number | null | undefined, month: number | null | undefined, day: number | null | undefined): boolean {
     if (!year) return false;
@@ -1783,16 +1823,12 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       const mNumber = idx + 1;
                       const key = `${entry.selectedYear}-${String(mNumber).padStart(2, '0')}`;
                       const isSelected = selectedMonthKey === key;
-                      // Only 1 game per month across the whole library — a
-                      // month already claimed by a genuinely *different* game
-                      // is blocked here instead of letting SET_MONTH silently
-                      // pile more than one id into the same slot. Any id that
-                      // belongs to *this* game (base or any known edition)
-                      // never counts as taken, so the month stays freely
-                      // toggleable regardless of which edition tab set it.
+                      // Only one entry can claim each month. A season tab owns
+                      // only its season id, so sibling seasons remain distinct
+                      // and can be assigned to different months.
                       const monthIds = entry.monthlyHistory[key] ?? [];
-                      const takenBy = monthIds.find(id => !sameGameIds.has(id));
-                      const occupantId = takenBy ?? monthIds.find(id => sameGameIds.has(id));
+                      const takenBy = monthIds.find(id => !monthlyHistoryIds.has(id));
+                      const occupantId = takenBy ?? monthIds.find(id => monthlyHistoryIds.has(id));
                       const occupant = occupantId ? monthMediaInfo[occupantId] : undefined;
                       return (
                         <button key={key} type="button"
