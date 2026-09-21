@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "cd6871acd532b527cd6871acd532b527",
+    "external_id": "game:383389",
+    "type": "game",
+    "title_main": "Metal Gear Solid 2: Sons of Liberty - Master Collection Version",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-21T18:53:25.477Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:55041",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "Metal Gear Solid 2: Sons of Liberty - HD",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co982l.jpg",
+      "media_external_id": "game:383389"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
