@@ -96,18 +96,24 @@ export interface GitHubDirEntry {
 }
 
 // Lists every merged collaborative-catalog media entry (catalog/<Type>/*.json
-// on main) — distinct from listOpenProposalPulls, which only lists entries
-// still under review. One request per type folder (GitHub's contents API
-// only lists a single directory's immediate children, not recursively) — a
-// folder that 404s just hasn't had a proposal of that type yet.
+// on main) - distinct from listOpenProposalPulls, which only lists entries
+// still under review. Read the catalog root first and request only existing
+// type folders, avoiding expected 404s for categories with no files yet.
 export async function listDatabaseFiles(token: string): Promise<GitHubDirEntry[]> {
-  const perFolder = await Promise.all(MEDIA_CATALOG_FOLDERS.map(async folder => {
-    try {
-      return await githubFetch<GitHubDirEntry[]>(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${catalogRootPath(folder)}`);
-    } catch {
-      return [] as GitHubDirEntry[];
-    }
-  }));
+  // Check the root first: querying each configured type folder directly
+  // causes harmless 404 network errors for types that have no files yet
+  // (for example Books or Comics), which still pollute the WebView console.
+  const rootEntries = await githubFetch<GitHubDirEntry[]>(
+    token,
+    `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${catalogRootPath('')}`,
+  );
+  const existingFolders = new Set(
+    rootEntries.filter(entry => entry.type === 'dir').map(entry => entry.path),
+  );
+  const perFolder = await Promise.all(MEDIA_CATALOG_FOLDERS
+    .map(catalogRootPath)
+    .filter(path => existingFolders.has(path))
+    .map(path => githubFetch<GitHubDirEntry[]>(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`)));
   return perFolder.flat().filter(e => e.type === 'file' && e.name.endsWith('.json'));
 }
 

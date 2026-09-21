@@ -72,6 +72,7 @@ pub async fn get_all_tier_lists(
         "SELECT tl.id, tl.name, tl.list_type, COUNT(ti.external_id) AS item_count
          FROM tier_lists tl
          LEFT JOIN tier_list_items ti ON ti.tier_list_id = tl.id
+           AND ti.external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
          GROUP BY tl.id
          ORDER BY tl.created_at DESC",
     ).str_err()?;
@@ -87,6 +88,7 @@ pub async fn get_all_tier_lists(
         let mut prev_stmt = conn.prepare(
             "SELECT external_id FROM tier_list_items
              WHERE tier_list_id = ?1 AND tier_key != 'pool'
+               AND external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
              ORDER BY tier_key, position LIMIT 4",
         ).str_err()?;
         let preview_ids: Vec<String> = prev_stmt
@@ -117,7 +119,7 @@ pub async fn get_tier_list(
     let mut stmt = conn.prepare(
         "SELECT ti.external_id, ti.tier_key, ti.position, mc.title_main, mc.cover_url, mc.type
          FROM tier_list_items ti
-         LEFT JOIN media_catalog mc ON mc.external_id = ti.external_id
+         JOIN visible_media_catalog mc ON mc.external_id = ti.external_id
          WHERE ti.tier_list_id = ?1
          ORDER BY ti.tier_key, ti.position",
     ).str_err()?;

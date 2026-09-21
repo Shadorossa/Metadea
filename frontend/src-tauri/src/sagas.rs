@@ -307,6 +307,41 @@ pub async fn save_cached_saga(
 }
 
 #[tauri::command]
+pub async fn remove_saga_member(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+    let saga_id: Option<String> = tx
+        .query_row(
+            "SELECT saga_id FROM saga_relations WHERE media_external_id = ?1",
+            [&media_external_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .str_err()?;
+    tx.execute(
+        "DELETE FROM saga_relations WHERE media_external_id = ?1",
+        [&media_external_id],
+    )
+    .str_err()?;
+    if let Some(saga_id) = saga_id {
+        let remaining: i64 = tx
+            .query_row(
+                "SELECT COUNT(*) FROM saga_relations WHERE saga_id = ?1",
+                [&saga_id],
+                |row| row.get(0),
+            )
+            .str_err()?;
+        if remaining == 0 {
+            tx.execute("DELETE FROM sagas WHERE id = ?1", [&saga_id]).str_err()?;
+        }
+    }
+    tx.commit().str_err()
+}
+
+#[tauri::command]
 pub async fn get_transitive_relation_ids(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_id: String,

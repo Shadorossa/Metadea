@@ -45,16 +45,25 @@ pub async fn get_api_sports_event_seasons(
 ) -> Result<Vec<ApiSportsEventSeason>, String> {
     let conn = state.conn.lock().str_err()?;
 
+    let competition_is_visible: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM visible_media_catalog WHERE external_id = ?1)",
+        [&competition_external_id],
+        |row| row.get(0),
+    ).str_err()?;
+    if !competition_is_visible {
+        return Ok(Vec::new());
+    }
+
     // Backfill seasons that were already opened before the dedicated season
     // table existed. The external ID encodes the parent competition and
     // season key, so existing catalog rows are enough to restore the edge.
     let legacy_pattern = format!("{}:%", competition_external_id);
     let legacy_rows = {
         let mut stmt = conn.prepare(
-            "SELECT external_id, title_main, cover_url, release_year, release_month, release_day
-             FROM media_catalog
-             WHERE external_id LIKE ?1 AND type = 'event'
-             ORDER BY release_year DESC, external_id DESC",
+            "SELECT mc.external_id, mc.title_main, mc.cover_url, mc.release_year, mc.release_month, mc.release_day
+             FROM visible_media_catalog mc
+             WHERE mc.external_id LIKE ?1 AND mc.type = 'event'
+             ORDER BY mc.release_year DESC, mc.external_id DESC",
         ).str_err()?;
         let rows = stmt.query_map([&legacy_pattern], |row| {
             Ok((
@@ -87,10 +96,11 @@ pub async fn get_api_sports_event_seasons(
     }
 
     let mut stmt = conn.prepare(
-        "SELECT external_id, competition_external_id, season_key, season_number, name, cover_url, air_date, is_current, matches_synced_at
-         FROM media_event_season
-         WHERE competition_external_id = ?1
-         ORDER BY season_number DESC, season_key DESC",
+        "SELECT season.external_id, season.competition_external_id, season.season_key, season.season_number, season.name, season.cover_url, season.air_date, season.is_current, season.matches_synced_at
+         FROM media_event_season season
+         JOIN visible_media_catalog visible_season ON visible_season.external_id = season.external_id
+         WHERE season.competition_external_id = ?1
+         ORDER BY season.season_number DESC, season.season_key DESC",
     ).str_err()?;
     let rows = stmt.query_map([&competition_external_id], |row| {
         Ok(ApiSportsEventSeason {
@@ -152,15 +162,22 @@ pub async fn get_api_sports_event_matches(
 ) -> Result<ApiSportsEventMatchCache, String> {
     let conn = state.conn.lock().str_err()?;
     let synced_at: Option<String> = conn.query_row(
-        "SELECT matches_synced_at FROM media_event_season WHERE external_id = ?1",
+        "SELECT season.matches_synced_at
+         FROM media_event_season season
+         JOIN visible_media_catalog visible_season ON visible_season.external_id = season.external_id
+         JOIN visible_media_catalog visible_competition ON visible_competition.external_id = season.competition_external_id
+         WHERE season.external_id = ?1",
         [&season_external_id],
         |row| row.get::<_, Option<String>>(0),
     ).optional().str_err()?.flatten();
     let mut stmt = conn.prepare(
-        "SELECT match_id, date, time, home, away, home_score, away_score, image, venue, status
-         FROM media_event_match
-         WHERE season_external_id = ?1
-         ORDER BY COALESCE(date, '') ASC, COALESCE(time, '') ASC, match_id ASC",
+        "SELECT event_match.match_id, event_match.date, event_match.time, event_match.home, event_match.away, event_match.home_score, event_match.away_score, event_match.image, event_match.venue, event_match.status
+         FROM media_event_match event_match
+         JOIN media_event_season season ON season.external_id = event_match.season_external_id
+         JOIN visible_media_catalog visible_season ON visible_season.external_id = season.external_id
+         JOIN visible_media_catalog visible_competition ON visible_competition.external_id = season.competition_external_id
+         WHERE event_match.season_external_id = ?1
+         ORDER BY COALESCE(event_match.date, '') ASC, COALESCE(event_match.time, '') ASC, event_match.match_id ASC",
     ).str_err()?;
     let rows = stmt.query_map([&season_external_id], |row| {
         Ok(ApiSportsEventMatch {

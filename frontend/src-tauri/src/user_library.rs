@@ -43,7 +43,8 @@ const SELECT_BASE: &str = "
     SELECT id, user_id, external_id, type, status, rating, progress, progress_2,
            minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
            selected_platform, selected_version, started_at, finished_at, rating_2
-    FROM user_library";
+    FROM user_library
+    WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)";
 
 
 
@@ -79,6 +80,15 @@ pub async fn save_library_entry(
     mut entry: LibraryEntry,
 ) -> Result<LibraryEntry, String> {
     let conn = state.conn.lock().str_err()?;
+
+    let is_blocked: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM blocked_media_catalog WHERE external_id = ?1)",
+        [&entry.external_id],
+        |row| row.get(0),
+    ).str_err()?;
+    if is_blocked {
+        return Err("Cannot add a work hidden from Metadea to the library".into());
+    }
 
     // A bundle (e.g. "Final Fantasy VII Remake Intergrade") is never a real,
     // separately-playable work of its own — it's just a display grouping
@@ -180,7 +190,7 @@ pub async fn get_library_entry(
 ) -> Result<Option<LibraryEntry>, String> {
     let conn = state.conn.lock().str_err()?;
     conn.query_row(
-        &format!("{} WHERE external_id = ?1", SELECT_BASE),
+        &format!("{} AND external_id = ?1", SELECT_BASE),
         [&external_id],
         row_to_entry,
     )
@@ -239,7 +249,9 @@ pub async fn get_all_library_entries(
 pub async fn read_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>) -> Result<String, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
-        "SELECT month, external_id FROM monthly_history ORDER BY month DESC, position"
+        "SELECT month, external_id FROM monthly_history
+         WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
+         ORDER BY month DESC, position"
     ).str_err()?;
     let rows: Vec<(String, String)> = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
         .str_err()?.filter_map(|r| r.ok()).collect();
@@ -278,7 +290,9 @@ pub async fn read_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>) ->
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT date, external_id, event_type, media_type, progress_start, progress_end, timestamp
-         FROM user_activity ORDER BY date DESC, timestamp"
+         FROM user_activity
+         WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
+         ORDER BY date DESC, timestamp"
     ).str_err()?;
 
     struct Row { date: String, ext_id: String, etype: String, mtype: Option<String>, pstart: Option<i64>, pend: Option<i64>, ts: String }

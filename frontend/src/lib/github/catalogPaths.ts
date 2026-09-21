@@ -61,5 +61,5 @@ export function externalIdFromFilename(filename: string): string {
 export const MEDIA_CATALOG_FOLDERS: readonly string[] = [...new Set(Object.values(MEDIA_TYPE_FOLDERS))];
 
 export function catalogRootPath(folder: string): string {
-  return `${CATALOG_ROOT}/${folder}`;
+  return folder ? `${CATALOG_ROOT}/${folder}` : CATALOG_ROOT;
 }

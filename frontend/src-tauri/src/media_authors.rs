@@ -131,7 +131,7 @@ pub async fn get_author_works(
         .prepare(
             "SELECT mba.media_external_id, mba.role, mc.title_main, mc.cover_url
              FROM media_by_author mba
-             LEFT JOIN media_catalog mc ON mc.external_id = mba.media_external_id
+             JOIN visible_media_catalog mc ON mc.external_id = mba.media_external_id
              WHERE mba.author_external_id = ?1",
         )
         .str_err()?;

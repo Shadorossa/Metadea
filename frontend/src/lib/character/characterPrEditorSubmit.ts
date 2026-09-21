@@ -9,6 +9,7 @@ import { saveCharacterActors } from '../tauri/actors';
 import { markSynced } from '../tauri';
 import { submitCollaborativeProposal, type CharacterProposalBundle } from '../github/submitCollaborativeProposal';
 import { buildBiographyHtml, type ParsedCharacteristic } from './biography-parser';
+import { uploadImageToSharedCatalog } from './sharedCharacterImageStorage';
 import { normField } from '../../components/shared/PrEditorField';
 import { isFieldChanged, type AppearanceRow, type VoiceActorRow } from './prEditorDiff';
 
@@ -120,6 +121,13 @@ export async function submitCharacterProposal(p: SubmitCharacterEditorParams): P
 
   p.setStatusMsg(p.statusPreparingProposal);
 
+  const imageWasChanged = isFieldChanged(p.imageUrl, p.originalCharacter.image_url);
+  let proposalImageUrl = updatedCharacter.image_url;
+  if (imageWasChanged && p.imageUrl) {
+    p.setStatusMsg('Subiendo imagen al catálogo compartido…');
+    proposalImageUrl = await uploadImageToSharedCatalog(p.imageUrl, 'character', updatedCharacter.external_id);
+  }
+
   // Only the fields this session actually edited — same reasoning as
   // minimalProposalCatalogEntry (media proposals): a proposal whose only
   // real change is "added a voice actor" shouldn't also re-propose the
@@ -129,7 +137,7 @@ export async function submitCharacterProposal(p: SubmitCharacterEditorParams): P
   if (isFieldChanged(p.nameNative, p.originalCharacter.name_native)) characterFields.name_native = updatedCharacter.name_native;
   if (p.aliases.join(',') !== (p.originalCharacter.aliases_csv || '')) characterFields.aliases_csv = updatedCharacter.aliases_csv;
   if (isFieldChanged(p.cleanBiography, p.originalCleanBiography)) characterFields.biography = updatedCharacter.biography;
-  if (isFieldChanged(p.imageUrl, p.originalCharacter.image_url)) characterFields.image_url = updatedCharacter.image_url;
+  if (imageWasChanged) characterFields.image_url = proposalImageUrl;
 
   const bundle: CharacterProposalBundle = {
     character: characterFields,

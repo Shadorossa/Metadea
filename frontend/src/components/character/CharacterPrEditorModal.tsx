@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { openUrlInBrowser } from '../../lib/github/submitCollaborativeProposal';
-import { openImageCropModal } from '../shared/ImageCropModal';
+import { getDroppedImageUrl, openImageCropModal } from '../shared/ImageCropModal';
 import { getCharacterMergeTarget, getCharacterMerges, getMediaCharacters, type CharacterEntry, type CharacterMerge } from '../../lib/tauri/characters';
 import type { AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import type { ParsedCharacteristic } from '../../lib/character/biography-parser';
@@ -180,6 +180,7 @@ export function CharacterPrEditorModal() {
   const [nameNative, setNameNative] = useState('');
   const [aliases, setAliases] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState('');
+  const [isPhotoDragOver, setIsPhotoDragOver] = useState(false);
 
   const [originalName, setOriginalName] = useState('');
   const [originalNameNative, setOriginalNameNative] = useState('');
@@ -435,8 +436,28 @@ export function CharacterPrEditorModal() {
       initialUrl: imageUrl,
       aspectRatio: 3 / 4,
       saveLabel: 'Usar esta imagen',
+      outputMimeType: 'image/webp',
     });
     if (result.action === 'saved') setImageUrl(result.imageUrl);
+  };
+
+  const handlePhotoDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsPhotoDragOver(false);
+    const droppedUrl = getDroppedImageUrl(event.dataTransfer);
+    if (droppedUrl) {
+      setImageUrl(droppedUrl);
+      setErrorMsg('');
+      return;
+    }
+
+    const file = event.dataTransfer.files?.[0];
+    if (!file?.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') setImageUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
@@ -478,6 +499,7 @@ export function CharacterPrEditorModal() {
       }
     } catch (err: any) {
       console.error('Failed to submit proposal:', err);
+      setStatusMsg('');
       setErrorMsg(err.message || t.pr_error);
     } finally {
       setSubmitting(false);
@@ -639,8 +661,11 @@ export function CharacterPrEditorModal() {
           <div className="pr-editor-section" style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '1.5rem', alignItems: 'start', marginBottom: '2rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <div
-                className="pr-editor-char-photo-wrap"
+                className={`pr-editor-char-photo-wrap${isPhotoDragOver ? ' is-dragging' : ''}`}
                 onClick={handleChangePhoto}
+                onDragOver={event => { event.preventDefault(); setIsPhotoDragOver(true); }}
+                onDragLeave={() => setIsPhotoDragOver(false)}
+                onDrop={handlePhotoDrop}
                 role="button"
                 tabIndex={0}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleChangePhoto(); } }}

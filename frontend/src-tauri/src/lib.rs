@@ -15,6 +15,7 @@ mod game_links;
 mod github;
 mod anilist;
 mod igdb;
+mod image_storage;
 mod igdb_env;
 mod igdb_matching;
 mod community_sync;
@@ -72,6 +73,15 @@ pub fn run() {
             #[cfg(debug_assertions)]
             if let Err(e) = proposal_bundle::sync_local_proposals(&metadea_db) {
                 eprintln!("Failed to sync local proposals: {}", e);
+            }
+
+            match metadea_db.conn.lock() {
+                Ok(conn) => match image_storage::migrate_inline_images(&data_dir, &conn) {
+                    Ok(count) if count > 0 => log::info!("Moved {count} inline image(s) to Metadea's image storage"),
+                    Ok(_) => {}
+                    Err(error) => log::warn!("Could not migrate all inline images; remaining database values were kept: {error}"),
+                },
+                Err(_) => log::warn!("Could not lock the database to migrate inline images"),
             }
 
             app.manage(metadea_db);
@@ -200,12 +210,14 @@ pub fn run() {
             media_catalog::update_catalog_total_count,
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
+            media_catalog::get_all_catalog_entries_for_editor,
             media_catalog::find_catalog_health_issues,
             media_catalog::search_catalog,
             media_catalog::get_cached_cover,
             media_catalog::get_cached_covers_batch,
             sagas::get_cached_saga,
             sagas::save_cached_saga,
+            sagas::remove_saga_member,
             sagas::get_transitive_relation_ids,
             sagas::get_saga_name,
             sagas::get_saga_names,

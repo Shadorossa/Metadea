@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 use crate::db::ToStringErr;
 
 const FAV_MAP: &[(&str, &str)] = &[
@@ -140,10 +141,14 @@ pub async fn get_all_user_lists(
     // range scan instead of a full-table scan per row.
     let mut stmt = conn.prepare(
         "SELECT l.key, l.name, l.description, l.is_fav, l.is_private, COALESCE(l.list_type, 'media'), COALESCE(l.is_ranked, 0),
-                (SELECT COUNT(*) FROM user_list_items i WHERE i.list_key = l.key) AS item_count,
+                (SELECT COUNT(*) FROM user_list_items i
+                 WHERE i.list_key = l.key
+                   AND i.external_id NOT IN (SELECT external_id FROM blocked_media_catalog)) AS item_count,
                 (SELECT GROUP_CONCAT(external_id, ',') FROM (
                     SELECT external_id FROM user_list_items
-                    WHERE list_key = l.key ORDER BY position LIMIT 4
+                    WHERE list_key = l.key
+                      AND external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
+                    ORDER BY position LIMIT 4
                  )) AS preview_csv
          FROM user_lists l
          ORDER BY l.is_fav DESC, l.created_at ASC",
@@ -182,9 +187,11 @@ pub async fn get_all_user_lists(
 
 #[tauri::command]
 pub async fn get_list_items_full(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     list_key: String,
 ) -> Result<Vec<ListItemFull>, String> {
+    let mut items: Vec<ListItemFull> = {
     let conn = state.conn.lock().str_err()?;
     // Single SQL JOIN — everything is in metadea.db. Characters never have a
     // media_catalog row (that table is media only — see save_character), so
@@ -206,10 +213,11 @@ pub async fn get_list_items_full(
          LEFT JOIN characters c ON c.external_id = li.external_id
          LEFT JOIN media_episode me ON ('episode:' || me.external_id || ':' || CAST(me.season_number AS TEXT) || ':' || CAST(me.episode_number AS TEXT)) = li.external_id
          WHERE li.list_key = ?1
+           AND li.external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
          ORDER BY li.position"
     ).str_err()?;
 
-    let items: Vec<ListItemFull> = stmt.query_map([&list_key], |r| {
+    let collected = stmt.query_map([&list_key], |r| {
         Ok(ListItemFull {
             external_id: r.get(0)?,
             position:    r.get(1)?,
@@ -226,6 +234,13 @@ pub async fn get_list_items_full(
             format:      r.get(12)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
+    collected
+    };
+
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+    }
 
     Ok(items)
 }
@@ -237,7 +252,10 @@ pub async fn get_list_items(
 ) -> Result<Vec<String>, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
-        "SELECT external_id FROM user_list_items WHERE list_key = ?1 ORDER BY position",
+        "SELECT external_id FROM user_list_items
+         WHERE list_key = ?1
+           AND external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
+         ORDER BY position",
     ).str_err()?;
     let items: Vec<String> = stmt
         .query_map([&list_key], |r| r.get(0))

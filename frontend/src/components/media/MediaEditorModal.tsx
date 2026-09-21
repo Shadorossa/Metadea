@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, getCatalogEntryForEditor, getBlockedExternalIds, getMediaRelationsForEditor, saveImageFile } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, saveImageFile } from '../../lib/tauri';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
 import { getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { generateShareImage } from '../../lib/media/share-image';
@@ -54,7 +54,6 @@ interface CoverCandidate {
   externalId: string;
   title: string;
   cover?: string;
-  blocked: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -339,48 +338,10 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         if (candidate.cover || candidate.externalId === baseId) candidates.set(candidate.externalId, candidate);
       };
 
-      // The current game is always eligible. Other game entries are only
-      // added when they are blocked remasters; expanded editions, ports and
-      // ordinary base-edition relations must not leak into this picker.
-      const [relationRows, blockedExternalIds] = await Promise.all([
-        Promise.all([...new Set([baseId, externalId])].map(id =>
-        getMediaRelationsForEditor(id).catch(() => [])
-        )),
-        getBlockedExternalIds().catch(() => [] as string[]),
-      ]);
-      const blockedRemasters = new Map<string, { title: string; cover?: string | null }>();
-      for (const rows of relationRows) {
-        for (const rel of rows) {
-          if (rel.relation_type !== 'REMASTER') continue;
-          const related = await getCatalogEntryForEditor(rel.related_media_external_id).catch(() => null);
-          if (related?.blocked_at || blockedExternalIds.includes(rel.related_media_external_id)) {
-            blockedRemasters.set(rel.related_media_external_id, {
-              title: related?.title_main || rel.title,
-              cover: related?.cover_url || rel.cover,
-            });
-          }
-        }
-      }
-
-      const currentCatalog = await getCatalogEntryForEditor(externalId).catch(() => null);
-      add({ externalId, title: data.titleMain, cover: data.cover, blocked: !!currentCatalog?.blocked_at });
-
-      // When the editor is opened on the blocked remaster, include its OG as
-      // the other selectable game. The parent is not added for normal games
-      // or expanded editions.
-      if (currentCatalog?.blocked_at && data.parentGame) {
-        add({ externalId: data.parentGame.externalId, title: data.parentGame.title, cover: data.parentGame.cover, blocked: false });
-      }
-
-      for (const [id, relation] of blockedRemasters) {
-        const entry = await getCatalogEntryForEditor(id).catch(() => null);
-        add({
-          externalId: id,
-          title: entry?.title_main || relation.title || id,
-          cover: entry?.cover_url ?? relation.cover ?? undefined,
-          blocked: true,
-        });
-      }
+      // Only show the current, visible game here. A blocked work may be
+      // opened explicitly in PrEditorModal to manage its block state, but it
+      // must not leak into another game's cover picker.
+      add({ externalId, title: data.titleMain, cover: data.cover });
 
       if (data.type === 'game') {
         const gameIds = [...new Set([...candidates.keys()])].filter(id => /^game:\d+$/.test(id));
@@ -394,7 +355,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
             externalId: `${id}:localized-cover:${index}`,
             title: `${owner?.title || id} cover ${index + 1}`,
             cover,
-            blocked: !!owner?.blocked,
           }));
         }
       }
@@ -1264,9 +1224,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       : { title: data.titleMain, cover: preferredCover || data.cover, year: data.releaseYear };
   }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, baseRelation, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo, activeEventSeasonInfo, coverCandidates, coverPreferenceId]);
 
-  const hasCoverCandidates = coverCandidates.length > 1 && (
-    data.type === 'game' || coverCandidates.some(c => c.blocked)
-  );
+  const hasCoverCandidates = coverCandidates.length > 1 && data.type === 'game';
 
   const handleShare = useCallback(async () => {
     setSharing(true);

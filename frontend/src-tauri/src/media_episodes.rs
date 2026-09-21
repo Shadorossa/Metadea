@@ -26,10 +26,11 @@ pub async fn get_all_media_episodes_grouped(
 ) -> Result<Vec<MediaEpisodeGroup>, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
-        "SELECT external_id, COUNT(1), MAX(name), MAX(cover_url)
-         FROM media_episode
-         GROUP BY external_id
-         ORDER BY external_id ASC"
+        "SELECT episodes.external_id, COUNT(1), MAX(episodes.name), MAX(episodes.cover_url)
+         FROM media_episode episodes
+         JOIN visible_media_catalog media ON media.external_id = episodes.external_id
+         GROUP BY episodes.external_id
+         ORDER BY episodes.external_id ASC"
     ).str_err()?;
     let rows = stmt.query_map([], |r| {
         Ok(MediaEpisodeGroup {
@@ -49,11 +50,12 @@ pub async fn get_media_episodes(
 ) -> Result<Vec<MediaEpisode>, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
-        "SELECT external_id, season_number, episode_number, name, cover_url, source_key, mapping_key
-         FROM media_episode
-         WHERE external_id = ?1
+        "SELECT episodes.external_id, episodes.season_number, episodes.episode_number, episodes.name, episodes.cover_url, episodes.source_key, episodes.mapping_key
+         FROM media_episode episodes
+         JOIN visible_media_catalog media ON media.external_id = episodes.external_id
+         WHERE episodes.external_id = ?1
          ORDER BY CASE WHEN episode_number > 0 THEN 0 ELSE 1 END,
-                  CASE WHEN episode_number > 0 THEN episode_number ELSE -episode_number END ASC"
+                  CASE WHEN episodes.episode_number > 0 THEN episodes.episode_number ELSE -episodes.episode_number END ASC"
     ).str_err()?;
     let rows = stmt.query_map([&external_id], |r| {
         Ok(MediaEpisode {
@@ -80,6 +82,14 @@ pub async fn save_media_episodes(
     episodes: Vec<MediaEpisode>,
 ) -> Result<(), String> {
     let mut conn = state.conn.lock().str_err()?;
+    let is_blocked: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM blocked_media_catalog WHERE external_id = ?1)",
+        [&external_id],
+        |row| row.get(0),
+    ).str_err()?;
+    if is_blocked {
+        return Ok(());
+    }
     let tx = conn.transaction().str_err()?;
     tx.execute("DELETE FROM media_episode WHERE external_id = ?1", [&external_id]).str_err()?;
     for ep in &episodes {

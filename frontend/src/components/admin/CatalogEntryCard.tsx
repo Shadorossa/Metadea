@@ -9,14 +9,15 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   editDisabled?: boolean;
+  blocked?: boolean;
 }
 
 // Shared card shape for the "local" and "github" source tabs in
 // CatalogAdminPanel — both used to render an identical cover/id/title/edit/
 // delete card grid, differing only in the data source and edit handler.
-export function CatalogEntryCard({ id, title, cover, editLabel, deleteLabel, onEdit, onDelete, editDisabled }: Props) {
+export function CatalogEntryCard({ id, title, cover, editLabel, deleteLabel, onEdit, onDelete, editDisabled, blocked }: Props) {
   return (
-    <div className="catalog-admin-card">
+    <div className={`catalog-admin-card${blocked ? ' catalog-admin-card--blocked' : ''}`}>
       <div className="catalog-admin-card-cover">
         {cover
           ? <img src={cover} alt="" loading="lazy" />

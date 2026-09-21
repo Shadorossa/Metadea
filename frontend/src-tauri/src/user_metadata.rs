@@ -1,5 +1,10 @@
 use rusqlite::OptionalExtension;
+use tauri::Manager;
 use crate::db::ToStringErr;
+
+fn image_data_dir(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    app_handle.path().app_data_dir().str_err()
+}
 
 fn upsert_profile_row(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
     conn.execute(
@@ -11,6 +16,7 @@ fn upsert_profile_row(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
 
 #[tauri::command]
 pub async fn save_user_image(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
     data_url: String,
@@ -21,17 +27,24 @@ pub async fn save_user_image(
         "share_avatar" => "share_avatar_data",
         _ => return Err(format!("Invalid key: {}", key)),
     };
+    let stored_value = crate::image_storage::store_image_value(
+        &image_data_dir(&app_handle)?,
+        "profile",
+        &key,
+        &data_url,
+    )?;
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
     upsert_profile_row(&conn).str_err()?;
     conn.execute(
         &format!("UPDATE user_profile SET {} = ?1, updated_at = ?2 WHERE id = 1", col),
-        rusqlite::params![data_url, now],
+        rusqlite::params![stored_value, now],
     ).map(|_| ()).str_err()
 }
 
 #[tauri::command]
 pub async fn get_user_image(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
 ) -> Result<Option<String>, String> {
@@ -50,7 +63,7 @@ pub async fn get_user_image(
         )
         .optional()
         .str_err()?;
-    Ok(val.filter(|s| !s.is_empty()))
+    crate::image_storage::resolve_image_value(&image_data_dir(&app_handle)?, val.filter(|s| !s.is_empty()))
 }
 
 #[tauri::command]

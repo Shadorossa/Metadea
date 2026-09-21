@@ -214,6 +214,7 @@ pub async fn get_media_relations(
              FROM media_relations mr
              JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
              WHERE mr.media_external_id = ?1
+               AND UPPER(COALESCE(mc.format, '')) <> 'SUMMARY'
              ORDER BY mr.rowid",
         )
         .str_err()?;
@@ -240,12 +241,9 @@ pub async fn get_media_relations(
     Ok(rows)
 }
 
-// Same as get_media_relations but joined against the plain media_catalog
-// table (not visible_media_catalog) — the collaborative-catalog editor
-// (PrEditorModal) is exactly where a curator needs to see/manage a relation
-// pointing at a blocked entry (e.g. the "is a version of" link to the base
-// game it was blocked in favor of), so it must never have blocked rows
-// filtered out the way every other read path deliberately does.
+// Same as get_media_relations, except the owner may itself be blocked because
+// this is the explicit editor path. Related targets still use the visible
+// view: a blocked external_id must not leak into the editor as another work.
 #[tauri::command]
 pub async fn get_media_relations_for_editor(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -256,8 +254,9 @@ pub async fn get_media_relations_for_editor(
         .prepare(
             "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
              FROM media_relations mr
-             JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
+             JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
              WHERE mr.media_external_id = ?1
+               AND UPPER(COALESCE(mc.format, '')) <> 'SUMMARY'
              ORDER BY mr.rowid",
         )
         .str_err()?;
@@ -306,6 +305,8 @@ pub async fn get_all_media_relations(
             "SELECT mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
              FROM media_relations mr
              JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
+             JOIN visible_media_catalog owner ON owner.external_id = mr.media_external_id
+             WHERE UPPER(COALESCE(mc.format, '')) <> 'SUMMARY'
              ORDER BY mr.rowid",
         )
         .str_err()?;

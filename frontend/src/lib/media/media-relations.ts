@@ -2,7 +2,7 @@
 // for media relations/authors/characters — extracted from mediaService.ts
 // (still re-exported from there).
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember, MediaRelation, MediaCompany } from './types';
-import { getMediaRelations, getMediaAuthors, saveMediaRelations, getDeletedRelations, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
+import { getMediaRelations, getMediaAuthors, saveMediaRelations, getDeletedRelations, getBlockedExternalIds, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter, SkeletonCharacter } from '../tauri/characters';
 import type { SkeletonStaffMember, DbMediaStaffMember } from '../tauri/misc-commands';
 import type { DbMediaCompany } from '../tauri/misc-commands';
@@ -187,13 +187,14 @@ export function bucketRelations(
   editionsRelationType: string,
 ): RelationBuckets {
   const isFullEdition = FULL_EDITION_FORMATS.has(format ?? '');
+  const visibleRelations = relations.filter(r => r.format?.trim().toUpperCase() !== 'SUMMARY');
 
-  const related = sortMediaRelations(relations.filter(r =>
+  const related = sortMediaRelations(visibleRelations.filter(r =>
     r.relationType !== 'RECOMMENDATION' && r.relationType !== editionsRelationType &&
     (!isFullEdition || FULL_EDITION_ALLOWED_RELATION_TYPES.has(r.relationType ?? ''))
   ));
-  const recommended = sortMediaRelations(relations.filter(r => r.relationType === 'RECOMMENDATION'));
-  const editions = relations.filter(r => r.relationType === editionsRelationType);
+  const recommended = sortMediaRelations(visibleRelations.filter(r => r.relationType === 'RECOMMENDATION'));
+  const editions = visibleRelations.filter(r => r.relationType === editionsRelationType);
 
   return { related, recommended, editions };
 }
@@ -312,11 +313,33 @@ export async function mergeAndPersistRelations(
   const { relations: dbRels } = await loadDbRelationsAndAuthors(rawId);
 
   const normalizedDbRels = dbRels.map(normalizeLegacyDbRelation);
+  const [deletedRelationIds, blockedIds] = await Promise.all([
+    getDeletedRelations(rawId).catch(() => [] as string[]),
+    getBlockedExternalIds().catch(() => [] as string[]),
+  ]);
+  const deletedIds = new Set(deletedRelationIds);
+  const blocked = new Set(blockedIds);
 
   const freshIds = new Set((fetchedRelations ?? []).map(r => r.relatedExternalId).filter(Boolean));
   let prunedDbRels = format && FULL_EDITION_FORMATS.has(format)
     ? normalizedDbRels.filter(r => !STALE_INHERITED_RELATION_TYPES.has(r.relation_type) || freshIds.has(r.related_media_external_id))
     : normalizedDbRels;
+
+  // A globally blocked work must not leak back into relations through an
+  // existing SQLite row or a fresh provider response. Prune both directions
+  // before persisting so repeated syncs cannot resurrect its external_id.
+  const beforeBlockedFilter = prunedDbRels.length;
+  prunedDbRels = prunedDbRels.filter(r => !blocked.has(r.related_media_external_id));
+  const prunedByBlock = prunedDbRels.length !== beforeBlockedFilter;
+
+  // A deletion tombstone must take precedence over an already-cached row as
+  // well as a newly fetched API relation. Previously only candidateNew was
+  // checked below, so a reciprocal save or a relation-type change (e.g.
+  // OTHER -> SIDE_STORY) could leave the old id in SQLite and keep rendering
+  // it after the curator had removed it.
+  const beforeTombstoneFilter = prunedDbRels.length;
+  prunedDbRels = prunedDbRels.filter(r => !deletedIds.has(r.related_media_external_id));
+  const prunedByTombstone = prunedDbRels.length !== beforeTombstoneFilter;
 
   // Correct just this one mismatch instead of leaving whichever direction
   // got cached first (possibly wrong — AniList's own raw data isn't always
@@ -346,13 +369,12 @@ export async function mergeAndPersistRelations(
 
   const dbIds = new Set(prunedDbRels.map(r => r.related_media_external_id));
   let candidateNew = (fetchedRelations ?? [])
-    .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId));
+    .filter(r => r.relatedExternalId && !blocked.has(r.relatedExternalId) && !dbIds.has(r.relatedExternalId));
 
-  // A pair the user deliberately deleted must never be silently re-added —
+  // A pair the user deliberately deleted must never be silently re-added -
   // save_media_relations tombstones it in deleted_relations, so only that
   // specific pair is blocked, not every future relation this entry could gain.
   if (candidateNew.length > 0) {
-    const deletedIds = new Set(await getDeletedRelations(rawId).catch(() => [] as string[]));
     if (deletedIds.size > 0) {
       candidateNew = candidateNew.filter(r => !deletedIds.has(r.relatedExternalId!));
     }
@@ -367,7 +389,7 @@ export async function mergeAndPersistRelations(
     format: r.format || null,
   }));
 
-  const changed = newFromApi.length > 0 || changedLegacyTypes || prunedStale || sourceAdaptationChanged;
+  const changed = newFromApi.length > 0 || changedLegacyTypes || prunedStale || prunedByTombstone || prunedByBlock || sourceAdaptationChanged;
   if (changed) {
     await saveMediaRelations(rawId, [...prunedDbRels, ...newFromApi]).catch(console.error);
   }

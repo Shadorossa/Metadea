@@ -1327,13 +1327,16 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const handleBlockedProposalSubmitted = useCallback(async (blockedExternalId: string) => {
     const relationRows = await getMediaRelations(blockedExternalId).catch(() => null);
     const pageRelations = data?.externalId === blockedExternalId ? data.relations : [];
+    const sourceId = relationRows
+      ? relationRows.find(relation => ['SOURCE', 'REL_SOURCE', 'PARENT'].includes(relation.relation_type))?.related_media_external_id
+      : pageRelations.find(relation => ['SOURCE', 'REL_SOURCE', 'PARENT'].includes(relation.relationType ?? ''))?.relatedExternalId;
     const baseEditionId = relationRows
       ? relationRows.find(relation => relation.relation_type === 'BASE_EDITION')?.related_media_external_id
       : pageRelations.find(relation => relation.relationType === 'BASE_EDITION')?.relatedExternalId;
     const prequelId = relationRows
       ? relationRows.find(relation => relation.relation_type === 'PREQUEL')?.related_media_external_id
       : pageRelations.find(relation => relation.relationType === 'PREQUEL')?.relatedExternalId;
-    const destinationId = baseEditionId || prequelId;
+    const destinationId = sourceId || baseEditionId || prequelId;
 
     if (destinationId) {
       // Drop any cached relation graph so the destination reloads against

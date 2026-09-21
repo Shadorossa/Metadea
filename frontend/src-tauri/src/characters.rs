@@ -1,8 +1,18 @@
 use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 use crate::db::ToStringErr;
 use crate::media_catalog::{existing_catalog_ids, infer_type_from_id, infer_source_from_id};
+
+fn image_data_dir(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    app_handle.path().app_data_dir().str_err()
+}
+
+fn resolve_character_image(data_dir: &std::path::Path, image: &mut Option<String>) -> Result<(), String> {
+    *image = crate::image_storage::resolve_image_value(data_dir, image.take())?;
+    Ok(())
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CharacterEntry {
@@ -85,6 +95,7 @@ fn row_to_character(row: &rusqlite::Row<'_>) -> rusqlite::Result<CharacterEntry>
 
 #[tauri::command]
 pub async fn save_character(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
     name: String,
@@ -99,6 +110,9 @@ pub async fn save_character(
     dob_month: Option<i32>,
     dob_day: Option<i32>,
 ) -> Result<CharacterEntry, String> {
+    let stored_image_url = image_url.as_deref().map(|image| {
+        crate::image_storage::store_image_value(&image_data_dir(&app_handle)?, "characters", &external_id, image)
+    }).transpose()?;
     let conn = state.conn.lock().str_err()?;
 
     let existing: Option<(String, String, Option<String>)> = conn
@@ -122,7 +136,7 @@ pub async fn save_character(
             gender, age, blood_type, dob_year, dob_month, dob_day, created_at, updated_at
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         rusqlite::params![
-            &id, &external_id, &name, &name_native, &aliases_csv, &biography, &image_url, &reaction,
+            &id, &external_id, &name, &name_native, &aliases_csv, &biography, &stored_image_url, &reaction,
             &gender, &age, &blood_type, &dob_year, &dob_month, &dob_day, &created_at, &updated_at,
         ],
     ).str_err()?;
@@ -135,17 +149,24 @@ pub async fn save_character(
 
 #[tauri::command]
 pub async fn get_character(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
 ) -> Result<Option<CharacterEntry>, String> {
-    let conn = state.conn.lock().str_err()?;
-    conn.query_row(
-        &format!("{} WHERE external_id = ?1", SELECT_CHARACTER),
-        [&external_id],
-        row_to_character,
-    )
-    .optional()
-    .str_err()
+    let mut character = {
+        let conn = state.conn.lock().str_err()?;
+        conn.query_row(
+            &format!("{} WHERE external_id = ?1", SELECT_CHARACTER),
+            [&external_id],
+            row_to_character,
+        )
+        .optional()
+        .str_err()?
+    };
+    if let Some(character) = &mut character {
+        resolve_character_image(&image_data_dir(&app_handle)?, &mut character.image_url)?;
+    }
+    Ok(character)
 }
 
 // Bulk fetch for local-only UI that needs every cached character's name/cover
@@ -155,24 +176,29 @@ pub async fn get_character(
 // character.astro instead of a duplicate media_catalog entry).
 #[tauri::command]
 pub async fn get_all_characters(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<CharacterEntry>, String> {
-    let conn = state.conn.lock().str_err()?;
-    let mut stmt = conn.prepare(SELECT_CHARACTER).str_err()?;
-    let rows = stmt
-        .query_map([], row_to_character)
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
+    let mut rows: Vec<CharacterEntry> = {
+        let conn = state.conn.lock().str_err()?;
+        let mut stmt = conn.prepare(SELECT_CHARACTER).str_err()?;
+        let collected = stmt.query_map([], row_to_character)
+            .str_err()?
+            .filter_map(|r| r.ok())
+            .collect();
+        collected
+    };
+    let data_dir = image_data_dir(&app_handle)?;
+    for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
     Ok(rows)
 }
 
 #[tauri::command]
 pub async fn search_characters_db(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     query: String,
 ) -> Result<Vec<CharacterEntry>, String> {
-    let conn = state.conn.lock().str_err()?;
     let trimmed = query.trim();
     if trimmed.is_empty() {
         return Ok(Vec::new());
@@ -204,13 +230,18 @@ pub async fn search_characters_db(
     }
     sql.push_str(" ORDER BY c.name ASC LIMIT 60");
 
-    let mut stmt = conn.prepare(&sql).str_err()?;
-    let params = rusqlite::params_from_iter(tokens.iter());
-    let rows = stmt
-        .query_map(params, row_to_character)
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
+    let mut rows: Vec<CharacterEntry> = {
+        let conn = state.conn.lock().str_err()?;
+        let mut stmt = conn.prepare(&sql).str_err()?;
+        let params = rusqlite::params_from_iter(tokens.iter());
+        let collected = stmt.query_map(params, row_to_character)
+            .str_err()?
+            .filter_map(|r| r.ok())
+            .collect();
+        collected
+    };
+    let data_dir = image_data_dir(&app_handle)?;
+    for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
     Ok(rows)
 }
 
@@ -332,7 +363,10 @@ pub async fn get_character_appearances(
 ) -> Result<Vec<CharacterAppearance>, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
-        .prepare("SELECT media_external_id, relation_type, character_name FROM character_appearances WHERE character_external_id = ?1")
+        .prepare("SELECT ca.media_external_id, ca.relation_type, ca.character_name
+                  FROM character_appearances ca
+                  JOIN visible_media_catalog mc ON mc.external_id = ca.media_external_id
+                  WHERE ca.character_external_id = ?1")
         .str_err()?;
     let rows = stmt
         .query_map([&character_external_id], |row| {
@@ -367,6 +401,7 @@ pub struct MediaCharacter {
 // locally from the API).
 #[tauri::command]
 pub async fn get_media_characters(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_id: String,
 ) -> Result<Vec<MediaCharacter>, String> {
@@ -435,7 +470,7 @@ pub async fn get_media_characters(
                  CASE ca.relation_type WHEN 'MAIN' THEN 0 WHEN 'SUPPORTING' THEN 1 WHEN 'CAMEO' THEN 2 WHEN 'BACKGROUND' THEN 3 ELSE 4 END",
         )
         .str_err()?;
-    let rows = stmt
+    let mut rows: Vec<MediaCharacter> = stmt
         .query_map([&cast_media_id], |row| {
             Ok(MediaCharacter {
                 external_id: row.get(0)?,
@@ -449,6 +484,9 @@ pub async fn get_media_characters(
         .str_err()?
         .filter_map(|r| r.ok())
         .collect();
+    drop(stmt);
+    let data_dir = image_data_dir(&app_handle)?;
+    for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
     Ok(rows)
 }
 
@@ -581,10 +619,20 @@ pub struct SkeletonCharacter {
 
 #[tauri::command]
 pub async fn save_characters_skeleton(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_id: String,
     characters: Vec<SkeletonCharacter>,
 ) -> Result<(), String> {
+    let data_dir = image_data_dir(&app_handle)?;
+    let characters = characters.into_iter().map(|mut character| {
+        if let Some(image_url) = character.image_url.as_deref() {
+            character.image_url = Some(crate::image_storage::store_image_value(
+                &data_dir, "characters", &character.external_id, image_url,
+            )?);
+        }
+        Ok(character)
+    }).collect::<Result<Vec<_>, String>>()?;
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
 
@@ -650,6 +698,7 @@ pub struct CharacterMerge {
 
 #[tauri::command]
 pub async fn get_character_merges(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     canonical_character_external_id: String,
 ) -> Result<Vec<CharacterMerge>, String> {
@@ -661,13 +710,16 @@ pub async fn get_character_merges(
          WHERE m.canonical_character_external_id = ?1
          ORDER BY COALESCE(c.name, m.source_character_external_id)",
     ).str_err()?;
-    let rows = stmt.query_map([&canonical_character_external_id], |row| {
+    let mut rows: Vec<CharacterMerge> = stmt.query_map([&canonical_character_external_id], |row| {
         Ok(CharacterMerge {
             external_id: row.get(0)?,
             name: row.get(1)?,
             image_url: row.get(2)?,
         })
     }).str_err()?.filter_map(|row| row.ok()).collect();
+    drop(stmt);
+    let data_dir = image_data_dir(&app_handle)?;
+    for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
     Ok(rows)
 }
 

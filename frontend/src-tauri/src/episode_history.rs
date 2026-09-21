@@ -21,7 +21,9 @@ pub async fn save_episode_history_entry(
 ) -> Result<(), String> {
     let conn = state.conn.lock().str_err()?;
     conn.execute(
-        "INSERT INTO episode_history (external_id, episode_number) VALUES (?1, ?2)",
+        "INSERT INTO episode_history (external_id, episode_number)
+         SELECT ?1, ?2
+         WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog WHERE external_id = ?1)",
         rusqlite::params![external_id, episode_number],
     ).str_err()?;
     Ok(())
@@ -44,9 +46,10 @@ pub async fn get_episode_history(
 ) -> Result<Vec<EpisodeHistoryEntry>, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
-        "SELECT id, external_id, episode_number, watched_at
-         FROM episode_history
-         WHERE external_id = ?1
+        "SELECT id, history.external_id, episode_number, watched_at
+         FROM episode_history history
+         WHERE history.external_id = ?1
+           AND NOT EXISTS (SELECT 1 FROM blocked_media_catalog blocked WHERE blocked.external_id = history.external_id)
          ORDER BY watched_at DESC
          LIMIT ?2"
     ).str_err()?;

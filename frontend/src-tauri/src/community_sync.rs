@@ -421,6 +421,16 @@ pub async fn sync_community_catalog(
 
     let _ = std::fs::remove_file(&temp_path);
 
+    if imported.is_ok() {
+        if let Ok(data_dir) = app_handle.path().app_data_dir() {
+            if let Ok(conn) = state.conn.lock() {
+                if let Err(error) = crate::image_storage::migrate_inline_images(&data_dir, &conn) {
+                    log::warn!("Could not move newly synced inline images to file storage: {error}");
+                }
+            }
+        }
+    }
+
     imported
 }
 

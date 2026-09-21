@@ -20,6 +20,7 @@
 // exact same cached row resolves correctly next render — no re-fetch needed.
 use crate::db::ToStringErr;
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 
 #[derive(Debug, Deserialize)]
 pub struct SocialLibraryInput {
@@ -190,9 +191,11 @@ pub async fn hydrate_social_profile(
 
 #[tauri::command]
 pub async fn get_social_library(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     social_user_id: String,
 ) -> Result<Vec<SocialLibraryItem>, String> {
+    let mut items: Vec<SocialLibraryItem> = {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT sl.external_id, sl.rating, sl.started_at, sl.finished_at, sl.notes, sl.tags,
@@ -202,10 +205,11 @@ pub async fn get_social_library(
          LEFT JOIN media_catalog mc ON mc.external_id = sl.external_id
          LEFT JOIN characters c ON c.external_id = sl.external_id
          WHERE sl.social_user_id = ?1
+           AND sl.external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
          ORDER BY sl.finished_at DESC"
     ).str_err()?;
 
-    let items: Vec<SocialLibraryItem> = stmt.query_map([&social_user_id], |r| {
+    let collected = stmt.query_map([&social_user_id], |r| {
         let tags_json: Option<String> = r.get(5)?;
         Ok(SocialLibraryItem {
             external_id: r.get(0)?,
@@ -221,15 +225,24 @@ pub async fn get_social_library(
             media_type:  r.get(10)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
+    collected
+    };
+
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+    }
 
     Ok(items)
 }
 
 #[tauri::command]
 pub async fn get_social_activity(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     social_user_id: String,
 ) -> Result<Vec<SocialActivityItem>, String> {
+    let mut items: Vec<SocialActivityItem> = {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT sa.external_id, sa.event_type, sa.media_type, sa.date, sa.timestamp,
@@ -239,10 +252,11 @@ pub async fn get_social_activity(
          LEFT JOIN media_catalog mc ON mc.external_id = sa.external_id
          LEFT JOIN characters c ON c.external_id = sa.external_id
          WHERE sa.social_user_id = ?1
+           AND sa.external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
          ORDER BY sa.timestamp DESC"
     ).str_err()?;
 
-    let items: Vec<SocialActivityItem> = stmt.query_map([&social_user_id], |r| {
+    let collected = stmt.query_map([&social_user_id], |r| {
         Ok(SocialActivityItem {
             external_id:    r.get(0)?,
             event_type:     r.get(1)?,
@@ -255,15 +269,25 @@ pub async fn get_social_activity(
             cover_url:      r.get(8)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
+    collected
+    };
+
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+    }
 
     Ok(items)
 }
 
 #[tauri::command]
 pub async fn get_social_monthly_history(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     social_user_id: String,
 ) -> Result<Vec<SocialMonthGroup>, String> {
+    struct Row { month: String, item: SocialMediaRef }
+    let rows: Vec<Row> = {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT smh.month, smh.external_id,
@@ -272,11 +296,11 @@ pub async fn get_social_monthly_history(
          LEFT JOIN media_catalog mc ON mc.external_id = smh.external_id
          LEFT JOIN characters c ON c.external_id = smh.external_id
          WHERE smh.social_user_id = ?1
+           AND smh.external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
          ORDER BY smh.month DESC, smh.position"
     ).str_err()?;
 
-    struct Row { month: String, item: SocialMediaRef }
-    let rows: Vec<Row> = stmt.query_map([&social_user_id], |r| Ok(Row {
+    let collected = stmt.query_map([&social_user_id], |r| Ok(Row {
         month: r.get(0)?,
         item: SocialMediaRef {
             external_id: r.get(1)?,
@@ -285,6 +309,8 @@ pub async fn get_social_monthly_history(
             media_type:  r.get(4)?,
         },
     })).str_err()?.filter_map(|r| r.ok()).collect();
+    collected
+    };
 
     let mut result: Vec<SocialMonthGroup> = Vec::new();
     for row in rows {
@@ -292,6 +318,12 @@ pub async fn get_social_monthly_history(
             if last.month == row.month { last.items.push(row.item); continue; }
         }
         result.push(SocialMonthGroup { month: row.month, items: vec![row.item] });
+    }
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    for group in &mut result {
+        for item in &mut group.items {
+            item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+        }
     }
     Ok(result)
 }
@@ -305,7 +337,8 @@ pub async fn get_social_lists(
     let mut stmt = conn.prepare(
         "SELECT sul.key, sul.name, sul.description, sul.is_fav,
                 (SELECT COUNT(*) FROM social_user_list_items sli
-                 WHERE sli.social_user_id = sul.social_user_id AND sli.list_key = sul.key)
+                 WHERE sli.social_user_id = sul.social_user_id AND sli.list_key = sul.key
+                   AND sli.external_id NOT IN (SELECT external_id FROM blocked_media_catalog))
          FROM social_user_lists sul
          WHERE sul.social_user_id = ?1
          ORDER BY sul.is_fav DESC, sul.key"
@@ -326,10 +359,12 @@ pub async fn get_social_lists(
 
 #[tauri::command]
 pub async fn get_social_list_items(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     social_user_id: String,
     list_key: String,
 ) -> Result<Vec<SocialMediaRef>, String> {
+    let mut items: Vec<SocialMediaRef> = {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT sli.external_id,
@@ -338,10 +373,11 @@ pub async fn get_social_list_items(
          LEFT JOIN media_catalog mc ON mc.external_id = sli.external_id
          LEFT JOIN characters c ON c.external_id = sli.external_id
          WHERE sli.social_user_id = ?1 AND sli.list_key = ?2
+           AND sli.external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
          ORDER BY sli.position"
     ).str_err()?;
 
-    let items: Vec<SocialMediaRef> = stmt.query_map(rusqlite::params![social_user_id, list_key], |r| {
+    let collected = stmt.query_map(rusqlite::params![social_user_id, list_key], |r| {
         Ok(SocialMediaRef {
             external_id: r.get(0)?,
             title_main:  r.get(1)?,
@@ -349,6 +385,13 @@ pub async fn get_social_list_items(
             media_type:  r.get(3)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
+    collected
+    };
+
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+    }
 
     Ok(items)
 }

@@ -8,13 +8,14 @@ import { getStoryArcsForMedia, type StoryArc } from '../../../lib/tauri/story-ar
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../../lib/tauri/catalog';
 import type { DbMediaCharacter } from '../../../lib/tauri/characters';
 import type { SagaEntry } from '../../../lib/anilist/saga';
-import { saveCachedSaga } from '../../../lib/tauri/catalog';
+import { removeSagaMember, saveCachedSaga } from '../../../lib/tauri/catalog';
 import { invalidateCachedMediaData } from '../../../lib/media/mediaService';
 import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../../lib/media/sagaGrouping';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle, type ProposalFileEntry } from '../../../lib/github/submitCollaborativeProposal';
 import { REL_TYPE_TO_PAIR } from '../../../lib/media/constants';
 import { ALL_CHAIN_RELATION_TYPES, type SagaRelationType } from '../../../lib/media/sagaTypes';
 import { setField } from '../../../lib/shared/object-utils';
+import { uploadImageToSharedCatalog } from '../../../lib/character/sharedCharacterImageStorage';
 import type { BundledRelation, EditableRelation } from '../PrEditorModal';
 
 // A proposal only needs enough to identify the row plus whatever the user
@@ -140,7 +141,10 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
 
   // classifySagaChain clusters sagaOrder into groups + standalone entries;
   // walked pairwise below, every adjacent group gets a SEQUEL/PREQUEL edge.
-  const fullChain = p.sagaOrder;
+  const removeBlockedWorkFromSaga = Boolean(entry.blocked_at);
+  const fullChain = removeBlockedWorkFromSaga
+    ? p.sagaOrder.filter(id => id !== externalId)
+    : p.sagaOrder;
   const classified = classifySagaChain(fullChain, p.sagaRelationTypes, p.sagaGroups);
   const groups = classified.filter(e => e.kind === 'group');
 
@@ -221,6 +225,9 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     });
     await saveCachedSaga(chain, p.sagaName).catch(err => console.error('Failed to save saga:', err));
   }
+  if (removeBlockedWorkFromSaga) {
+    await removeSagaMember(externalId).catch(err => console.error('Failed to remove blocked work from saga cache:', err));
+  }
 
   const bundledDbRelations: DbMediaRelation[] = p.bundledRelations
     .filter(r => r.external_id.trim())
@@ -278,7 +285,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   // Every other chain member gets its chain-managed edges rewritten too — union
   // with originalSagaOrder so a just-removed member's stale reciprocal edge
   // doesn't pull it back into the saga via get_transitive_relation_ids.
-  const otherChainIds = p.sagaChanged
+  const otherChainIds = (p.sagaChanged || removeBlockedWorkFromSaga)
     ? [...new Set([...fullChain, ...p.originalSagaOrder].filter(id => id !== externalId))]
     : [];
 
@@ -487,8 +494,29 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
 
   // Saga-chain edges pointing at other members ride in otherProposalEntries
   // instead; only hand-edited catalog fields go along (minimalProposalCatalogEntry).
+  let proposalCatalogEntry = entry;
+  const imageFieldsChanged = p.editedFields.includes('cover_url') || p.editedFields.includes('banners_csv');
+  if (imageFieldsChanged) {
+    p.setStatusMsg('Preparando imágenes de la obra para el catálogo compartido…');
+    if (p.editedFields.includes('cover_url') && entry.cover_url) {
+      proposalCatalogEntry = {
+        ...proposalCatalogEntry,
+        cover_url: await uploadImageToSharedCatalog(entry.cover_url, 'media'),
+      };
+    }
+    if (p.editedFields.includes('banners_csv') && entry.banners_csv) {
+      const bannerValue = entry.banners_csv.trim();
+      const banners = bannerValue.startsWith('data:image/')
+        ? [bannerValue]
+        : bannerValue.split(',').map(value => value.trim()).filter(Boolean);
+      const sharedBanners: string[] = [];
+      for (const banner of banners) sharedBanners.push(await uploadImageToSharedCatalog(banner, 'media'));
+      proposalCatalogEntry = { ...proposalCatalogEntry, banners_csv: sharedBanners.join(',') };
+    }
+  }
+
   const bundle: ProposalBundle = {
-    media_catalog: minimalProposalCatalogEntry(entry, p.editedFields),
+    media_catalog: minimalProposalCatalogEntry(proposalCatalogEntry, p.editedFields),
     media_relations: currentFinalRelations.map(r => ({ ...r, media_external_id: externalId })),
     characters: p.characters,
     media_authors: p.mediaAuthors,
@@ -524,7 +552,10 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   const proposalEntries: ProposalFileEntry[] = [
     {
       kind: 'media', externalId, bundle,
-      removedRelationIds: p.removedRelationIds,
+      removedRelationIds: [...new Set([
+        ...p.removedRelationIds,
+        ...(removeBlockedWorkFromSaga ? p.originalSagaOrder.filter(id => id !== externalId) : []),
+      ])],
       removedCharacterIds: p.removedCharacterIds,
       removedAuthorIds: p.removedAuthorIds,
       removedArcIds: p.removedArcIds,

@@ -89,9 +89,8 @@ const sameOrder = (a: SagaEntry[], b: SagaEntry[]) =>
 async function filterBlockedSagaEntries(entries: SagaEntry[]): Promise<SagaEntry[]> {
   if (entries.length === 0) return entries;
   const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
-  if (blockedIds.length === 0) return entries;
   const blocked = new Set(blockedIds);
-  return entries.filter(e => !blocked.has(e.externalId));
+  return entries.filter(e => !blocked.has(e.externalId) && e.format?.trim().toUpperCase() !== 'SUMMARY');
 }
 
 async function loadSagaTitle(externalId: string): Promise<string> {

@@ -223,7 +223,7 @@ const SELECT_ALL: &str = "
     FROM media_catalog";
 
 // Same as SELECT_ALL but excludes blocked rows (visible_media_catalog view,
-// db.rs) — used by every read path except a direct id lookup.
+// db.rs) - used by all normal application lookups.
 const SELECT_VISIBLE: &str = "
     SELECT id, external_id, banners_csv, blocked_at, country_code, cover_url,
            favorites_count, format, genres_csv, genres_tag_csv,
@@ -472,7 +472,7 @@ pub async fn get_catalog_entry(
     if let Some((_, num_id)) = external_id.split_once(':') {
         let (vnovel_id, game_id) = game_vnovel_siblings(num_id);
         conn.query_row(
-            &format!("{} WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3", SELECT_ALL),
+            &format!("{} WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3", SELECT_VISIBLE),
             [&external_id, &vnovel_id, &game_id],
             row_to_entry,
         )
@@ -480,7 +480,7 @@ pub async fn get_catalog_entry(
         .str_err()
     } else {
         conn.query_row(
-            &format!("{} WHERE external_id = ?1", SELECT_ALL),
+            &format!("{} WHERE external_id = ?1", SELECT_VISIBLE),
             [&external_id],
             row_to_entry,
         )
@@ -489,10 +489,9 @@ pub async fn get_catalog_entry(
     }
 }
 
-// Editor-only counterpart of get_catalog_entry. The normal lookup uses the
-// visible catalog view so blocked works disappear from the application, but
-// the Media Editor's cover selector must still be able to inspect a blocked
-// remaster and use its cover as an explicit alternative.
+// Editor-only counterpart of get_catalog_entry. Normal lookups use the
+// visible catalog view; this exact-id command exists only so the
+// collaborative-catalog editor can inspect and restore its current entry.
 #[tauri::command]
 pub async fn get_catalog_entry_for_editor(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -558,7 +557,7 @@ pub async fn find_catalog_health_issues(
 
     let mut orphan_stmt = conn.prepare(
         "SELECT mc.external_id, mc.title_main, mc.type
-         FROM media_catalog mc
+         FROM visible_media_catalog mc
          WHERE NOT EXISTS (SELECT 1 FROM user_library ul WHERE ul.external_id = mc.external_id)
            AND NOT EXISTS (SELECT 1 FROM user_list_items uli WHERE uli.external_id = mc.external_id)
            AND NOT EXISTS (SELECT 1 FROM tier_list_items tli WHERE tli.external_id = mc.external_id)
@@ -575,10 +574,10 @@ pub async fn find_catalog_health_issues(
         .collect();
 
     let mut dup_stmt = conn.prepare(
-        "SELECT external_id, title_main, type FROM media_catalog
+        "SELECT external_id, title_main, type FROM visible_media_catalog
          WHERE title_main IS NOT NULL AND trim(title_main) != ''
            AND (lower(trim(title_main)), type) IN (
-             SELECT lower(trim(title_main)), type FROM media_catalog
+             SELECT lower(trim(title_main)), type FROM visible_media_catalog
              WHERE title_main IS NOT NULL AND trim(title_main) != ''
              GROUP BY lower(trim(title_main)), type
              HAVING COUNT(*) > 1
@@ -596,6 +595,23 @@ pub async fn find_catalog_health_issues(
 
 #[tauri::command]
 pub async fn get_all_catalog_entries(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<MediaCatalogEntry>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(SELECT_VISIBLE).str_err()?;
+    let entries = stmt
+        .query_map([], row_to_entry)
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(entries)
+}
+
+// Settings > Catalog is the sole listing that must include blocked rows so
+// the user can reopen their collaborative entry and restore it. All regular
+// application consumers use get_all_catalog_entries above.
+#[tauri::command]
+pub async fn get_all_catalog_entries_for_editor(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<MediaCatalogEntry>, String> {
     let conn = state.conn.lock().str_err()?;

@@ -3,6 +3,7 @@
 // db.rs migration 41's own comment for why this is two tables rather than
 // a column on media_relations.
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 use crate::db::{generate_id, ToStringErr};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -36,6 +37,7 @@ pub struct StoryArc {
 // Year Blood War" arc's other 3 parts too, not just its own slice.
 fn story_arcs_for_media_ids(
     conn: &rusqlite::Connection,
+    data_dir: &std::path::Path,
     media_external_ids: &[String],
 ) -> Result<Vec<StoryArc>, String> {
     if media_external_ids.is_empty() {
@@ -46,7 +48,10 @@ fn story_arcs_for_media_ids(
     let arc_ids: Vec<String> = {
         let mut stmt = conn
             .prepare(&format!(
-                "SELECT DISTINCT arc_id FROM story_arc_items WHERE media_external_id IN ({id_placeholders})"
+                "SELECT DISTINCT items.arc_id
+                 FROM story_arc_items items
+                 JOIN visible_media_catalog media ON media.external_id = items.media_external_id
+                 WHERE items.media_external_id IN ({id_placeholders})"
             ))
             .str_err()?;
         let id_params: Vec<&dyn rusqlite::ToSql> = media_external_ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
@@ -80,8 +85,10 @@ fn story_arcs_for_media_ids(
 
     let mut items_stmt = conn
         .prepare(
-            "SELECT id, arc_id, media_external_id, ep_start, ep_end, position, group_id
-             FROM story_arc_items WHERE arc_id = ?1 ORDER BY position",
+            "SELECT items.id, items.arc_id, items.media_external_id, items.ep_start, items.ep_end, items.position, items.group_id
+             FROM story_arc_items items
+             JOIN visible_media_catalog media ON media.external_id = items.media_external_id
+             WHERE items.arc_id = ?1 ORDER BY items.position",
         )
         .str_err()?;
     for arc in &mut arcs {
@@ -102,16 +109,21 @@ fn story_arcs_for_media_ids(
         arc.items = items;
     }
 
+    for arc in &mut arcs {
+        arc.image_base64 = crate::image_storage::resolve_image_value(data_dir, arc.image_base64.take())?;
+    }
     Ok(arcs)
 }
 
 #[tauri::command]
 pub async fn get_story_arcs_for_media(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_id: String,
 ) -> Result<Vec<StoryArc>, String> {
     let conn = state.conn.lock().str_err()?;
-    story_arcs_for_media_ids(&conn, &[media_external_id])
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    story_arcs_for_media_ids(&conn, &data_dir, &[media_external_id])
 }
 
 // Batched counterpart of get_story_arcs_for_media — one query (one DB-mutex
@@ -124,11 +136,13 @@ pub async fn get_story_arcs_for_media(
 // for no real concurrency gained.
 #[tauri::command]
 pub async fn get_story_arcs_for_media_batch(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_ids: Vec<String>,
 ) -> Result<Vec<StoryArc>, String> {
     let conn = state.conn.lock().str_err()?;
-    story_arcs_for_media_ids(&conn, &media_external_ids)
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    story_arcs_for_media_ids(&conn, &data_dir, &media_external_ids)
 }
 
 // Upsert: empty id creates a new arc, an existing id updates name/image and
@@ -137,13 +151,18 @@ pub async fn get_story_arcs_for_media_batch(
 // only ever has a handful of items).
 #[tauri::command]
 pub async fn save_story_arc(
+    app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     arc: StoryArc,
 ) -> Result<String, String> {
+    let arc_id = if arc.id.is_empty() { generate_id() } else { arc.id.clone() };
+    let stored_image = arc.image_base64.as_deref().map(|image| {
+        app_handle.path().app_data_dir().str_err().and_then(|data_dir| {
+            crate::image_storage::store_image_value(&data_dir, "story-arcs", &arc_id, image)
+        })
+    }).transpose()?;
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
-
-    let arc_id = if arc.id.is_empty() { generate_id() } else { arc.id.clone() };
 
     // Only matters for a brand-new arc — the UPDATE branch below never
     // touches sort_order, so an existing arc keeps whatever position the
@@ -156,7 +175,7 @@ pub async fn save_story_arc(
         "INSERT INTO story_arcs (id, name, image_base64, sort_order, updated_at)
          VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP)
          ON CONFLICT(id) DO UPDATE SET name = ?2, image_base64 = ?3, updated_at = CURRENT_TIMESTAMP",
-        rusqlite::params![&arc_id, &arc.name, &arc.image_base64, next_sort_order],
+        rusqlite::params![&arc_id, &arc.name, &stored_image, next_sort_order],
     )
     .str_err()?;
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
-import { getCatalogEntry, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
+import { getCatalogEntryForEditor, getBlockedExternalIds, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData, fetchMediaDataInternal } from '../../lib/media/mediaService';
 import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
 import { isVnovelExternalId } from '../../lib/media/mapper-utils';
@@ -206,7 +206,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, onBlockedSubmitted
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await getCatalogEntry(externalId);
+        const res = await getCatalogEntryForEditor(externalId);
         const resolved = res ?? {
           id: '',
           external_id: externalId,
@@ -218,7 +218,28 @@ export function PrEditorModal({ externalId, onClose, onSaved, onBlockedSubmitted
         setOriginalEntry(resolved);
       } catch (err) {
         console.error('Failed to get catalog entry:', err);
-        setErrorMsg('Error reading local data');
+        // An older running Tauri binary may not yet have the editor-only
+        // command compiled in. The blocked-id command is older and lets the
+        // modal preserve the active removal state instead of presenting a
+        // misleading enabled-looking button.
+        const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+        if (blockedIds.includes(externalId)) {
+          const now = new Date().toISOString();
+          const liveData = await fetchMediaDataInternal(externalId, true).catch(() => null);
+          const fallback = {
+            ...(liveData ? mapMediaDataToCatalogEntry(liveData, externalId) : {}),
+            id: '',
+            external_id: externalId,
+            type: liveData?.type ?? externalId.split(':')[0],
+            blocked_at: 'blocked',
+            created_at: now,
+            updated_at: now,
+          };
+          setEntry(fallback);
+          setOriginalEntry(fallback);
+        } else {
+          setErrorMsg('Error reading local data');
+        }
       }
 
       try {
@@ -555,7 +576,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, onBlockedSubmitted
 
     try {
       invalidateCachedMediaData(externalId);
-      const liveData = await fetchMediaDataInternal(externalId);
+      const liveData = await fetchMediaDataInternal(externalId, true);
 
       if (!liveData) {
         setStatusMsg('No se encontraron datos en la API');
@@ -676,7 +697,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, onBlockedSubmitted
     try {
       const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, sagaMeta);
       const sagaChangeDiff = getDiff();
-      const sagaChanged = sagaChangeDiff.sagaOrderChanged || sagaChangeDiff.relTypesChanged
+      const sagaChanged = !!entry.blocked_at || sagaChangeDiff.sagaOrderChanged || sagaChangeDiff.relTypesChanged
         || sagaChangeDiff.groupsChanged || sagaChangeDiff.addedSaga.length > 0 || sagaChangeDiff.removedSaga.length > 0;
       const editedFields = DIFF_FIELDS.filter(([field]) => isFieldChanged(field)).map(([field]) => field);
       // Union of every relation-editing UI's own removals — media_relations
@@ -914,6 +935,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, onBlockedSubmitted
             <button
               type="button"
               className={`pr-editor-block-btn${entry.blocked_at ? ' pr-editor-block-btn--active' : ''}`}
+              aria-pressed={!!entry.blocked_at}
               title={pe.block_tooltip}
               onClick={() => handleChange('blocked_at', entry.blocked_at ? null : new Date().toISOString())}
             >

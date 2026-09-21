@@ -2,7 +2,7 @@ import { useEffect, useState, useDeferredValue } from 'react';
 import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../../lib/github/useOwnerGate';
 import {
-  getAllCatalogEntries, deleteCatalogEntry, getCatalogEntry, saveCatalogEntry,
+  getAllCatalogEntriesForEditor, deleteCatalogEntry, getCatalogEntry, getCatalogEntryForEditor, saveCatalogEntry,
   getAllSagas, getCommunitySagas, deleteSaga, type MediaCatalogEntry, type SagaListEntry,
 } from '../../lib/tauri/catalog';
 import { getAllCharacters, deleteCharacter, getCommunityCharacters, type CharacterEntry } from '../../lib/tauri/characters';
@@ -93,7 +93,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   // sync_community_catalog), so this maps external_id → title/cover from the
   // *full* local catalog (independent of the local tab's own search query)
   // to show something more useful than the id twice.
-  const [catalogInfoMap, setCatalogInfoMap] = useState<Record<string, { title?: string; cover?: string }>>({});
+  const [catalogInfoMap, setCatalogInfoMap] = useState<Record<string, { title?: string; cover?: string; blocked?: boolean }>>({});
 
   // "Add work" state
   const [addBusy, setAddBusy] = useState(false);
@@ -152,7 +152,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const loadEntries = async () => {
     setLoading(true);
     try {
-      setEntries(await getAllCatalogEntries());
+      setEntries(await getAllCatalogEntriesForEditor());
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to load entries:', err);
       setEntries([]);
@@ -280,10 +280,14 @@ export function CatalogAdminPanel({ i18n }: Props) {
     loadSagas();
     loadCharacters();
     loadEpisodeGroups();
-    getAllCatalogEntries().then(all => {
-      const map: Record<string, { title?: string; cover?: string }> = {};
+    getAllCatalogEntriesForEditor().then(all => {
+      const map: Record<string, { title?: string; cover?: string; blocked?: boolean }> = {};
       for (const e of all) {
-        if (e.cover_url || e.title_main) map[e.external_id] = { title: e.title_main ?? undefined, cover: e.cover_url ?? undefined };
+        map[e.external_id] = {
+          title: e.title_main ?? undefined,
+          cover: e.cover_url ?? undefined,
+          blocked: !!e.blocked_at,
+        };
       }
       setCatalogInfoMap(map);
     }).catch(() => {});
@@ -518,7 +522,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
       // row now has a real value for (from before this open, or from the
       // enrichment fetch above), is data that exists locally without being
       // on GitHub yet.
-      const finalEntry = await getCatalogEntry(bundle.media_catalog.external_id).catch(() => null);
+      const finalEntry = await getCatalogEntryForEditor(bundle.media_catalog.external_id).catch(() => null);
       const bundleFields = bundle.media_catalog;
       const localOnly = new Set<string>();
       if (finalEntry) {
@@ -980,6 +984,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   id={entry.external_id}
                   title={entry.title_main || entry.external_id}
                   cover={entry.cover_url}
+                  blocked={!!entry.blocked_at}
                   editLabel={t.edit_button}
                   deleteLabel={t.delete_button}
                   onEdit={() => { setEditingNonGithubFields(undefined); setEditingId(entry.external_id); }}
@@ -1054,6 +1059,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                     id={fileExternalId}
                     title={info?.title || fileExternalId}
                     cover={info?.cover}
+                    blocked={!!info?.blocked}
                     editLabel={t.edit_button}
                     deleteLabel={t.delete_button}
                     editDisabled={githubBusy}

@@ -103,9 +103,16 @@ export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
   return entries.map(entry => ({ ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) }));
 }
 
-// The regular lookup intentionally hides blocked catalog rows. The editor is
-// the one place that must inspect them, for example to offer a blocked
-// remaster's cover as an alternative for its playable base/remake.
+// Settings > Catalog is the only list where blocked works are visible, so
+// they can be reopened in the collaborative editor and restored.
+export async function getAllCatalogEntriesForEditor(): Promise<MediaCatalogEntry[]> {
+  const entries = await tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries_for_editor', []);
+  return entries.map(entry => ({ ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) }));
+}
+
+// The regular lookup intentionally hides blocked catalog rows. Only the
+// collaborative-catalog editor uses this exact-id read to inspect or restore
+// the entry currently being edited.
 export async function getCatalogEntryForEditor(externalId: string): Promise<MediaCatalogEntry | null> {
   const entry = await tauriCmd<MediaCatalogEntry | null>('get_catalog_entry_for_editor', null, { externalId });
   return entry ? { ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) } : null;
@@ -158,6 +165,10 @@ export async function getCachedSaga(externalId: string): Promise<SagaEntry[] | n
 
 export async function saveCachedSaga(entries: SagaEntry[], sagaName = ''): Promise<void> {
   return tauriRun('save_cached_saga', { entries, sagaName });
+}
+
+export async function removeSagaMember(mediaExternalId: string): Promise<void> {
+  return tauriRun('remove_saga_member', { mediaExternalId });
 }
 
 export async function getSagaName(externalId: string): Promise<string> {

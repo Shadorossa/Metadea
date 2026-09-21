@@ -56,8 +56,9 @@ function normalizeCachedApiSportsCompetition(rawId: string, data: MediaPageData)
 
 // ── Fetch interno ─────────────────────────────────────────────────────────
 
-export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | null> {
+export async function fetchMediaDataInternal(rawId: string, allowBlocked = false): Promise<MediaPageData | null> {
   if (!rawId) return null;
+  if (!allowBlocked && (await getBlockedExternalIds().catch(() => [] as string[])).includes(rawId)) return null;
 
   const { type, id: numericId } = parseExternalId(rawId);
 
@@ -151,6 +152,7 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
 }
 
 async function loadBaseEditionCharacters(baseId: string, fetchIfMissing: boolean): Promise<MediaCharacter[]> {
+  if ((await getBlockedExternalIds().catch(() => [] as string[])).includes(baseId)) return [];
   const saved = await getMediaCharacters(baseId).catch(() => [] as DbMediaCharacter[]);
   if (saved.length > 0) return saved.map(dbCharacterToMediaCharacter);
   if (!fetchIfMissing) return [];
@@ -300,9 +302,12 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
 // Strips locally-blocked relations the live provider doesn't know about.
 async function filterBlockedRelations<T extends { relatedExternalId?: string }>(relations: T[]): Promise<T[]> {
   const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
-  if (blockedIds.length === 0) return relations;
   const blocked = new Set(blockedIds);
-  return relations.filter(r => !r.relatedExternalId || !blocked.has(r.relatedExternalId));
+  return relations.filter(r => {
+    const relation = r as T & { format?: string | null };
+    return relation.format?.trim().toUpperCase() !== 'SUMMARY'
+      && (!r.relatedExternalId || !blocked.has(r.relatedExternalId));
+  });
 }
 
 // Curator-corrected fields take priority over this live fetch's result.
@@ -369,6 +374,10 @@ export async function fetchMediaData(
   // corrects it if it disagrees.
   opts?: { refreshAniListTotalCount?: boolean; refreshSourceAdaptation?: boolean },
 ): Promise<MediaPageData | null> {
+  if ((await getBlockedExternalIds().catch(() => [] as string[])).includes(rawId)) {
+    invalidateCachedMediaData(rawId);
+    return null;
+  }
   const cached = getCachedMediaData(rawId);
   const isApiSportsCompetition = /^event:apisports:(?:football|basketball):\d+$/.test(rawId);
   if (cached && (!isApiSportsCompetition || (Array.isArray(cached.seasons) && cached.seasons.length > 0))) {
@@ -376,7 +385,7 @@ export async function fetchMediaData(
   }
   if (cached && isApiSportsCompetition) invalidateCachedMediaData(rawId);
 
-  const data = await fetchMediaDataInternal(rawId);
+  const data = await fetchMediaDataInternal(rawId, true);
   if (!data) {
     // Bumps sync_failed_count so needsResync() backs off a failing provider.
     markSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
@@ -540,6 +549,24 @@ export function fetchMediaDataWithFallback(
   onError:   () => void,
   // Lets the caller skip the background refresh once the user has navigated away.
   isCancelled: () => boolean = () => false,
+): void {
+  const loadVisibleEntry = () => fetchMediaDataWithFallbackVisible(rawId, onPartial, onFull, onError, isCancelled);
+  getBlockedExternalIds().then(blockedIds => {
+    if (blockedIds.includes(rawId)) {
+      invalidateCachedMediaData(rawId);
+      if (!isCancelled()) onError();
+      return;
+    }
+    loadVisibleEntry();
+  }).catch(loadVisibleEntry);
+}
+
+function fetchMediaDataWithFallbackVisible(
+  rawId: string,
+  onPartial: (data: MediaPageData) => void,
+  onFull: (data: MediaPageData, isFinal: boolean) => void,
+  onError: () => void,
+  isCancelled: () => boolean,
 ): void {
   const isApiSportsCompetition = /^event:apisports:(?:football|basketball):\d+$/.test(rawId);
   const cached = getCachedMediaData(rawId);

@@ -1,7 +1,7 @@
 // The relations/saga half of PrEditorModal's load() effect — a pure
 // computation of `externalId` alone, split out since it reads no component
 // state. (The catalog-entry half stays in the component, in its own try block.)
-import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri/catalog';
+import { getCatalogEntryForEditor, getMediaRelationsForEditor } from '../../../lib/tauri/catalog';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../../lib/tauri/catalog';
 import { invoke } from '../../../lib/tauri';
 import {
@@ -102,7 +102,7 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
   const originalEditableRelationTypes = new Map(editableRelations.map(r => [r.related_media_external_id, r.relation_type]));
 
   const entriesData = await Promise.all(
-    transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
+    transitiveIds.map(async id => ({ id, entry: await getCatalogEntryForEditor(id).catch(() => null) }))
   );
   const validEntries = entriesData.filter((x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null);
 

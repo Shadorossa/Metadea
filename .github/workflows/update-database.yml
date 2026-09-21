@@ -7,21 +7,46 @@ on:
     paths:
       - 'catalog/**.json'
       - 'scripts/build-database.js'
+  workflow_dispatch:
+    inputs:
+      cleanup_hashes:
+        description: 'Optional comma- or newline-separated orphan character image hashes to remove after checking catalog and open PRs.'
+        required: false
+        type: string
+  schedule:
+    - cron: '17 4 * * *'
+
+concurrency:
+  group: community-catalog-database
+  cancel-in-progress: false
 
 jobs:
   build-database:
     permissions:
       contents: write
+      id-token: write
+      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The push path compares its diff; workflow_dispatch can migrate all characters.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      - name: Promote merged character images to stable R2 keys
+        env:
+          SHARED_IMAGE_WORKER_URL: https://metadea.metadea.workers.dev
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node .github/scripts/canonicalize-character-image-urls.mjs
+
       - name: Build database.db from catalog/**.json
+        if: github.event_name != 'schedule'
         run: node --experimental-sqlite scripts/build-database.js
 
       # Published as a Release asset instead of committed to main — a
@@ -34,6 +59,7 @@ jobs:
       # media_catalog.rs) downloads this fixed release asset URL, not a
       # branch-tracked raw file.
       - name: Publish database.db to the catalog-latest release
+        if: github.event_name != 'schedule'
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
