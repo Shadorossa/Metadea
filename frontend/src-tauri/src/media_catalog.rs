@@ -525,34 +525,27 @@ pub async fn delete_catalog_entry(
 }
 
 #[derive(Debug, Serialize)]
-pub struct CatalogHealthEntry {
+pub struct CatalogOrphanEntry {
     pub external_id: String,
     pub title_main: String,
     pub r#type: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct CatalogHealthReport {
-    pub orphans: Vec<CatalogHealthEntry>,
-    pub duplicates: Vec<CatalogHealthEntry>,
-}
-
-fn row_to_health_entry(row: &rusqlite::Row) -> rusqlite::Result<CatalogHealthEntry> {
-    Ok(CatalogHealthEntry {
+fn row_to_orphan_entry(row: &rusqlite::Row) -> rusqlite::Result<CatalogOrphanEntry> {
+    Ok(CatalogOrphanEntry {
         external_id: row.get(0)?,
         title_main: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
         r#type: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
     })
 }
 
-// Settings > Entorno's "Detectar duplicados y huérfanos" — read-only.
-// Orphan: nothing else in the DB references this row. Duplicate: two+ rows
-// share the same (normalized title, type), e.g. cataloged twice under
-// different external_ids. Flagged for manual review only, never auto-merged.
+// Settings > Entorno's orphan scan - read-only. An orphan is a visible
+// catalog row that is neither in a user list/library nor referenced by
+// relations, characters, sagas, or child editions.
 #[tauri::command]
-pub async fn find_catalog_health_issues(
+pub async fn find_catalog_orphans(
     state: tauri::State<'_, crate::db::MetadeaDb>,
-) -> Result<CatalogHealthReport, String> {
+) -> Result<Vec<CatalogOrphanEntry>, String> {
     let conn = state.conn.lock().str_err()?;
 
     let mut orphan_stmt = conn.prepare(
@@ -568,29 +561,11 @@ pub async fn find_catalog_health_issues(
          ORDER BY mc.updated_at DESC",
     ).str_err()?;
     let orphans = orphan_stmt
-        .query_map([], row_to_health_entry)
+        .query_map([], row_to_orphan_entry)
         .str_err()?
         .filter_map(|r| r.ok())
         .collect();
-
-    let mut dup_stmt = conn.prepare(
-        "SELECT external_id, title_main, type FROM visible_media_catalog
-         WHERE title_main IS NOT NULL AND trim(title_main) != ''
-           AND (lower(trim(title_main)), type) IN (
-             SELECT lower(trim(title_main)), type FROM visible_media_catalog
-             WHERE title_main IS NOT NULL AND trim(title_main) != ''
-             GROUP BY lower(trim(title_main)), type
-             HAVING COUNT(*) > 1
-           )
-         ORDER BY lower(trim(title_main))",
-    ).str_err()?;
-    let duplicates = dup_stmt
-        .query_map([], row_to_health_entry)
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    Ok(CatalogHealthReport { orphans, duplicates })
+    Ok(orphans)
 }
 
 #[tauri::command]

@@ -1,4 +1,4 @@
-import { useEffect, useState, useDeferredValue } from 'react';
+import { useEffect, useMemo, useState, useDeferredValue } from 'react';
 import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../../lib/github/useOwnerGate';
 import {
@@ -31,6 +31,7 @@ import { DIFF_FIELDS } from '../../lib/media/constants';
 import { getT } from '../../i18n/client';
 import { Pagination } from '../media/Pagination';
 import { SagaViewerModal } from '../media/SagaViewerModal';
+import { findCatalogDuplicateCandidateIds } from '../../lib/admin/catalog-duplicate-candidates';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
@@ -52,6 +53,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
   // Local catalog state
   const [query, setQuery] = useState('');
+  const [duplicatesOnly, setDuplicatesOnly] = useState(false);
   const [entries, setEntries] = useState<MediaCatalogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<MediaCatalogEntry | null>(null);
@@ -354,15 +356,20 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const deferredCharacterQuery = useDeferredValue(characterQuery);
   const deferredEpisodeQuery = useDeferredValue(episodeQuery);
 
-  // Mirrors search_catalog's own match (Rust, media_catalog.rs): case-
-  // insensitive substring match against title_main/title_romaji/title_native.
+  const duplicateCandidateIds = useMemo(() => findCatalogDuplicateCandidateIds(entries), [entries]);
+
+  // Search the visible catalog locally, then optionally narrow it down to
+  // possible duplicates. The duplicate filter is strictly for manual review.
   const visibleEntries = (() => {
     const q = deferredQuery.trim().toLowerCase();
-    if (!q) return entries;
     return entries.filter(e =>
-      e.title_main?.toLowerCase().includes(q)
-      || e.title_romaji?.toLowerCase().includes(q)
-      || e.title_native?.toLowerCase().includes(q)
+      (!q
+        || e.external_id.toLowerCase().includes(q)
+        || e.title_main?.toLowerCase().includes(q)
+        || e.title_english?.toLowerCase().includes(q)
+        || e.title_romaji?.toLowerCase().includes(q)
+        || e.title_native?.toLowerCase().includes(q))
+      && (!duplicatesOnly || duplicateCandidateIds.has(e.external_id))
     );
   })();
 
@@ -453,6 +460,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
     source,
     entity,
     deferredQuery,
+    duplicatesOnly,
     deferredGithubQuery,
     deferredSagaQuery,
     deferredCharacterQuery,
@@ -679,13 +687,25 @@ export function CatalogAdminPanel({ i18n }: Props) {
           )}
 
           {entity === 'media' && source === 'local' && (
-            <input
-              type="text"
-              className="catalog-admin-search"
-              placeholder={t.search_placeholder}
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-            />
+            <>
+              <input
+                type="text"
+                className="catalog-admin-search"
+                placeholder={t.search_placeholder}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+              />
+              <button
+                type="button"
+                className={`catalog-admin-source-btn catalog-admin-duplicate-filter${duplicatesOnly ? ' active' : ''}`}
+                aria-pressed={duplicatesOnly}
+                title={t.duplicate_filter_hint}
+                disabled={duplicateCandidateIds.size === 0 && !duplicatesOnly}
+                onClick={() => setDuplicatesOnly(current => !current)}
+              >
+                {t.duplicate_filter_button.replace('{count}', String(duplicateCandidateIds.size))}
+              </button>
+            </>
           )}
 
           {entity === 'media' && source === 'github' && isOwner && (
@@ -964,7 +984,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
       {entity === 'media' && source === 'local' && (
         <>
           {loading && <p className="catalog-admin-status">{t.loading}</p>}
-          {!loading && visibleEntries.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
+          {!loading && visibleEntries.length === 0 && (
+            <p className="catalog-admin-status">
+              {duplicatesOnly ? t.no_duplicate_candidates : t.no_entries}
+            </p>
+          )}
 
           {!loading && visibleEntries.length > 0 && (
             <>

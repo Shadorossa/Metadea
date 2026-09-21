@@ -1600,6 +1600,20 @@
 .env-open-folder-btn { margin-top: 1rem; }
 .env-catalog-health-btn { margin-top: 0.75rem; }
 .catalog-health-results { margin-top: 1rem; align-items: stretch; text-align: left; max-height: 320px; overflow-y: auto; }
+.catalog-health-entry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.78rem;
+}
+.catalog-health-section-heading {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
 
 .settings-help-btn svg {
   /* Fixed px size, not a percentage — a percentage here means "whatever

@@ -211,7 +211,7 @@ pub fn run() {
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
             media_catalog::get_all_catalog_entries_for_editor,
-            media_catalog::find_catalog_health_issues,
+            media_catalog::find_catalog_orphans,
             media_catalog::search_catalog,
             media_catalog::get_cached_cover,
             media_catalog::get_cached_covers_batch,

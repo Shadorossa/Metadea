@@ -311,6 +311,15 @@
   box-sizing: border-box;
 }
 
+.catalog-admin-duplicate-filter {
+  flex-shrink: 0;
+}
+
+.catalog-admin-duplicate-filter:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .catalog-admin-context-menu-item:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
   color: var(--accent, #7c6af7);
