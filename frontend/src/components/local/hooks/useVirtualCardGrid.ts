@@ -18,6 +18,44 @@ const CARD_INNER_GAP = 8; // .local-game-card's own `gap: 0.5rem`
 const TITLE_HEIGHT = 0.72 * 16 * 1.35 * 2; // font-size(rem) * root-px * line-height * 2 lines
 const ROW_HEIGHT = COVER_HEIGHT + CARD_INNER_GAP + TITLE_HEIGHT + CARD_GAP;
 
+interface LocalGridScrollAnchor {
+  card: HTMLElement;
+  top: number;
+  virtualized: boolean;
+}
+
+let pendingScrollAnchor: LocalGridScrollAnchor | null = null;
+
+export function captureLocalGridScrollAnchor(key: string | null): LocalGridScrollAnchor | null {
+  pendingScrollAnchor = null;
+  if (!key) return null;
+
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-local-selection-key]'))
+    .filter(card => card.dataset.localSelectionKey === key);
+  const visible = cards.filter(card => {
+    const rect = card.getBoundingClientRect();
+    return rect.bottom >= 0 && rect.top <= window.innerHeight;
+  });
+  const card = (visible.length > 0 ? visible : cards)[0] ?? null;
+  if (!card) return null;
+
+  const anchor = {
+    card,
+    top: card.getBoundingClientRect().top,
+    virtualized: !!card.closest('.local-games-grid--virtual'),
+  };
+  if (anchor.virtualized) pendingScrollAnchor = anchor;
+  return anchor;
+}
+
+function getPendingScrollAnchor(): LocalGridScrollAnchor | null {
+  return pendingScrollAnchor;
+}
+
+export function clearLocalGridScrollAnchor(): void {
+  pendingScrollAnchor = null;
+}
+
 // The window itself scrolls in Local (there's no separate scrolling
 // container per grid section), and a single page can have several of these
 // grids stacked (one per status/launcher section) — useWindowVirtualizer
@@ -84,6 +122,17 @@ export function useVirtualCardGrid(itemCount: number, enabled: boolean, getItemK
     // mounted rows itself changes (something scrolled into/out of range).
     directDomUpdates: true,
   });
+
+  useLayoutEffect(() => {
+    const anchor = getPendingScrollAnchor();
+    if (!enabled || !anchor || !containerRef.current?.contains(anchor.card)) return;
+
+    const delta = anchor.card.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) > 0.5) {
+      virtualizer.scrollToOffset(window.scrollY + delta, { behavior: 'auto' });
+    }
+    clearLocalGridScrollAnchor();
+  }, [columns, scrollMargin, enabled, virtualizer]);
 
   return { containerRef, columns, virtualizer };
 }

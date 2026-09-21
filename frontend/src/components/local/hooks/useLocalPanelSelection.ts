@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import type { CategoryId } from '../utils/constants';
 import type { LocalGame } from '../../../lib/tauri';
 import { readLocalUrlState, writeLocalUrlState } from '../utils/urlState';
+import { captureLocalGridScrollAnchor, clearLocalGridScrollAnchor } from './useVirtualCardGrid';
 
 // Single source of truth for "what detail panel is open" across every Local
 // category, Videojuegos included — LocalLibrary owns one instance of this
@@ -117,21 +118,31 @@ export function useLocalPanelSelection(category: CategoryId) {
     // actually looking at — shifts by that amount, with no accompanying
     // scroll adjustment: reads as the whole list jumping to a different
     // spot the instant the panel opens. Same "measure a stable reference
-    // point before the synchronous DOM update, restore its screen position
-    // after" pattern useLocalGames' own removeGame already uses for the
-    // same reason. The reference point is a quarter of the way across the
-    // viewport (not dead center) specifically so it lands on the grid even
-    // once the panel itself is occupying the right half of the screen —
-    // picking a plain center point would sometimes measure the PANEL'S own
-    // content instead, which doesn't move just because the grid beside it
-    // reflowed. A plain switch between two already-open selections never
-    // actually changes the grid's width at all, so this is a no-op there.
-    const anchor = document.elementFromPoint(window.innerWidth * 0.25, window.innerHeight / 2);
-    const beforeTop = anchor?.getBoundingClientRect().top;
+    // point before the synchronous DOM update. Virtualized grids hand the
+    // correction to TanStack Virtual after their lane count changes; plain
+    // grids use the small fallback below.
+    const anchorKey = sel ? (sel.kind === 'game' ? sel.key : sel.id) : selection
+      ? (selection.kind === 'game' ? selection.key : selection.id)
+      : null;
+    const anchor = captureLocalGridScrollAnchor(anchorKey);
+    const beforeTop = anchor?.top;
     flushSync(() => setSelectionRaw(sel));
-    if (anchor && beforeTop !== undefined) {
-      const afterTop = anchor.getBoundingClientRect().top;
-      if (afterTop !== beforeTop) window.scrollBy(0, afterTop - beforeTop);
+    if (anchor && beforeTop !== undefined && !anchor.virtualized) {
+      const restoreAnchorPosition = () => {
+        const afterTop = anchor.card.getBoundingClientRect().top;
+        if (afterTop !== beforeTop) window.scrollBy(0, afterTop - beforeTop);
+      };
+      restoreAnchorPosition();
+      requestAnimationFrame(() => {
+        restoreAnchorPosition();
+        requestAnimationFrame(restoreAnchorPosition);
+      });
+    }
+    if (anchor?.virtualized) {
+      // If the panel width did not remove a column, no ResizeObserver update
+      // is needed and the virtualizer will not consume the pending anchor.
+      // Give it two frames to handle a real lane change, then discard it.
+      requestAnimationFrame(() => requestAnimationFrame(clearLocalGridScrollAnchor));
     }
     writeLocalUrlState(category, encodeSelection(sel));
   }

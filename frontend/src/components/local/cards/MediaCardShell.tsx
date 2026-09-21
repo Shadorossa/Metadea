@@ -10,6 +10,7 @@ interface MediaCardShellProps {
   badge?:  React.ReactNode;
   onClick: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  selectionKey?: string;
   // GameCard's cover is already known synchronously from coverCache (no
   // deferred fetch), so its <img> can use native lazy-loading. LocalMediaCard
   // defers src itself instead (see its own effect) — stacking native lazy
@@ -34,13 +35,14 @@ interface MediaCardShellProps {
 // wherever the grid puts them, same as before any of that. Hover scale is
 // plain CSS (.local-game-card:hover) for the same reason.
 export const MediaCardShell = React.forwardRef<HTMLDivElement, MediaCardShellProps>(
-  function MediaCardShell({ title, cover, placeholderIcon, badge, onClick, onContextMenu, lazyImage }, ref) {
+  function MediaCardShell({ title, cover, placeholderIcon, badge, onClick, onContextMenu, selectionKey, lazyImage }, ref) {
     return (
       <div
         ref={ref}
         className="local-game-card"
         onClick={onClick}
         onContextMenu={onContextMenu}
+        data-local-selection-key={selectionKey}
         role="button"
         tabIndex={0}
         onKeyDown={e => e.key === 'Enter' && onClick()}

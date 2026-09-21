@@ -102,6 +102,7 @@ export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete, lau
         </span>
       }
       onClick={() => onClick(item)}
+      selectionKey={item.externalId}
       onContextMenu={onRequestDelete ? e => {
         e.preventDefault();
         onRequestDelete(item, e.clientX, e.clientY);

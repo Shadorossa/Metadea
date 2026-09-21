@@ -44,6 +44,7 @@ export function GameCard({ game, coverCache, onClick, status, onRequestDelete, d
         </span>
       )}
       onClick={() => onClick(game)}
+      selectionKey={game.external_id ?? game.app_id ?? game.name}
       onContextMenu={onRequestDelete ? e => {
         e.preventDefault();
         onRequestDelete(game, e.clientX, e.clientY);
