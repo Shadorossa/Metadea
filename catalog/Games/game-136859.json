@@ -1,0 +1,42 @@
+{
+  "media_catalog": {
+    "id": "d586b4e9dc9e8ad3d586b4e9dc9e8ad3",
+    "external_id": "game:136859",
+    "type": "game",
+    "title_main": "The Legend of Heroes: Sora no Kiseki FC Kai - HD",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-21T06:44:51.405Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:8986",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "The Legend of Heroes: Trails in the Sky",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co7ybm.jpg",
+      "media_external_id": "game:136859"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:30247",
+      "name": "Estelle Bright",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b30247-UPFbpaHYYqMj.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:50121",
+      "name": "Joshua Bright",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b50121-ZICSm4Cevqha.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    }
+  ],
+  "media_authors": [],
+  "story_arcs": []
+}
