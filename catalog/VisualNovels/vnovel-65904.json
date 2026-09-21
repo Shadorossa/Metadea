@@ -1,0 +1,49 @@
+{
+  "media_catalog": {
+    "id": "79374203446923637937420344692363",
+    "external_id": "vnovel:65904",
+    "type": "vnovel",
+    "title_main": "Umineko no Naku Koro ni Chiru: Episode 8 - Twilight of the Golden Witch",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "vnovel:65904",
+      "related_media_external_id": "vnovel:272096",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Umineko no Naku Koro ni: Episode 8 - Twilight of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co78nm.jpg",
+      "format": null,
+      "release_day": 15,
+      "release_month": 12,
+      "release_year": 2011
+    },
+    {
+      "media_external_id": "vnovel:65904",
+      "related_media_external_id": "vnovel:272318",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "Umineko When They Cry: Episode 8 - Twilight of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78v4.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
+    },
+    {
+      "media_external_id": "vnovel:65904",
+      "related_media_external_id": "vnovel:79848",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Umineko no Naku Koro ni Chiru: Episode 7 - Requiem of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78le.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Umineko no naku koro ni"
+}
