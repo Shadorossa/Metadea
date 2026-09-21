@@ -8,6 +8,14 @@
     {
       "media_external_id": "anime:170658",
       "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:115",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "series:94605",
+      "relation_type": "MAIN"
     }
   ],
   "actors": [
