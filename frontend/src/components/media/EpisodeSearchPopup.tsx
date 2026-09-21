@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { search, type SearchResult as ApiSearchResult } from '../../lib/search';
+import { searchAnimeAndSeries, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { fetchMediaEpisodes } from '../../lib/media/episode-list';
 import type { MediaEpisode } from '../../lib/tauri';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
@@ -37,21 +37,7 @@ export function EpisodeSearchPopup({
 
   const { results: showResults, isLoading: isSearchingShows } = useDebouncedSearch<ApiSearchResult>(
     query,
-    async (q, signal) => {
-      if (mediaTypeFilter === 'anime') {
-        const res = await search(q, 'anime', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]);
-        return res.slice(0, 60);
-      }
-      if (mediaTypeFilter === 'series') {
-        const res = await search(q, 'series', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]);
-        return res.slice(0, 60);
-      }
-      const [animeRes, seriesRes] = await Promise.all([
-        search(q, 'anime', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]),
-        search(q, 'series', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]),
-      ]);
-      return [...seriesRes, ...animeRes].slice(0, 60);
-    },
+    (q, signal) => searchAnimeAndSeries(q, mediaTypeFilter, signal),
     [mediaTypeFilter],
   );
 

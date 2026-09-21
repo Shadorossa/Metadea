@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
-import { removeLocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
@@ -14,6 +13,7 @@ import { FolderRouteControls } from './FolderRouteControls';
 import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { VirtualCardGrid } from './ui/VirtualCardGrid';
+import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
 
 // sectionStatus is the badge shown on any kind:'game' entry in this section
 // (kind:'catalog' entries carry their own item.status instead) — safe to
@@ -117,18 +117,14 @@ export function GamesGrid({
   // one shared menu, branching on which kind was right-clicked since each
   // deletes through a completely different path (hide a scanned install vs.
   // drop a library entry).
-  type DeleteMenu = { x: number; y: number } & ({ kind: 'game'; game: LocalGame } | { kind: 'library'; item: LocalMediaItem });
-  const [deleteMenu, setDeleteMenu] = useState<DeleteMenu | null>(null);
-  const handleDeleteGame = (game: LocalGame) => {
-    const linkKey = game.app_id ?? game.install_path ?? game.name;
-    onRemoveGame(game.launcher, linkKey);
-    removeLocalGame(game.launcher, linkKey).catch(console.error);
-    setDeleteMenu(null);
-  };
-  const handleDeleteLibraryItem = (item: LocalMediaItem) => {
-    onDeleteLibraryItem(item.externalId);
-    setDeleteMenu(null);
-  };
+  const {
+    deleteMenu,
+    requestDeleteGame,
+    requestDeleteLibraryItem,
+    handleDeleteGame,
+    handleDeleteLibraryItem,
+    closeDeleteMenu,
+  } = useLocalDeleteMenu({ onRemoveGame, onDeleteLibraryItem });
 
   const statusSections: StatusSection[] = [
     ...(currentlyEntries.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: currentlyEntries, sectionStatus: 'playing' }] : []),
@@ -160,7 +156,7 @@ export function GamesGrid({
                 coverCache={coverCache}
                 onClick={onSelectGame}
                 status={sec.sectionStatus}
-                onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
+                onRequestDelete={requestDeleteGame}
                 displayName={displayNameFor(entry.game, catalogMapById)}
               />
             ) : (
@@ -168,7 +164,7 @@ export function GamesGrid({
                 item={entry.item}
                 cachedPath={coverCacheHits[entry.item.externalId]}
                 onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
-                onRequestDelete={(item, x, y) => setDeleteMenu({ kind: 'library', item, x, y })}
+                onRequestDelete={requestDeleteLibraryItem}
                 launchGame={entry.launchGame}
               />
             )}
@@ -291,7 +287,7 @@ export function GamesGrid({
                     coverCache={coverCache}
                     onClick={onSelectGame}
                     status={gameStatusMatch.get(entry.game)}
-                    onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
+                    onRequestDelete={requestDeleteGame}
                     displayName={displayNameFor(entry.game, catalogMapById)}
                   />
                 ) : (
@@ -299,7 +295,7 @@ export function GamesGrid({
                     item={entry.item}
                     cachedPath={coverCacheHits[entry.item.externalId]}
                     onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
-                    onRequestDelete={(item, x, y) => setDeleteMenu({ kind: 'library', item, x, y })}
+                    onRequestDelete={requestDeleteLibraryItem}
                     launchGame={entry.launchGame}
                   />
                 )}
@@ -315,7 +311,7 @@ export function GamesGrid({
           y={deleteMenu.y}
           label="Eliminar de la lista"
           onDelete={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
-          onClose={() => setDeleteMenu(null)}
+          onClose={closeDeleteMenu}
         />
       )}
     </div>

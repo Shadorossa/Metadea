@@ -1,0 +1,33 @@
+/* Shared data-tooltip styling. Positioning is customized per component below. */
+.heatmap-cell::after,
+.media-user-card::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.95);
+  color: #fff;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+}
+
+.heatmap-cell::after {
+  bottom: 130%;
+}
+
+.media-user-card::after {
+  top: calc(100% + 0.4rem);
+}
+
+.heatmap-cell:hover::after,
+.media-user-card:hover::after {
+  opacity: 1;
+}

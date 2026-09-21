@@ -24,7 +24,7 @@ import { generateCustomCharacterId } from '../../lib/character/customCharacter';
 import { AdminAddSearch } from './AdminAddSearch';
 import { CatalogEntryCard } from './CatalogEntryCard';
 import { IconTrash } from '../local/ui/icons';
-import { search, type SearchResult as ApiSearchResult } from '../../lib/search';
+import { searchAnimeAndSeries, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { fetchMediaEpisodes } from '../../lib/media/episode-list';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
@@ -396,19 +396,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
     episodeQuery,
     async (q, signal) => {
       if (entity !== 'episodes') return [];
-      if (episodeMediaTypeFilter === 'anime') {
-        const res = await search(q, 'anime', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]);
-        return res.slice(0, 60);
-      }
-      if (episodeMediaTypeFilter === 'series') {
-        const res = await search(q, 'series', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]);
-        return res.slice(0, 60);
-      }
-      const [animeRes, seriesRes] = await Promise.all([
-        search(q, 'anime', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]),
-        search(q, 'series', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]),
-      ]);
-      return [...seriesRes, ...animeRes].slice(0, 60);
+      return searchAnimeAndSeries(q, episodeMediaTypeFilter, signal);
     },
     [entity, episodeMediaTypeFilter],
   );

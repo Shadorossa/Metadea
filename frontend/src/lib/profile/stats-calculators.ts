@@ -2,8 +2,7 @@ import type { getAllLibraryEntries, MediaCatalogEntry, DbMediaRelation } from '.
 import { isInProgressStatus, ALL_MEDIA_TYPES, SUB_WORK_FORMATS } from '../constants/media';
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 import { buildEditionMaps, sagaIdentityOf } from '../../components/profile/library-grouping';
-import { isSagaComponentRelationType, SAGA_GROUPABLE_TYPES } from '../media/sagaTypes';
-import { createUnionFind } from '../shared/union-find';
+import { buildDirectSagaGraph } from './saga-graph';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -107,21 +106,7 @@ export function groupSagaChains(
   relations: DbMediaRelation[],
   catalogMap: Map<string, MediaCatalogEntry>,
 ): Map<string, string[]> {
-  const sagaGraph = createUnionFind<string>();
-
-  const directSagaIds = new Set<string>();
-  for (const rel of relations) {
-    if (!rel.media_external_id || !isSagaComponentRelationType(rel.relation_type)) continue;
-    const a = rel.media_external_id;
-    const b = rel.related_media_external_id;
-    const typeA = catalogMap.get(a)?.type;
-    const typeB = catalogMap.get(b)?.type;
-    if (typeA && !SAGA_GROUPABLE_TYPES.has(typeA)) continue;
-    if (typeB && !SAGA_GROUPABLE_TYPES.has(typeB)) continue;
-    sagaGraph.union(a, b);
-    directSagaIds.add(a);
-    directSagaIds.add(b);
-  }
+  const { graph: sagaGraph, directIds: directSagaIds } = buildDirectSagaGraph(relations, catalogMap);
 
   // Fold any owned remaster/remake/expanded edition with no direct saga edge
   // of its own onto whichever franchise its original belongs to — e.g. a

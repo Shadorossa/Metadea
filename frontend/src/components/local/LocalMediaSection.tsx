@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { getT } from '../../i18n/client';
-import { removeLocalGame, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
+import { type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { useCoverCacheBatch } from './hooks/useCoverCacheBatch';
 import { isInProgressStatus } from '../../lib/constants/media';
@@ -14,6 +14,7 @@ import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { VirtualCardGrid } from './ui/VirtualCardGrid';
+import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
@@ -230,18 +231,14 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // onRemoveGame/onDeleteLibraryItem's own doc comments above): anime/manga/
   // etc. never render a "steam" kind entry at all, and their "catalog" kind
   // LocalMediaCards never get onRequestDelete passed in the first place.
-  type DeleteMenu = { x: number; y: number } & ({ kind: 'game'; game: LocalGame } | { kind: 'library'; item: LocalMediaItem });
-  const [deleteMenu, setDeleteMenu] = useState<DeleteMenu | null>(null);
-  const handleDeleteGame = (game: LocalGame) => {
-    const linkKey = game.app_id ?? game.install_path ?? game.name;
-    onRemoveGame?.(game.launcher, linkKey);
-    removeLocalGame(game.launcher, linkKey).catch(console.error);
-    setDeleteMenu(null);
-  };
-  const handleDeleteLibraryItem = (item: LocalMediaItem) => {
-    onDeleteLibraryItem?.(item.externalId);
-    setDeleteMenu(null);
-  };
+  const {
+    deleteMenu,
+    requestDeleteGame,
+    requestDeleteLibraryItem,
+    handleDeleteGame,
+    handleDeleteLibraryItem,
+    closeDeleteMenu,
+  } = useLocalDeleteMenu({ onRemoveGame, onDeleteLibraryItem });
 
   type SectionEntry = { kind: 'catalog'; item: LocalMediaItem; launchGame?: LocalGame } | { kind: 'steam'; game: LocalGame; libraryStatus?: string };
   // A library-only VN entry gets one more chance to resolve to a real (but
@@ -435,7 +432,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         item={entry.item}
                         cachedPath={coverCacheHits[entry.item.externalId]}
                         onClick={i => isGameLike ? onOpenPendingSelection(i, entry.launchGame) : onSetCatalogSelection(i.externalId)}
-                        onRequestDelete={isGameLike ? (item, x, y) => setDeleteMenu({ kind: 'library', item, x, y }) : undefined}
+                        onRequestDelete={isGameLike ? requestDeleteLibraryItem : undefined}
                         launchGame={entry.launchGame}
                       />
                     ) : (
@@ -445,7 +442,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         onClick={onSetGameSelection}
                         displayName={displayNameFor(entry.game, catalogMapById)}
                         status={steamGameMatch.get(entry.game)?.status ?? entry.libraryStatus}
-                        onRequestDelete={(g, x, y) => setDeleteMenu({ kind: 'game', game: g, x, y })}
+                        onRequestDelete={requestDeleteGame}
                       />
                     )}
                   />
@@ -474,7 +471,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
               y={deleteMenu.y}
               label="Eliminar de la lista"
               onDelete={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
-              onClose={() => setDeleteMenu(null)}
+              onClose={closeDeleteMenu}
             />
           )}
         </div>

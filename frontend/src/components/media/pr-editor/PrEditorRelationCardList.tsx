@@ -1,4 +1,5 @@
 import type { DragHandlers } from '../hooks/useDragReorder';
+import { PrEditorMediaCard } from './PrEditorMediaCard';
 
 interface RelationCard {
   external_id: string;
@@ -13,10 +14,10 @@ interface Props {
   onRemove: (externalId: string) => void;
 }
 
-// Generic "grid of draggable cards with a remove button" panel — the Bundled
+// Generic "grid of draggable cards with a remove button" panel - the Bundled
 // In and Contains sections used to be two near-identical copies of this.
-// Drag reordering itself lives in useDragReorder, in the parent — same
-// pattern as the Saga order list. The "+ Add" trigger isn't rendered here —
+// Drag reordering itself lives in useDragReorder, in the parent - same
+// pattern as the Saga order list. The "+ Add" trigger isn't rendered here -
 // it lives in the caller's own section header row, next to the section
 // title, not in its own row below.
 export function PrEditorRelationCardList({
@@ -26,27 +27,15 @@ export function PrEditorRelationCardList({
     <div className="pr-editor-subsection pr-editor-subsection--bundled">
       <div className="pr-editor-media-group-cards pr-editor-media-group-cards--twelve">
         {relations.map((r, index) => (
-          <div
+          <PrEditorMediaCard
             key={r.external_id}
-            className={`pr-editor-media-card${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-            {...dragHandlers(index)}
-          >
-            <div className="pr-editor-media-card-cover">
-              {r.cover
-                ? <img className="cover-image-fill" src={r.cover} alt="" draggable={false} />
-                : <div className="pr-editor-media-card-placeholder" />}
-              <button
-                type="button"
-                className="pr-editor-media-card-remove"
-                onClick={() => onRemove(r.external_id)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="pr-editor-media-card-title" title={r.title || r.external_id}>
-              {r.title || r.external_id}
-            </div>
-          </div>
+            externalId={r.external_id}
+            title={r.title}
+            cover={r.cover}
+            isDragging={draggedIndex === index}
+            dragHandlers={dragHandlers(index)}
+            onRemove={onRemove}
+          />
         ))}
       </div>
     </div>

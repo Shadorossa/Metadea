@@ -364,31 +364,6 @@
   z-index: 10;
 }
 
-/* Tooltip on cell */
-.heatmap-cell::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 130%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.95);
-  color: #fff;
-  padding: 0.35rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-  z-index: 20;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border-color);
-}
-
-.heatmap-cell:hover::after {
-  opacity: 1;
-}
-
 /* Heatmap intensities */
 .heatmap-cell.level-0 {
   background: rgba(255, 255, 255, 0.02);

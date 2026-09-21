@@ -7,6 +7,7 @@ import { searchApiSportsEvents, type ApiSportsDiscipline } from './providers/api
 import { MissingApiKeyError }          from './errors';
 import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
 import { parseCSV } from '../shared/string-utils';
+import { dedupeByExternalId } from '../shared/dedupe';
 import { searchCharactersDb, type CharacterEntry } from '../tauri/characters';
 import { getCustomImagesMap, wrapAssetUrl, getMediaRelations, type FavoriteCustomImage } from '../tauri';
 import { isUnifySeasonsEnabled } from '../settings/preferences';
@@ -435,23 +436,6 @@ async function searchAll(searchQuery: string, signal: AbortSignal, page: number)
   return { results: dedupeByExternalId(results), hasMore };
 }
 
-// searchOne() already merges a type's own local-catalog hits against that
-// same type's live API results without duplicating an externalId — but
-// searchAll() fans out to every type in parallel and just concatenates each
-// type's own already-deduped list, so a work that (for whatever reason) has
-// a catalog row filed under one type but a live hit under another one for
-// the same query would still reach the UI twice. Keeps first occurrence
-// (API results are pushed before any type's local-only extras, so a live
-// hit always wins over a local-only one for the same id).
-function dedupeByExternalId(results: SearchResult[]): SearchResult[] {
-  const seen = new Set<string>();
-  return results.filter(r => {
-    if (seen.has(r.externalId)) return false;
-    seen.add(r.externalId);
-    return true;
-  });
-}
-
 // search_catalog (Rust) already excludes blocked_at rows for the local-
 // catalog half of a result — but a live API hit for that same title has no
 // idea it was blocked locally, so it'd still show up on its own.
@@ -492,6 +476,28 @@ export async function search(
     : await searchOne(mediaType, searchQuery, signal, page, eventDiscipline);
   if (mediaType === 'character' || mediaType === 'staff') return page_;
   return filterReclassified(await filterBlocked(page_));
+}
+
+export async function searchAnimeAndSeries(
+  searchQuery: string,
+  mediaType: 'all' | 'anime' | 'series',
+  signal: AbortSignal,
+  limit = 60,
+): Promise<SearchResult[]> {
+  const searchType = async (type: 'anime' | 'series') =>
+    search(searchQuery, type, signal)
+      .then(page => page.results)
+      .catch(() => [] as SearchResult[]);
+
+  if (mediaType === 'anime' || mediaType === 'series') {
+    return (await searchType(mediaType)).slice(0, limit);
+  }
+
+  const [animeResults, seriesResults] = await Promise.all([
+    searchType('anime'),
+    searchType('series'),
+  ]);
+  return [...seriesResults, ...animeResults].slice(0, limit);
 }
 
 function fetchTopRatedFromApi(

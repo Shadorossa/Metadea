@@ -3,6 +3,7 @@ import { RelationTypeSelect } from '../RelationTypeSelect';
 import type { DragHandlers } from '../hooks/useDragReorder';
 import { groupRelationOptions } from '../../../lib/media/sagaTypes';
 import { RELATION_TYPE_RECIPROCAL } from '../../../lib/media/canonical-relations';
+import { PrEditorMediaCard } from './PrEditorMediaCard';
 
 interface EditableRelation {
   related_media_external_id: string;
@@ -22,7 +23,7 @@ interface Props {
   onUpdateType: (id: string, relationType: string) => void;
 }
 
-// The "Relations" panel — ADAPTATION/SPIN_OFF/ALTERNATIVE/etc, i.e. every
+// The "Relations" panel - ADAPTATION/SPIN_OFF/ALTERNATIVE/etc, i.e. every
 // relation that isn't managed by the saga chain or Bundled In. The
 // "+ Add Relation" button lives in PrEditorModal's own section header row
 // now, next to the "Relations" title. Drag reordering itself lives in
@@ -43,23 +44,15 @@ export function PrEditorRelationsSection({
     <div className="pr-editor-subsection pr-editor-subsection--saga">
       <div className="pr-editor-media-group-cards pr-editor-media-group-cards--twelve">
         {editableRelations.map((r, index) => (
-          <div
+          <PrEditorMediaCard
             key={r.related_media_external_id}
-            className={`pr-editor-media-card${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-            {...dragHandlers(index)}
+            externalId={r.related_media_external_id}
+            title={r.title}
+            cover={r.cover}
+            isDragging={draggedIndex === index}
+            dragHandlers={dragHandlers(index)}
+            onRemove={onRemove}
           >
-            <div className="pr-editor-media-card-cover">
-              {r.cover
-                ? <img className="cover-image-fill" src={r.cover} alt="" draggable={false} />
-                : <div className="pr-editor-media-card-placeholder" />}
-              <button
-                type="button"
-                className="pr-editor-media-card-remove"
-                onClick={() => onRemove(r.related_media_external_id)}
-              >
-                ×
-              </button>
-            </div>
             <RelationTypeSelect
               value={r.relation_type}
               groups={relationGroups}
@@ -67,10 +60,7 @@ export function PrEditorRelationsSection({
               extraOption={{ value: r.relation_type, label: r.type_label }}
               onChange={type => onUpdateType(r.related_media_external_id, type)}
             />
-            <div className="pr-editor-media-card-title" title={r.title || r.related_media_external_id}>
-              {r.title || r.related_media_external_id}
-            </div>
-          </div>
+          </PrEditorMediaCard>
         ))}
       </div>
     </div>

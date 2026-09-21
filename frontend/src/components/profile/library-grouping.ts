@@ -7,12 +7,11 @@ import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib
 import { compareByReleaseDate, stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import {
   CONTAINS_RELATION_TYPES,
-  isSagaComponentRelationType,
   isSequelRelationType,
-  SAGA_GROUPABLE_TYPES,
 } from '../../lib/media/sagaTypes';
 import { parseDelimitedString } from '../../lib/shared/string-utils';
 import { createUnionFind } from '../../lib/shared/union-find';
+import { buildDirectSagaGraph } from '../../lib/profile/saga-graph';
 import { isInProgressStatus, SEASON_STATUS_PRIORITY } from '../../lib/constants/media';
 import { reconstructSagaOrder } from '../../lib/media/sagaGrouping';
 
@@ -300,24 +299,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
   // paused/in-progress ones; each stays its own individual entry instead.
   suppressIfCompletedElsewhere?: Set<string>,
 ): Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> {
-  const sagaGraph = createUnionFind<string>();
-
-  const directSagaIds = new Set<string>();
-  for (const rel of relations) {
-    // SECUELA/PRECUELA: pre-fix Spanish labels some libraries still have on disk.
-    // ALTERNATIVE: classifySagaChain's Concept Group edge — a saga step without an order.
-    if (!isSagaComponentRelationType(rel.relation_type)) continue;
-    if (!rel.media_external_id) continue;
-    const a = rel.media_external_id;
-    const b = rel.related_media_external_id;
-    const typeA = catalogMap.get(a)?.type;
-    const typeB = catalogMap.get(b)?.type;
-    if (typeA && !SAGA_GROUPABLE_TYPES.has(typeA)) continue;
-    if (typeB && !SAGA_GROUPABLE_TYPES.has(typeB)) continue;
-    sagaGraph.union(a, b);
-    directSagaIds.add(a);
-    directSagaIds.add(b);
-  }
+  const { graph: sagaGraph, directIds: directSagaIds } = buildDirectSagaGraph(relations, catalogMap);
 
   // originalOf[editionId] = the base work it's a remake/remaster/expanded
   // edition of (chain-flattened, same rootOf technique groupEditions uses

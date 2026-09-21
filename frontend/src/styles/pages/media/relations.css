@@ -840,30 +840,6 @@
    above: .media-users-grid-scroll clips/fades its own overflow, so a
    tooltip above the first row got clipped out (rendered but invisible)
    before it ever reached the visible area. */
-.media-user-card::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.95);
-  color: #fff;
-  padding: 0.35rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.65rem;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-  z-index: 20;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border-color);
-}
-
-.media-user-card:hover::after {
-  opacity: 1;
-}
-
 /* formatRatingHtml's own <span class="media-user-score"> - sized down from
    its default (built for the bigger rating-input widget) to fit a compact
    5-column grid. */
