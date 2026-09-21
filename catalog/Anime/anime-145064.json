@@ -24,22 +24,23 @@
     },
     {
       "media_external_id": "anime:145064",
-      "related_media_external_id": "anime:113415",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Jujutsu Kaisen",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg"
-    },
-    {
-      "media_external_id": "anime:145064",
       "related_media_external_id": "anime:172463",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Jujutsu Kaisen: Shimetsu Kaiyuu - Zenpen",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx172463-LnXqHzt74SJL.jpg"
+    },
+    {
+      "media_external_id": "anime:145064",
+      "related_media_external_id": "anime:131573",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Jujutsu Kaisen 0",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx131573-rpl82vDEDRm6.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Jujutsu Kaisen"
+  "saga_name": "Jujutsu Kaisen",
+  "story_arcs": []
 }
