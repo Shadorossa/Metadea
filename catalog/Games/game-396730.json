@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "1df8ccdb84dc581b1df8ccdb84dc581b",
+    "external_id": "game:396730",
+    "type": "game",
+    "title_main": "Resident Evil 3: Nemesis",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-21T08:15:21.834Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:966",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "Resident Evil 3: Nemesis",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2vvb.jpg",
+      "media_external_id": "game:396730"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
