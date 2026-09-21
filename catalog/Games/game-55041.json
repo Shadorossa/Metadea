@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "4f87926c35c8d65b4f87926c35c8d65b",
+    "external_id": "game:55041",
+    "type": "game",
+    "title_main": "Metal Gear Solid 2: Sons of Liberty - HD",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-21T18:55:02.285Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:474",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "Metal Gear Solid 2: Substance",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eg1.jpg",
+      "media_external_id": "game:55041"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
