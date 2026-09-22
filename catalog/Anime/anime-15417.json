@@ -60,19 +60,19 @@
     },
     {
       "media_external_id": "anime:15417",
-      "related_media_external_id": "anime:9969",
+      "related_media_external_id": "anime:15335",
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
-      "title": "Gintama'",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx9969-0GaRABYVdUcH.png"
+      "title": "Gintama: Kanketsu-hen - Yorozuya yo Eien Nare",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx15335-QjijwChGTBs0.png"
     },
     {
       "media_external_id": "anime:15417",
-      "related_media_external_id": "anime:15335",
+      "related_media_external_id": "anime:20996",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
-      "title": "Gintama: Kanketsu-hen - Yorozuya yo Eien Nare",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx15335-QjijwChGTBs0.png"
+      "title": "Gintama°",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx20996-kBEGEGdeK1r7.jpg"
     }
   ],
   "characters": [],
