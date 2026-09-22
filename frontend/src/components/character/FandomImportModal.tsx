@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Check, X } from 'lucide-react';
 import { fetchFandomCharacter, type FandomCharacterData } from '../../lib/character/fandomImporter';
 import { correlateVoiceActors } from '../../lib/character/voiceActorResolver';
 import { getT } from '../../i18n/client';
 
 export interface SelectedImportFields {
   name: boolean;
+  nativeName: boolean;
   image: boolean;
   aliases: boolean;
   characteristics: boolean;
@@ -25,9 +27,11 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<FandomCharacterData | null>(null);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
 
   const [selectedFields, setSelectedFields] = useState<SelectedImportFields>({
     name: true,
+    nativeName: true,
     image: true,
     aliases: true,
     characteristics: true,
@@ -79,12 +83,13 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
   };
 
   const modalContent = (
-    <div className="pr-editor-search-popup" onClick={onClose}>
+    <div className="pr-editor-search-popup" onClick={event => { event.stopPropagation(); onClose(); }}>
       <div
         className="pr-editor-search-popup-content pr-editor-search-popup-content--wide"
         onClick={e => e.stopPropagation()}
-        style={{ padding: '1.5rem', maxHeight: '85vh', overflowY: 'auto' }}
+        style={{ position: 'relative', padding: 0, paddingRight: '4.5rem', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'row', alignItems: 'stretch' }}
       >
+        <div style={{ flex: 1, minWidth: 0, padding: '1.5rem', maxHeight: '85vh', overflowY: 'auto' }}>
         {/* Cabecera del modal */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color, #2d2a24)', paddingBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -94,42 +99,32 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
             <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main, #eae6df)' }}>
-              {t.import_fandom_title}
+              Importar desde Fandom
             </span>
           </div>
-          <button
-            type="button"
-            className="fandom-import-close-btn"
-            onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted, #8a857a)', cursor: 'pointer', fontSize: '1.25rem', padding: '0.25rem' }}
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Barra de entrada de URL */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          <input
-            type="text"
-            placeholder={t.import_fandom_url_ph}
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFetch(); } }}
-            autoFocus
-            className="input-dark"
-            style={{ flex: 1 }}
-          />
-          <button
-            type="button"
-            className="pr-editor-btn pr-editor-btn--primary fandom-import-fetch-btn"
-            onClick={handleFetch}
-            disabled={loading}
-            style={{ minWidth: '130px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-          >
-            {loading ? (
-              <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(0,0,0,0.2)', borderTopColor: 'currentColor', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-            ) : t.import_fandom_fetch}
-          </button>
+          <div style={{ display: 'flex', flex: 1, minWidth: '260px', gap: '0.5rem', marginLeft: '1rem' }}>
+            <input
+              type="text"
+              placeholder={t.import_fandom_url_ph}
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleFetch(); } }}
+              autoFocus
+              className="input-dark"
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--primary fandom-import-fetch-btn"
+              onClick={handleFetch}
+              disabled={loading}
+              style={{ minWidth: '130px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+            >
+              {loading ? (
+                <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(0,0,0,0.2)', borderTopColor: 'currentColor', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              ) : t.import_fandom_fetch}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -144,12 +139,20 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
             <div className="fandom-import-preview-card" style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '1.25rem', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)', padding: '1rem' }}>
               <div>
                 {data.imageUrl ? (
-                  <img
-                    src={data.imageUrl}
-                    alt={data.name}
-                    className="fandom-import-preview-img"
-                    style={{ width: '100px', height: '130px', objectFit: 'cover', borderRadius: 'var(--radius-sm, 4px)', border: '1px solid var(--border-color)' }}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setImagePickerOpen(true)}
+                    title="Elegir imagen de la wiki"
+                    aria-label="Elegir imagen de la wiki"
+                    style={{ display: 'block', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
+                  >
+                    <img
+                      src={data.imageUrl}
+                      alt={data.name}
+                      className="fandom-import-preview-img"
+                      style={{ width: '100px', height: '130px', objectFit: 'cover', borderRadius: 'var(--radius-sm, 4px)', border: '1px solid var(--border-color)' }}
+                    />
+                  </button>
                 ) : (
                   <div className="fandom-import-preview-img-ph" style={{ width: '100px', height: '130px', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-sm, 4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                     {t.no_image}
@@ -166,6 +169,11 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                 {data.aliases.length > 0 && (
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #8a857a)' }}>
                     <strong>{t.import_fandom_preview_aliases}:</strong> {data.aliases.join(', ')}
+                  </div>
+                )}
+                {data.nativeName && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #8a857a)' }}>
+                    <strong>{t.native_name}:</strong> {data.nativeName}
                   </div>
                 )}
                 {data.appearsIn && (
@@ -252,6 +260,11 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                 </label>
 
                 <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={selectedFields.nativeName} onChange={() => toggleField('nativeName')} disabled={!data.nativeName} />
+                  <span>{t.native_name}{data.nativeName ? ` (${data.nativeName})` : ''}</span>
+                </label>
+
+                <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
                   <input type="checkbox" checked={selectedFields.image} onChange={() => toggleField('image')} disabled={!data.imageUrl} />
                   <span>{t.import_fandom_preview_image}</span>
                 </label>
@@ -279,25 +292,73 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
             </div>
 
             {/* Botones de acción */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', borderTop: '1px solid var(--border-color, #2d2a24)', paddingTop: '1rem' }}>
-              <button
-                type="button"
-                className="pr-editor-btn pr-editor-btn--secondary"
-                onClick={onClose}
-              >
-                {t.cancel}
-              </button>
-              <button
-                type="button"
-                className="pr-editor-btn pr-editor-btn--primary"
-                onClick={handleApply}
-              >
-                {t.import_fandom_apply}
-              </button>
+            <div style={{ position: 'absolute', top: '50%', right: '1rem', transform: 'translateY(-50%)', display: 'flex', justifyContent: 'flex-end', margin: 0, padding: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                <button
+                  type="button"
+                  className="pr-editor-btn pr-editor-btn--secondary"
+                  onClick={onClose}
+                  title={t.cancel}
+                  aria-label={t.cancel}
+                  style={{ minWidth: '42px', minHeight: '38px', padding: '0.45rem' }}
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="pr-editor-btn pr-editor-btn--primary"
+                  onClick={handleApply}
+                  title={t.import_fandom_apply}
+                  aria-label={t.import_fandom_apply}
+                  style={{ minWidth: '42px', minHeight: '38px', padding: '0.45rem' }}
+                >
+                  <Check size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {imagePickerOpen && data && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Seleccionar imagen de Fandom"
+            onClick={() => setImagePickerOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', padding: '1.5rem', background: 'rgba(0,0,0,0.72)' }}
+          >
+            <div
+              onClick={event => event.stopPropagation()}
+              style={{ width: 'min(760px, 100%)', maxHeight: '80vh', overflowY: 'auto', padding: '1.25rem', background: 'var(--bg-card, #1b1b1b)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <strong>Imágenes de {data.name}</strong>
+                <button type="button" onClick={() => setImagePickerOpen(false)} aria-label="Cerrar selector de imágenes" title="Cerrar" className="fandom-import-close-btn">
+                  <X size={18} />
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '0.75rem' }}>
+                {data.imageOptions.map(option => (
+                  <button
+                    type="button"
+                    key={`${option.title}:${option.url}`}
+                    onClick={() => {
+                      setData(current => current ? { ...current, imageUrl: option.url } : current);
+                      setImagePickerOpen(false);
+                    }}
+                    title={option.title}
+                    aria-label={`Usar imagen ${option.title}`}
+                    style={{ padding: '0.3rem', background: option.url === data.imageUrl ? 'var(--accent-soft)' : 'transparent', border: `1px solid ${option.url === data.imageUrl ? 'var(--accent)' : 'var(--border-color)'}`, borderRadius: 'var(--radius-sm, 4px)', cursor: 'pointer' }}
+                  >
+                    <img src={option.previewUrl} alt={option.title} loading="lazy" style={{ display: 'block', width: '100%', height: '150px', objectFit: 'contain' }} />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 

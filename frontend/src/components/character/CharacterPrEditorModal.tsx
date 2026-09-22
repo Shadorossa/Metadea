@@ -586,6 +586,9 @@ export function CharacterPrEditorModal() {
     if (fields.name && data.name) {
       setName(data.name);
     }
+    if (fields.nativeName && data.nativeName) {
+      setNameNative(data.nativeName);
+    }
     if (fields.image && data.imageUrl) {
       setImageUrl(data.imageUrl);
     }

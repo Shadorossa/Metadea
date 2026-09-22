@@ -13,7 +13,9 @@ export interface FandomCharacterData {
   wikiName: string;
   pageTitle: string;
   name: string;
+  nativeName: string | null;
   imageUrl: string | null;
+  imageOptions: Array<{ title: string; url: string; previewUrl: string }>;
   aliases: string[];
   characteristics: ParsedCharacteristic[];
   cleanBiography: string;
@@ -290,6 +292,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
   const seenCharacteristicValues = new Map<string, Set<string>>();
   const voiceActors: ExtractedVoiceActor[] = [];
   let aliases: string[] = [];
+  let nativeName: string | null = null;
   let appearsIn: string | null = null;
 
   const dataItems = doc.querySelectorAll(
@@ -342,6 +345,10 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
 
     const sourceAttr = (el.getAttribute('data-source') || '').toLowerCase();
     const normLabel = label.toLowerCase();
+    const normalizedNameLabel = normLabel.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').replace(/[:：]\s*$/, '').trim();
+    const normalizedNameSource = sourceAttr.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const isNativeNameLabel = /^(?:(?:jp|japanese|native) name(?:\s+\([^)]*\))?|name (?:in )?(?:jp|japanese)(?:\s+\([^)]*\))?|name \((?:jp|japanese)\))$/i;
+    const isNativeNameField = isNativeNameLabel.test(normalizedNameLabel) || isNativeNameLabel.test(normalizedNameSource);
     const isOtherNamesField = sourceAttr === 'other_name' || sourceAttr === 'other_names' || /\bother names?\b/i.test(label);
     const valHtml = valEl.innerHTML;
 
@@ -391,6 +398,8 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
           existingAliases.add(key);
         }
       }
+    } else if (isNativeNameField) {
+      nativeName = (valEl.textContent || '').replace(/\s+/g, ' ').trim() || null;
     } else if (
       sourceAttr === 'voiced_by' || sourceAttr === 'voice_actor' || sourceAttr === 'voiceactor' ||
       sourceAttr === 'seiyuu' || sourceAttr === 'seiyu' ||
@@ -448,6 +457,45 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     }
   }
 
+  const imageTitles = Array.isArray(json.parse.images)
+    ? (json.parse.images as string[]).filter(title => typeof title === 'string')
+    : [];
+  let imageOptions: FandomCharacterData['imageOptions'] = [];
+  if (imageTitles.length > 0) {
+    try {
+      for (let offset = 0; offset < imageTitles.length; offset += 50) {
+        const imageParams = new URLSearchParams({
+          action: 'query',
+          titles: imageTitles.slice(offset, offset + 50).map(title => title.startsWith('File:') ? title : `File:${title}`).join('|'),
+          prop: 'imageinfo',
+          iiprop: 'url',
+          iiurlwidth: '300',
+          format: 'json',
+          origin: '*',
+        });
+        const imageResponse = await fetch(`https://${subdomain}.fandom.com/${prefix}api.php?${imageParams}`);
+        if (!imageResponse.ok) continue;
+        const imageJson = await imageResponse.json();
+        imageOptions.push(...Object.values(imageJson.query?.pages ?? {})
+          .flatMap((page: any) => {
+            const imageInfo = page.imageinfo?.[0];
+            const resolvedUrl = imageInfo?.url;
+            return resolvedUrl ? [{
+              title: page.title || '',
+              url: cleanFandomImageUrl(resolvedUrl),
+              previewUrl: imageInfo.thumburl || resolvedUrl,
+            }] : [];
+          }));
+      }
+    } catch {
+      // La imagen principal sigue disponible aunque la consulta de la galería falle.
+    }
+  }
+  if (imageUrl && !imageOptions.some(option => option.url === imageUrl)) {
+    imageOptions.unshift({ title: name, url: imageUrl, previewUrl: imageUrl });
+  }
+  if (!imageUrl && imageOptions[0]) imageUrl = imageOptions[0].url;
+
   // Extraer biografía limpia eliminando todo elemento de infobox o ficha lateral
   const contentRoot = doc.querySelector('.mw-parser-output') || doc.body;
   contentRoot.querySelectorAll(
@@ -490,7 +538,9 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     wikiName: subdomain,
     pageTitle,
     name,
+    nativeName,
     imageUrl,
+    imageOptions,
     aliases,
     characteristics,
     cleanBiography,
