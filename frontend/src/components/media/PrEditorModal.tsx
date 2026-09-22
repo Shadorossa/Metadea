@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BookOpen, Boxes, Clapperboard, GitBranch, Layers, Link, List, Package, Settings, Sparkles, Users, type LucideIcon } from 'lucide-react';
+import { BookOpen, Boxes, Clapperboard, GitBranch, Layers, Link, List, Music2, Package, Settings, Sparkles, Users, type LucideIcon } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
 import { getCatalogEntryForEditor, getBlockedExternalIds, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
-import { invalidateCachedMediaData, fetchMediaDataInternal } from '../../lib/media/mediaService';
+import { invalidateCachedMediaData, fetchMediaDataInternal, fetchMediaThemes } from '../../lib/media/mediaService';
 import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
 import { isVnovelExternalId } from '../../lib/media/mapper-utils';
 import type { MediaCatalogEntry, DbMediaAuthor } from '../../lib/tauri/catalog';
-import { getMediaCharacters, getAllCharacters, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
-import { getMediaEpisodes, type MediaEpisode } from '../../lib/tauri/misc-commands';
+import { getMediaCharacters, type DbMediaCharacter } from '../../lib/tauri/characters';
+import { getMediaEpisodes, type MediaEpisode, type MediaTheme } from '../../lib/tauri/misc-commands';
 import { fetchMediaEpisodes } from '../../lib/media/episode-list';
 import { fetchTmdbDetail, fetchTmdbEpisodes, type TmdbTvDetail } from '../../lib/search/providers/tmdb';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
@@ -33,6 +33,7 @@ import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { RichTextEditor } from '../shared/RichTextEditor';
 import { useDragReorder } from './hooks/useDragReorder';
 import { PrEditorCharactersSection } from './pr-editor/PrEditorCharactersSection';
+import { PrEditorThemeCard } from './pr-editor/PrEditorThemeCard';
 import { PrEditorRelationCardList } from './pr-editor/PrEditorRelationCardList';
 import { PrEditorStoryArcsSection } from './pr-editor/PrEditorStoryArcsSection';
 import { PrEditorSagaOrderSection } from './pr-editor/PrEditorSagaOrderSection';
@@ -82,7 +83,7 @@ interface Props {
 
 
 const DEFAULT_NEW_RELATION_TYPE = 'REL_ADAPTATION';
-type RelationsSubtab = 'saga' | 'relations' | 'recommendations' | 'bundled' | 'arcs' | 'issues' | 'episodes' | 'bundle-children' | 'contains';
+type RelationsSubtab = 'saga' | 'relations' | 'recommendations' | 'bundled' | 'arcs' | 'issues' | 'episodes' | 'themes' | 'bundle-children' | 'contains';
 const RELATIONS_SUBTAB_ICONS: Record<RelationsSubtab, LucideIcon> = {
   saga: GitBranch,
   relations: Link,
@@ -91,6 +92,7 @@ const RELATIONS_SUBTAB_ICONS: Record<RelationsSubtab, LucideIcon> = {
   arcs: Layers,
   issues: BookOpen,
   episodes: Clapperboard,
+  themes: Music2,
   'bundle-children': Boxes,
   contains: List,
 };
@@ -181,6 +183,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   const [episodePreview, setEpisodePreview] = useState<MediaEpisode[]>([]);
   const [episodePreviewLoading, setEpisodePreviewLoading] = useState(false);
   const [episodeSourceTitle, setEpisodeSourceTitle] = useState('');
+  const [themePreview, setThemePreview] = useState<MediaTheme[]>([]);
+  const [themePreviewLoading, setThemePreviewLoading] = useState(false);
   const episodePreviewRequest = useRef(0);
 
   // Saga — one single ordered chain (chronological order), including this
@@ -209,8 +213,9 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
 
   const [characters, setCharacters] = useState<DbMediaCharacter[]>([]);
   const [originalCharacters, setOriginalCharacters] = useState<DbMediaCharacter[]>([]);
-  const [allCharacters, setAllCharacters] = useState<CharacterEntry[]>([]);
   const [showCharSearch, setShowCharSearch] = useState(false);
+  const [castSearchRole, setCastSearchRole] = useState('SUPPORTING');
+  const characterCreateRole = useRef('SUPPORTING');
   const [selectedCastCharacters, setSelectedCastCharacters] = useState<Array<{ external_id: string; name: string; image_url?: string | null }>>([]);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
   const [originalMediaAuthors, setOriginalMediaAuthors] = useState<DbMediaAuthor[]>([]);
@@ -231,11 +236,12 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
       { id: 'arcs', label: 'Arcos', visible: true },
       { id: 'issues', label: 'Issues', visible: !!entry && (issueRelations.length > 0 || ['comic', 'manga', 'lnovel'].includes(entry.type)) },
       { id: 'episodes', label: 'Episodios', visible: !!entry && ['anime', 'series'].includes(entry.type) },
+      { id: 'themes', label: tm.section_themes, visible: entry?.type === 'anime' },
       { id: 'bundle-children', label: 'Contenido', visible: bundledRelations.length > 0 },
       { id: 'contains', label: 'Contiene', visible: entry?.format === 'BUNDLE' },
     ];
     return tabs.filter(tab => tab.visible);
-  }, [entry?.type, entry?.format, issueRelations.length, bundledRelations.length]);
+  }, [entry?.type, entry?.format, issueRelations.length, bundledRelations.length, tm.section_themes]);
 
   useEffect(() => {
     if (relationsSubtabs.some(tab => tab.id === relationsSubtab)) return;
@@ -333,7 +339,6 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     load();
     getMediaCharacters(externalId).then(chars => { setCharacters(chars); setOriginalCharacters(chars); }).catch(() => { setCharacters([]); setOriginalCharacters([]); });
     getMediaAuthors(externalId).then(a => { setMediaAuthors(a); setOriginalMediaAuthors(a); }).catch(() => { setMediaAuthors([]); setOriginalMediaAuthors([]); });
-    getAllCharacters().then(setAllCharacters).catch(() => setAllCharacters([]));
   }, [externalId]);
 
   useEffect(() => {
@@ -341,6 +346,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
       setEpisodePreview([]);
       setEpisodeSourceTitle('');
       setEpisodePreviewLoading(false);
+      setThemePreview([]);
+      setThemePreviewLoading(false);
       return;
     }
 
@@ -350,6 +357,16 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     setEpisodePreviewLoading(true);
     setEpisodePreview([]);
     setEpisodeSourceTitle('');
+    setThemePreview([]);
+    if (entry.type === 'anime') {
+      setThemePreviewLoading(true);
+      fetchMediaThemes(externalId)
+        .then(themes => { if (isCurrent()) setThemePreview(themes); })
+        .catch(error => { if (isCurrent()) console.error('Failed to load theme preview', error); })
+        .finally(() => { if (isCurrent()) setThemePreviewLoading(false); });
+    } else {
+      setThemePreviewLoading(false);
+    }
 
     const toPreviewEpisode = (episode: {
       season_number: number;
@@ -445,9 +462,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   // this component — the only way back into this entry's own cast list is
   // this event, dispatched by that modal the instant its own local save
   // succeeds (see its handleSubmit), independent of whether its GitHub
-  // proposal step succeeds/fails/never runs at all. Functional setCharacters
-  // update (not the closure-capturing addCharacter helper below) so this
-  // listener never needs re-registering on every character-list edit.
+  // proposal step succeeds/fails/never runs at all. The functional state
+  // update means this listener never needs re-registering after list edits.
   useEffect(() => {
     function onCharacterSaved(e: Event) {
       const detail = (e as CustomEvent<{ externalId: string; name: string; imageUrl: string | null }>).detail;
@@ -456,7 +472,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
         external_id: detail.externalId,
         name: detail.name,
         image_url: detail.imageUrl,
-        relation_type: 'SUPPORTING',
+        relation_type: characterCreateRole.current,
         character_name: null,
       }]);
     }
@@ -468,22 +484,6 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
 
   const removeCharacter = (charExternalId: string) =>
     setCharacters(characters.filter(c => c.external_id !== charExternalId));
-  const updateCharacterRole = (charExternalId: string, role: string) =>
-    setCharacters(characters.map(c => c.external_id === charExternalId ? { ...c, relation_type: role } : c));
-  const addCharacter = (c: CharacterEntry | ApiSearchResult) => {
-    const extId = 'externalId' in c ? c.externalId : c.external_id;
-    const name = 'externalId' in c ? (c.titleMain || 'Unknown Name') : c.name;
-    const imageUrl = 'externalId' in c ? (c.coverUrl || null) : c.image_url;
-
-    if (characters.some(existing => existing.external_id === extId)) return;
-    setCharacters([...characters, {
-      external_id: extId,
-      name: name,
-      image_url: imageUrl,
-      relation_type: 'SUPPORTING',
-      character_name: null,
-    }]);
-  };
   const charactersChanged = () => {
     const key = (c: DbMediaCharacter) => `${c.external_id}::${c.relation_type ?? ''}`;
     const a = new Set(characters.map(key));
@@ -1139,17 +1139,19 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
               const Icon = RELATIONS_SUBTAB_ICONS[tab.id];
               const isActive = activeTab === 'relations' && relationsSubtab === tab.id;
               return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={`pr-editor-tab-btn${isActive ? ' active' : ''}`}
-                  onClick={() => { setActiveTab('relations'); setRelationsSubtab(tab.id); }}
-                  title={tab.label}
-                  aria-label={tab.label}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <Icon size={18} aria-hidden="true" />
-                </button>
+                <React.Fragment key={tab.id}>
+                  {tab.id === 'episodes' && <div className="pr-editor-sidebar-divider" />}
+                  <button
+                    type="button"
+                    className={`pr-editor-tab-btn${isActive ? ' active' : ''}`}
+                    onClick={() => { setActiveTab('relations'); setRelationsSubtab(tab.id); }}
+                    title={tab.label}
+                    aria-label={tab.label}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                  </button>
+                </React.Fragment>
               );
             })}
           </nav>
@@ -1265,19 +1267,22 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
               characters={characters}
               changed={charactersChanged()}
               onRemove={removeCharacter}
-              onUpdateRole={updateCharacterRole}
-              onOpenSearch={() => {
+              onOpenSearch={role => {
+                setCastSearchRole(role);
                 setSelectedCastCharacters([]);
                 setShowCharSearch(true);
               }}
-              onOpenCreate={() => (window as any).openCharacterEditor?.(generateCustomCharacterId(), {
+              onOpenCreate={role => {
+                characterCreateRole.current = role;
+                return (window as any).openCharacterEditor?.(generateCustomCharacterId(), {
                 media_external_id: externalId,
                 title: entry?.title_main || externalId,
                 cover: entry?.cover_url ?? null,
                 release_year: entry?.release_year ?? null,
                 release_month: entry?.release_month ?? null,
                 release_day: entry?.release_day ?? null,
-              })}
+                });
+              }}
             />
           )}
 
@@ -1413,7 +1418,24 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                 </div>
               )}
 
-              {/* Only shown once a bundle is actually referenced above — lets
+              {relationsSubtab === 'themes' && entry.type === 'anime' && (
+                <div className="pr-editor-section">
+                  <h3 className="pr-editor-section-title">{tm.section_themes}</h3>
+                  <div className="media-relations-grid pr-editor-theme-preview-grid">
+                    {themePreview.map(theme => (
+                      <PrEditorThemeCard
+                        key={`${theme.external_id}-${theme.theme_type}-${theme.sequence}-${theme.slug}`}
+                        theme={theme}
+                        fallbackUrl={entry.banners_csv?.split(',')[0]?.trim() || entry.cover_url || undefined}
+                      />
+                    ))}
+                    {themePreviewLoading && <div className="pr-editor-search-loading">Cargando temas…</div>}
+                    {!themePreviewLoading && themePreview.length === 0 && <div className="pr-editor-search-empty">No hay temas disponibles para esta obra.</div>}
+                  </div>
+                </div>
+              )}
+
+              {/* Only shown once a bundle is actually referenced above - lets
                   you fill in the rest of that bundle's own contents right
                   here (this entry is already implied) instead of having to
                   separately open the bundle's own editor afterward. */}
@@ -1584,7 +1606,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                   external_id: character.external_id,
                   name: character.name,
                   image_url: character.image_url ?? null,
-                  relation_type: 'SUPPORTING',
+                  relation_type: castSearchRole,
                   character_name: null,
                 }));
               if (additions.length) setCharacters(previous => [...previous, ...additions]);

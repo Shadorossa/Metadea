@@ -1022,7 +1022,7 @@ export const ca = {
     prev_lang_aria: "Idioma anterior",
     next_lang_title: "Següent idioma",
     next_lang_aria: "Següent idioma",
-    non_anilist_character_title: "Per a un personatge que no existeix a AniList",
+    non_anilist_character_title: "Crea un personatge nou",
   },
   author_page: {
     page_title: "Detalls de l'Autor",

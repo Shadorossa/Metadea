@@ -1020,7 +1020,7 @@ export const ja = {
     prev_lang_aria: "前の言語",
     next_lang_title: "次の言語",
     next_lang_aria: "次の言語",
-    non_anilist_character_title: "AniListに存在しないキャラクター用",
+    non_anilist_character_title: "新しいキャラクターを作成",
   },
   author_page: {
     page_title: "作者の詳細",

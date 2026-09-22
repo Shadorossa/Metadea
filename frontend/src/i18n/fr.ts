@@ -1020,7 +1020,7 @@ export const fr = {
     prev_lang_aria: "Langue précédente",
     next_lang_title: "Langue suivante",
     next_lang_aria: "Langue suivante",
-    non_anilist_character_title: "Pour un personnage qui n'existe pas sur AniList",
+    non_anilist_character_title: "Créer un nouveau personnage",
   },
   author_page: {
     page_title: "Détails de l'auteur",

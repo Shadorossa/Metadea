@@ -360,7 +360,7 @@ export const es = {
     saga_order_label: "Orden de la saga",
     concept_group_placeholder: "Grupo conceptual...",
     relations_heading: "Relaciones",
-    changelog_title: "Últimos cambios del catálogo comunitario",
+    changelog_title: "Últimas actualizaciones",
     changelog_loading: "Cargando historial...",
     changelog_empty: "Todavía no hay cambios registrados para esta entrada.",
     backfill_nothing_to_update: "No había nada que actualizar.",
@@ -1030,7 +1030,7 @@ export const es = {
     prev_lang_aria: "Idioma anterior",
     next_lang_title: "Siguiente idioma",
     next_lang_aria: "Siguiente idioma",
-    non_anilist_character_title: "Para un personaje que no existe en AniList",
+    non_anilist_character_title: "Crear un nuevo personaje",
   },
   author_page: {
     page_title: "Detalles del Autor",

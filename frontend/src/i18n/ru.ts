@@ -1020,7 +1020,7 @@ export const ru = {
     prev_lang_aria: "Предыдущий язык",
     next_lang_title: "Следующий язык",
     next_lang_aria: "Следующий язык",
-    non_anilist_character_title: "Для персонажа, которого нет на AniList",
+    non_anilist_character_title: "Создать нового персонажа",
   },
   author_page: {
     page_title: "Информация об авторе",
