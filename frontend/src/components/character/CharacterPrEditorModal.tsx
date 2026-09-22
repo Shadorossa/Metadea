@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BookOpen, Mic, Settings } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { openSubmittedProposal } from '../../lib/github/submitCollaborativeProposal';
 import { getDroppedImageUrl, openImageCropModal } from '../shared/ImageCropModal';
@@ -643,12 +644,12 @@ export function CharacterPrEditorModal() {
   return createPortal(
     <div className="pr-editor-overlay pr-editor-overlay--nested" onClick={handleClose}>
       <div className="pr-editor-modal" onClick={e => e.stopPropagation()}>
-        <div className="pr-editor-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            <span className="pr-editor-title">{t.title}</span>
+        <div className="pr-editor-header pr-editor-header--row">
+          <div className="pr-editor-header-titles">
+            <span className="pr-editor-title">Editar {name || character.name}</span>
             <span className="pr-editor-subtitle">ID: {currentId}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="pr-editor-header-actions">
             {statusMsg && (
               <div className="pr-editor-header-status" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent, #7c6af7)' }}>
                 <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(124, 106, 247, 0.2)', borderTopColor: 'var(--accent, #7c6af7)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -672,22 +673,24 @@ export function CharacterPrEditorModal() {
           </div>
         </div>
 
-        <div className="pr-editor-tabs">
-          <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')}>
-            General
-            {characteristicsChanged() && <span className="pr-editor-tab-changed-dot" />}
-          </button>
-          <button type="button" className={`pr-editor-tab-btn${activeTab === 'appearances' ? ' active' : ''}`} onClick={() => setActiveTab('appearances')}>
-            {t.appearances_tab}
-            {(appearancesChanged() || mergedCharactersChanged()) && <span className="pr-editor-tab-changed-dot" />}
-          </button>
-          <button type="button" className={`pr-editor-tab-btn${activeTab === 'voices' ? ' active' : ''}`} onClick={() => setActiveTab('voices')}>
-            {t.voice_actors}
-            {voiceActorsChanged() && <span className="pr-editor-tab-changed-dot" />}
-          </button>
-        </div>
+        <div className="pr-editor-content-shell">
+          <nav className="pr-editor-sidebar" aria-label="Secciones del personaje">
+            <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')} title="General" aria-label="General">
+              <Settings size={18} strokeWidth={1.8} />
+              {characteristicsChanged() && <span className="pr-editor-tab-changed-dot" />}
+            </button>
+            <button type="button" className={`pr-editor-tab-btn${activeTab === 'appearances' ? ' active' : ''}`} onClick={() => setActiveTab('appearances')} title={t.appearances_tab} aria-label={t.appearances_tab}>
+              <BookOpen size={18} strokeWidth={1.8} />
+              {(appearancesChanged() || mergedCharactersChanged()) && <span className="pr-editor-tab-changed-dot" />}
+            </button>
+            <button type="button" className={`pr-editor-tab-btn${activeTab === 'voices' ? ' active' : ''}`} onClick={() => setActiveTab('voices')} title={t.voice_actors} aria-label={t.voice_actors}>
+              <Mic size={18} strokeWidth={1.8} />
+              {voiceActorsChanged() && <span className="pr-editor-tab-changed-dot" />}
+            </button>
+          </nav>
 
-        <div className="pr-editor-body">
+          <main className="pr-editor-main">
+          <div className="pr-editor-body">
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
 
           {activeTab === 'general' && (
@@ -990,6 +993,8 @@ export function CharacterPrEditorModal() {
           </div>
           </>
           )}
+          </div>
+          </main>
         </div>
 
         <div className="pr-editor-footer">

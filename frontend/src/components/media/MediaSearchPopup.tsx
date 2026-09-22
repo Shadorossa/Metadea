@@ -238,7 +238,12 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             {castPicker.onConfirm && !castLoading && !castError && cast.length > 0 && (
               <div className="pr-editor-search-cast-actions">
                 <span>{castPicker.selectedIds?.length ?? 0} seleccionados</span>
-                <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={castPicker.onConfirm}>
+                <button
+                  type="button"
+                  className="pr-editor-btn pr-editor-btn--submit"
+                  onClick={castPicker.onConfirm}
+                  disabled={!castPicker.selectedIds?.length}
+                >
                   {castPicker.confirmLabel || 'Añadir seleccionados'}
                 </button>
               </div>
