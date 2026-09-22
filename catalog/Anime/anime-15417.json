@@ -11,72 +11,366 @@
   },
   "media_relations": [
     {
-      "media_external_id": "anime:15417",
       "related_media_external_id": "manga:30044",
       "relation_type": "SOURCE",
       "type_label": "Source Material",
       "title": "Gintama",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx30044-vPmoz3vTPvZs.jpg",
-      "format": null,
-      "release_day": 8,
-      "release_month": 12,
-      "release_year": 2003
+      "media_external_id": "anime:15417"
     },
     {
-      "media_external_id": "anime:15417",
       "related_media_external_id": "anime:175573",
       "relation_type": "SUMMARY",
       "type_label": "Summary",
       "title": "Gintama on Theater 2D: Ikkoku Keisei-hen",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx175573-jf4woESV4dx9.jpg",
-      "format": null,
-      "release_day": null,
-      "release_month": null,
-      "release_year": null
+      "media_external_id": "anime:15417"
     },
     {
-      "media_external_id": "anime:15417",
       "related_media_external_id": "anime:178436",
       "relation_type": "SUMMARY",
       "type_label": "Summary",
       "title": "Gintama on Theater 2D: Kintama-hen",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx178436-oTiX9xY2yEJZ.jpg",
-      "format": null,
-      "release_day": null,
-      "release_month": null,
-      "release_year": null
+      "media_external_id": "anime:15417"
     },
     {
-      "media_external_id": "anime:15417",
       "related_media_external_id": "anime:20882",
       "relation_type": "SIDE_STORY",
       "type_label": "Side story",
       "title": "Gintama': Futon ni Haitte kara Buki Nokoshi ni Kizuite Neru ni Nerenai Toki mo Aru",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/20882.jpg",
-      "format": null,
-      "release_day": null,
-      "release_month": null,
-      "release_year": null
+      "media_external_id": "anime:15417"
     },
     {
       "media_external_id": "anime:15417",
       "related_media_external_id": "anime:15335",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
       "title": "Gintama: Kanketsu-hen - Yorozuya yo Eien Nare",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx15335-QjijwChGTBs0.png"
     },
     {
       "media_external_id": "anime:15417",
-      "related_media_external_id": "anime:20996",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Gintama°",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx20996-kBEGEGdeK1r7.jpg"
+      "related_media_external_id": "anime:9969",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Gintama'",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx9969-0GaRABYVdUcH.png"
     }
   ],
-  "characters": [],
-  "media_authors": [],
+  "characters": [
+    {
+      "external_id": "character:a:672",
+      "name": "Gintoki Sakata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b672-cP5VPriN67xJ.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:674",
+      "name": "Kagura",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b674-w8wCh0A5Qa8R.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:673",
+      "name": "Shinpachi Shimura",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b673-nScArSMt85kd.jpg",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:72323",
+      "name": "Oboro",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b72323-whoa5ag3lhrb.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:6110",
+      "name": "Kyuubei Yagyuu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n6110-2TQFGi833X4t.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:46407",
+      "name": "Jugem Jugem",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/46407-ASqv4AHmU56V.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:15581",
+      "name": "Koshinori Yagyuu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/15581.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:2944",
+      "name": "Tae Shimura",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n2944-XzeaielhUwAV.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:1759",
+      "name": "Ayame Sarutobi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n1759-hbviRHbxGNmx.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:2948",
+      "name": "Shinsuke Takasugi",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_2948.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32239",
+      "name": "Seita",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32239.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:9877",
+      "name": "Musashi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/9877.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:55577",
+      "name": "Nobume Imai",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b55577-gWBgsXbGn7b4.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:8282",
+      "name": "Ayumu Toujou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n8282-XAaxRDRUwTFH.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:80065",
+      "name": "Hajime Obi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b80065-KSIvwkEQ4jEv.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:18823",
+      "name": "Tsukuyo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b18823-EHKT9u7r91s0.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:7930",
+      "name": "Catherine",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n7930-HPv7rh74r6bl.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:2282",
+      "name": "Sougo Okita",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2282-X0uYqwmwxiPo.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:5972",
+      "name": "Katakuriko Matsudaira",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b5972-KiEozdifZmFN.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:77845",
+      "name": "Maizou Rotten",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/77845.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:57337",
+      "name": "Kintoki Sakata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/57337.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:7157",
+      "name": "Shigeshige Tokugawa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/7157.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:55579",
+      "name": "Isaburo Sasaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b55579-5cUmAKri1Tsa.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:5970",
+      "name": "Otose",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n5970-mAiTzyfEOup9.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:2943",
+      "name": "Isao Kondou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2943-QVEHBh0T6hPC.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:7927",
+      "name": "Gengai Hiraga",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n7927-4EwfGY7dhxvG.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:77717",
+      "name": "Sadasada Tokugawa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/77717.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32214",
+      "name": "Soyo Tokugawa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b32214-FXnbYbXAc4XL.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:73287",
+      "name": "Tokiko",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/73287.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:28144",
+      "name": "Shouyou Yoshida",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b28144-QsZ8pBkqo4rj.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:2650",
+      "name": "Toushirou Hijikata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2650-zgkj5l8mIOnn.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:3760",
+      "name": "Taizou Hasegawa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b3760-bxdyoPARX4Sx.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:4653",
+      "name": "Sagaru Yamazaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n4653-HTmFLlAViL0t.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:1533",
+      "name": "Kotarou Katsura",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b1533-tSqUrj2DOK5p.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:2651",
+      "name": "Sadaharu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n2651-e8BTqVZl8lK2.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:6615",
+      "name": "Tama",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b6615-KlhhQlhWbO1A.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32238",
+      "name": "Hinowa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32238.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:a96904",
+      "name": "Hideaki Sorachi",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/large/n96904-PbWsZd8U0G4v.jpg",
+      "role": "Original Creator",
+      "url": "/author?id=person:a96904",
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
   "saga_name": "Gintama",
   "story_arcs": []
 }
