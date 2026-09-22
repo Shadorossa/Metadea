@@ -12,18 +12,6 @@
   "media_relations": [
     {
       "media_external_id": "anime:15335",
-      "related_media_external_id": "anime:918",
-      "relation_type": "PARENT",
-      "type_label": "Source",
-      "title": "Gintama",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx918-iOaeBVUn4uK7.jpg",
-      "format": null,
-      "release_day": 4,
-      "release_month": 4,
-      "release_year": 2006
-    },
-    {
-      "media_external_id": "anime:15335",
       "related_media_external_id": "lnovel:95458",
       "relation_type": "SOURCE",
       "type_label": "Source Material",
@@ -45,6 +33,18 @@
       "release_day": 8,
       "release_month": 12,
       "release_year": 2003
+    },
+    {
+      "media_external_id": "anime:15335",
+      "related_media_external_id": "anime:918",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Gintama",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx918-iOaeBVUn4uK7.jpg",
+      "format": null,
+      "release_day": 4,
+      "release_month": 4,
+      "release_year": 2006
     },
     {
       "media_external_id": "anime:15335",
