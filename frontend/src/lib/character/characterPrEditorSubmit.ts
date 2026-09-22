@@ -7,7 +7,7 @@ import { saveCharacter, saveCharacterAppearances, type CharacterEntry } from '..
 import { saveCharacterMerges } from '../tauri/characters';
 import { saveCharacterActors } from '../tauri/actors';
 import { markSynced } from '../tauri';
-import { submitCollaborativeProposal, type CharacterProposalBundle, type SubmittedProposal } from '../github/submitCollaborativeProposal';
+import { submitCollaborativeProposal, type CharacterProposalBundle, type ProposalFileEntry, type SubmittedProposal } from '../github/submitCollaborativeProposal';
 import { buildBiographyHtml, type ParsedCharacteristic } from './biography-parser';
 import { uploadImageToSharedCatalog } from './sharedCharacterImageStorage';
 import { normField } from '../../components/shared/PrEditorField';
@@ -65,9 +65,17 @@ export interface SubmitCharacterEditorParams {
   setStatusMsg: (msg: string) => void;
   statusSavingLocal: string;
   statusPreparingProposal: string;
+  prepareOnly?: boolean;
 }
 
-export async function submitCharacterProposal(p: SubmitCharacterEditorParams): Promise<SubmittedProposal | null> {
+export interface PreparedCharacterProposal {
+  entries: ProposalFileEntry[];
+  changeSummary: string;
+}
+
+export async function submitCharacterProposal(p: SubmitCharacterEditorParams & { prepareOnly: true }): Promise<PreparedCharacterProposal>;
+export async function submitCharacterProposal(p: SubmitCharacterEditorParams & { prepareOnly?: false }): Promise<SubmittedProposal | null>;
+export async function submitCharacterProposal(p: SubmitCharacterEditorParams): Promise<SubmittedProposal | PreparedCharacterProposal | null> {
   p.setStatusMsg(p.statusSavingLocal);
 
   const reassembledBiography = buildBiographyHtml(p.characteristics, p.cleanBiography);
@@ -178,10 +186,7 @@ export async function submitCharacterProposal(p: SubmitCharacterEditorParams): P
   const removedMergedCharacterIds = p.originalMergedCharacterIds
     .filter(id => !p.mergedCharacterIds.includes(id));
 
-  return submitCollaborativeProposal(
-    p.currentId,
-    [{ kind: 'character', externalId: p.currentId, bundle, removedAppearanceIds, removedActorIds, removedMergedCharacterIds }],
-    `- ${p.changeSummary}`,
-    p.setStatusMsg,
-  );
+  const entries: ProposalFileEntry[] = [{ kind: 'character', externalId: p.currentId, bundle, removedAppearanceIds, removedActorIds, removedMergedCharacterIds }];
+  if (p.prepareOnly) return { entries, changeSummary: p.changeSummary };
+  return submitCollaborativeProposal(p.currentId, entries, `- ${p.changeSummary}`, p.setStatusMsg);
 }

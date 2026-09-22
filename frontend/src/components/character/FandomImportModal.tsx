@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, X } from 'lucide-react';
+import { Check, ImagePlus, Mic2, Tags, X } from 'lucide-react';
 import { fetchFandomCharacter, type FandomCharacterData } from '../../lib/character/fandomImporter';
 import { correlateVoiceActors } from '../../lib/character/voiceActorResolver';
 import { getT } from '../../i18n/client';
@@ -28,6 +28,7 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<FandomCharacterData | null>(null);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
+  const [imageHovered, setImageHovered] = useState(false);
 
   const [selectedFields, setSelectedFields] = useState<SelectedImportFields>({
     name: true,
@@ -88,7 +89,7 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
       <span>{label}</span>
     </label>
   );
-
+  const linkedVoiceActorCount = data?.voiceActors.filter(actor => actor.matchedFrom === 'db' || actor.matchedFrom === 'anilist' || actor.matchedFrom === 'tmdb').length ?? 0;
   const modalContent = (
     <div className="pr-editor-search-popup" onClick={event => { event.stopPropagation(); onClose(); }}>
       <div
@@ -151,7 +152,11 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                     onClick={() => setImagePickerOpen(true)}
                     title="Elegir imagen de la wiki"
                     aria-label="Elegir imagen de la wiki"
-                    style={{ display: 'block', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
+                    onMouseEnter={() => setImageHovered(true)}
+                    onMouseLeave={() => setImageHovered(false)}
+                    onFocus={() => setImageHovered(true)}
+                    onBlur={() => setImageHovered(false)}
+                    style={{ position: 'relative', display: 'block', padding: 0, border: 0, background: 'transparent', cursor: 'pointer' }}
                   >
                     <img
                       src={data.imageUrl}
@@ -159,6 +164,9 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                       className="fandom-import-preview-img"
                       style={{ width: '100px', height: '130px', objectFit: 'cover', borderRadius: 'var(--radius-sm, 4px)', border: '1px solid var(--border-color)' }}
                     />
+                    <span aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', background: 'rgba(0,0,0,0.45)', borderRadius: 'var(--radius-sm, 4px)', opacity: imageHovered ? 1 : 0, transition: 'opacity 0.16s ease' }}>
+                      <ImagePlus size={20} />
+                    </span>
                   </button>
                 ) : (
                   <div className="fandom-import-preview-img-ph" style={{ width: '100px', height: '130px', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-sm, 4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
@@ -166,21 +174,15 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)' }}>{data.name}</span>
-                  <span className="fandom-import-wiki-tag" style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', background: 'var(--accent-soft)', color: 'var(--accent)', borderRadius: 'var(--radius-sm, 4px)', border: '1px solid var(--border-color)' }}>
-                    {data.wikiName}.fandom.com
-                  </span>
+              <div style={{ display: 'flex', minWidth: 0, flexDirection: 'column', gap: '0.55rem' }}>
+                <div style={{ display: 'flex', minWidth: 0, alignItems: 'baseline', gap: '0.65rem', flexWrap: 'wrap' }}>
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)' }}>{data.name}</span>
+                  {data.nativeName && <span title={t.native_name} style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 400 }}>{data.nativeName}</span>}
+                  <span title={t.import_fandom_preview_characteristics} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--text-muted)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}><Tags size={12} />{data.characteristics.length} {t.import_fandom_preview_characteristics.toLowerCase()}</span>
                 </div>
                 {data.aliases.length > 0 && (
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #8a857a)' }}>
                     <strong>{t.import_fandom_preview_aliases}:</strong> {data.aliases.join(', ')}
-                  </div>
-                )}
-                {data.nativeName && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #8a857a)' }}>
-                    <strong>{t.native_name}:</strong> {data.nativeName}
                   </div>
                 )}
                 {data.appearsIn && (
@@ -188,66 +190,48 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                     <strong>{t.appearances}:</strong> {data.appearsIn}
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted, #8a857a)' }}>
-                  <span>✓ {data.characteristics.length} {t.import_fandom_preview_characteristics.toLowerCase()}</span>
-                  <span>
-                    ✓ {data.voiceActors.length} {t.import_fandom_preview_voices.toLowerCase()}
-                    {data.voiceActors.some(v => v.matchedFrom === 'db' || v.matchedFrom === 'anilist' || v.matchedFrom === 'tmdb') && (
-                      <strong style={{ color: 'var(--accent)', marginLeft: '0.25rem' }}>
-                        ({data.voiceActors.filter(v => v.matchedFrom === 'db' || v.matchedFrom === 'anilist' || v.matchedFrom === 'tmdb').length} enlazados)
-                      </strong>
-                    )}
-                  </span>
-                  <span>✓ {data.cleanBiography ? 'Biografía detectada' : 'Sin biografía'}</span>
-                </div>
-
                 {data.voiceActors.length > 0 && (
-                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(118px, 1fr))', gap: '0.5rem', marginTop: '0.1rem' }}>
                     {data.voiceActors.map((va, i) => (
                       <div
                         key={i}
                         style={{
-                          display: 'inline-flex',
+                          minWidth: 0,
+                          height: '96px',
+                          maxHeight: '96px',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '0.3rem',
+                          justifyContent: 'center',
+                          textAlign: 'center',
+                          gap: '0.2rem',
                           background: 'rgba(255,255,255,0.03)',
                           border: '1px solid var(--border-color)',
-                          padding: '0.15rem 0.4rem',
-                          borderRadius: '3px',
-                          fontSize: '0.72rem',
+                          padding: '0.25rem 0.35rem',
+                          borderRadius: 'var(--radius-sm, 4px)',
                         }}
                       >
                         {va.image ? (
-                          <img src={va.image} alt="" style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} />
+                          <img src={va.image} alt="" style={{ width: '36px', height: '36px', maxWidth: '100%', maxHeight: '36px', flexShrink: 0, borderRadius: '3px', objectFit: 'cover' }} />
                         ) : (
-                          <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--border-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}>
+                          <span style={{ width: '36px', height: '36px', maxWidth: '100%', flexShrink: 0, borderRadius: '3px', background: 'var(--border-color)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>
                             {va.name.charAt(0)}
                           </span>
                         )}
-                        {(() => {
-                          const m = va.name.match(/^([^(]+)(?:\s*(\([^)]+\)))?$/);
-                          const base = m ? m[1].trim() : va.name;
-                          const paren = m && m[2] ? m[2].trim() : '';
-                          return (
-                            <>
-                              <span style={{ fontWeight: 600 }}>{base}</span>
-                              {paren && (
-                                <small style={{ opacity: 0.75, fontSize: '0.75em', fontWeight: 'normal', marginLeft: '0.2rem' }}>
-                                  {paren}
-                                </small>
-                              )}
-                            </>
-                          );
-                        })()}
-                        {va.native && <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>({va.native})</span>}
-                        <span style={{ fontSize: '0.62rem', padding: '0.05rem 0.25rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: '2px' }}>
-                          {va.language}
-                        </span>
-                        {va.matchedFrom && va.matchedFrom !== 'none' && (
-                          <span style={{ fontSize: '0.62rem', color: 'var(--accent)', fontWeight: 700 }}>
-                            ✓ {va.matchedFrom === 'db' ? 'DB' : va.matchedFrom === 'tmdb' ? 'TMDB' : 'AniList'}
-                          </span>
-                        )}
+                        <div style={{ position: 'relative', isolation: 'isolate', display: 'flex', width: '100%', minWidth: 0, flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.2rem', overflow: 'hidden' }}>
+                          {(va.matchedFrom === 'anilist' || va.matchedFrom === 'tmdb') && (
+                            <img
+                              src={va.matchedFrom === 'anilist' ? '/API/Anilist_logo.png' : '/API/Tmdb.new.logo.png'}
+                              alt=""
+                              aria-hidden="true"
+                              style={{ position: 'absolute', zIndex: 0, inset: '50% 0 auto', transform: 'translateY(-50%)', width: '100%', height: '2.5rem', objectFit: 'contain', opacity: 0.24, pointerEvents: 'none' }}
+                            />
+                          )}
+                          <span title={va.name} style={{ position: 'relative', zIndex: 1, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.74rem', fontWeight: 600 }}>{va.name}</span>
+                          {va.native && <span title={va.native} style={{ position: 'relative', zIndex: 1, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.62rem' }}>{va.native}</span>}
+                          <span style={{ position: 'relative', zIndex: 1, flexShrink: 0, fontSize: '0.6rem', padding: '0.12rem 0.3rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: '999px', color: 'var(--text-muted)' }}>{va.language}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -279,16 +263,16 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                     {renderFieldOption('aliases', `${t.import_fandom_preview_aliases} (${data.aliases.length})`, data.aliases.length === 0)}
                     {renderFieldOption('characteristics', `${t.import_fandom_preview_characteristics} (${data.characteristics.length})`, data.characteristics.length === 0)}
-                    {renderFieldOption('biography', t.import_fandom_preview_bio, !data.cleanBiography)}
+                    {renderFieldOption('biography', `${t.import_fandom_preview_bio} (${data.cleanBiography ? 'Sí' : 'No'})`, !data.cleanBiography)}
                   </div>
                 </section>
 
                 <section style={{ minWidth: 0, padding: '0.7rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)', background: 'rgba(255,255,255,0.015)' }}>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.65rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                    Voces<span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
+                    <><Mic2 size={13} />Voces ({data.voiceActors.length}{linkedVoiceActorCount > 0 ? ` · ${linkedVoiceActorCount} enlazados` : ''})</><span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-                    {renderFieldOption('voiceActors', `${t.import_fandom_preview_voices} (${data.voiceActors.length})`, data.voiceActors.length === 0)}
+                    {renderFieldOption('voiceActors', t.import_fandom_preview_voices, data.voiceActors.length === 0)}
                   </div>
                 </section>
               </div>

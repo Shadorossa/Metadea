@@ -59,6 +59,35 @@ export function cleanFandomImageUrl(rawUrl: string): string {
   return clean.split('?')[0];
 }
 
+function imageHasTransparency(url: string): Promise<boolean> {
+  if (typeof Image === 'undefined' || typeof document === 'undefined') return Promise.resolve(false);
+
+  return new Promise(resolve => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 48;
+        canvas.height = 48;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) return resolve(false);
+        context.drawImage(image, 0, 0, 48, 48);
+        const pixels = context.getImageData(0, 0, 48, 48).data;
+        for (let alphaIndex = 3; alphaIndex < pixels.length; alphaIndex += 4) {
+          if (pixels[alphaIndex] < 255) return resolve(true);
+        }
+        resolve(false);
+      } catch {
+        // Without CORS permission the browser cannot expose remote pixel data.
+        resolve(false);
+      }
+    };
+    image.onerror = () => resolve(false);
+    image.src = url;
+  });
+}
+
 const FANDOM_LANGUAGE_NAMES: Array<[RegExp, string]> = [
   [/\b(?:japanese|japan|jp)\b/i, 'Japanese'],
   [/\b(?:english|eng|en)\b/i, 'English'],
@@ -112,6 +141,11 @@ function parseVoiceActorsFromHtml(html: string, defaultLanguage: string): Extrac
   for (const line of lines) {
     const annotations: string[] = [];
     let name = line.replace(/\[\s*\d+\s*\]/g, '').trim();
+    const prefixedLanguage = name.match(/^([\p{L} ]+)\s*[:\-–]\s*(.+)$/u);
+    if (prefixedLanguage && FANDOM_LANGUAGE_NAMES.some(([pattern]) => pattern.test(prefixedLanguage[1].trim()))) {
+      annotations.push(prefixedLanguage[1].trim());
+      name = prefixedLanguage[2].trim();
+    }
     let annotationMatch: RegExpExecArray | null;
     while ((annotationMatch = /\s*\(([^()]*)\)\s*$/.exec(name))) {
       annotations.unshift(annotationMatch[1].trim());
@@ -144,20 +178,43 @@ function extractVoicedBySections(doc: Document, defaultLanguage: string): Extrac
   const actors: ExtractedVoiceActor[] = [];
   const headings = Array.from(doc.querySelectorAll<HTMLElement>('h2, h3, h4, h5, h6'));
   for (const heading of headings) {
-    if (!/^(?:voiced by|voice actors?|voice cast|voice acting)\b/i.test(heading.textContent?.trim() ?? '')) continue;
+    const headingText = (heading.textContent ?? '').replace(/\[edit\]/gi, '').replace(/\s+/g, ' ').trim();
+    if (!/^(?:voiced by|voice actors?|voice cast|voice acting|voice talent|voice performances)\b/i.test(headingText)) continue;
     const level = Number(heading.tagName.slice(1));
     const headingBlock = heading.closest<HTMLElement>('.mw-heading') ?? heading;
-    const html: string[] = [];
+    let sectionLanguage = defaultLanguage;
+    let sectionHtml: string[] = [];
+    const flushSection = () => {
+      if (sectionHtml.length > 0) {
+        actors.push(...parseVoiceActorsFromHtml(sectionHtml.join('\n'), sectionLanguage));
+        sectionHtml = [];
+      }
+    };
     let sibling = headingBlock.nextElementSibling;
     while (sibling) {
       const nextHeading = sibling.matches('h1, h2, h3, h4, h5, h6')
         ? sibling
         : sibling.querySelector('h1, h2, h3, h4, h5, h6');
       if (nextHeading && Number(nextHeading.tagName.slice(1)) <= level) break;
-      html.push(sibling.outerHTML);
+      if (nextHeading) {
+        const languageHeadingText = (nextHeading.textContent || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const detectedLanguage = FANDOM_LANGUAGE_NAMES.find(([pattern]) => pattern.test(languageHeadingText))?.[1];
+        if (detectedLanguage) {
+          flushSection();
+          sectionLanguage = detectedLanguage;
+        }
+        // Some Fandom skins/API responses wrap a language heading and its
+        // actor list in the same container. Keep that content after removing
+        // the heading instead of discarding the entire wrapper.
+        const content = sibling.cloneNode(true) as HTMLElement;
+        content.querySelectorAll('h1, h2, h3, h4, h5, h6, .mw-editsection').forEach(node => node.remove());
+        if (content.textContent?.trim()) sectionHtml.push(content.innerHTML);
+      } else {
+        sectionHtml.push(sibling.outerHTML);
+      }
       sibling = sibling.nextElementSibling;
     }
-    actors.push(...parseVoiceActorsFromHtml(html.join('\n'), defaultLanguage));
+    flushSection();
   }
   return actors;
 }
@@ -401,20 +458,22 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     } else if (isNativeNameField) {
       nativeName = (valEl.textContent || '').replace(/\s+/g, ' ').trim() || null;
     } else if (
-      sourceAttr === 'voiced_by' || sourceAttr === 'voice_actor' || sourceAttr === 'voiceactor' ||
+      sourceAttr === 'voiced_by' || sourceAttr === 'voice_actor' || sourceAttr === 'voice_actors' || sourceAttr === 'voiceactor' ||
+      sourceAttr === 'voice_cast' || sourceAttr === 'voices' || sourceAttr === 'voice_acting' ||
+      sourceAttr.startsWith('voice_actor_') || sourceAttr.startsWith('voiced_by_') ||
       sourceAttr === 'seiyuu' || sourceAttr === 'seiyu' ||
       sourceAttr === 'japanese_va' || sourceAttr === 'english_va' ||
-      normLabel.includes('voiced by') || normLabel.includes('voice actor') || normLabel.includes('actor de voz') ||
+      normLabel.includes('voiced by') || normLabel.includes('voice actor') || normLabel.includes('voice cast') || normLabel.includes('voice acting') || normLabel.includes('actor de voz') ||
       normLabel.includes('seiyuu') || normLabel.includes('seiyu')
     ) {
       let defaultLang = 'Japanese';
       if (
-        sourceAttr === 'voiceactor' || sourceAttr === 'english_va' ||
+        sourceAttr === 'voiceactor' || sourceAttr === 'english_va' || sourceAttr.includes('english') || sourceAttr.endsWith('_en') ||
         normLabel === 'voice actor' || normLabel.includes('english') || normLabel.includes('inglés')
       ) {
         defaultLang = 'English';
       } else if (
-        sourceAttr === 'seiyuu' || sourceAttr === 'seiyu' || sourceAttr === 'japanese_va' ||
+        sourceAttr === 'seiyuu' || sourceAttr === 'seiyu' || sourceAttr === 'japanese_va' || sourceAttr.includes('japanese') || sourceAttr.endsWith('_jp') || sourceAttr.endsWith('_ja') ||
         normLabel.includes('seiyuu') || normLabel.includes('seiyu') || normLabel.includes('japanese') || normLabel.includes('japonés')
       ) {
         defaultLang = 'Japanese';
@@ -457,9 +516,32 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     }
   }
 
-  const imageTitles = Array.isArray(json.parse.images)
+  const imageTitleSet = new Set<string>(Array.isArray(json.parse.images)
     ? (json.parse.images as string[]).filter(title => typeof title === 'string')
-    : [];
+    : []);
+  // Character pages often keep the full-size/alternate portraits on a
+  // companion Gallery:<title> page, which is not included in parse.images
+  // for the character page itself.
+  try {
+    const galleryParams = new URLSearchParams({
+      action: 'parse',
+      page: `Gallery:${pageTitle}`,
+      prop: 'images',
+      format: 'json',
+      origin: '*',
+    });
+    const galleryResponse = await fetch(`https://${subdomain}.fandom.com/${prefix}api.php?${galleryParams}`);
+    if (galleryResponse.ok) {
+      const galleryJson = await galleryResponse.json();
+      const galleryTitles = galleryJson.parse?.images;
+      if (Array.isArray(galleryTitles)) {
+        galleryTitles.filter((title: unknown): title is string => typeof title === 'string').forEach((title: string) => imageTitleSet.add(title));
+      }
+    }
+  } catch {
+    // Gallery pages are optional; keep the character page's images available.
+  }
+  const imageTitles = [...imageTitleSet];
   let imageOptions: FandomCharacterData['imageOptions'] = [];
   if (imageTitles.length > 0) {
     try {
@@ -468,7 +550,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
           action: 'query',
           titles: imageTitles.slice(offset, offset + 50).map(title => title.startsWith('File:') ? title : `File:${title}`).join('|'),
           prop: 'imageinfo',
-          iiprop: 'url',
+          iiprop: 'url|size',
           iiurlwidth: '300',
           format: 'json',
           origin: '*',
@@ -480,7 +562,8 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
           .flatMap((page: any) => {
             const imageInfo = page.imageinfo?.[0];
             const resolvedUrl = imageInfo?.url;
-            return resolvedUrl ? [{
+            const meetsMinimumSize = imageInfo?.width >= 100 && imageInfo?.height >= 100;
+            return resolvedUrl && meetsMinimumSize ? [{
               title: page.title || '',
               url: cleanFandomImageUrl(resolvedUrl),
               previewUrl: imageInfo.thumburl || resolvedUrl,
@@ -491,9 +574,17 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
       // La imagen principal sigue disponible aunque la consulta de la galería falle.
     }
   }
-  if (imageUrl && !imageOptions.some(option => option.url === imageUrl)) {
-    imageOptions.unshift({ title: name, url: imageUrl, previewUrl: imageUrl });
+  // Do not inject the infobox thumbnail as a fallback: it may be an icon or
+  // other sub-100px image that was intentionally filtered from the selector.
+  const transparencyFlags: boolean[] = [];
+  for (let offset = 0; offset < imageOptions.length; offset += 8) {
+    const batch = imageOptions.slice(offset, offset + 8);
+    transparencyFlags.push(...await Promise.all(batch.map(option => imageHasTransparency(option.previewUrl))));
   }
+  imageOptions = imageOptions
+    .map((option, index) => ({ option, isTransparent: transparencyFlags[index] }))
+    .sort((a, b) => Number(a.isTransparent) - Number(b.isTransparent))
+    .map(({ option }) => option);
   if (!imageUrl && imageOptions[0]) imageUrl = imageOptions[0].url;
 
   // Extraer biografía limpia eliminando todo elemento de infobox o ficha lateral

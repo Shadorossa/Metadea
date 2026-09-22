@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, GitMerge, Mic, Settings } from 'lucide-react';
+import { BookOpen, GitMerge, Mic, Settings, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { openSubmittedProposal } from '../../lib/github/submitCollaborativeProposal';
 import { getDroppedImageUrl, openImageCropModal } from '../shared/ImageCropModal';
@@ -15,6 +15,9 @@ import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
 import { Field } from '../shared/PrEditorField';
 import { PrEditorAddButton } from '../media/pr-editor/PrEditorAddButton';
+import { PrEditorChangelogPanel } from '../media/pr-editor/PrEditorChangelogPanel';
+import { PrEditorHeader } from '../shared/PrEditorHeader';
+import { getRolePageCount, getRolePageItems, PrEditorRolePagination } from '../media/pr-editor/PrEditorRolePagination';
 import { TagsInput } from '../shared/TagsInput';
 import { RichTextEditor } from '../shared/RichTextEditor';
 import { loadCharacterEditorData, type PendingAppearance } from '../../lib/character/characterPrEditorLoad';
@@ -143,6 +146,16 @@ interface CachedCharacterData {
   originalVoiceActors: VoiceActorRow[];
 }
 
+interface CharacterEditorDraft extends CharacterDiffFields {
+  character: CharacterEntry | null;
+  originalCharacter: CharacterEntry | null;
+  mergedCharacters: CharacterMerge[];
+  originalMergedCharacters: CharacterMerge[];
+  mergeAppearanceIds: Record<string, string>;
+  activeTab: 'general' | 'appearances' | 'merges' | 'voices';
+  dirty: boolean;
+}
+
 interface MergeCandidate {
   external_id: string;
   name: string;
@@ -153,16 +166,24 @@ export function CharacterPrEditorModal() {
   const t = getT().character_editor;
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isSessionTab, setIsSessionTab] = useState(false);
+  const [sharedSessionTabs, setSharedSessionTabs] = useState<any[]>([]);
   const [currentId, setCurrentId] = useState('');
+  const [characterEditorTabIds, setCharacterEditorTabIds] = useState<string[]>([]);
+  const [pendingCharacterTabCloseId, setPendingCharacterTabCloseId] = useState<string | null>(null);
+  const [characterTabContextMenu, setCharacterTabContextMenu] = useState<{ externalId: string; kind?: 'media' | 'character'; x: number; y: number } | null>(null);
   const [loadNonce, setLoadNonce] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [character, setCharacter] = useState<CharacterEntry | null>(null);
   const [originalCharacter, setOriginalCharacter] = useState<CharacterEntry | null>(null);
 
   const characterCacheRef = useRef<Record<string, CachedCharacterData>>({});
+  const characterDraftsRef = useRef(new Map<string, CharacterEditorDraft>());
+  const currentCharacterDraftRef = useRef<{ externalId: string; draft: CharacterEditorDraft; isOpen: boolean } | null>(null);
   // Set by openCharacterEditor's second (optional) arg, consumed once by the
   // very next loadCharacter run — the media entry a character was created
   // FROM (via PrEditorModal's "+ Crear personaje") should already be in its
@@ -195,6 +216,7 @@ export function CharacterPrEditorModal() {
 
   const [appearances, setAppearances] = useState<AppearanceRow[]>([]);
   const [originalAppearances, setOriginalAppearances] = useState<AppearanceRow[]>([]);
+  const [appearancePage, setAppearancePage] = useState(0);
   const [mergedCharacters, setMergedCharacters] = useState<CharacterMerge[]>([]);
   const [originalMergedCharacters, setOriginalMergedCharacters] = useState<CharacterMerge[]>([]);
   // Tracks appearances inserted by this editor session solely because a
@@ -248,6 +270,31 @@ export function CharacterPrEditorModal() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    setAppearancePage(0);
+  }, [currentId]);
+
+  useEffect(() => {
+    const onSessionUpdate = (event: Event) => {
+      setSharedSessionTabs((event as CustomEvent<{ tabs?: any[] }>).detail?.tabs ?? []);
+    };
+    window.addEventListener('metadea:pr-editor-session-update', onSessionUpdate);
+    setSharedSessionTabs((window as any).__metadeaPrEditorSession?.tabs ?? []);
+    return () => window.removeEventListener('metadea:pr-editor-session-update', onSessionUpdate);
+  }, []);
+
+  useEffect(() => {
+    if (!characterTabContextMenu) return;
+    const close = () => setCharacterTabContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', close);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [characterTabContextMenu]);
+
   const handleClose = () => {
     setIsOpen(false);
     setCharacter(null);
@@ -259,6 +306,7 @@ export function CharacterPrEditorModal() {
     setMergeHintPosition(null);
     setMergeAppearanceIds({});
     setFandomModalOpen(false);
+    setIsSessionTab(false);
   };
 
   useEffect(() => {
@@ -272,16 +320,39 @@ export function CharacterPrEditorModal() {
         release_month?: number | null;
         release_day?: number | null;
       },
+      options?: { mediaSession?: boolean },
     ) => {
+      setIsSessionTab(!!options?.mediaSession);
+      const activeDraft = currentCharacterDraftRef.current;
+      if (activeDraft?.isOpen && activeDraft.externalId !== externalId) {
+        characterDraftsRef.current.set(activeDraft.externalId, activeDraft.draft);
+      }
+      if (activeDraft?.isOpen && activeDraft.externalId === externalId) return;
       pendingAppearanceRef.current = initialAppearance ?? null;
+      setCharacterEditorTabIds(previous => previous.includes(externalId) ? previous : [...previous, externalId]);
+      setPendingCharacterTabCloseId(null);
+      setCharacterTabContextMenu(null);
+      setShowUnsavedPrompt(false);
       setCurrentId(externalId);
       setIsOpen(true);
       setLoading(true);
       setLoadNonce(n => n + 1);
+      if (options?.mediaSession) {
+        window.dispatchEvent(new CustomEvent('metadea:character-editor-session-change', { detail: { action: 'update', externalId, title: externalId, dirty: false } }));
+      }
+    };
+
+    (window as any).closeCharacterEditorSession = () => {
+      setIsOpen(false);
+      setIsSessionTab(false);
+      setCharacterEditorTabIds([]);
+      characterDraftsRef.current.clear();
+      currentCharacterDraftRef.current = null;
     };
 
     return () => {
       delete (window as any).openCharacterEditor;
+      delete (window as any).closeCharacterEditorSession;
     };
   }, []);
 
@@ -293,6 +364,35 @@ export function CharacterPrEditorModal() {
         // These links only describe additions made in the currently open
         // editor; never carry them over to a different character/session.
         setMergeAppearanceIds({});
+        const draft = characterDraftsRef.current.get(currentId);
+        if (draft) {
+          setCharacter(draft.character);
+          setOriginalCharacter(draft.originalCharacter);
+          setName(draft.name);
+          setNameNative(draft.nameNative);
+          setAliases(draft.aliases);
+          setImageUrl(draft.imageUrl);
+          setOriginalName(draft.originalName);
+          setOriginalNameNative(draft.originalNameNative);
+          setOriginalAliases(draft.originalAliases);
+          setOriginalImageUrl(draft.originalImageUrl);
+          setCharacteristics(draft.characteristics);
+          setOriginalCharacteristics(draft.originalCharacteristics);
+          setCleanBiography(draft.cleanBiography);
+          setOriginalCleanBiography(draft.originalCleanBiography);
+          setAppearances(draft.appearances);
+          setOriginalAppearances(draft.originalAppearances);
+          setMergedCharacters(draft.mergedCharacters);
+          setOriginalMergedCharacters(draft.originalMergedCharacters);
+          setMergeAppearanceIds(draft.mergeAppearanceIds);
+          setVoiceActors(draft.voiceActors);
+          setOriginalVoiceActors(draft.originalVoiceActors);
+          setActiveTab(draft.activeTab);
+          setErrorMsg('');
+          setStatusMsg('');
+          setLoading(false);
+          return;
+        }
         const cached = characterCacheRef.current[currentId];
         if (cached) {
           setCharacter(cached.character);
@@ -390,6 +490,149 @@ export function CharacterPrEditorModal() {
   const mergedCharactersChanged = () => JSON.stringify(mergedCharacterIds()) !== JSON.stringify(originalMergedCharacterIds());
   const hasChanged = () => hasChangedPure(originalCharacter, diffFields) || mergedCharactersChanged();
   const buildChangeSummary = () => buildChangeSummaryPure(originalCharacter, diffFields);
+  const appearanceGroups = RELATION_TYPE_OPTIONS.map(type => ({
+    type,
+    allAppearances: appearances.filter(appearance => (appearance.relation_type ?? 'SUPPORTING') === type),
+  }));
+  const appearanceTotalPages = getRolePageCount(appearanceGroups.map(group => group.allAppearances.length));
+  const safeAppearancePage = Math.min(appearancePage, appearanceTotalPages - 1);
+  if (!loading && character && originalCharacter) {
+    currentCharacterDraftRef.current = {
+      externalId: currentId,
+      isOpen,
+      draft: {
+        ...diffFields,
+        character,
+        originalCharacter,
+        mergedCharacters,
+        originalMergedCharacters,
+        mergeAppearanceIds,
+        activeTab,
+        dirty: hasChanged(),
+      },
+    };
+  } else if (!isOpen) currentCharacterDraftRef.current = null;
+  const requestClose = () => {
+    if (isSessionTab) {
+      (window as any).__metadeaPrEditorSession?.requestClose?.();
+      return;
+    }
+    const hasAnyUnsavedChanges = hasChanged() || [...characterDraftsRef.current.values()].some(draft => draft.dirty);
+    if (hasAnyUnsavedChanges) {
+      setShowUnsavedPrompt(true);
+      return;
+    }
+    handleClose();
+  };
+
+  const removeCharacterEditorTab = (externalId: string, discard = false) => {
+    const draft = characterDraftsRef.current.get(externalId);
+    const dirty = externalId === currentId ? hasChanged() : !!draft?.dirty;
+    if (dirty && !discard) {
+      setPendingCharacterTabCloseId(externalId);
+      setShowUnsavedPrompt(true);
+      return;
+    }
+    const previousIds = characterEditorTabIds;
+    const remaining = previousIds.filter(id => id !== externalId);
+    setCharacterEditorTabIds(remaining);
+    characterDraftsRef.current.delete(externalId);
+    window.dispatchEvent(new CustomEvent('metadea:character-editor-session-change', { detail: { action: 'close', externalId } }));
+    if (externalId !== currentId) return;
+    setShowUnsavedPrompt(false);
+    setPendingCharacterTabCloseId(null);
+    const controller = (window as any).__metadeaPrEditorSession;
+    if (remaining.length) {
+      const oldIndex = previousIds.indexOf(externalId);
+      const nextId = remaining[Math.max(0, Math.min(oldIndex - 1, remaining.length - 1))];
+      (window as any).openCharacterEditor?.(nextId, undefined, { mediaSession: true });
+      return;
+    }
+    const mediaTab = controller?.tabs?.find((tab: any) => tab.kind !== 'character');
+    if (mediaTab) {
+      controller.navigate?.(mediaTab);
+      setIsOpen(false);
+      setIsSessionTab(false);
+      return;
+    }
+    if (controller?.finishSession) controller.finishSession();
+    else handleClose();
+  };
+
+  useEffect(() => {
+    (window as any).closeCharacterEditorTab = (externalId: string, discard = false) => removeCharacterEditorTab(externalId, discard);
+    return () => { delete (window as any).closeCharacterEditorTab; };
+  });
+
+  const sessionNavigate = (tab: any) => {
+    const controller = (window as any).__metadeaPrEditorSession;
+    if (tab.kind === 'character') {
+      if (controller?.navigate) controller.navigate(tab);
+      else (window as any).openCharacterEditor?.(tab.externalId, undefined, { mediaSession: true });
+      return;
+    }
+    if (!loading && character && originalCharacter) {
+      characterDraftsRef.current.set(currentId, {
+        ...diffFields,
+        character,
+        originalCharacter,
+        mergedCharacters,
+        originalMergedCharacters,
+        mergeAppearanceIds,
+        activeTab,
+        dirty: hasChanged(),
+      });
+    }
+    controller?.navigate?.(tab);
+    setIsOpen(false);
+    setIsSessionTab(false);
+  };
+
+  const renderSessionLayout = (panel: React.ReactNode) => {
+    if (!isSessionTab) return panel;
+    const tabs = sharedSessionTabs.length ? sharedSessionTabs : (window as any).__metadeaPrEditorSession?.tabs ?? [];
+    const activeIndex = tabs.findIndex((tab: any) => tab.kind === 'character' && tab.externalId === currentId);
+    const navigate = (index: number) => {
+      if (!tabs.length) return;
+      sessionNavigate(tabs[(index + tabs.length) % tabs.length]);
+    };
+    return (
+      <div className="pr-editor-session-layout pr-editor-session-layout--active" onClick={event => event.stopPropagation()}>
+        <nav className="pr-editor-session-tabs" aria-label="Pestañas de edición">
+          {tabs.map((tab: any, index: number) => (
+            <button
+              key={`${tab.kind}:${tab.externalId}`}
+              type="button"
+              className={`pr-editor-session-tab${tab.kind === 'character' && tab.externalId === currentId ? ' pr-editor-session-tab--active' : ''}`}
+              aria-current={tab.kind === 'character' && tab.externalId === currentId ? 'page' : undefined}
+              title={`${tab.kind === 'character' ? 'Personaje' : 'Obra'}: ${tab.label}${tab.dirty ? ' · Cambios sin guardar' : ''}`}
+              onClick={() => sessionNavigate(tab)}
+              onContextMenu={event => {
+                event.preventDefault();
+                setCharacterTabContextMenu({ externalId: tab.externalId, kind: tab.kind, x: event.clientX, y: event.clientY });
+              }}
+            >
+              <span className="pr-editor-session-tab-label">{tab.label}</span>
+              {tab.dirty && <span className="pr-editor-session-tab-dirty" aria-label="Cambios sin guardar" />}
+            </button>
+          ))}
+        </nav>
+        <div className="pr-editor-session-panel-row">
+          <button type="button" className="pr-editor-session-arrow" aria-label="Anterior" onClick={() => navigate(activeIndex - 1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
+          {panel}
+          <button type="button" className="pr-editor-session-arrow" aria-label="Siguiente" onClick={() => navigate(activeIndex + 1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
+        </div>
+      </div>
+    );
+  };
+
+  const characterIsDirty = !loading && character ? hasChanged() : false;
+  useEffect(() => {
+    if (!isOpen || !isSessionTab || loading || !character) return;
+    window.dispatchEvent(new CustomEvent('metadea:character-editor-session-change', {
+      detail: { action: 'update', externalId: currentId, title: name || character.name, dirty: characterIsDirty },
+    }));
+  }, [isOpen, isSessionTab, loading, character, currentId, name, characterIsDirty]);
 
   const addCharacteristic = () => setCharacteristics([...characteristics, { label: '', value: '' }]);
   const removeCharacteristic = (idx: number) => setCharacteristics(characteristics.filter((_, i) => i !== idx));
@@ -496,6 +739,49 @@ export function CharacterPrEditorModal() {
     reader.readAsDataURL(file);
   };
 
+  const prepareCharacterProposalForSession = async (externalId: string, updateStatus: (message: string) => void) => {
+    const draft = currentId === externalId && currentCharacterDraftRef.current?.externalId === externalId
+      ? currentCharacterDraftRef.current.draft
+      : characterDraftsRef.current.get(externalId);
+    if (!draft?.originalCharacter || !draft.character) return null;
+    const mergedIds = draft.mergedCharacters.map(item => item.external_id).sort();
+    const originalMergedIds = draft.originalMergedCharacters.map(item => item.external_id).sort();
+    const mergesChanged = JSON.stringify(mergedIds) !== JSON.stringify(originalMergedIds);
+    if (!hasChangedPure(draft.originalCharacter, draft) && !mergesChanged) return null;
+    return submitCharacterProposal({
+      currentId: externalId,
+      originalCharacter: draft.originalCharacter,
+      name: draft.name,
+      nameNative: draft.nameNative,
+      aliases: draft.aliases,
+      imageUrl: draft.imageUrl,
+      characteristics: draft.characteristics,
+      cleanBiography: draft.cleanBiography,
+      originalCleanBiography: draft.originalCleanBiography,
+      appearances: draft.appearances,
+      originalAppearances: draft.originalAppearances,
+      mergedCharacterIds: mergedIds,
+      originalMergedCharacterIds: originalMergedIds,
+      mergedCharactersChanged: mergesChanged,
+      voiceActors: draft.voiceActors,
+      originalVoiceActors: draft.originalVoiceActors,
+      appearancesChanged: appearancesChangedPure(draft.appearances, draft.originalAppearances),
+      voiceActorsChanged: voiceActorsChangedPure(draft.voiceActors, draft.originalVoiceActors),
+      changeSummary: mergesChanged && !hasChangedPure(draft.originalCharacter, draft)
+        ? t.merge_change_summary
+        : buildChangeSummaryPure(draft.originalCharacter, draft),
+      setStatusMsg: updateStatus,
+      statusSavingLocal: t.saving_local,
+      statusPreparingProposal: t.preparing_proposal,
+      prepareOnly: true,
+    });
+  };
+
+  useEffect(() => {
+    (window as any).prepareCharacterEditorProposal = prepareCharacterProposalForSession;
+    return () => { delete (window as any).prepareCharacterEditorProposal; };
+  });
+
   const handleSubmit = async () => {
     if (!originalCharacter || !hasChanged()) {
       setErrorMsg('No hay cambios para enviar');
@@ -530,6 +816,14 @@ export function CharacterPrEditorModal() {
         setStatusMsg(t.pr_success);
         await new Promise(r => setTimeout(r, 1500));
         delete characterCacheRef.current[currentId];
+        if (isSessionTab) {
+          characterDraftsRef.current.delete(currentId);
+          setCharacterEditorTabIds(previous => previous.filter(id => id !== currentId));
+          window.dispatchEvent(new CustomEvent('metadea:character-editor-session-change', { detail: { action: 'close', externalId: currentId } }));
+          const hasOtherCharacterTabs = characterEditorTabIds.some(id => id !== currentId);
+          const hasMediaTabs = (window as any).__metadeaPrEditorSession?.tabs?.some((tab: any) => tab.kind !== 'character');
+          if (!hasOtherCharacterTabs && !hasMediaTabs) (window as any).__metadeaPrEditorSession?.finishSession?.();
+        }
         openSubmittedProposal(prUrl);
         handleClose();
       }
@@ -630,10 +924,8 @@ export function CharacterPrEditorModal() {
 
   if (loading) {
     return createPortal(
-      <div className="pr-editor-overlay pr-editor-overlay--nested" onClick={handleClose}>
-        <div className="pr-editor-modal pr-editor-modal--loading" onClick={e => e.stopPropagation()}>
-          <div className="spinner" />
-        </div>
+      <div className={`pr-editor-overlay${isSessionTab ? '' : ' pr-editor-overlay--nested'}`} onClick={requestClose}>
+        {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--loading" onClick={e => e.stopPropagation()}><div className="spinner" /></div>)}
       </div>,
       document.body
     );
@@ -642,25 +934,23 @@ export function CharacterPrEditorModal() {
   if (!character) return null;
 
   return createPortal(
-    <div className="pr-editor-overlay pr-editor-overlay--nested" onClick={handleClose}>
-      <div className="pr-editor-modal" onClick={e => e.stopPropagation()}>
-        <div className="pr-editor-header pr-editor-header--row">
-          <div className="pr-editor-header-titles">
-            <span className="pr-editor-title">Editar {name || character.name}</span>
-            <span className="pr-editor-subtitle">ID: {currentId}</span>
-          </div>
-          <div className="pr-editor-header-actions">
-            {statusMsg && (
-              <div className="pr-editor-header-status" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent, #7c6af7)' }}>
-                <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(124, 106, 247, 0.2)', borderTopColor: 'var(--accent, #7c6af7)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                <span>{statusMsg}</span>
-              </div>
-            )}
+    <div className={`pr-editor-overlay${isSessionTab ? '' : ' pr-editor-overlay--nested'}`} onClick={requestClose}>
+      {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
+        <PrEditorHeader
+          title={`Editar ${name || character.name}`}
+          subtitle={`ID: ${currentId}`}
+          status={statusMsg && (
+            <div className="pr-editor-header-status">
+              <div className="spinner spinner--small pr-editor-header-status-spinner" />
+              <span>{statusMsg}</span>
+            </div>
+          )}
+          actions={
+          <>
             <button
               type="button"
-              className="pr-editor-btn pr-editor-btn--secondary"
+              className="pr-editor-btn pr-editor-btn--secondary pr-editor-header-action"
               onClick={() => setFandomModalOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
               title={t.import_fandom_title}
             >
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -670,8 +960,27 @@ export function CharacterPrEditorModal() {
               </svg>
               <span>{t.import_fandom}</span>
             </button>
-          </div>
-        </div>
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--cancel pr-editor-header-action pr-editor-header-action--icon pr-editor-header-cancel"
+              onClick={requestClose}
+              disabled={submitting}
+              title={t.cancel}
+              aria-label={t.cancel}
+            >
+              <X size={17} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--submit pr-editor-header-action"
+              onClick={() => isSessionTab ? (window as any).__metadeaPrEditorSession?.submitProposal?.() : void handleSubmit()}
+              disabled={submitting || (isSessionTab ? !(window as any).__metadeaPrEditorSession?.hasChanges : !hasChanged())}
+            >
+              {submitting ? t.submitting : 'Submit Proposal'}
+            </button>
+          </>
+          }
+        />
 
         <div className="pr-editor-content-shell">
           <nav className="pr-editor-sidebar" aria-label="Secciones del personaje">
@@ -800,12 +1109,13 @@ export function CharacterPrEditorModal() {
           <>
           {/* ── Apariciones ── */}
           <div className="pr-editor-section">
-            <div className="pr-editor-character-appearance-groups">
-              {RELATION_TYPE_OPTIONS.map(type => {
+            <div className="pr-editor-character-appearance-groups pr-editor-character-appearance-groups--paginated">
+              {appearanceGroups.map(group => {
+                const { type, allAppearances: roleAppearances } = group;
+                const pageAppearances = getRolePageItems(roleAppearances, safeAppearancePage);
                 const label = getRelationTypeLabels()[type as keyof ReturnType<typeof getRelationTypeLabels>] || type;
-                const roleAppearances = appearances.filter(a => (a.relation_type ?? 'SUPPORTING') === type);
                 return (
-                  <section className="pr-editor-character-appearance-group" key={type}>
+                  <section className="pr-editor-character-appearance-group pr-editor-media-character-role-group" key={type}>
                     <div className="pr-editor-character-appearance-header">
                       <h3 className="pr-editor-section-title pr-editor-character-appearance-title">
                         {label} <span>({roleAppearances.length})</span>
@@ -818,8 +1128,8 @@ export function CharacterPrEditorModal() {
                         title={`${t.add_appearance}: ${label}`}
                       />
                     </div>
-                    <div className="pr-editor-media-group-cards pr-editor-media-group-cards--wide">
-                      {roleAppearances.map(a => (
+                    <div className="pr-editor-characters-grid pr-editor-media-character-role-grid">
+                      {pageAppearances.map(a => (
                 <div key={a.media_external_id} className="pr-editor-media-card">
                   <div className="pr-editor-media-card-cover">
                     {a.cover
@@ -844,6 +1154,7 @@ export function CharacterPrEditorModal() {
                 );
               })}
             </div>
+            <PrEditorRolePagination page={safeAppearancePage} totalPages={appearanceTotalPages} onPageChange={setAppearancePage} />
 
             {/* Character identity merges are managed in the dedicated tab. */}
             {/* <div className="pr-editor-appearance-merges">
@@ -980,15 +1291,41 @@ export function CharacterPrEditorModal() {
           </main>
         </div>
 
-        <div className="pr-editor-footer">
-          <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={handleClose} disabled={submitting}>
-            {t.cancel}
-          </button>
-          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanged()}>
-            {submitting ? t.submitting : t.submit}
-          </button>
+      </div>)}
+
+      <PrEditorChangelogPanel externalId={currentId} />
+
+      {showUnsavedPrompt && (
+        <div className="pr-unsaved-changes-toast" role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
+          {pendingCharacterTabCloseId ? <span>Este personaje tiene cambios sin guardar</span> : <span>Tienes cambios sin guardar</span>}
+          {pendingCharacterTabCloseId ? (
+            <>
+              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => removeCharacterEditorTab(pendingCharacterTabCloseId, true)} disabled={submitting}>Cerrar sin guardar</button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingCharacterTabCloseId(null); setShowUnsavedPrompt(false); }}>Cancelar</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => void handleSubmit()} disabled={submitting || !hasChanged()}>
+                {submitting ? t.submitting : 'Submit proposal'}
+              </button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={handleClose} disabled={submitting}>Descartar</button>
+            </>
+          )}
         </div>
-      </div>
+      )}
+
+      {characterTabContextMenu && createPortal(
+        <div className="pr-editor-session-tab-context-menu" role="menu" style={{ left: Math.min(characterTabContextMenu.x, window.innerWidth - 190), top: Math.min(characterTabContextMenu.y, window.innerHeight - 58) }} onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
+              <button type="button" role="menuitem" onClick={() => {
+                const tab = sharedSessionTabs.find(item => item.externalId === characterTabContextMenu.externalId && item.kind === characterTabContextMenu.kind);
+                const controller = (window as any).__metadeaPrEditorSession;
+                if (tab && controller?.closeTab) controller.closeTab(tab);
+                else removeCharacterEditorTab(characterTabContextMenu.externalId);
+                setCharacterTabContextMenu(null);
+              }}>Cerrar pestaña</button>
+        </div>,
+        document.body,
+      )}
 
       {appearanceSearchOpen && (
         <MediaSearchPopup

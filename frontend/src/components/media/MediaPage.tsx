@@ -14,6 +14,8 @@ import { prefetchSagaData, loadSagaChain } from '../../lib/media/sagaData';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
 import { PrEditorModal } from './PrEditorModal';
+import type { PrEditorSessionHandle, PrEditorSessionTab } from './PrEditorModal';
+import { openSubmittedProposal, submitCollaborativeProposal, type ProposalFileEntry } from '../../lib/github/submitCollaborativeProposal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5, getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
 import { IconPlus, IconCheck, IconTrayStatus, IconLayers, IconHeart, IconRefresh } from '../local/ui/icons';
@@ -33,6 +35,76 @@ import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/
 import { mergePlatformVersions, stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { sanitizeHtml } from '../../lib/shared/sanitize-html';
 import { ANILIST_TYPES, pickAggregateStatus } from '../../lib/constants/media';
+
+function mergeProposalSessionBatches(batches: Array<{ ownerId: string; entries: ProposalFileEntry[] }>): ProposalFileEntry[] {
+  const merged = new Map<string, { entry: ProposalFileEntry; hasOwnerDraft: boolean }>();
+
+  for (const batch of batches) {
+    for (const incoming of batch.entries) {
+      const key = `${incoming.kind}:${incoming.externalId}`;
+      const existing = merged.get(key);
+      const incomingIsOwner = incoming.externalId === batch.ownerId;
+      if (!existing) {
+        merged.set(key, { entry: incoming, hasOwnerDraft: incomingIsOwner });
+        continue;
+      }
+      if (existing.entry.kind !== incoming.kind) continue;
+
+      const preferIncoming = incomingIsOwner || !existing.hasOwnerDraft;
+      const ownerEntry = preferIncoming ? incoming : existing.entry;
+      const otherEntry = preferIncoming ? existing.entry : incoming;
+      if (incoming.kind === 'media' && ownerEntry.kind === 'media' && otherEntry.kind === 'media') {
+        const relations = new Map<string, (typeof incoming.bundle.media_relations)[number]>();
+        [...otherEntry.bundle.media_relations, ...ownerEntry.bundle.media_relations].forEach(relation => {
+          relations.set(relation.related_media_external_id, relation);
+        });
+        merged.set(key, {
+          hasOwnerDraft: existing.hasOwnerDraft || incomingIsOwner,
+          entry: {
+            ...ownerEntry,
+            bundle: {
+              ...otherEntry.bundle,
+              ...ownerEntry.bundle,
+          media_catalog: { ...otherEntry.bundle.media_catalog, ...ownerEntry.bundle.media_catalog },
+          media_relations: [...relations.values()],
+        },
+        removedRelationIds: [...new Set([...(otherEntry.removedRelationIds ?? []), ...(ownerEntry.removedRelationIds ?? [])])].filter(id => !relations.has(id)),
+        removedCharacterIds: [...new Set([...(otherEntry.removedCharacterIds ?? []), ...(ownerEntry.removedCharacterIds ?? [])])]
+          .filter(id => !ownerEntry.bundle.characters.some(character => character.external_id === id)),
+        removedAuthorIds: [...new Set([...(otherEntry.removedAuthorIds ?? []), ...(ownerEntry.removedAuthorIds ?? [])])]
+          .filter(id => !ownerEntry.bundle.media_authors.some(author => author.external_id === id)),
+            removedArcIds: [...new Set([...(otherEntry.removedArcIds ?? []), ...(ownerEntry.removedArcIds ?? [])])],
+          },
+        });
+      } else if (incoming.kind === 'character' && ownerEntry.kind === 'character' && otherEntry.kind === 'character') {
+        const appearances = new Map<string, (typeof incoming.bundle.appearances)[number]>();
+        [...otherEntry.bundle.appearances, ...ownerEntry.bundle.appearances].forEach(item => appearances.set(item.media_external_id, item));
+        const actors = new Map<string, (typeof incoming.bundle.actors)[number]>();
+        [...otherEntry.bundle.actors, ...ownerEntry.bundle.actors].forEach(item => actors.set(item.external_id, item));
+        merged.set(key, {
+          hasOwnerDraft: existing.hasOwnerDraft || incomingIsOwner,
+          entry: {
+            ...ownerEntry,
+            bundle: {
+              ...otherEntry.bundle,
+              ...ownerEntry.bundle,
+              appearances: [...appearances.values()],
+              actors: [...actors.values()],
+            },
+        removedAppearanceIds: [...new Set([...(otherEntry.removedAppearanceIds ?? []), ...(ownerEntry.removedAppearanceIds ?? [])])]
+          .filter(id => !appearances.has(id)),
+        removedActorIds: [...new Set([...(otherEntry.removedActorIds ?? []), ...(ownerEntry.removedActorIds ?? [])])]
+          .filter(id => !actors.has(id)),
+        removedMergedCharacterIds: [...new Set([...(otherEntry.removedMergedCharacterIds ?? []), ...(ownerEntry.removedMergedCharacterIds ?? [])])]
+          .filter(id => !ownerEntry.bundle.merged_character_external_ids?.includes(id)),
+          },
+        });
+      }
+    }
+  }
+
+  return [...merged.values()].map(item => item.entry);
+}
 import { getPreferredCover } from '../../lib/media/cover-preferences';
 import { fetchApiSportsSeasonMatches, type EventMatch } from '../../lib/search/providers/apisports';
 
@@ -446,6 +518,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const [showEditor,         setShowEditor]         = useState(false);
   const [showSaga,           setShowSaga]           = useState(false);
   const [showPrEditor,       setShowPrEditor]       = useState(false);
+  const [prEditorSessionIds, setPrEditorSessionIds] = useState<string[]>([]);
+  const [activePrEditorId, setActivePrEditorId] = useState<string | null>(null);
+  const [activePrEditorCharacterId, setActivePrEditorCharacterId] = useState<string | null>(null);
+  const [prEditorCharacterEntries, setPrEditorCharacterEntries] = useState<Record<string, { title: string; dirty: boolean }>>({});
+  const [prEditorDirtyById, setPrEditorDirtyById] = useState<Record<string, boolean>>({});
+  const [prEditorSessionTitles, setPrEditorSessionTitles] = useState<Record<string, string>>({});
+  const [prEditorSagaOrderById, setPrEditorSagaOrderById] = useState<Record<string, string[]>>({});
+  const [showPrEditorExitPrompt, setShowPrEditorExitPrompt] = useState(false);
+  const [pendingPrEditorTabCloseId, setPendingPrEditorTabCloseId] = useState<string | null>(null);
+  const [pendingPrEditorCharacterCloseId, setPendingPrEditorCharacterCloseId] = useState<string | null>(null);
+  const [prEditorSessionSubmitting, setPrEditorSessionSubmitting] = useState(false);
+  const [prEditorSessionStatus, setPrEditorSessionStatus] = useState('');
+  const [prEditorExitError, setPrEditorExitError] = useState('');
+  const prEditorSessionHandles = useRef(new Map<string, PrEditorSessionHandle>());
   const [relationPage,       setRelationPage]       = useState(1);
   const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes' | 'matches' | 'seasons' | 'themes'>('related');
   const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
@@ -1394,6 +1480,217 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     window.location.replace('/profile');
   }, [data]);
 
+  const registerPrEditorSession = useCallback((externalId: string, handle: PrEditorSessionHandle | null) => {
+    if (handle) prEditorSessionHandles.current.set(externalId, handle);
+    else prEditorSessionHandles.current.delete(externalId);
+  }, []);
+
+  const updatePrEditorDirty = useCallback((externalId: string, dirty: boolean) => {
+    setPrEditorDirtyById(previous => previous[externalId] === dirty ? previous : { ...previous, [externalId]: dirty });
+  }, []);
+
+  const updatePrEditorSessionTitle = useCallback((externalId: string, title: string) => {
+    setPrEditorSessionTitles(previous => previous[externalId] === title ? previous : { ...previous, [externalId]: title });
+  }, []);
+
+  const updatePrEditorSagaOrder = useCallback((externalId: string, sagaOrder: string[]) => {
+    setPrEditorSagaOrderById(previous => {
+      const current = previous[externalId] ?? [];
+      return current.length === sagaOrder.length && current.every((id, index) => id === sagaOrder[index])
+        ? previous
+        : { ...previous, [externalId]: sagaOrder };
+    });
+  }, []);
+
+  const startPrEditorSession = useCallback(() => {
+    if (!currentId) return;
+    prEditorSessionHandles.current.clear();
+    setPrEditorSessionIds([currentId]);
+    setPrEditorDirtyById({});
+    setPrEditorSessionTitles(currentId && data?.titleMain ? { [currentId]: data.titleMain } : {});
+    setPrEditorSagaOrderById({});
+    setActivePrEditorId(currentId);
+    setActivePrEditorCharacterId(null);
+    setShowPrEditorExitPrompt(false);
+    setPendingPrEditorTabCloseId(null);
+    setPrEditorSessionStatus('');
+    setPrEditorExitError('');
+    setShowPrEditor(true);
+  }, [currentId, data?.titleMain]);
+
+  const addPrEditorSessionEntry = useCallback((externalId: string) => {
+    setPrEditorSessionIds(previous => previous.includes(externalId) ? previous : [...previous, externalId]);
+    setActivePrEditorId(externalId);
+    setActivePrEditorCharacterId(null);
+    setShowPrEditorExitPrompt(false);
+    setPendingPrEditorTabCloseId(null);
+  }, []);
+
+  const openCharacterPrEditorTab = useCallback((externalId: string, initialAppearance?: {
+    media_external_id: string;
+    title: string;
+    cover: string | null;
+    release_year?: number | null;
+    release_month?: number | null;
+    release_day?: number | null;
+  }) => {
+    setShowPrEditor(true);
+    setActivePrEditorCharacterId(externalId);
+    setPrEditorCharacterEntries(previous => ({ ...previous, [externalId]: previous[externalId] ?? { title: externalId, dirty: false } }));
+    (window as any).openCharacterEditor?.(externalId, initialAppearance, { mediaSession: true });
+  }, []);
+
+  useEffect(() => {
+    const onCharacterSessionChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ action: 'update' | 'close'; externalId: string; title?: string; dirty?: boolean }>).detail;
+      if (!detail?.externalId) return;
+      if (detail.action === 'close') {
+        setPrEditorCharacterEntries(previous => {
+          const { [detail.externalId]: _removed, ...remaining } = previous;
+          return remaining;
+        });
+        setActivePrEditorCharacterId(current => current === detail.externalId ? null : current);
+        return;
+      }
+      setActivePrEditorCharacterId(detail.externalId);
+      setPrEditorCharacterEntries(previous => ({
+        ...previous,
+        [detail.externalId]: {
+          title: detail.title || previous[detail.externalId]?.title || detail.externalId,
+          dirty: detail.dirty ?? previous[detail.externalId]?.dirty ?? false,
+        },
+      }));
+    };
+    window.addEventListener('metadea:character-editor-session-change', onCharacterSessionChange);
+    return () => window.removeEventListener('metadea:character-editor-session-change', onCharacterSessionChange);
+  }, []);
+
+  const removePrEditorSessionEntry = useCallback((externalId: string) => {
+    const currentIndex = prEditorSessionIds.indexOf(externalId);
+    const remaining = prEditorSessionIds.filter(id => id !== externalId);
+    setPrEditorSessionIds(remaining);
+    if (!remaining.length) {
+      const nextCharacterId = Object.keys(prEditorCharacterEntries)[0];
+      if (nextCharacterId) {
+        setActivePrEditorId(null);
+        setActivePrEditorCharacterId(nextCharacterId);
+        setPrEditorDirtyById({});
+        setPrEditorSessionTitles({});
+        setPrEditorSagaOrderById({});
+        prEditorSessionHandles.current.delete(externalId);
+        (window as any).openCharacterEditor?.(nextCharacterId, undefined, { mediaSession: true });
+        return;
+      }
+      setShowPrEditor(false);
+      setActivePrEditorId(null);
+      setActivePrEditorCharacterId(null);
+      setPrEditorDirtyById({});
+      setPrEditorSessionTitles({});
+      setPrEditorSagaOrderById({});
+      setShowPrEditorExitPrompt(false);
+      setPendingPrEditorTabCloseId(null);
+      prEditorSessionHandles.current.clear();
+      prEditorSessionHandles.current.delete(externalId);
+      return;
+    }
+    if (activePrEditorId === externalId) setActivePrEditorId(remaining[Math.max(0, Math.min(currentIndex - 1, remaining.length - 1))]);
+    prEditorSessionHandles.current.delete(externalId);
+    setPrEditorDirtyById(previous => { const { [externalId]: _removed, ...next } = previous; return next; });
+    setPrEditorSessionTitles(previous => { const { [externalId]: _removed, ...next } = previous; return next; });
+    setPrEditorSagaOrderById(previous => { const { [externalId]: _removed, ...next } = previous; return next; });
+  }, [activePrEditorId, prEditorSessionIds, prEditorCharacterEntries]);
+
+  const requestClosePrEditorSessionEntry = useCallback((externalId: string) => {
+    if (prEditorDirtyById[externalId]) {
+      setPendingPrEditorTabCloseId(externalId);
+      setShowPrEditorExitPrompt(true);
+      return;
+    }
+    setShowPrEditorExitPrompt(false);
+    removePrEditorSessionEntry(externalId);
+  }, [prEditorDirtyById, removePrEditorSessionEntry]);
+
+  const confirmClosePrEditorSessionEntry = useCallback(() => {
+    if (!pendingPrEditorTabCloseId) return;
+    const externalId = pendingPrEditorTabCloseId;
+    setShowPrEditorExitPrompt(false);
+    setPendingPrEditorTabCloseId(null);
+    removePrEditorSessionEntry(externalId);
+  }, [pendingPrEditorTabCloseId, removePrEditorSessionEntry]);
+
+  const confirmClosePrEditorCharacterEntry = useCallback(() => {
+    if (!pendingPrEditorCharacterCloseId) return;
+    const externalId = pendingPrEditorCharacterCloseId;
+    setShowPrEditorExitPrompt(false);
+    setPendingPrEditorCharacterCloseId(null);
+    (window as any).closeCharacterEditorTab?.(externalId, true);
+  }, [pendingPrEditorCharacterCloseId]);
+
+  const discardPrEditorSession = useCallback(() => {
+    setShowPrEditorExitPrompt(false);
+    setPendingPrEditorTabCloseId(null);
+    setPendingPrEditorCharacterCloseId(null);
+    setShowPrEditor(false);
+    setPrEditorSessionIds([]);
+    setActivePrEditorId(null);
+    setActivePrEditorCharacterId(null);
+    setPrEditorCharacterEntries({});
+    setPrEditorDirtyById({});
+    setPrEditorSessionTitles({});
+    setPrEditorSagaOrderById({});
+    prEditorSessionHandles.current.clear();
+    setPrEditorSessionStatus('');
+    (window as any).closeCharacterEditorSession?.();
+  }, []);
+
+  const requestPrEditorSessionClose = useCallback(() => {
+    if (!Object.values(prEditorDirtyById).some(Boolean) && !Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) {
+      discardPrEditorSession();
+      return;
+    }
+    setPendingPrEditorTabCloseId(null);
+    setShowPrEditorExitPrompt(true);
+  }, [discardPrEditorSession, prEditorDirtyById, prEditorCharacterEntries]);
+
+  const submitPrEditorSession = useCallback(async () => {
+    if (prEditorSessionSubmitting) return;
+    setPrEditorSessionSubmitting(true);
+    setPrEditorSessionStatus('Preparando cambios…');
+    try {
+      const batches: Array<{ ownerId: string; entries: ProposalFileEntry[] }> = [];
+      const summaries: string[] = [];
+      for (const [ownerId, character] of Object.entries(prEditorCharacterEntries)) {
+        if (!character.dirty) continue;
+        const prepared = await (window as any).prepareCharacterEditorProposal?.(ownerId, setPrEditorSessionStatus);
+        if (!prepared) throw new Error(`No se pudieron preparar los cambios del personaje ${character.title}.`);
+        batches.push({ ownerId, entries: prepared.entries as ProposalFileEntry[] });
+        summaries.push(prepared.changeSummary as string);
+      }
+      for (const ownerId of prEditorSessionIds) {
+        const handle = prEditorSessionHandles.current.get(ownerId);
+        if (!handle?.hasChanges()) continue;
+        const prepared = await handle.prepareProposal();
+        if (!prepared) throw new Error(`No se pudieron preparar los cambios de ${ownerId}.`);
+        batches.push({ ownerId, entries: prepared.entries });
+        summaries.push(prepared.changeSummary);
+      }
+      const entries = mergeProposalSessionBatches(batches);
+      if (!entries.length) throw new Error('No hay cambios para enviar.');
+      const primaryId = batches[0]?.ownerId || currentId;
+      const proposal = await submitCollaborativeProposal(primaryId, entries, summaries.join('\n'), setPrEditorSessionStatus);
+      if (!proposal) throw new Error('No se pudo crear la propuesta.');
+      openSubmittedProposal(proposal);
+      discardPrEditorSession();
+      if (currentId) fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
+    } catch (error) {
+      console.error('Failed to submit media editor session:', error);
+      setPrEditorSessionStatus('');
+      setPrEditorExitError(error instanceof Error ? error.message : 'No se pudo enviar la propuesta.');
+    } finally {
+      setPrEditorSessionSubmitting(false);
+    }
+  }, [currentId, discardPrEditorSession, prEditorSessionIds, prEditorSessionSubmitting, prEditorCharacterEntries]);
+
   // Closing without saving: roll back any optimistic quick-click draft to
   // the last confirmed DB state, so a re-open (or the hero widget) doesn't
   // keep showing changes that were never actually persisted.
@@ -1473,6 +1770,69 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   }, [isFavorited, updateLocal, applySaved, rollback, currentId]);
 
   // ── States: loading / error ──────────────────────────────────────────────
+
+  const prEditorAffectedIds = new Set(prEditorSessionIds.flatMap(id => prEditorSessionHandles.current.get(id)?.affectedExternalIds() ?? []));
+  const insertionOrder = new Map(prEditorSessionIds.map((id, index) => [id, index]));
+  const orderCandidates = prEditorSessionIds.map((id, index) => {
+    const sagaOrder = prEditorSagaOrderById[id] ?? [];
+    return { sagaOrder, index, coverage: prEditorSessionIds.filter(sessionId => sagaOrder.includes(sessionId)).length, active: id === activePrEditorId };
+  }).sort((a, b) => b.coverage - a.coverage || Number(b.active) - Number(a.active) || b.index - a.index);
+  const sagaOrderForTabs = orderCandidates[0]?.sagaOrder ?? [];
+  const sagaPosition = new Map(sagaOrderForTabs.map((id, index) => [id, index]));
+  const orderedPrEditorSessionIds = [...prEditorSessionIds].sort((a, b) =>
+    (sagaPosition.get(a) ?? Number.MAX_SAFE_INTEGER) - (sagaPosition.get(b) ?? Number.MAX_SAFE_INTEGER)
+    || (insertionOrder.get(a) ?? 0) - (insertionOrder.get(b) ?? 0),
+  );
+  const prEditorSessionTabs: PrEditorSessionTab[] = orderedPrEditorSessionIds.map(id => ({
+    externalId: id,
+    label: prEditorSessionTitles[id] || (id === currentId ? data?.titleMain : '') || id,
+    dirty: prEditorDirtyById[id] ?? false,
+    affected: prEditorAffectedIds.has(id),
+    kind: 'media',
+  }));
+  const prEditorAllSessionTabs: PrEditorSessionTab[] = [
+    ...prEditorSessionTabs,
+    ...Object.entries(prEditorCharacterEntries).map(([externalId, character]) => ({
+      externalId,
+      label: character.title,
+      dirty: character.dirty,
+      affected: false,
+      kind: 'character' as const,
+    })),
+  ];
+
+  const navigatePrEditorSessionTab = (tab: PrEditorSessionTab) => {
+    if (tab.kind === 'character') {
+      setActivePrEditorCharacterId(tab.externalId);
+      (window as any).openCharacterEditor?.(tab.externalId, undefined, { mediaSession: true });
+      return;
+    }
+    setActivePrEditorCharacterId(null);
+    setActivePrEditorId(tab.externalId);
+  };
+
+  useEffect(() => {
+    const controller = {
+      tabs: prEditorAllSessionTabs,
+      active: activePrEditorCharacterId
+        ? { kind: 'character' as const, externalId: activePrEditorCharacterId }
+        : { kind: 'media' as const, externalId: activePrEditorId },
+      navigate: navigatePrEditorSessionTab,
+      closeTab: (tab: PrEditorSessionTab) => {
+        if (tab.kind === 'character') (window as any).closeCharacterEditorTab?.(tab.externalId);
+        else requestClosePrEditorSessionEntry(tab.externalId);
+      },
+      requestClose: requestPrEditorSessionClose,
+      finishSession: discardPrEditorSession,
+      submitProposal: () => { void submitPrEditorSession(); },
+      hasChanges: Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty),
+    };
+    (window as any).__metadeaPrEditorSession = controller;
+    window.dispatchEvent(new CustomEvent('metadea:pr-editor-session-update', { detail: controller }));
+    return () => {
+      if ((window as any).__metadeaPrEditorSession === controller) delete (window as any).__metadeaPrEditorSession;
+    };
+  }, [prEditorAllSessionTabs, activePrEditorCharacterId, activePrEditorId, requestPrEditorSessionClose, requestClosePrEditorSessionEntry, discardPrEditorSession, submitPrEditorSession, prEditorDirtyById, prEditorCharacterEntries]);
 
   if (pageState === 'loading') {
     return <div className="media-loading"><div className="spinner" /></div>;
@@ -1565,7 +1925,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const activeCharList = sortCharactersByRole(charTab === 'staff' ? (data.staff ?? []) : data.characters);
   const isAnilistType = (ANILIST_TYPES as readonly string[]).includes(data.type);
   const showUsers = isAnilistType && (friendsLoading || friendsScores.length > 0);
-
   return (
     <>
       {isFetchingFull && <div className="media-bottom-progress" />}
@@ -1813,21 +2172,68 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           document.body,
         );
       })()}
-      {!previewMode && showPrEditor && (
-        <PrEditorModal
-          externalId={currentId}
-          onBlockedSubmitted={handleBlockedProposalSubmitted}
-          onClose={() => setShowPrEditor(false)}
-          onSaved={() => {
-            // Reload page data to reflect saved changes
-            fetchMediaDataWithFallback(
-              currentId,
-              partial => setData(partial),
-              full => setData(full),
-              () => {}
-            );
-          }}
-        />
+      {!previewMode && showPrEditor && prEditorSessionIds.map(externalId => {
+        return (
+          <PrEditorModal
+            key={externalId}
+            externalId={externalId}
+            sessionActive={activePrEditorCharacterId === null && activePrEditorId === externalId}
+            sessionMode
+            sessionHasChanges={Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(item => item.dirty)}
+            sessionAffected={prEditorAffectedIds.has(externalId)}
+            sessionTabs={prEditorAllSessionTabs}
+            onNavigateSessionEntry={setActivePrEditorId}
+            onNavigateSessionTab={navigatePrEditorSessionTab}
+            onRequestCloseSessionEntry={requestClosePrEditorSessionEntry}
+            onRequestCloseSessionTab={tab => {
+              if (tab.kind === 'character') {
+                if (prEditorCharacterEntries[tab.externalId]?.dirty) {
+                  setPendingPrEditorCharacterCloseId(tab.externalId);
+                  setShowPrEditorExitPrompt(true);
+                } else (window as any).closeCharacterEditorTab?.(tab.externalId);
+              } else requestClosePrEditorSessionEntry(tab.externalId);
+            }}
+            onSessionTitleChange={updatePrEditorSessionTitle}
+            onSessionSagaOrderChange={updatePrEditorSagaOrder}
+            onSessionDirtyChange={updatePrEditorDirty}
+            onEditSagaEntry={addPrEditorSessionEntry}
+            onEditCharacter={openCharacterPrEditorTab}
+            onSubmitProposalSession={() => void submitPrEditorSession()}
+            onRequestSessionClose={requestPrEditorSessionClose}
+            onDiscardSession={discardPrEditorSession}
+            onRegisterSessionEditor={registerPrEditorSession}
+            onBlockedSubmitted={handleBlockedProposalSubmitted}
+            onClose={requestPrEditorSessionClose}
+            onSaved={() => {
+              if (externalId !== currentId) return;
+              fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
+            }}
+          />
+        );
+      })}
+      {!previewMode && showPrEditorExitPrompt && (pendingPrEditorTabCloseId || pendingPrEditorCharacterCloseId || Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) && createPortal(
+        <div className="pr-unsaved-changes-toast" role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
+          {pendingPrEditorTabCloseId ? (
+            <span>«{prEditorSessionTitles[pendingPrEditorTabCloseId] || pendingPrEditorTabCloseId}» tiene cambios sin guardar</span>
+          ) : pendingPrEditorCharacterCloseId ? (
+            <span>«{prEditorCharacterEntries[pendingPrEditorCharacterCloseId]?.title || pendingPrEditorCharacterCloseId}» tiene cambios sin guardar</span>
+          ) : Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty) ? (
+            <span>Tienes cambios sin guardar</span>
+          ) : (
+            <span>¿Salir de la sesión de edición?</span>
+          )}
+          {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && Object.values(prEditorDirtyById).some(Boolean) && prEditorSessionStatus && <span className="pr-unsaved-changes-toast__status">{prEditorSessionStatus}</span>}
+          {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && Object.values(prEditorDirtyById).some(Boolean) && prEditorExitError && <span className="pr-unsaved-changes-toast__error">{prEditorExitError}</span>}
+          {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && (Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) && <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => void submitPrEditorSession()} disabled={prEditorSessionSubmitting}>
+            {prEditorSessionSubmitting ? 'Enviando…' : 'Submit proposal'}
+          </button>}
+          {pendingPrEditorTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={confirmClosePrEditorSessionEntry}>Cerrar sin guardar</button>}
+          {pendingPrEditorTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingPrEditorTabCloseId(null); setShowPrEditorExitPrompt(false); }}>Cancelar</button>}
+          {pendingPrEditorCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={confirmClosePrEditorCharacterEntry}>Cerrar sin guardar</button>}
+          {pendingPrEditorCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingPrEditorCharacterCloseId(null); setShowPrEditorExitPrompt(false); }}>Cancelar</button>}
+          {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && (Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={discardPrEditorSession} disabled={prEditorSessionSubmitting}>Descartar</button>}
+        </div>,
+        document.body,
       )}
 
       {/* Hero */}
@@ -1849,7 +2255,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
             <button
               type="button"
               className="media-banner-pr-btn"
-              onClick={() => setShowPrEditor(true)}
+              onClick={startPrEditorSession}
               title={tm.propose_github_changes}
             >
               <IconPlus />

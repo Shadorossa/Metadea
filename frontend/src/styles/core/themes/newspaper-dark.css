@@ -1367,4 +1367,62 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   font-style: italic !important;
 }
 
+/* Catalog proposal actions: keep the accept/reject controls in the same
+   restrained, double-ruled print style as the surrounding PR cards. */
+[data-theme="newspaper-dark"] .pr-list-accept-btn,
+[data-theme="newspaper-dark"] .pr-list-reject-btn,
+[data-theme="newspaper-dark"] .pr-action-confirm-cancel {
+  min-height: 2.2rem;
+  border: 3px double var(--border-color, #4a4237) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  text-transform: capitalize !important;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease !important;
+}
+
+[data-theme="newspaper-dark"] .pr-list-accept-btn {
+  background: var(--accent, #a69a7d) !important;
+  border-color: #c8b995 !important;
+  color: #171510 !important;
+}
+
+[data-theme="newspaper-dark"] .pr-list-accept-btn:hover:not(:disabled) {
+  background: #b9ad8e !important;
+  border-color: #ded1ad !important;
+  filter: none !important;
+}
+
+[data-theme="newspaper-dark"] .pr-list-reject-btn {
+  background: #28211e !important;
+  border-color: #725a50 !important;
+  color: #d2aaa0 !important;
+}
+
+[data-theme="newspaper-dark"] .pr-list-reject-btn:hover:not(:disabled) {
+  background: #382925 !important;
+  border-color: #a47a6e !important;
+  color: #f0c8bb !important;
+  filter: none !important;
+}
+
+[data-theme="newspaper-dark"] .pr-action-confirm-cancel {
+  background: transparent !important;
+  color: var(--text-muted, #9c8f80) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-action-confirm-cancel:hover {
+  background: var(--bg-elevated, #1c1a17) !important;
+  border-color: var(--accent, #a69a7d) !important;
+  color: var(--text-main, #f5f2eb) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-list-accept-btn:disabled,
+[data-theme="newspaper-dark"] .pr-list-reject-btn:disabled {
+  filter: none !important;
+  opacity: 0.5;
+}
+
 

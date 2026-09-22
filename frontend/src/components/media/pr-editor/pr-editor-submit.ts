@@ -122,13 +122,14 @@ export interface SubmitPrEditorParams {
   // other removed*Ids above — the section reports it as it happens).
   removedArcIds: string[];
   changeSummary: string;
+  prepareOnly?: boolean;
   onSaved?: () => void;
   onBlockedSubmitted?: (externalId: string) => void;
   onClose: () => void;
   setStatusMsg: (msg: string) => void;
 }
 
-export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<void> {
+export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<ProposalFileEntry[] | null> {
   const { entry, externalId, mode } = p;
 
   await saveCatalogEntry(entry);
@@ -487,7 +488,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     // Already wrote straight to the local DB — nothing to propose upstream.
     p.setStatusMsg('Guardado en la base de datos local.');
     setTimeout(() => p.onClose(), 1000);
-    return;
+    return null;
   }
 
   // Arcs save/delete directly to the local DB as they're edited (no
@@ -574,6 +575,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     },
     ...dedupedOtherEntries.values(),
   ];
+  if (p.prepareOnly) return proposalEntries;
   const proposal = await submitCollaborativeProposal(externalId, proposalEntries, p.changeSummary, p.setStatusMsg);
   if (proposal) {
     openSubmittedProposal(proposal);
@@ -581,4 +583,5 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   }
 
   setTimeout(() => p.onClose(), 1500);
+  return null;
 }

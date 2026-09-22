@@ -23,6 +23,7 @@ interface Props {
   onRemove: (id: string) => void;
   onUpdateType: (id: string, relationType: string) => void;
   onAdd?: () => void;
+  onEditWork?: (externalId: string) => void;
 }
 
 // The "Relations" panel - ADAPTATION/SPIN_OFF/ALTERNATIVE/etc, i.e. every
@@ -33,7 +34,7 @@ interface Props {
 export function PrEditorRelationsSection({
   editableRelations, relationOptions, relationLabels,
   draggedIndex, dragHandlers, onRemove, onUpdateType,
-  onAdd,
+  onAdd, onEditWork,
 }: Props) {
   // Same groups for every card (doesn't depend on the individual relation),
   // so this is computed once per relationOptions/relationLabels change
@@ -55,6 +56,7 @@ export function PrEditorRelationsSection({
             isDragging={draggedIndex === index}
             dragHandlers={dragHandlers(index)}
             onRemove={onRemove}
+            onEditWork={onEditWork}
           >
             <RelationTypeSelect
               value={r.relation_type}

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { MetaResolver } from '../../../lib/media/sagaGrouping';
 import type { DragHandlers } from '../hooks/useDragReorder';
 
@@ -12,6 +13,7 @@ interface Props {
   groupDropReady: boolean;
   onRemove: (id: string) => void;
   onUngroup: (ids: string[]) => void;
+  onEditWork?: (id: string) => void;
   resolveMeta: MetaResolver;
 }
 
@@ -19,10 +21,11 @@ interface Props {
 // fixed in the chain; other entries can still be reordered or removed.
 export function PrEditorSagaOrderSection({
   externalId, sagaOrder, sagaGroups,
-  draggedIndex, dragHandlers, groupTargetIndex, groupDropReady, onRemove, onUngroup, resolveMeta,
+  draggedIndex, dragHandlers, groupTargetIndex, groupDropReady, onRemove, onUngroup, onEditWork, resolveMeta,
 }: Props) {
   const currentItemRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
   const timelineUnits: { key: string; ids: string[] }[] = [];
   const groupedUnits = new Map<string, { key: string; ids: string[] }>();
@@ -62,6 +65,22 @@ export function PrEditorSagaOrderSection({
     return () => observer.disconnect();
   }, [sagaOrder, sagaGroups]);
 
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', close);
+      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [contextMenu]);
+
   const renderItem = (id: string, nextUnitIsGroup = false) => {
     const index = sagaOrder.indexOf(id);
     const meta = resolveMeta(id);
@@ -79,9 +98,15 @@ export function PrEditorSagaOrderSection({
         <span className="pr-editor-saga-timeline-year">{meta.release_year ?? ''}</span>
         <span className="pr-editor-saga-timeline-node" aria-label={isCurrent ? 'Obra actual' : undefined} />
         <div
-          title={`${meta.title || id} · Mantén 1 s sobre otra obra para agrupar versiones alternativas`}
-          className={`pr-editor-media-card${isCurrent ? ' pr-editor-media-card--current' : ''}${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-          {...dragHandlers(index)}
+        title={`${meta.title || id} · Mantén 1 s sobre otra obra para agrupar versiones alternativas`}
+        className={`pr-editor-media-card${isCurrent ? ' pr-editor-media-card--current' : ''}${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
+        onContextMenu={event => {
+          if (!onEditWork || isCurrent) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setContextMenu({ id, x: event.clientX, y: event.clientY });
+        }}
+        {...dragHandlers(index)}
         >
         <div className="pr-editor-media-card-cover">
           {meta.cover
@@ -122,6 +147,19 @@ export function PrEditorSagaOrderSection({
           ) : renderItem(unit.ids[0], nextUnitIsGroup);
         })}
       </div>
+      {contextMenu && onEditWork && createPortal(
+        <div
+          className="pr-editor-saga-context-menu"
+          role="menu"
+          style={{ left: Math.min(contextMenu.x, window.innerWidth - 210), top: Math.min(contextMenu.y, window.innerHeight - 60) }}
+          onPointerDown={event => event.stopPropagation()}
+        >
+          <button type="button" role="menuitem" onClick={() => { onEditWork(contextMenu.id); setContextMenu(null); }}>
+            Editar esta obra
+          </button>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ interface Props {
   dragHandlers: (index: number) => DragHandlers;
   onRemove: (externalId: string) => void;
   onAdd?: () => void;
+  onEditWork?: (externalId: string) => void;
 }
 
 // Generic "grid of draggable cards with a remove button" panel - the Bundled
@@ -23,7 +24,7 @@ interface Props {
 // it lives in the caller's own section header row, next to the section
 // title, not in its own row below.
 export function PrEditorRelationCardList({
-  relations, draggedIndex, dragHandlers, onRemove, onAdd,
+  relations, draggedIndex, dragHandlers, onRemove, onAdd, onEditWork,
 }: Props) {
   return (
     <div className="pr-editor-subsection pr-editor-subsection--bundled">
@@ -37,6 +38,7 @@ export function PrEditorRelationCardList({
             isDragging={draggedIndex === index}
             dragHandlers={dragHandlers(index)}
             onRemove={onRemove}
+            onEditWork={onEditWork}
           />
         ))}
         {onAdd && <PrEditorAddButton className="pr-editor-add-card-btn" onClick={onAdd} />}

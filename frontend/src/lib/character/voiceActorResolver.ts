@@ -73,6 +73,65 @@ export async function correlateVoiceActor(
     console.warn('[VoiceActorResolver] TMDB check error:', err);
   }
 
+  // Japanese names are commonly written family-name first on wikis, while
+  // AniList/TMDB may index the same person given-name first. Only make this
+  // extra pass after the original order failed across every source.
+  if (/^japanese$/i.test(language.trim())) {
+    const nameParts = baseName.split(/\s+/).filter(Boolean);
+    if (nameParts.length >= 2) {
+      const reversedName = nameParts.length === 2
+        ? `${nameParts[1]} ${nameParts[0]}`
+        : `${nameParts[nameParts.length - 1]} ${nameParts.slice(0, -1).join(' ')}`;
+
+      try {
+        const dbMatch = await findActorByExactName(reversedName);
+        if (dbMatch) {
+          return {
+            externalId: dbMatch.external_id,
+            name: dbMatch.name,
+            native: dbMatch.name_native || undefined,
+            language,
+            image: dbMatch.image_url || undefined,
+            matchedFrom: 'db',
+          };
+        }
+      } catch (err) {
+        console.warn('[VoiceActorResolver] Reversed local DB check error:', err);
+      }
+
+      try {
+        const anilistMatch = await findAniListStaffExactMatch(reversedName, signal);
+        if (anilistMatch) {
+          return {
+            externalId: `person:a${anilistMatch.id}`,
+            name: anilistMatch.name,
+            native: anilistMatch.nameNative || undefined,
+            language,
+            image: anilistMatch.image || undefined,
+            matchedFrom: 'anilist',
+          };
+        }
+      } catch (err) {
+        console.warn('[VoiceActorResolver] Reversed AniList check error:', err);
+      }
+
+      try {
+        const tmdbMatch = await findTmdbPersonExactMatch(reversedName, signal);
+        if (tmdbMatch) {
+          return {
+            externalId: `person:t${tmdbMatch.id}`,
+            name: tmdbMatch.name,
+            language,
+            image: tmdbMatch.profile_path ? API_ENDPOINTS.TMDB_IMAGE(tmdbMatch.profile_path, 'w185') : undefined,
+            matchedFrom: 'tmdb',
+          };
+        }
+      } catch (err) {
+        console.warn('[VoiceActorResolver] Reversed TMDB check error:', err);
+      }
+    }
+  }
+
   return {
     externalId: `va:${baseName}`,
     name: baseName,

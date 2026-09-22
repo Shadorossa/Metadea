@@ -15,6 +15,187 @@
   padding: 1.5rem;
 }
 
+.pr-editor-session-layout {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 1900px);
+  height: 90vh;
+  min-height: 0;
+  gap: 0.55rem;
+}
+
+.pr-editor-session-layout--active {
+  height: min(97vh, 1100px);
+}
+
+.pr-editor-session-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  width: 100%;
+  overflow-x: auto;
+  padding: 0.2rem 0.1rem 0.45rem;
+  scrollbar-width: thin;
+}
+
+.pr-editor-session-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  max-width: min(260px, 44vw);
+  min-height: 34px;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border-color, #48443b);
+  background: var(--bg-card, #1b1917);
+  color: var(--text-muted, #a7a398);
+  font: inherit;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.pr-editor-session-tab:hover {
+  color: var(--text-main, #e3e1db);
+  border-color: var(--accent, #b4a77e);
+}
+
+.pr-editor-session-tab--active {
+  color: var(--text-main, #e3e1db);
+  border-color: var(--accent, #b4a77e);
+  background: var(--bg-secondary, #24211d);
+  box-shadow: inset 0 -2px 0 var(--accent, #b4a77e);
+}
+
+.pr-editor-session-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-session-tab-dirty {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent, #b4a77e);
+}
+
+.pr-editor-session-tab-affected {
+  color: var(--accent, #b4a77e);
+  font-size: 0.82rem;
+}
+
+.pr-editor-session-panel-row {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-height: 0;
+  gap: 0.65rem;
+}
+
+.pr-editor-session-layout--active .pr-editor-modal {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.pr-editor-session-arrow {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 54px;
+  flex: 0 0 42px;
+  border: 1px solid var(--border-color, #48443b);
+  background: var(--bg-card, #1b1917);
+  color: var(--text-main, #e3e1db);
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.pr-editor-session-arrow svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pr-editor-session-arrow:not(:disabled):hover {
+  border-color: var(--accent, #b4a77e);
+  background: var(--bg-secondary, #24211d);
+  color: var(--accent, #b4a77e);
+}
+
+.pr-editor-session-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+@media (max-width: 760px) {
+  .pr-editor-session-layout--active {
+    height: 98vh;
+  }
+
+  .pr-editor-session-panel-row {
+    gap: 0.3rem;
+  }
+
+  .pr-editor-session-arrow {
+    width: 30px;
+    height: 44px;
+    flex-basis: 30px;
+  }
+}
+
+.pr-unsaved-changes-toast {
+  position: fixed;
+  z-index: 15000;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.65rem 0.8rem;
+  transform: translateX(-50%);
+  border: 1px solid var(--border-color, #48443b);
+  background: var(--bg-card, #1b1917);
+  color: var(--text-main, #e3e1db);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+}
+
+.pr-unsaved-changes-toast__status {
+  color: var(--text-muted, #a7a398);
+  font-size: 0.82rem;
+}
+
+.pr-unsaved-changes-toast__error {
+  color: var(--danger, #e17b75);
+  font-size: 0.82rem;
+}
+
+.pr-editor-session-affected {
+  color: var(--accent, #b4a77e);
+  font-size: 0.72em;
+  font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .pr-unsaved-changes-toast {
+    flex-wrap: wrap;
+    left: 0.75rem;
+    right: 0.75rem;
+    max-width: none;
+    transform: none;
+  }
+}
+
 /* CharacterPrEditorModal's own two overlay roots (loading + real content)
    use this modifier alongside .pr-editor-overlay above - it can be opened
    nested inside an already-open PrEditorModal ("+ Crear personaje"), and
@@ -59,10 +240,7 @@
   align-items: center;
 }
 
-/* Narrower than the default 97vw - leaves room for
-   .pr-editor-changelog-panel to sit beside it (only PrEditorModal, the
-   collaborative catalog editor, uses this modifier; CharacterPrEditorModal
-   reuses the same base .pr-editor-modal class but not this one). */
+/* Leaves room for the shared .pr-editor-changelog-panel beside either editor. */
 .pr-editor-modal--narrow {
   width: 74vw;
   max-width: 1500px;
@@ -136,9 +314,7 @@
   gap: 0.15rem;
 }
 
-/* Only PrEditorModal's header needs the title block and action buttons on
-   one row - CharacterPrEditorModal reuses the base .pr-editor-header
-   without this modifier, so it keeps the plain column layout above. */
+/* Shared title, status, and action layout used by both collaborative editors. */
 .pr-editor-header--row {
   flex-direction: row;
   justify-content: space-between;
@@ -157,6 +333,27 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.pr-editor-header-action {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.35rem;
+  min-height: 2.35rem;
+  line-height: 1;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pr-editor-header-action--icon {
+  width: 3.35rem;
+  padding: 0;
+}
+
+.pr-editor-header-cancel {
+  width: 2.35rem;
 }
 
 .pr-editor-header-status {
@@ -271,6 +468,18 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+}
+
+.pr-editor-body--cast {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pr-editor-body--cast > .pr-editor-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
 }
 
 .pr-editor-main {
@@ -1660,20 +1869,49 @@
 }
 
 .pr-editor-media-character-role-groups {
-  margin-top: 0.6rem;
-  margin-bottom: 0.75rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1.25rem;
+  margin: 0;
 }
 
 .pr-editor-media-character-role-group {
   min-width: 0;
-  min-height: 25rem;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pr-editor-media-character-role-group .pr-editor-character-appearance-header {
+  flex: 0 0 auto;
+  margin-bottom: 0.25rem;
 }
 
 .pr-editor-media-character-role-group .pr-editor-characters-grid {
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 0.5rem;
-  min-height: 23rem;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  flex: 1 1 auto;
+  min-height: 0;
   align-content: start;
+}
+
+.pr-editor-media-character-role-group .pr-editor-media-card {
+  min-height: 0;
+  gap: 0.2rem;
+}
+
+.pr-editor-media-character-role-group .pr-editor-media-card-cover {
+  flex: 1 1 auto;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.pr-editor-media-character-role-group .pr-editor-media-card-title {
+  height: 2.5em;
+  min-height: 2.5em;
 }
 
 .pr-editor-media-character-role-group .pr-editor-media-card-remove {
@@ -1740,7 +1978,7 @@
 }
 
 @media (max-width: 760px) {
-  .pr-editor-character-appearance-groups {
+  .pr-editor-character-appearance-groups:not(.pr-editor-media-character-role-groups) {
     grid-template-columns: minmax(0, 1fr);
   }
 }

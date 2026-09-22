@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BookOpen, Boxes, Clapperboard, GitBranch, Layers, Link, List, Music2, Package, RefreshCw, Settings, Sparkles, Trash2, Users, type LucideIcon } from 'lucide-react';
+import { BookOpen, Boxes, Clapperboard, GitBranch, Layers, Link, List, Music2, Package, RefreshCw, Settings, Sparkles, Trash2, Users, X, type LucideIcon } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
 import { getCatalogEntryForEditor, getBlockedExternalIds, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
@@ -8,6 +8,7 @@ import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
 import { isVnovelExternalId } from '../../lib/media/mapper-utils';
 import type { MediaCatalogEntry, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../../lib/tauri/characters';
+import type { ProposalFileEntry } from '../../lib/github/submitCollaborativeProposal';
 import { getMediaEpisodes, type MediaEpisode, type MediaTheme } from '../../lib/tauri/misc-commands';
 import { fetchMediaEpisodes } from '../../lib/media/episode-list';
 import { fetchTmdbDetail, fetchTmdbEpisodes, type TmdbTvDetail } from '../../lib/search/providers/tmdb';
@@ -40,6 +41,7 @@ import { PrEditorSagaOrderSection } from './pr-editor/PrEditorSagaOrderSection';
 import { PrEditorAddButton } from './pr-editor/PrEditorAddButton';
 import { PrEditorRelationsSection } from './pr-editor/PrEditorRelationsSection';
 import { PrEditorChangelogPanel } from './pr-editor/PrEditorChangelogPanel';
+import { PrEditorHeader } from '../shared/PrEditorHeader';
 import { getT } from '../../i18n/client';
 import { CANONICAL_RELATION_LABELS } from '../../lib/media/canonical-relations';
 
@@ -60,6 +62,25 @@ export interface EditableRelation {
   cover?: string | null;
 }
 
+export interface PreparedMediaProposal {
+  entries: ProposalFileEntry[];
+  changeSummary: string;
+}
+
+export interface PrEditorSessionHandle {
+  hasChanges: () => boolean;
+  affectedExternalIds: () => string[];
+  prepareProposal: () => Promise<PreparedMediaProposal | null>;
+}
+
+export interface PrEditorSessionTab {
+  externalId: string;
+  label: string;
+  dirty: boolean;
+  affected: boolean;
+  kind?: 'media' | 'character';
+}
+
 interface Props {
   externalId: string;
   initialTab?: 'general' | 'cast' | 'relations';
@@ -67,6 +88,24 @@ interface Props {
   onClose: () => void;
   onSaved?: () => void;
   onBlockedSubmitted?: (externalId: string) => void;
+  onEditSagaEntry?: (externalId: string) => void;
+  onEditCharacter?: (externalId: string, initialAppearance?: { media_external_id: string; title: string; cover: string | null; release_year?: number | null; release_month?: number | null; release_day?: number | null }) => void;
+  sessionActive?: boolean;
+  sessionMode?: boolean;
+  sessionHasChanges?: boolean;
+  sessionAffected?: boolean;
+  sessionTabs?: PrEditorSessionTab[];
+  onNavigateSessionEntry?: (externalId: string) => void;
+  onNavigateSessionTab?: (tab: PrEditorSessionTab) => void;
+  onRequestCloseSessionEntry?: (externalId: string) => void;
+  onRequestCloseSessionTab?: (tab: PrEditorSessionTab) => void;
+  onSessionTitleChange?: (externalId: string, title: string) => void;
+  onSessionSagaOrderChange?: (externalId: string, sagaOrder: string[]) => void;
+  onSessionDirtyChange?: (externalId: string, dirty: boolean) => void;
+  onSubmitProposalSession?: () => void;
+  onRequestSessionClose?: () => void;
+  onDiscardSession?: () => void;
+  onRegisterSessionEditor?: (externalId: string, handle: PrEditorSessionHandle | null) => void;
   // 'local' (admin catalog panel) writes straight to the local DB and skips
   // branch/PR creation entirely — everything up to and including onSaved()
   // already writes locally regardless of mode, so this only gates the
@@ -107,7 +146,7 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
-export function PrEditorModal({ externalId, initialTab = 'general', initialRelationsSubtab, onClose, onSaved, onBlockedSubmitted, mode = 'proposal', nonGithubFields }: Props) {
+export function PrEditorModal({ externalId, initialTab = 'general', initialRelationsSubtab, onClose, onSaved, onBlockedSubmitted, onEditSagaEntry, onEditCharacter, sessionActive = true, sessionMode = false, sessionHasChanges = false, sessionAffected = false, sessionTabs = [], onNavigateSessionEntry, onNavigateSessionTab, onRequestCloseSessionEntry, onRequestCloseSessionTab, onSessionTitleChange, onSessionSagaOrderChange, onSessionDirtyChange, onSubmitProposalSession, onRequestSessionClose, onDiscardSession, onRegisterSessionEditor, mode = 'proposal', nonGithubFields }: Props) {
   const t = getT();
   const tm = t.media;
   const pe = t.pr_editor;
@@ -138,6 +177,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   // submits upstream, so it has nothing to gate here.
   const [githubGate, setGithubGate] = useState<'checking' | 'ok' | 'signed-out'>(mode === 'local' ? 'ok' : 'checking');
   const [submitting, setSubmitting] = useState(false);
+  const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
+  const [sessionTabContextMenu, setSessionTabContextMenu] = useState<{ externalId: string; kind?: 'media' | 'character'; x: number; y: number } | null>(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [entry, setEntry] = useState<MediaCatalogEntry | null>(null);
@@ -913,8 +954,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     });
   };
 
-  const handleSubmit = async () => {
-    if (!entry || isLoadingIssuePreview || issuePreviewError) return;
+  const handleSubmit = async (prepareOnly = false): Promise<PreparedMediaProposal | null> => {
+    if (!entry || isLoadingIssuePreview || issuePreviewError || (prepareOnly && !hasChanges())) return null;
     setSubmitting(true);
     setErrorMsg('');
 
@@ -935,7 +976,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
         ...sagaChangeDiff.removedIssueIds,
       ];
 
-      await submitPrEditorChanges({
+      const changeSummary = buildChangeSummary(resolveMeta);
+      const preparedEntries = await submitPrEditorChanges({
         entry,
         externalId,
         mode,
@@ -963,34 +1005,164 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
         removedCharacterIds: sagaChangeDiff.removedCharacterIds,
         removedAuthorIds: sagaChangeDiff.removedAuthorIds,
         removedArcIds,
-        changeSummary: buildChangeSummary(resolveMeta),
+        changeSummary,
+        prepareOnly,
         onSaved,
         onBlockedSubmitted: entry.blocked_at ? onBlockedSubmitted : undefined,
         onClose,
         setStatusMsg,
       });
+      if (prepareOnly && preparedEntries) {
+        setStatusMsg('');
+        return { entries: preparedEntries, changeSummary };
+      }
     } catch (err) {
       console.error(err);
       setErrorMsg(err instanceof Error ? err.message : 'Error communicating with GitHub API');
     } finally {
       setSubmitting(false);
     }
+    return null;
   };
+
+  const affectedExternalIds = () => {
+    const diff = getDiff();
+    return [...new Set([
+      ...diff.addedBundled.map(item => item.external_id), ...diff.removedBundledIds,
+      ...diff.addedContained.map(item => item.external_id), ...diff.removedContainedIds,
+      ...diff.addedBundleChildren.map(item => item.external_id), ...diff.removedBundleChildIds,
+      ...diff.addedEditableRelations.map(item => item.related_media_external_id), ...diff.removedEditableRelationIds,
+      ...diff.changedEditableRelations.map(item => item.related_media_external_id),
+      ...diff.addedIssues.map(item => item.external_id), ...diff.removedIssueIds,
+      ...diff.addedSaga, ...diff.removedSaga,
+      ...(diff.sagaOrderChanged ? sagaOrder.filter(id => id !== externalId) : []),
+    ])];
+  };
+
+  useEffect(() => {
+    onSessionDirtyChange?.(externalId, hasChanges());
+  });
+
+  useEffect(() => {
+    if (entry) onSessionTitleChange?.(externalId, entry.title_main || externalId);
+  }, [entry?.title_main, externalId, onSessionTitleChange]);
+
+  useEffect(() => {
+    onSessionSagaOrderChange?.(externalId, sagaOrder);
+  }, [externalId, onSessionSagaOrderChange, sagaOrder]);
+
+  const renderSessionLayout = (panel: React.ReactNode) => {
+    const activeIndex = sessionTabs.findIndex(tab => tab.kind !== 'character' && tab.externalId === externalId);
+    const navigate = (index: number) => {
+      const targetIndex = (index + sessionTabs.length) % sessionTabs.length;
+      const target = sessionTabs[targetIndex];
+      if (target && !(target.kind !== 'character' && target.externalId === externalId)) {
+        if (onNavigateSessionTab) onNavigateSessionTab(target);
+        else onNavigateSessionEntry?.(target.externalId);
+      }
+    };
+    return (
+      <div className={`pr-editor-session-layout${sessionMode ? ' pr-editor-session-layout--active' : ''}`} onClick={event => event.stopPropagation()}>
+        {sessionMode && (
+          <nav className="pr-editor-session-tabs" aria-label="Obras en edición">
+            {sessionTabs.map((tab, index) => (
+              <button
+                key={`${tab.kind ?? 'media'}:${tab.externalId}`}
+                type="button"
+                className={`pr-editor-session-tab${tab.kind !== 'character' && tab.externalId === externalId ? ' pr-editor-session-tab--active' : ''}${tab.affected ? ' pr-editor-session-tab--affected' : ''}`}
+                aria-current={tab.kind !== 'character' && tab.externalId === externalId ? 'page' : undefined}
+                title={`${tab.kind === 'character' ? 'Personaje: ' : 'Obra: '}${tab.label}${tab.dirty ? ' · Cambios sin guardar' : ''}${tab.affected ? ' · Cambio relacionado' : ''}`}
+                  onClick={() => navigate(index)}
+                onContextMenu={event => {
+                  event.preventDefault();
+                  setSessionTabContextMenu({ externalId: tab.externalId, kind: tab.kind, x: event.clientX, y: event.clientY });
+                }}
+              >
+                <span className="pr-editor-session-tab-label">{tab.label}</span>
+                {tab.dirty && <span className="pr-editor-session-tab-dirty" aria-label="Cambios sin guardar" />}
+                {tab.affected && <span className="pr-editor-session-tab-affected" aria-label="Cambio relacionado">↗</span>}
+              </button>
+            ))}
+          </nav>
+        )}
+        <div className="pr-editor-session-panel-row">
+          {sessionMode && (
+            <button type="button" className="pr-editor-session-arrow" aria-label="Obra anterior" title="Obra anterior" disabled={sessionTabs.length <= 1} onClick={() => navigate(activeIndex - 1)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+          )}
+          {panel}
+          {sessionMode && (
+            <button type="button" className="pr-editor-session-arrow" aria-label="Obra siguiente" title="Obra siguiente" disabled={sessionTabs.length <= 1} onClick={() => navigate(activeIndex + 1)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    if (!sessionTabContextMenu) return;
+    const close = () => setSessionTabContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', close);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [sessionTabContextMenu]);
+
+  const requestClose = () => {
+    if (sessionMode) {
+      onRequestSessionClose?.();
+      return;
+    }
+    if (hasChanges()) {
+      setShowUnsavedPrompt(true);
+      return;
+    }
+    onClose();
+  };
+
+  const discardAndClose = () => {
+    setShowUnsavedPrompt(false);
+    if (sessionMode) onDiscardSession?.();
+    else onClose();
+  };
+
+  const sessionHandleRef = useRef<PrEditorSessionHandle | null>(null);
+  sessionHandleRef.current = {
+    hasChanges,
+    affectedExternalIds,
+    prepareProposal: () => handleSubmit(true),
+  };
+  useEffect(() => {
+    if (!onRegisterSessionEditor) return;
+    const handle: PrEditorSessionHandle = {
+      hasChanges: () => sessionHandleRef.current?.hasChanges() ?? false,
+      affectedExternalIds: () => sessionHandleRef.current?.affectedExternalIds() ?? [],
+      prepareProposal: () => sessionHandleRef.current?.prepareProposal() ?? Promise.resolve(null),
+    };
+    onRegisterSessionEditor(externalId, handle);
+    return () => onRegisterSessionEditor(externalId, null);
+  }, [externalId, onRegisterSessionEditor]);
 
   if (githubGate === 'checking') {
     return (
-      <div className="pr-editor-overlay">
-        <div className="pr-editor-modal pr-editor-modal--loading">
+      <div className="pr-editor-overlay" style={sessionActive ? undefined : { display: 'none' }}>
+        {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--loading">
           <div className="spinner" />
-        </div>
+        </div>)}
       </div>
     );
   }
 
   if (githubGate === 'signed-out') {
     return createPortal(
-      <div className="pr-editor-overlay" onClick={onClose}>
-        <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
+      <div className="pr-editor-overlay" onClick={requestClose} style={sessionActive ? undefined : { display: 'none' }}>
+        {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--narrow">
           <div className="pr-editor-body pr-editor-login-required">
             <p className="pr-editor-title">{pe.login_required_title}</p>
             <p className="pr-editor-subtitle">
@@ -998,13 +1170,13 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
               inicia sesión con GitHub en Settings antes de continuar.
             </p>
             <div className="pr-editor-login-actions">
-              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose}>{pe.close}</button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={requestClose}>{pe.close}</button>
               <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { window.location.href = '/settings'; }}>
                 Ir a Settings
               </button>
             </div>
           </div>
-        </div>
+        </div>)}
       </div>,
       document.body,
     );
@@ -1012,10 +1184,10 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
 
   if (loading) {
     return (
-      <div className="pr-editor-overlay">
-        <div className="pr-editor-modal pr-editor-modal--loading">
+      <div className="pr-editor-overlay" style={sessionActive ? undefined : { display: 'none' }}>
+        {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--loading">
           <div className="spinner" />
-        </div>
+        </div>)}
       </div>
     );
   }
@@ -1130,23 +1302,22 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   const resolveMeta = createMetaResolver(externalId, { title: entry.title_main ?? null, cover: entry.cover_url ?? null, release_year: entry.release_year ?? null }, sagaMeta);
 
   return createPortal(
-    <div className="pr-editor-overlay" onClick={onClose}>
-      <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
-        <div className="pr-editor-header pr-editor-header--row">
-          <div className="pr-editor-header-titles">
-            <span className="pr-editor-title">Entrada de <strong>{entry.title_main || externalId}</strong></span>
-            <span className="pr-editor-subtitle">ID: {externalId}</span>
-          </div>
-          <div className="pr-editor-header-actions">
-            {statusMsg && (
-              <div className="pr-editor-header-status">
-                <div className="spinner spinner--small pr-editor-header-status-spinner" />
-                <span>{statusMsg}</span>
-              </div>
-            )}
+    <div className="pr-editor-overlay" onClick={requestClose} style={sessionActive ? undefined : { display: 'none' }}>
+      {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--narrow">
+        <PrEditorHeader
+          title={<>Entrada de <strong>{entry.title_main || externalId}</strong>{sessionAffected && <span className="pr-editor-session-affected" title="Este borrador se ve afectado por cambios relacionados"> · Cambio relacionado</span>}</>}
+          subtitle={`ID: ${externalId}`}
+          status={statusMsg && (
+            <div className="pr-editor-header-status">
+              <div className="spinner spinner--small pr-editor-header-status-spinner" />
+              <span>{statusMsg}</span>
+            </div>
+          )}
+          actions={
+          <>
             <button
               type="button"
-              className="pr-editor-block-btn pr-editor-block-btn--icon"
+              className="pr-editor-block-btn pr-editor-block-btn--icon pr-editor-header-action pr-editor-header-action--icon"
               title={pe.resync_tooltip}
               aria-label={pe.resync_tooltip}
               aria-busy={isResyncing}
@@ -1157,7 +1328,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
             </button>
             <button
               type="button"
-              className={`pr-editor-block-btn pr-editor-block-btn--icon${entry.blocked_at ? ' pr-editor-block-btn--active' : ''}`}
+              className={`pr-editor-block-btn pr-editor-block-btn--icon pr-editor-header-action pr-editor-header-action--icon${entry.blocked_at ? ' pr-editor-block-btn--active' : ''}`}
               aria-pressed={!!entry.blocked_at}
               title={pe.block_tooltip}
               aria-label={pe.block_tooltip}
@@ -1165,8 +1336,27 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
             >
               <Trash2 size={16} aria-hidden="true" />
             </button>
-          </div>
-        </div>
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--cancel pr-editor-header-action pr-editor-header-action--icon pr-editor-header-cancel"
+              onClick={requestClose}
+              disabled={submitting}
+              title="Cancelar"
+              aria-label="Cancelar"
+            >
+              <X size={17} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--submit pr-editor-header-action"
+              onClick={() => sessionMode ? onSubmitProposalSession?.() : void handleSubmit()}
+              disabled={submitting || isLoadingIssuePreview || !!issuePreviewError || !(sessionMode ? sessionHasChanges : hasChanges())}
+            >
+              {submitting ? 'Submitting...' : 'Submit Proposal'}
+            </button>
+          </>
+          }
+        />
 
         <div className="pr-editor-content-shell">
           <nav className="pr-editor-sidebar" aria-label="Secciones del editor">
@@ -1214,7 +1404,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
           </nav>
 
           <div className="pr-editor-main">
-          <div className="pr-editor-body">
+          <div className={`pr-editor-body${activeTab === 'cast' ? ' pr-editor-body--cast' : ''}`}>
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
 
           {activeTab === 'general' && (
@@ -1322,8 +1512,11 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
             <PrEditorCharactersSection
               t={t}
               characters={characters}
-              changed={charactersChanged()}
               onRemove={removeCharacter}
+              onOpenCharacterEditor={id => {
+                if (onEditCharacter) onEditCharacter(id);
+                else (window as any).openCharacterEditor?.(id);
+              }}
               onOpenSearch={role => {
                 setCastSearchRole(role);
                 setSelectedCastCharacters([]);
@@ -1331,14 +1524,17 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
               }}
               onOpenCreate={role => {
                 characterCreateRole.current = role;
-                return (window as any).openCharacterEditor?.(generateCustomCharacterId(), {
+                const characterId = generateCustomCharacterId();
+                const initialAppearance = {
                 media_external_id: externalId,
                 title: entry?.title_main || externalId,
                 cover: entry?.cover_url ?? null,
                 release_year: entry?.release_year ?? null,
                 release_month: entry?.release_month ?? null,
                 release_day: entry?.release_day ?? null,
-                });
+                };
+                if (onEditCharacter) onEditCharacter(characterId, initialAppearance);
+                else (window as any).openCharacterEditor?.(characterId, initialAppearance);
               }}
             />
           )}
@@ -1358,6 +1554,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                   groupDropReady={sagaGroupDropReady}
                   onRemove={removeFromSaga}
                   onUngroup={ungroupSagaItems}
+                  onEditWork={onEditSagaEntry}
                   resolveMeta={resolveMeta}
                 />
                 <div className="pr-editor-saga-name-row">
@@ -1385,6 +1582,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                   onRemove={removeEditableRelation}
                   onUpdateType={updateEditableRelationType}
                   onAdd={() => setSearchPopupMode('relations')}
+                  onEditWork={onEditSagaEntry}
                 />
               </div>}
 
@@ -1395,6 +1593,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                   dragHandlers={recommendationDragHandlers}
                   onRemove={removeRecommendation}
                   onAdd={() => setSearchPopupMode('recommendations')}
+                  onEditWork={onEditSagaEntry}
                 />
               </div>}
 
@@ -1405,6 +1604,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                   dragHandlers={bundledDragHandlers}
                   onRemove={removeBundledRelation}
                   onAdd={() => setSearchPopupMode('bundled')}
+                  onEditWork={onEditSagaEntry}
                 />
               </div>}
 
@@ -1440,6 +1640,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                       draggedIndex={draggedIssueIndex}
                       dragHandlers={issueDragHandlers}
                       onRemove={removeIssueRelation}
+                      onEditWork={onEditSagaEntry}
                     />
                   )}
                 </div>
@@ -1509,6 +1710,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                     dragHandlers={bundleChildDragHandlers}
                     onRemove={removeBundleChild}
                     onAdd={() => setSearchPopupMode('bundle-children')}
+                    onEditWork={onEditSagaEntry}
                   />
                 </div>
               )}
@@ -1524,6 +1726,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                     dragHandlers={containedDragHandlers}
                     onRemove={removeContainedRelation}
                     onAdd={() => setSearchPopupMode('contains')}
+                    onEditWork={onEditSagaEntry}
                   />
                 </div>
               )}
@@ -1534,15 +1737,34 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
           </div>
         </div>
 
-        <div className="pr-editor-footer">
-          <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose} disabled={submitting}>
-            Cancel
-          </button>
-          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || isLoadingIssuePreview || !!issuePreviewError || !hasChanges()}>
-            {submitting ? 'Submitting...' : 'Submit Proposal'}
-          </button>
+      </div>)}
+
+      {showUnsavedPrompt && !sessionMode && (
+        <div className="pr-unsaved-changes-toast" role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
+          <span>Tienes cambios sin guardar</span>
+          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { setShowUnsavedPrompt(false); void handleSubmit(); }}>Submit proposal</button>
+          <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={discardAndClose}>Descartar</button>
         </div>
-      </div>
+      )}
+
+      {sessionMode && sessionTabContextMenu && (onRequestCloseSessionEntry || onRequestCloseSessionTab) && createPortal(
+        <div
+          className="pr-editor-session-tab-context-menu"
+          role="menu"
+          style={{ left: Math.min(sessionTabContextMenu.x, window.innerWidth - 190), top: Math.min(sessionTabContextMenu.y, window.innerHeight - 58) }}
+          onPointerDown={event => event.stopPropagation()}
+        >
+          <button type="button" role="menuitem" onClick={() => {
+            const tab = sessionTabs.find(item => item.externalId === sessionTabContextMenu.externalId && item.kind === sessionTabContextMenu.kind);
+            if (tab && onRequestCloseSessionTab) onRequestCloseSessionTab(tab);
+            else onRequestCloseSessionEntry?.(sessionTabContextMenu.externalId);
+            setSessionTabContextMenu(null);
+          }}>
+            Cerrar pestaña
+          </button>
+        </div>,
+        document.body,
+      )}
 
       <PrEditorChangelogPanel externalId={externalId} />
 

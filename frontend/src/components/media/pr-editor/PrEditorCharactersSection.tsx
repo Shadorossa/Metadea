@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, UserRoundPlus } from 'lucide-react';
 import type { DbMediaCharacter } from '../../../lib/tauri/characters';
 import type { Translations } from '../../../i18n/index';
+import { getRolePageCount, getRolePageItems } from './PrEditorRolePagination';
 
 interface Props {
   t: Translations;
   characters: DbMediaCharacter[];
-  changed: boolean;
   onRemove: (externalId: string) => void;
   onOpenSearch: (role: string) => void;
   onOpenCreate: (role: string) => void;
+  onOpenCharacterEditor: (externalId: string) => void;
 }
 
-const ITEMS_PER_PAGE = 24; // 8 cards x 3 rows per role.
 const CHARACTER_ROLES = [
   { value: 'MAIN', labelKey: 'role_main' },
   { value: 'SUPPORTING', labelKey: 'role_supporting' },
@@ -20,29 +21,36 @@ const CHARACTER_ROLES = [
   { value: 'CAMEO', labelKey: 'role_cameo' },
 ] as const;
 
-export function PrEditorCharactersSection({ t, characters, changed, onRemove, onOpenSearch, onOpenCreate }: Props) {
+export function PrEditorCharactersSection({ t, characters, onRemove, onOpenSearch, onOpenCreate, onOpenCharacterEditor }: Props) {
   const [charPage, setCharPage] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{ externalId: string; x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', close);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [contextMenu]);
   const groupedCharacters = CHARACTER_ROLES.map(role => ({
     ...role,
     allCharacters: characters.filter(c => (c.relation_type ?? 'SUPPORTING') === role.value),
   }));
-  const totalPages = Math.ceil(Math.max(0, ...groupedCharacters.map(group => group.allCharacters.length)) / ITEMS_PER_PAGE) || 1;
+  const totalPages = getRolePageCount(groupedCharacters.map(group => group.allCharacters.length));
   const safeCharPage = Math.min(charPage, totalPages - 1);
   const roleGroups = groupedCharacters.map(role => {
     return {
       ...role,
       label: t.character[role.labelKey],
-      pageCharacters: role.allCharacters.slice(safeCharPage * ITEMS_PER_PAGE, (safeCharPage + 1) * ITEMS_PER_PAGE),
+      pageCharacters: getRolePageItems(role.allCharacters, safeCharPage),
     };
   });
 
   return (
     <div className="pr-editor-section">
-      <span className="pr-editor-section-title">
-        Personajes
-        {changed && <span className="pr-editor-section-changed-dot" />}
-      </span>
-
       <div className="pr-editor-character-appearance-groups pr-editor-media-character-role-groups">
         {roleGroups.map(group => (
           <section className="pr-editor-character-appearance-group pr-editor-media-character-role-group" key={group.value}>
@@ -61,7 +69,14 @@ export function PrEditorCharactersSection({ t, characters, changed, onRemove, on
             </div>
             <div className="pr-editor-characters-grid pr-editor-media-character-role-grid">
               {group.pageCharacters.map(character => (
-                <div key={character.external_id} className="pr-editor-media-card">
+                <div
+                  key={character.external_id}
+                  className="pr-editor-media-card"
+                  onContextMenu={event => {
+                    event.preventDefault();
+                    setContextMenu({ externalId: character.external_id, x: event.clientX, y: event.clientY });
+                  }}
+                >
                   <div className="pr-editor-media-card-cover">
                     {character.image_url
                       ? <img className="cover-image-fill" src={character.image_url} alt="" />
@@ -107,6 +122,22 @@ export function PrEditorCharactersSection({ t, characters, changed, onRemove, on
             ›
           </button>
         </div>
+      )}
+      {contextMenu && createPortal(
+        <div
+          className="pr-editor-session-tab-context-menu"
+          role="menu"
+          style={{ left: Math.min(contextMenu.x, window.innerWidth - 190), top: Math.min(contextMenu.y, window.innerHeight - 58) }}
+          onPointerDown={event => event.stopPropagation()}
+        >
+          <button type="button" role="menuitem" onClick={() => {
+            onOpenCharacterEditor(contextMenu.externalId);
+            setContextMenu(null);
+          }}>
+            Editar personaje
+          </button>
+        </div>,
+        document.body,
       )}
     </div>
   );
