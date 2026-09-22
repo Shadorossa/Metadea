@@ -11,44 +11,52 @@
   },
   "media_relations": [
     {
+      "media_external_id": "anime:15417",
       "related_media_external_id": "manga:30044",
       "relation_type": "SOURCE",
       "type_label": "Source Material",
       "title": "Gintama",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx30044-vPmoz3vTPvZs.jpg",
-      "media_external_id": "anime:15417"
+      "format": null,
+      "release_day": 8,
+      "release_month": 12,
+      "release_year": 2003
     },
     {
+      "media_external_id": "anime:15417",
       "related_media_external_id": "anime:175573",
       "relation_type": "SUMMARY",
       "type_label": "Summary",
       "title": "Gintama on Theater 2D: Ikkoku Keisei-hen",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx175573-jf4woESV4dx9.jpg",
-      "media_external_id": "anime:15417"
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
     },
     {
+      "media_external_id": "anime:15417",
       "related_media_external_id": "anime:178436",
       "relation_type": "SUMMARY",
       "type_label": "Summary",
       "title": "Gintama on Theater 2D: Kintama-hen",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx178436-oTiX9xY2yEJZ.jpg",
-      "media_external_id": "anime:15417"
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
     },
     {
+      "media_external_id": "anime:15417",
       "related_media_external_id": "anime:20882",
       "relation_type": "SIDE_STORY",
       "type_label": "Side story",
       "title": "Gintama': Futon ni Haitte kara Buki Nokoshi ni Kizuite Neru ni Nerenai Toki mo Aru",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/20882.jpg",
-      "media_external_id": "anime:15417"
-    },
-    {
-      "media_external_id": "anime:15417",
-      "related_media_external_id": "anime:15335",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Gintama: Kanketsu-hen - Yorozuya yo Eien Nare",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx15335-QjijwChGTBs0.png"
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
     },
     {
       "media_external_id": "anime:15417",
@@ -57,6 +65,14 @@
       "type_label": "Prequel",
       "title": "Gintama'",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx9969-0GaRABYVdUcH.png"
+    },
+    {
+      "media_external_id": "anime:15417",
+      "related_media_external_id": "anime:15335",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Gintama: Kanketsu-hen - Yorozuya yo Eien Nare",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx15335-QjijwChGTBs0.png"
     }
   ],
   "characters": [
