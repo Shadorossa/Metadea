@@ -10,7 +10,7 @@ import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-
 import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled, isCompletedMangaIssueCoverEnabled } from '../../lib/settings/preferences';
 import { CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
-import { averageRating, latestInProgressMember } from './library-grouping';
+import { averageRating, latestInProgressMember } from '../../lib/profile/library-grouping';
 import { toMediumCover, toSmallCover } from '../../lib/shared/small-cover';
 import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
 import { isInProgressStatus, pickAggregateStatus } from '../../lib/constants/media';

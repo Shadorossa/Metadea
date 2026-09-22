@@ -10,7 +10,7 @@ import { typeIconMap } from '../../lib/shared/icon-strings';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { isAniListType, syncToAniList } from '../../lib/media/anilist-sync';
 import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
-import { unifyAnimeSeasons } from '../profile/library-grouping';
+import { unifyAnimeSeasons } from '../../lib/profile/library-grouping';
 
 const TYPE_ICON = typeIconMap(14);
 const MAX_PER_TYPE = 5;

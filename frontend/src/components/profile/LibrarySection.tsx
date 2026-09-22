@@ -18,7 +18,7 @@ import { needsResync } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { isSagaComponentRelationType } from '../../lib/media/sagaTypes';
 import { createUnionFind } from '../../lib/shared/union-find';
-import { groupEditions, groupBundles, refineSagaGroups, averageRating, unifyAnimeSeasons, unifyEventSeasons } from './library-grouping';
+import { groupEditions, groupBundles, refineSagaGroups, averageRating, unifyAnimeSeasons, unifyEventSeasons } from '../../lib/profile/library-grouping';
 import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { LibraryCard, LibraryTypeIcon } from './LibraryCard';

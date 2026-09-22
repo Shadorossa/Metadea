@@ -3,17 +3,17 @@
 //   groupEditions   -> collapses remakes/remasters/ports under one slot
 //   groupBundles    -> collapses a container's owned parts into one card
 //   refineSagaGroups -> merges standalone groups belonging to the same saga
-import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib/tauri';
-import { compareByReleaseDate, stripSeasonSuffix } from '../../lib/media/mapper-utils';
+import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../tauri';
+import { compareByReleaseDate, stripSeasonSuffix } from '../media/mapper-utils';
 import {
   CONTAINS_RELATION_TYPES,
   isSequelRelationType,
-} from '../../lib/media/sagaTypes';
-import { parseDelimitedString } from '../../lib/shared/string-utils';
-import { createUnionFind } from '../../lib/shared/union-find';
-import { buildDirectSagaGraph } from '../../lib/profile/saga-graph';
-import { isInProgressStatus, SEASON_STATUS_PRIORITY } from '../../lib/constants/media';
-import { reconstructSagaOrder } from '../../lib/media/sagaGrouping';
+} from '../media/sagaTypes';
+import { parseDelimitedString } from '../shared/string-utils';
+import { createUnionFind } from '../shared/union-find';
+import { buildDirectSagaGraph } from './saga-graph';
+import { isInProgressStatus, SEASON_STATUS_PRIORITY } from '../constants/media';
+import { reconstructSagaOrder } from '../media/sagaGrouping';
 
 // Groups editions of the same work (remakes, remasters, ports) under one
 // grid slot. Gated behind "Agrupar por ediciones"; saga grouping is separate

@@ -1,7 +1,7 @@
 import type { getAllLibraryEntries, MediaCatalogEntry, DbMediaRelation } from '../tauri';
 import { isInProgressStatus, ALL_MEDIA_TYPES, SUB_WORK_FORMATS } from '../constants/media';
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
-import { buildEditionMaps, sagaIdentityOf } from '../../components/profile/library-grouping';
+import { buildEditionMaps, sagaIdentityOf } from './library-grouping';
 import { buildDirectSagaGraph } from './saga-graph';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;

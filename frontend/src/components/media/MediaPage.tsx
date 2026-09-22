@@ -460,7 +460,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const [playingTheme,          setPlayingTheme]          = useState<MediaTheme | null>(null);
   const [selectedThemeVersion,  setSelectedThemeVersion]  = useState<number>(1);
   const [playingVideoSrc,       setPlayingVideoSrc]       = useState<string | null>(null);
-  const [playerLoading,      setPlayerLoading]      = useState(false);
   const [playerError,        setPlayerError]        = useState(false);
   const [playerRetryKey,     setPlayerRetryKey]     = useState(0);
   const [episodeOffset,      setEpisodeOffset]      = useState(0);
@@ -1109,13 +1108,11 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     if (!playingTheme) {
       resumeThemeCaptureQueue();
       setPlayingVideoSrc(null);
-      setPlayerLoading(false);
       setPlayerError(false);
       return;
     }
 
     pauseThemeCaptureQueue();
-    setPlayerLoading(true);
     setPlayerError(false);
 
     let cancelled = false;
@@ -1141,7 +1138,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
             setPlayingVideoSrc(targetVideoUrl);
           } else {
             setPlayingVideoSrc(null);
-            setPlayerLoading(false);
             setPlayerError(true);
           }
         })
@@ -1151,7 +1147,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
             setPlayingVideoSrc(targetVideoUrl);
           } else {
             setPlayingVideoSrc(null);
-            setPlayerLoading(false);
             setPlayerError(true);
           }
         });
@@ -1160,7 +1155,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         setPlayingVideoSrc(targetVideoUrl);
       } else {
         setPlayingVideoSrc(null);
-        setPlayerLoading(false);
         setPlayerError(true);
       }
     }
@@ -1712,19 +1706,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
                       controls
                       autoPlay
                       preload="auto"
-                      onLoadedData={() => setPlayerLoading(false)}
-                      onPlaying={() => setPlayerLoading(false)}
-                      onWaiting={() => setPlayerLoading(true)}
                       onError={() => {
-                        setPlayerLoading(false);
                         setPlayerError(true);
                       }}
                     />
-                  )}
-                  {playerLoading && !playerError && (
-                    <div className="theme-player-spinner-overlay">
-                      <div className="theme-player-spinner" />
-                    </div>
                   )}
                   {playerError && (
                     <div className="theme-player-error-overlay">
@@ -1734,7 +1719,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
                         className="theme-player-retry-btn"
                         onClick={() => {
                           setPlayerError(false);
-                          setPlayerLoading(true);
                           setPlayerRetryKey(k => k + 1);
                         }}
                       >
