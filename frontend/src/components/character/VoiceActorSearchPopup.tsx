@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ImageOff } from 'lucide-react';
 import { searchAniListStaff } from '../../lib/search/providers/anilist';
 import { searchTmdbPeople } from '../../lib/search/providers/tmdb';
 import { API_ENDPOINTS } from '../../lib/api/endpoints';
@@ -102,7 +103,9 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
                 {result.image ? (
                   <img src={result.image} alt="" className="pr-editor-search-result-cover" />
                 ) : (
-                  <div className="pr-editor-cover-placeholder" style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{ce.no_image}</div>
+                  <div className="pr-editor-search-result-cover pr-editor-search-result-cover--placeholder" role="img" aria-label={ce.no_image}>
+                    <ImageOff size={28} strokeWidth={1.6} aria-hidden="true" />
+                  </div>
                 )}
                 <div className="pr-editor-search-result-info">
                   <div className="pr-editor-search-result-title pr-editor-voice-actor-result-title">
