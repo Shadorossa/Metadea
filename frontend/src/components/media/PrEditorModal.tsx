@@ -146,6 +146,10 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
+function enforceSingleMovieEpisode(entry: MediaCatalogEntry): MediaCatalogEntry {
+  return entry.type === 'movie' && entry.total_count !== 1 ? { ...entry, total_count: 1 } : entry;
+}
+
 export function PrEditorModal({ externalId, initialTab = 'general', initialRelationsSubtab, onClose, onSaved, onBlockedSubmitted, onEditSagaEntry, onEditCharacter, sessionActive = true, sessionMode = false, sessionHasChanges = false, sessionAffected = false, sessionTabs = [], onNavigateSessionEntry, onNavigateSessionTab, onRequestCloseSessionEntry, onRequestCloseSessionTab, onSessionTitleChange, onSessionSagaOrderChange, onSessionDirtyChange, onSubmitProposalSession, onRequestSessionClose, onDiscardSession, onRegisterSessionEditor, mode = 'proposal', nonGithubFields }: Props) {
   const t = getT();
   const tm = t.media;
@@ -310,7 +314,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        setEntry(resolved);
+        setEntry(enforceSingleMovieEpisode(resolved));
         setOriginalEntry(resolved);
       } catch (err) {
         console.error('Failed to get catalog entry:', err);
@@ -331,7 +335,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
             created_at: now,
             updated_at: now,
           };
-          setEntry(fallback);
+          setEntry(enforceSingleMovieEpisode(fallback));
           setOriginalEntry(fallback);
         } else {
           setErrorMsg('Error reading local data');
@@ -352,7 +356,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
         setOriginalIssueRelations(result.issueRelations);
         setOriginalIssueIds(result.originalIssueIds);
         if (result.currentEntry) {
-          setEntry(result.currentEntry);
+          setEntry(enforceSingleMovieEpisode(result.currentEntry));
           setOriginalEntry(result.currentEntry);
         }
         setSagaMeta(result.sagaMeta);
@@ -1208,12 +1212,29 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     </Field>
   );
 
-  const numberField = (field: keyof MediaCatalogEntry, label: string) => (
+  const numberField = (field: keyof MediaCatalogEntry, label: string, disabled = false) => (
     <Field label={label} changed={isFieldChanged(field)} small dim={isLocalOnly(field)}>
-      <input type="number" value={(entry[field] as number) || ''}
+      <input type="number" value={(entry[field] as number) ?? ''} disabled={disabled}
         onChange={e => handleChange(field, e.target.value ? parseInt(e.target.value, 10) : null)} />
     </Field>
   );
+
+  const primaryCountLabel = ({
+    anime: 'Nº of episodes',
+    series: 'Nº of episodes',
+    movie: 'Nº of episodes',
+    manga: 'Nº of chapters',
+    comic: 'Nº of chapters',
+    lnovel: 'Nº of chapters',
+    book: 'Pages',
+  } as Record<string, string>)[entry.type] ?? 'Total count';
+  const secondaryCountLabel = ({
+    anime: 'Nº of seasons',
+    series: 'Nº of seasons',
+    manga: 'Nº of volumes',
+    lnovel: 'Nº of volumes',
+    comic: 'Nº of volumes',
+  } as Record<string, string>)[entry.type] ?? 'Secondary count';
 
   // Options come straight from the i18n formats dictionary (media.formats) —
   // it already carries every format key both AniList (TV/MOVIE/OVA/...) and
@@ -1415,7 +1436,6 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
             <div className="pr-editor-body--grid pr-editor-body--grid-2col">
               <div className="pr-editor-col pr-editor-col--left">
                 <div className="pr-editor-section">
-                  {sectionTitle('Titles & Synopsis', ['title_main', 'title_romaji', 'title_native', 'synopsis'])}
                   <div className="pr-editor-form-grid">
                     {textField('title_main', 'Main Title')}
                     {textField('title_romaji', 'Romaji Title')}
@@ -1430,10 +1450,10 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                   </div>
                 </div>
 
-                <div className="pr-editor-section">
-                  {sectionTitle('Release & Progress', ['release_year', 'release_month', 'release_day', 'total_count', 'total_count_2'])}
-                  <div className="pr-editor-field-row">
-                    <div className="pr-editor-subgroup">
+                <div className="pr-editor-section pr-editor-section--release-progress">
+                  <div className="pr-editor-field-row pr-editor-field-row--release-progress">
+                    <div className="pr-editor-subgroup pr-editor-subgroup--vertical-label">
+                      <span className="pr-editor-vertical-label">Release</span>
                       <div className="pr-editor-subgroup-fields">
                         {numberField('release_year', 'Year')}
                         {numberField('release_month', 'Month')}
@@ -1443,17 +1463,20 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
 
                     <div className="pr-editor-subgroup-divider" />
 
-                    <div className="pr-editor-subgroup">
+                    <div className="pr-editor-subgroup pr-editor-subgroup--vertical-label">
+                      <span className="pr-editor-vertical-label">Progress</span>
                       <div className="pr-editor-subgroup-fields">
-                        {numberField('total_count', 'Eps / Chs')}
-                        {numberField('total_count_2', 'Seas / Vols')}
+                        {numberField('total_count', primaryCountLabel, entry.type === 'movie')}
+                        {numberField('total_count_2', secondaryCountLabel)}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="pr-editor-section">
-                  {sectionTitle('Shop Links', ['shop_links_csv'])}
+                <div className="pr-editor-section pr-editor-section--shop-links">
+                  <div className="pr-editor-shop-links-row">
+                    <span className="pr-editor-vertical-label">Shop Links</span>
+                    <div className="pr-editor-shop-links-content">
                   {/* One slot per "platform|url" pair (steam|https://...,
                       gog|https://...) — the exact format
                       usePendingLaunchers/build_store_links already parse
@@ -1462,44 +1485,49 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                       /media on, see that hook's own comment) can get them
                       added here manually instead of only ever being backfilled
                       by a live IGDB fetch. */}
-                  {slotField('shop_links_csv', 'platform|url pairs', { fullWidth: true, transformNewItem: detectShopLinkPlatform })}
+                      {slotField('shop_links_csv', 'platform|url pairs', { fullWidth: true, transformNewItem: detectShopLinkPlatform })}
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="pr-editor-col pr-editor-col--right">
                 <div className="pr-editor-section">
-                  {sectionTitle('Media Assets', ['cover_url', 'banners_csv'])}
                   <div className="pr-editor-assets-box">
-                    <div className={`pr-editor-field pr-editor-cover-section${isLocalOnly('cover_url') ? ' pr-editor-field--dim' : ''}`}>
-                      <label>
+                    <div className="pr-editor-asset-row">
+                      <span className="pr-editor-vertical-label">
                         Cover URL
                         <ChangedDot show={isFieldChanged('cover_url')} />
-                      </label>
-                      <div className="pr-editor-cover-uploader">
-                        <div className="pr-editor-cover-preview-card">
-                          {entry.cover_url ? (
-                            <img className="cover-image-fill" src={entry.cover_url} alt="" />
-                          ) : (
-                            <span className="pr-editor-cover-placeholder">{pe.no_cover}</span>
-                          )}
+                      </span>
+                      <div className={`pr-editor-cover-section${isLocalOnly('cover_url') ? ' pr-editor-field--dim' : ''}`}>
+                        <div className="pr-editor-cover-uploader">
+                          <div className="pr-editor-cover-preview-card">
+                            {entry.cover_url ? (
+                              <img className="cover-image-fill" src={entry.cover_url} alt="" />
+                            ) : (
+                              <span className="pr-editor-cover-placeholder">{pe.no_cover}</span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder={pe.cover_url_placeholder}
+                            value={entry.cover_url || ''}
+                            onChange={e => handleChange('cover_url', e.target.value)}
+                          />
                         </div>
-                        <input
-                          type="text"
-                          placeholder={pe.cover_url_placeholder}
-                          value={entry.cover_url || ''}
-                          onChange={e => handleChange('cover_url', e.target.value)}
-                        />
                       </div>
                     </div>
 
-                    <div className="pr-editor-field pr-editor-banner-section">
-                      {slotField('banners_csv', 'Banner URLs', { preview: true, fullWidth: true, dotClass: 'pr-editor-changed-dot--banner' })}
+                    <div className="pr-editor-asset-row">
+                      <span className="pr-editor-vertical-label">Banner URLs</span>
+                      <div className="pr-editor-banner-section">
+                        {slotField('banners_csv', 'Banner URLs', { preview: true, fullWidth: true, dotClass: 'pr-editor-changed-dot--banner' })}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="pr-editor-section">
-                  {sectionTitle('Classification & Metadata', ['type', 'format', 'genres_csv', 'genres_tag_csv', 'platforms_csv'])}
                   <div className="pr-editor-classification-grid">
                     {typeField('type', 'Type')}
                     {formatField('format', 'Format')}
