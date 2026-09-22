@@ -22,7 +22,6 @@ import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
 import { generateCustomCharacterId } from '../../lib/character/customCharacter';
 import { AdminAddSearch } from './AdminAddSearch';
 import { CatalogEntryCard } from './CatalogEntryCard';
-import { IconTrash } from '../local/ui/icons';
 import { searchAnimeAndSeries, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
@@ -673,7 +672,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
       {entity === 'episodes' && source === 'local' && (
         <>
-          {/* Selecting Edit opens the media entry directly at Relations → Episodes. */}
+          {/* Selecting Edit opens the media entry directly at Relations > Episodes. */}
               {episodeQuery.trim() ? (
                 <>
                   {isSearchingEpisodeShows && <p className="catalog-admin-status">{t.loading}</p>}
