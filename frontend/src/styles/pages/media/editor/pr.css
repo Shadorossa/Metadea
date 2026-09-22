@@ -147,8 +147,10 @@
 
 .pr-editor-header-titles {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.65rem;
+  min-width: 0;
 }
 
 .pr-editor-header-actions {
@@ -183,38 +185,64 @@
 
 .pr-editor-title {
   font-family: var(--font-title);
-  font-size: 1.15rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--text-main, #e3e1db);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pr-editor-subtitle {
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   color: var(--text-muted, #a0a0b8);
+  white-space: nowrap;
 }
 
-
-.pr-editor-tabs {
+.pr-editor-content-shell {
   display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pr-editor-sidebar {
+  width: 54px;
+  flex: 0 0 54px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.35rem;
-  padding: 0.75rem 1.5rem 0;
-  border-bottom: 1px solid var(--border-color, #2d2a24);
+  padding: 0.75rem 0.4rem;
+  border-right: 1px solid var(--border-color, #2d2a24);
+  overflow-y: auto;
+}
+
+.pr-editor-sidebar-divider {
+  width: 26px;
+  height: 1px;
+  flex: 0 0 1px;
+  margin: 0.2rem 0;
+  background: var(--border-color, #2d2a24);
 }
 
 .pr-editor-tab-btn {
   position: relative;
-  background: none;
-  border: none;
-  color: var(--text-muted, #a0a0b8);
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 0.6rem 1rem;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: color var(--anim-fast, 120ms), border-color var(--anim-fast, 120ms);
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted, #a0a0b8);
+  padding: 0;
+  cursor: pointer;
+  transition: color var(--anim-fast, 120ms), background var(--anim-fast, 120ms), border-color var(--anim-fast, 120ms);
 }
 
 .pr-editor-tab-btn:hover {
@@ -223,10 +251,14 @@
 
 .pr-editor-tab-btn.active {
   color: var(--accent, #7c6af7);
-  border-bottom-color: var(--accent, #7c6af7);
+  background: color-mix(in srgb, var(--accent, #7c6af7) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #7c6af7) 35%, transparent);
 }
 
 .pr-editor-tab-changed-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -238,6 +270,78 @@
   padding: 1.75rem 2rem;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
+}
+
+.pr-editor-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pr-editor-saga-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.pr-editor-saga-name-row label {
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pr-editor-saga-name-input {
+  flex: 0 1 200px;
+  max-width: 200px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgba(124, 106, 247, 0.3);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.pr-editor-add-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.65rem;
+}
+
+.pr-editor-add-card-btn {
+  grid-column: 1 / -1;
+  justify-self: center;
+  align-self: center;
+  margin: 0.35rem 0;
+}
+
+.pr-editor-episode-preview-grid {
+  margin-top: 0.75rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .pr-editor-episode-preview-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .pr-editor-episode-preview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .pr-editor-episode-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.pr-editor-episode-preview-state {
+  grid-column: 1 / -1;
 }
 
 .pr-editor-body--grid {
@@ -971,14 +1075,6 @@
 
 .pr-editor-field-wrap {
   position: relative;
-}
-
-.pr-editor-saga-name-input {
-  flex: 1;
-  max-width: 200px;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid rgba(124, 106, 247, 0.3);
-  font-size: 0.75rem;
 }
 
 .pr-editor-relations-content {

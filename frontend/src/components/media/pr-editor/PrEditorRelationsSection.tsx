@@ -4,6 +4,7 @@ import type { DragHandlers } from '../hooks/useDragReorder';
 import { groupRelationOptions } from '../../../lib/media/sagaTypes';
 import { RELATION_TYPE_RECIPROCAL } from '../../../lib/media/canonical-relations';
 import { PrEditorMediaCard } from './PrEditorMediaCard';
+import { PrEditorAddButton } from './PrEditorAddButton';
 
 interface EditableRelation {
   related_media_external_id: string;
@@ -21,6 +22,7 @@ interface Props {
   dragHandlers: (index: number) => DragHandlers;
   onRemove: (id: string) => void;
   onUpdateType: (id: string, relationType: string) => void;
+  onAdd?: () => void;
 }
 
 // The "Relations" panel - ADAPTATION/SPIN_OFF/ALTERNATIVE/etc, i.e. every
@@ -31,6 +33,7 @@ interface Props {
 export function PrEditorRelationsSection({
   editableRelations, relationOptions, relationLabels,
   draggedIndex, dragHandlers, onRemove, onUpdateType,
+  onAdd,
 }: Props) {
   // Same groups for every card (doesn't depend on the individual relation),
   // so this is computed once per relationOptions/relationLabels change
@@ -62,6 +65,7 @@ export function PrEditorRelationsSection({
             />
           </PrEditorMediaCard>
         ))}
+        {onAdd && <PrEditorAddButton className="pr-editor-add-card-btn" onClick={onAdd} />}
       </div>
     </div>
   );

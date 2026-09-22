@@ -1,5 +1,6 @@
 import type { DragHandlers } from '../hooks/useDragReorder';
 import { PrEditorMediaCard } from './PrEditorMediaCard';
+import { PrEditorAddButton } from './PrEditorAddButton';
 
 interface RelationCard {
   external_id: string;
@@ -12,6 +13,7 @@ interface Props {
   draggedIndex: number | null;
   dragHandlers: (index: number) => DragHandlers;
   onRemove: (externalId: string) => void;
+  onAdd?: () => void;
 }
 
 // Generic "grid of draggable cards with a remove button" panel - the Bundled
@@ -21,7 +23,7 @@ interface Props {
 // it lives in the caller's own section header row, next to the section
 // title, not in its own row below.
 export function PrEditorRelationCardList({
-  relations, draggedIndex, dragHandlers, onRemove,
+  relations, draggedIndex, dragHandlers, onRemove, onAdd,
 }: Props) {
   return (
     <div className="pr-editor-subsection pr-editor-subsection--bundled">
@@ -37,6 +39,7 @@ export function PrEditorRelationCardList({
             onRemove={onRemove}
           />
         ))}
+        {onAdd && <PrEditorAddButton className="pr-editor-add-card-btn" onClick={onAdd} />}
       </div>
     </div>
   );

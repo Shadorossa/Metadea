@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { BookOpen, Boxes, Clapperboard, GitBranch, Layers, Link, List, Package, Settings, Sparkles, Users, type LucideIcon } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
 import { getCatalogEntryForEditor, getBlockedExternalIds, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
@@ -7,6 +8,9 @@ import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
 import { isVnovelExternalId } from '../../lib/media/mapper-utils';
 import type { MediaCatalogEntry, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, getAllCharacters, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
+import { getMediaEpisodes, type MediaEpisode } from '../../lib/tauri/misc-commands';
+import { fetchMediaEpisodes } from '../../lib/media/episode-list';
+import { fetchTmdbDetail, fetchTmdbEpisodes, type TmdbTvDetail } from '../../lib/search/providers/tmdb';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { submitPrEditorChanges } from './pr-editor/pr-editor-submit';
 import { loadPrEditorRelationsAndSaga } from './pr-editor/pr-editor-load';
@@ -14,7 +18,6 @@ import { buildPrEditorChangeSummary } from './pr-editor/pr-editor-change-summary
 import { mergeResyncFields, buildResyncCharacters, appendResyncRelations, appendResyncRecommendations } from './pr-editor/pr-editor-resync';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { MediaSourceMappingSearchPopup, type MediaSourceMappingKind } from './MediaSourceMappingSearchPopup';
-import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { generateCustomCharacterId } from '../../lib/character/customCharacter';
 import { comicVineGetIssues } from '../../lib/tauri/comicvine';
 import { SlotInput } from './SlotInput';
@@ -33,6 +36,7 @@ import { PrEditorCharactersSection } from './pr-editor/PrEditorCharactersSection
 import { PrEditorRelationCardList } from './pr-editor/PrEditorRelationCardList';
 import { PrEditorStoryArcsSection } from './pr-editor/PrEditorStoryArcsSection';
 import { PrEditorSagaOrderSection } from './pr-editor/PrEditorSagaOrderSection';
+import { PrEditorAddButton } from './pr-editor/PrEditorAddButton';
 import { PrEditorRelationsSection } from './pr-editor/PrEditorRelationsSection';
 import { PrEditorChangelogPanel } from './pr-editor/PrEditorChangelogPanel';
 import { getT } from '../../i18n/client';
@@ -78,6 +82,17 @@ interface Props {
 
 const DEFAULT_NEW_RELATION_TYPE = 'REL_ADAPTATION';
 type RelationsSubtab = 'saga' | 'relations' | 'recommendations' | 'bundled' | 'arcs' | 'issues' | 'episodes' | 'bundle-children' | 'contains';
+const RELATIONS_SUBTAB_ICONS: Record<RelationsSubtab, LucideIcon> = {
+  saga: GitBranch,
+  relations: Link,
+  recommendations: Sparkles,
+  bundled: Package,
+  arcs: Layers,
+  issues: BookOpen,
+  episodes: Clapperboard,
+  'bundle-children': Boxes,
+  contains: List,
+};
 
 // True when two string records differ after normalizing each value (missing
 // keys fall back through `normalize`), regardless of which record a key is in.
@@ -161,6 +176,10 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
   const [isLoadingIssuePreview, setIsLoadingIssuePreview] = useState(false);
   const [issuePreviewError, setIssuePreviewError] = useState<string | null>(null);
   const issuePreviewRequest = useRef(0);
+  const [episodePreview, setEpisodePreview] = useState<MediaEpisode[]>([]);
+  const [episodePreviewLoading, setEpisodePreviewLoading] = useState(false);
+  const [episodeSourceTitle, setEpisodeSourceTitle] = useState('');
+  const episodePreviewRequest = useRef(0);
 
   // Saga — one single ordered chain (chronological order), including this
   // entry itself. Every adjacent pair in this order gets a SEQUEL edge
@@ -190,6 +209,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
   const [originalCharacters, setOriginalCharacters] = useState<DbMediaCharacter[]>([]);
   const [allCharacters, setAllCharacters] = useState<CharacterEntry[]>([]);
   const [showCharSearch, setShowCharSearch] = useState(false);
+  const [selectedCastCharacters, setSelectedCastCharacters] = useState<Array<{ external_id: string; name: string; image_url?: string | null }>>([]);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
   const [originalMediaAuthors, setOriginalMediaAuthors] = useState<DbMediaAuthor[]>([]);
   // Arcs delete themselves immediately (see PrEditorStoryArcsSection), so
@@ -312,6 +332,83 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
     getMediaAuthors(externalId).then(a => { setMediaAuthors(a); setOriginalMediaAuthors(a); }).catch(() => { setMediaAuthors([]); setOriginalMediaAuthors([]); });
     getAllCharacters().then(setAllCharacters).catch(() => setAllCharacters([]));
   }, [externalId]);
+
+  useEffect(() => {
+    if (!entry || !['anime', 'series'].includes(entry.type)) {
+      setEpisodePreview([]);
+      setEpisodeSourceTitle('');
+      setEpisodePreviewLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const requestId = ++episodePreviewRequest.current;
+    const isCurrent = () => !cancelled && requestId === episodePreviewRequest.current;
+    setEpisodePreviewLoading(true);
+    setEpisodePreview([]);
+    setEpisodeSourceTitle('');
+
+    const toPreviewEpisode = (episode: {
+      season_number: number;
+      episode_number: number;
+      season_episode_number?: number;
+      name: string | null;
+      cover_url: string | null;
+    }): MediaEpisode => ({
+      external_id: externalId,
+      season_number: episode.season_number,
+      episode_number: episode.season_episode_number ?? episode.episode_number,
+      name: episode.name,
+      cover_url: episode.cover_url,
+      source_key: null,
+      mapping_key: null,
+    });
+
+    const load = async () => {
+      if (entry.episode_source_id) {
+        const tmdbId = Number(entry.episode_source_id);
+        if (!Number.isInteger(tmdbId) || tmdbId <= 0) return;
+        const detail = await fetchTmdbDetail(tmdbId, 'series') as TmdbTvDetail | null;
+        if (!isCurrent()) return;
+        setEpisodeSourceTitle(detail?.name || `TMDB #${tmdbId}`);
+        const seasons = detail?.number_of_seasons || entry.total_count_2 || 0;
+        const episodes = seasons > 0 ? await fetchTmdbEpisodes(tmdbId, seasons) : [];
+        if (isCurrent()) setEpisodePreview(episodes.map(toPreviewEpisode));
+        return;
+      }
+
+      const cached = await getMediaEpisodes(externalId).catch(() => []);
+      if (isCurrent() && cached.length > 0) setEpisodePreview(cached);
+      const episodes = await fetchMediaEpisodes(
+        externalId,
+        false,
+        entry.type === 'series' ? entry.total_count_2 ?? undefined : undefined,
+      ).catch(() => cached);
+      if (!isCurrent()) return;
+      setEpisodePreview(episodes);
+
+      const tmdbId = episodes
+        .map(episode => episode.source_key?.match(/^tmdb:(\d+):/)?.[1])
+        .find(Boolean)
+        || (entry.type === 'series' ? externalId.match(/^series:(\d+)$/)?.[1] : undefined);
+      if (tmdbId) {
+        const detail = await fetchTmdbDetail(Number(tmdbId), 'series') as TmdbTvDetail | null;
+        if (isCurrent()) setEpisodeSourceTitle(detail?.name || `TMDB #${tmdbId}`);
+      } else if (isCurrent()) {
+        setEpisodeSourceTitle(episodes.some(episode => episode.source_key?.startsWith('anilist:')) ? 'AniList' : '—');
+      }
+    };
+
+    load().catch(error => {
+      if (isCurrent()) console.error('Failed to load episode source preview', error);
+    }).finally(() => {
+      if (isCurrent()) setEpisodePreviewLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [externalId, entry?.type, entry?.episode_source_id, entry?.total_count_2]);
 
   // Loads the referenced bundle's existing Contains list once, the first
   // time bundledRelations picks one up — re-fires only if the bundle itself
@@ -977,7 +1074,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
       <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-header pr-editor-header--row">
           <div className="pr-editor-header-titles">
-            <span className="pr-editor-title">{pe.edit_title}</span>
+            <span className="pr-editor-title">Entrada de <strong>{entry.title_main || externalId}</strong></span>
             <span className="pr-editor-subtitle">ID: {externalId}</span>
           </div>
           <div className="pr-editor-header-actions">
@@ -1011,24 +1108,51 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
           </div>
         </div>
 
-        {/* One concern on screen at a time instead of every section always
-            visible in one dense 3-column grid — General groups everything
-            that used to be columns 1-2, Personajes and Relaciones y Saga
-            were already self-contained enough to become their own tabs. */}
-        <div className="pr-editor-tabs">
-          <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')}>
-            General
-          </button>
-          <button type="button" className={`pr-editor-tab-btn${activeTab === 'cast' ? ' active' : ''}`} onClick={() => setActiveTab('cast')}>
-            Personajes
-            {charactersChanged() && <span className="pr-editor-tab-changed-dot" />}
-          </button>
-          <button type="button" className={`pr-editor-tab-btn${activeTab === 'relations' ? ' active' : ''}`} onClick={() => setActiveTab('relations')}>
-            Relaciones y Saga
-          </button>
-        </div>
+        <div className="pr-editor-content-shell">
+          <nav className="pr-editor-sidebar" aria-label="Secciones del editor">
+            <button
+              type="button"
+              className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`}
+              onClick={() => setActiveTab('general')}
+              title="General"
+              aria-label="General"
+              aria-current={activeTab === 'general' ? 'page' : undefined}
+            >
+              <Settings size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={`pr-editor-tab-btn${activeTab === 'cast' ? ' active' : ''}`}
+              onClick={() => setActiveTab('cast')}
+              title="Personajes"
+              aria-label="Personajes"
+              aria-current={activeTab === 'cast' ? 'page' : undefined}
+            >
+              <Users size={18} aria-hidden="true" />
+              {charactersChanged() && <span className="pr-editor-tab-changed-dot" />}
+            </button>
+            <div className="pr-editor-sidebar-divider" />
+            {relationsSubtabs.map(tab => {
+              const Icon = RELATIONS_SUBTAB_ICONS[tab.id];
+              const isActive = activeTab === 'relations' && relationsSubtab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`pr-editor-tab-btn${isActive ? ' active' : ''}`}
+                  onClick={() => { setActiveTab('relations'); setRelationsSubtab(tab.id); }}
+                  title={tab.label}
+                  aria-label={tab.label}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                </button>
+              );
+            })}
+          </nav>
 
-        <div className="pr-editor-body">
+          <div className="pr-editor-main">
+          <div className="pr-editor-body">
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
 
           {activeTab === 'general' && (
@@ -1139,7 +1263,10 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
               changed={charactersChanged()}
               onRemove={removeCharacter}
               onUpdateRole={updateCharacterRole}
-              onOpenSearch={() => setShowCharSearch(true)}
+              onOpenSearch={() => {
+                setSelectedCastCharacters([]);
+                setShowCharSearch(true);
+              }}
               onOpenCreate={() => (window as any).openCharacterEditor?.(generateCustomCharacterId(), {
                 media_external_id: externalId,
                 title: entry?.title_main || externalId,
@@ -1153,33 +1280,9 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
 
           {activeTab === 'relations' && (
             <div className="pr-editor-relations-content">
-              <div className="pr-editor-subtabs" role="tablist" aria-label="Apartados de relaciones">
-                {relationsSubtabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={relationsSubtab === tab.id}
-                    className={`pr-editor-subtab-btn${relationsSubtab === tab.id ? ' active' : ''}`}
-                    onClick={() => setRelationsSubtab(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
               <div className="pr-editor-relations-grid">
               {relationsSubtab === 'saga' && (
               <div className="pr-editor-section">
-                <div className="pr-editor-section-header-row">
-                  <input
-                    type="text"
-                    placeholder={pe.saga_name_placeholder}
-                    value={sagaName}
-                    onChange={e => setSagaName(e.target.value)}
-                    className="pr-editor-media-card-group-input pr-editor-saga-name-input"
-                  />
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>{tPr.add_to_saga}</button>
-                </div>
                 <PrEditorSagaOrderSection
                   externalId={externalId}
                   sagaOrder={sagaOrder}
@@ -1190,13 +1293,22 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                   onUpdateGroup={updateSagaGroup}
                   resolveMeta={resolveMeta}
                 />
+                <div className="pr-editor-saga-name-row">
+                  <label htmlFor="pr-editor-saga-name">Saga name:</label>
+                  <input
+                    id="pr-editor-saga-name"
+                    type="text"
+                    placeholder={pe.saga_name_placeholder}
+                    value={sagaName}
+                    onChange={e => setSagaName(e.target.value)}
+                    className="pr-editor-media-card-group-input pr-editor-saga-name-input"
+                  />
+                  <PrEditorAddButton onClick={() => setSearchPopupMode('saga')} />
+                </div>
               </div>
               )}
 
               {relationsSubtab === 'relations' && <div className="pr-editor-section">
-                <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>{tPr.add_relation}</button>
-                </div>
                 <PrEditorRelationsSection
                   editableRelations={editableRelations}
                   relationOptions={EDITABLE_RELATION_OPTIONS}
@@ -1205,30 +1317,27 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                   dragHandlers={relationDragHandlers}
                   onRemove={removeEditableRelation}
                   onUpdateType={updateEditableRelationType}
+                  onAdd={() => setSearchPopupMode('relations')}
                 />
               </div>}
 
               {relationsSubtab === 'recommendations' && <div className="pr-editor-section">
-                <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('recommendations')}>{tPr.add_generic}</button>
-                </div>
                 <PrEditorRelationCardList
                   relations={recommendations}
                   draggedIndex={draggedRecommendationIndex}
                   dragHandlers={recommendationDragHandlers}
                   onRemove={removeRecommendation}
+                  onAdd={() => setSearchPopupMode('recommendations')}
                 />
               </div>}
 
               {relationsSubtab === 'bundled' && <div className="pr-editor-section">
-                <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>{tPr.add_generic}</button>
-                </div>
                 <PrEditorRelationCardList
                   relations={bundledRelations}
                   draggedIndex={draggedBundledIndex}
                   dragHandlers={bundledDragHandlers}
                   onRemove={removeBundledRelation}
+                  onAdd={() => setSearchPopupMode('bundled')}
                 />
               </div>}
 
@@ -1272,9 +1381,31 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
               {relationsSubtab === 'episodes' && (entry.type === 'anime' || entry.type === 'series') && (
                 <div className="pr-editor-section">
                   <div className="pr-editor-source-mapping-row">
-                    <span>Fuente TMDB: {entry.episode_source_id ? `#${entry.episode_source_id}` : 'automática'}</span>
+                    <span>Fuente de episodios: {episodeSourceTitle || (episodePreviewLoading ? 'Cargando fuente…' : '—')}</span>
                     <button type="button" className="pr-editor-add-btn" onClick={() => setSourceMappingSearch('episodes')}>Seleccionar serie</button>
                     {entry.episode_source_id && <button type="button" className="pr-editor-add-btn" onClick={() => handleChange('episode_source_id', null)}>Restablecer</button>}
+                  </div>
+                  <div className="media-relations-grid pr-editor-episode-preview-grid" aria-label="Lista de episodios">
+                    {episodePreview.map((episode, index) => (
+                      <div className="media-relation-card media-relation-card--static" key={`${episode.source_key ?? episode.external_id}-${episode.season_number}-${episode.episode_number}-${index}`}>
+                        <div className="media-relation-bg-layer media-episode-bg-layer">
+                          {episode.cover_url && <img src={episode.cover_url} alt="" loading="lazy" />}
+                        </div>
+                        <div className="media-relation-card-overlay" />
+                        <span className="media-relation-type">
+                          {episode.season_number > 0
+                            ? `S${String(episode.season_number).padStart(2, '0')}E${String(episode.episode_number).padStart(2, '0')}`
+                            : episode.episode_number < 0 ? `Sp${-episode.episode_number}` : `#${episode.episode_number}`}
+                        </span>
+                        <div className="media-relation-card-content">
+                          <div className="media-relation-info">
+                            <span className="media-relation-title">{episode.name || `Episodio ${episode.episode_number}`}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {episodePreviewLoading && <div className="pr-editor-search-loading pr-editor-episode-preview-state">Cargando episodios…</div>}
+                    {!episodePreviewLoading && episodePreview.length === 0 && <div className="pr-editor-search-empty pr-editor-episode-preview-state">No hay episodios disponibles para esta fuente.</div>}
                   </div>
                 </div>
               )}
@@ -1285,9 +1416,6 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                   separately open the bundle's own editor afterward. */}
               {relationsSubtab === 'bundle-children' && bundledRelations.length > 0 && (
                 <div className="pr-editor-section">
-                  <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
-                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundle-children')}>{tPr.add_generic}</button>
-                  </div>
                   <p className="pr-editor-bundle-children-hint">
                     Esta obra ya queda incluida automáticamente — añade aquí el resto de obras del bundle.
                   </p>
@@ -1296,6 +1424,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                     draggedIndex={draggedBundleChildIndex}
                     dragHandlers={bundleChildDragHandlers}
                     onRemove={removeBundleChild}
+                    onAdd={() => setSearchPopupMode('bundle-children')}
                   />
                 </div>
               )}
@@ -1305,20 +1434,20 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
                   other works doesn't apply. */}
               {relationsSubtab === 'contains' && entry.format === 'BUNDLE' && (
                 <div className="pr-editor-section">
-                  <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
-                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('contains')}>{tPr.add_generic}</button>
-                  </div>
                   <PrEditorRelationCardList
                     relations={containedRelations}
                     draggedIndex={draggedContainedIndex}
                     dragHandlers={containedDragHandlers}
                     onRemove={removeContainedRelation}
+                    onAdd={() => setSearchPopupMode('contains')}
                   />
                 </div>
               )}
               </div>
             </div>
           )}
+        </div>
+          </div>
         </div>
 
         <div className="pr-editor-footer">
@@ -1420,10 +1549,46 @@ export function PrEditorModal({ externalId, initialTab = 'general', onClose, onS
       )}
 
       {showCharSearch && (
-        <CharacterSearchPopup
-          onSelect={addCharacter}
+        <MediaSearchPopup
+          onSelect={() => {}}
           onClose={() => setShowCharSearch(false)}
-          excludeIds={characters.map(c => c.external_id)}
+          castPicker={{
+            title: 'Personajes de la obra',
+            loadingLabel: 'Cargando personajes…',
+            emptyLabel: 'Esta obra no tiene personajes disponibles.',
+            backLabel: 'Obras',
+            errorLabel: 'No se pudo cargar el reparto de esta obra.',
+            confirmLabel: 'Añadir seleccionados',
+            selectedIds: selectedCastCharacters.map(character => character.external_id),
+            loadCast: async work => {
+              const data = await fetchMediaDataInternal(work.externalId, true);
+              return (data?.characters ?? []).flatMap(character => character.id ? [{
+                external_id: character.id,
+                name: character.name,
+                image_url: character.image ?? null,
+              }] : []);
+            },
+            onToggleCharacter: character => setSelectedCastCharacters(previous => (
+              previous.some(item => item.external_id === character.external_id)
+                ? previous.filter(item => item.external_id !== character.external_id)
+                : [...previous, character]
+            )),
+            onConfirm: () => {
+              const existingIds = new Set(characters.map(character => character.external_id));
+              const additions = selectedCastCharacters
+                .filter(character => !existingIds.has(character.external_id))
+                .map(character => ({
+                  external_id: character.external_id,
+                  name: character.name,
+                  image_url: character.image_url ?? null,
+                  relation_type: 'SUPPORTING',
+                  character_name: null,
+                }));
+              if (additions.length) setCharacters(previous => [...previous, ...additions]);
+              setSelectedCastCharacters([]);
+              setShowCharSearch(false);
+            },
+          }}
         />
       )}
     </div>,

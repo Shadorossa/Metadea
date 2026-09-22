@@ -9,6 +9,7 @@ import { openImageCropModal } from '../../shared/ImageCropModal';
 import { MediaSearchPopup } from '../MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../../lib/search';
 import { getT } from '../../../i18n/client';
+import { PrEditorAddButton } from './PrEditorAddButton';
 
 interface EditingItem {
   media_external_id: string;
@@ -552,12 +553,6 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
 
   return (
     <div className="pr-editor-section">
-      {!editingArc && (
-        <div className="pr-editor-section-header-row pr-editor-section-header-row--actions-right">
-          <button type="button" className="pr-editor-add-btn" onClick={startNewArc}>{t.new_arc}</button>
-        </div>
-      )}
-
       {!editingArc && arcs.length > 0 && (
           <div className="pr-editor-arcs-list">
             {arcs.map((arc, index) => (
@@ -591,6 +586,12 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
               </div>
             ))}
           </div>
+      )}
+
+      {!editingArc && (
+        <div className="pr-editor-add-row">
+          <PrEditorAddButton onClick={startNewArc} />
+        </div>
       )}
 
       {editingArc && (

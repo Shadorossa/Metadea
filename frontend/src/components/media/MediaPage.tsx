@@ -25,7 +25,7 @@ import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { parseStatSectionLabel, StatSectionTracker } from '../../lib/shared/stat-sections';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
-import { getApiSportsEventMatches, getApiSportsEventSeasons, saveStaffSkeleton, getThemeVideoPath, cacheThemeVideo } from '../../lib/tauri/misc-commands';
+import { getApiSportsEventMatches, getApiSportsEventSeasons, saveStaffSkeleton, getThemeVideoPath, cacheThemeVideo, getMediaEpisodes, getMediaThemes } from '../../lib/tauri/misc-commands';
 import { getAnimePrequelEpisodeOffset } from '../../lib/media/anime-tmdb-match';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
@@ -457,6 +457,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   // need this state at all: their season list is already sitting on
   // data.seasons (tmdb-mapper.ts), no extra fetch involved.
   const [animeSeasonChain,   setAnimeSeasonChain]   = useState<SagaEntry[]>([]);
+  const [animeSeasonChainResolvedFor, setAnimeSeasonChainResolvedFor] = useState<string | null>(null);
   const [playingTheme,          setPlayingTheme]          = useState<MediaTheme | null>(null);
   const [selectedThemeVersion,  setSelectedThemeVersion]  = useState<number>(1);
   const [playingVideoSrc,       setPlayingVideoSrc]       = useState<string | null>(null);
@@ -632,13 +633,19 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   useEffect(() => {
     if (previewMode || !currentId || data?.type !== 'anime' || !unifySeasonsEnabled) {
       setAnimeSeasonChain([]);
+      setAnimeSeasonChainResolvedFor(currentId || null);
       return;
     }
     let cancelled = false;
     loadSagaChain(currentId).then(chain => {
       if (cancelled) return;
       setAnimeSeasonChain(chain.ok && chain.entries.length > 1 ? chain.entries : []);
-    }).catch(() => { if (!cancelled) setAnimeSeasonChain([]); });
+      setAnimeSeasonChainResolvedFor(currentId);
+    }).catch(() => {
+      if (cancelled) return;
+      setAnimeSeasonChain([]);
+      setAnimeSeasonChainResolvedFor(currentId);
+    });
     return () => { cancelled = true; };
   }, [previewMode, currentId, data?.type, unifySeasonsEnabled]);
 
@@ -647,6 +654,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   // unit; its standalone page still has no episode list.
   useEffect(() => {
     if (previewMode || !currentId || data?.type !== 'anime') return;
+    if (unifySeasonsEnabled && animeSeasonChainResolvedFor !== currentId) return;
     let cancelled = false;
 
     const canUnifySeasonChain = unifySeasonsEnabled
@@ -697,7 +705,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     }).catch(() => {});
 
     return () => { cancelled = true; };
-  }, [previewMode, currentId, data?.type, animeSeasonChain, unifySeasonsEnabled]);
+  }, [previewMode, currentId, data?.type, animeSeasonChain, animeSeasonChainResolvedFor, unifySeasonsEnabled]);
 
   useEffect(() => {
     if (previewMode || data?.type !== 'event' || !currentId) {
@@ -878,6 +886,15 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
 
     let cancelled = false;
 
+    // Read the local episode/theme cache immediately so the relation column
+    // can render it while the full media fetch and provider validation run.
+    getMediaEpisodes(currentId).then(cached => {
+      if (!cancelled && cached.length > 0) setEpisodes(cached);
+    }).catch(() => {});
+    getMediaThemes(currentId).then(cached => {
+      if (!cancelled && cached.length > 0) setThemes(cached);
+    }).catch(() => {});
+
     // "Usuarios" (followed AniList friends' own scores for this exact entry)
     // only needs the numeric id from the URL — not any of the media data
     // itself — so it's fired here in parallel with the main fetch instead of
@@ -1046,7 +1063,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           });
         }
 
-        if (full.type === 'anime' || full.type === 'series') {
+        if (full.type === 'series') {
           // totalCount_2 is already this series' season count (see
           // tmdb-mapper.ts) — passing it through skips fetchMediaEpisodes
           // re-fetching TMDB's full detail request a second time just to
@@ -1057,12 +1074,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           }).catch(console.error);
         }
 
-        if (full.type === 'anime') {
-          fetchMediaThemes(currentId).then(t => {
-            if (cancelled || t.length === 0) return;
-            setThemes(t);
-          }).catch(console.error);
-        }
       },
       ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
       ()      => cancelled,
@@ -1509,15 +1520,18 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     entry => entry.mediaType === 'anime' || entry.mediaType === 'series',
   );
   const showsSeasonsTab = data.type === 'anime' && unifySeasonsEnabled && sagaUsesOnlySeasonMedia;
+  const waitingForAnimeSeasonChain = data.type === 'anime'
+    && unifySeasonsEnabled
+    && animeSeasonChainResolvedFor !== currentId;
   const isFirstSeasonInChain = !showsSeasonsTab || animeSeasonChain.length <= 1 || currentId === animeSeasonChain[0].externalId;
   const relatedRelations = showsSeasonsTab
     ? relatedRelationsRaw.filter(r => r.relationType !== 'PREQUEL' && r.relationType !== 'SEQUEL')
     : relatedRelationsRaw;
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
-  const hasEpisodes             = isFirstSeasonInChain && episodes.length > 0;
+  const hasEpisodes             = !waitingForAnimeSeasonChain && isFirstSeasonInChain && episodes.length > 0;
   const hasMatches              = data.type === 'event' && matches.length > 0;
-  const hasThemes               = isFirstSeasonInChain && themes.length > 0;
+  const hasThemes               = !waitingForAnimeSeasonChain && isFirstSeasonInChain && themes.length > 0;
   const tmdbSeasons             = data.type === 'series' ? (data.seasons ?? []) : [];
   const eventSeasons            = isEventCompetition ? (data.seasons ?? []) : [];
   const hasSeasonsTab            = showsSeasonsTab

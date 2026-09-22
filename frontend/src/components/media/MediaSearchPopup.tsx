@@ -81,12 +81,16 @@ export interface MediaSearchPopupProps {
   /** Reuses this popup as an in-place work -> cast picker. */
   castPicker?: {
     loadCast: (work: ApiSearchResult) => Promise<Array<{ external_id: string; name: string; image_url?: string | null }>>;
-    onSelectCharacter: (work: ApiSearchResult, character: { external_id: string; name: string; image_url?: string | null }) => void;
+    selectedIds?: string[];
+    onToggleCharacter?: (character: { external_id: string; name: string; image_url?: string | null }) => void;
+    onSelectCharacter?: (work: ApiSearchResult, character: { external_id: string; name: string; image_url?: string | null }) => void;
+    onConfirm?: () => void;
     title: string;
     loadingLabel: string;
     emptyLabel: string;
     backLabel: string;
     errorLabel: string;
+    confirmLabel?: string;
   };
 }
 
@@ -143,7 +147,6 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
     if (castPicker) {
       // The work is the context for choosing a cast member, not the item being
       // merged. Keep this popup mounted and replace its contents in place.
-      void ensureSkeletonCatalogEntry(result);
       const requestId = ++castRequestId.current;
       setDrilldownWork(result);
       setCast([]);
@@ -211,10 +214,14 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
                   <button
                     key={character.external_id}
                     type="button"
-                    className="pr-editor-search-result-card"
+                    className={`pr-editor-search-result-card${castPicker.selectedIds?.includes(character.external_id) ? ' is-selected' : ''}`}
+                    aria-pressed={castPicker.selectedIds?.includes(character.external_id) ?? false}
                     onClick={() => {
-                      castPicker.onSelectCharacter(drilldownWork, character);
-                      onClose();
+                      if (castPicker.onToggleCharacter) castPicker.onToggleCharacter(character);
+                      else if (castPicker.onSelectCharacter) {
+                        castPicker.onSelectCharacter(drilldownWork, character);
+                        onClose();
+                      }
                     }}
                   >
                     {character.image_url
@@ -228,6 +235,14 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
                 ))}
               </div>
             </div>
+            {castPicker.onConfirm && !castLoading && !castError && cast.length > 0 && (
+              <div className="pr-editor-search-cast-actions">
+                <span>{castPicker.selectedIds?.length ?? 0} seleccionados</span>
+                <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={castPicker.onConfirm}>
+                  {castPicker.confirmLabel || 'Añadir seleccionados'}
+                </button>
+              </div>
+            )}
           </>
         ) : (
         <>
