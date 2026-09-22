@@ -58,7 +58,7 @@ const translations = useTranslations(lang);
             </div>
             <div class="character-avatar-frame">
               <div class="character-avatar-wrap" id="char-avatar-container"></div>
-              <button class="char-avatar-edit-btn" id="char-avatar-edit-btn" title="Editar imagen">
+              <button class="char-avatar-edit-btn" id="char-avatar-edit-btn" title={translations.character.edit_image}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                   <circle cx="12" cy="13" r="4"/>
@@ -189,6 +189,62 @@ const translations = useTranslations(lang);
 
   async function loadCharacterData() {
     const t = getT().character;
+
+    // Fandom and AniList label the same stat in either language and with
+    // several spellings, so every known alias maps onto one display label.
+    const STAT_LABEL_BY_ALIAS = new Map<string, string>();
+    for (const [aliases, label] of [
+      [['height', 'estatura', 'altura'], t.stat_height],
+      [['weight', 'peso'], t.stat_weight],
+      [['hair color', 'hair', 'color de pelo', 'pelo', 'cabello'], t.stat_hair],
+      [['eye color', 'eyes', 'eye colour', 'color de ojos', 'ojos'], t.stat_eyes],
+      [['affiliations', 'affiliation'], t.stat_affiliation],
+      [['bounty', 'recompensa'], t.stat_bounty],
+      [['gender', 'sex', 'género', 'sexo'], t.stat_gender],
+      [['age', 'edad'], t.stat_age],
+      [['status', 'estado'], t.stat_status],
+      [['nationality', 'nacionalidad'], t.stat_nationality],
+      [['ethnicity', 'etnia'], t.stat_ethnicity],
+      [['born', 'birth date', 'date of birth', 'nacimiento', 'fecha de nacimiento'], t.stat_born],
+      [['died', 'death date', 'date of death', 'fallecimiento', 'muerte'], t.stat_died],
+      [['occupation', 'occupations', 'ocupación', 'profesión'], t.stat_occupation],
+      [['notable family', 'family', 'familia', 'relatives', 'parientes'], t.stat_family],
+      [['friends', 'amigos', 'friend'], t.stat_friends],
+      [['affiliates', 'afiliados', 'colleagues', 'colegas', 'asociados', 'associates'], t.stat_affiliates],
+      [['blood type', 'bloodtype', 'grupo sanguíneo'], t.stat_blood_type],
+      [['birthday', 'cumpleaños'], t.stat_birthday],
+      [['created by', 'creador', 'creado por'], t.stat_created_by],
+      [['designed by', 'diseño', 'diseñado por'], t.stat_designed_by],
+      [['main appearance(s)', 'appearances', 'apariciones'], t.stat_appearances],
+    ] as Array<[string[], string]>) {
+      for (const alias of aliases) STAT_LABEL_BY_ALIAS.set(alias, label);
+    }
+
+    function resolveStatLabel(lowerLabel: string): string | undefined {
+      const exact = STAT_LABEL_BY_ALIAS.get(lowerLabel);
+      if (exact) return exact;
+      // "Affiliation(s)", "Afiliaciones", ... — the suffix varies per wiki.
+      if (lowerLabel.startsWith('affiliation') || lowerLabel.startsWith('afiliaci')) return t.stat_affiliation;
+      return undefined;
+    }
+
+    const SECTION_HEADER_KEYS: Record<string, string> = {
+      'physical description': t.section_physical,
+      'descripción física': t.section_physical,
+      'career and family information': t.section_career_family,
+      'career and family': t.section_career_family,
+      'carrera y familia': t.section_career_family,
+      'información profesional': t.section_career_family,
+      'associates': t.section_associates,
+      'asociados': t.section_associates,
+      'relaciones': t.section_associates,
+      'relationships': t.section_associates,
+      'behind the scenes': t.section_behind_scenes,
+      'detrás de las cámaras': t.section_behind_scenes,
+      'producción': t.section_behind_scenes,
+      'personal information': t.section_personal,
+      'información personal': t.section_personal,
+    };
     window.ROLE_LABELS = {
       MAIN: t.role_main,
       SUPPORTING: t.role_supporting,
@@ -280,7 +336,7 @@ const translations = useTranslations(lang);
             character = localCharacterToDetail(characterId, localChar);
           } else {
             loadingEl.style.display = 'none';
-            errorTextEl.textContent = 'No se encontró el personaje especificado en AniList.';
+            errorTextEl.textContent = t.not_found_anilist;
             errorEl.style.display = 'block';
             return;
           }
@@ -604,13 +660,7 @@ const translations = useTranslations(lang);
       }
 
       function formatSectionHeader(header: string): string {
-        const lower = header.toLowerCase().trim();
-        if (lower === 'physical description' || lower === 'descripción física') return 'Descripción física';
-        if (lower === 'career and family information' || lower === 'career and family' || lower === 'carrera y familia' || lower === 'información profesional') return 'Carrera y familia';
-        if (lower === 'associates' || lower === 'asociados' || lower === 'relaciones' || lower === 'relationships') return 'Asociados';
-        if (lower === 'behind the scenes' || lower === 'detrás de las cámaras' || lower === 'producción') return 'Detrás de las cámaras';
-        if (lower === 'personal information' || lower === 'información personal') return 'Información personal';
-        return header;
+        return SECTION_HEADER_KEYS[header.toLowerCase().trim()] ?? header;
       }
 
       if (character.gender) {
@@ -678,29 +728,7 @@ const translations = useTranslations(lang);
           lowerLabel.includes('aka')
         ) continue;
 
-        let displayLabel = stat.cleanLabel;
-        if (lowerLabel === 'height' || lowerLabel === 'estatura' || lowerLabel === 'altura') displayLabel = 'Estatura';
-        else if (lowerLabel === 'weight' || lowerLabel === 'peso') displayLabel = 'Peso';
-        else if (lowerLabel === 'hair color' || lowerLabel === 'hair' || lowerLabel === 'color de pelo' || lowerLabel === 'pelo' || lowerLabel === 'cabello') displayLabel = 'Pelo';
-        else if (lowerLabel === 'eye color' || lowerLabel === 'eyes' || lowerLabel === 'eye colour' || lowerLabel === 'color de ojos' || lowerLabel === 'ojos') displayLabel = 'Ojos';
-        else if (lowerLabel === 'affiliations' || lowerLabel === 'affiliation' || lowerLabel.startsWith('affiliation') || lowerLabel.startsWith('afiliaci')) displayLabel = 'Afiliación';
-        else if (lowerLabel === 'bounty' || lowerLabel === 'recompensa') displayLabel = 'Bounty';
-        else if (lowerLabel === 'gender' || lowerLabel === 'sex' || lowerLabel === 'género' || lowerLabel === 'sexo') displayLabel = 'Género';
-        else if (lowerLabel === 'age' || lowerLabel === 'edad') displayLabel = 'Edad';
-        else if (lowerLabel === 'status' || lowerLabel === 'estado') displayLabel = 'Estado';
-        else if (lowerLabel === 'nationality' || lowerLabel === 'nacionalidad') displayLabel = 'Nacionalidad';
-        else if (lowerLabel === 'ethnicity' || lowerLabel === 'etnia') displayLabel = 'Etnia';
-        else if (lowerLabel === 'born' || lowerLabel === 'birth date' || lowerLabel === 'date of birth' || lowerLabel === 'nacimiento' || lowerLabel === 'fecha de nacimiento') displayLabel = 'Nacimiento';
-        else if (lowerLabel === 'died' || lowerLabel === 'death date' || lowerLabel === 'date of death' || lowerLabel === 'fallecimiento' || lowerLabel === 'muerte') displayLabel = 'Fallecimiento';
-        else if (lowerLabel === 'occupation' || lowerLabel === 'occupations' || lowerLabel === 'ocupación' || lowerLabel === 'profesión') displayLabel = 'Ocupación';
-        else if (lowerLabel === 'notable family' || lowerLabel === 'family' || lowerLabel === 'familia' || lowerLabel === 'relatives' || lowerLabel === 'parientes') displayLabel = 'Familia';
-        else if (lowerLabel === 'friends' || lowerLabel === 'amigos' || lowerLabel === 'friend') displayLabel = 'Amigos';
-        else if (lowerLabel === 'affiliates' || lowerLabel === 'afiliados' || lowerLabel === 'colleagues' || lowerLabel === 'colegas' || lowerLabel === 'asociados' || lowerLabel === 'associates') displayLabel = 'Afiliados';
-        else if (lowerLabel === 'blood type' || lowerLabel === 'bloodtype' || lowerLabel === 'grupo sanguíneo') displayLabel = 'Grupo sanguíneo';
-        else if (lowerLabel === 'birthday' || lowerLabel === 'cumpleaños') displayLabel = 'Cumpleaños';
-        else if (lowerLabel === 'created by' || lowerLabel === 'creador' || lowerLabel === 'creado por') displayLabel = 'Creador';
-        else if (lowerLabel === 'designed by' || lowerLabel === 'diseño' || lowerLabel === 'diseñado por') displayLabel = 'Diseño';
-        else if (lowerLabel === 'main appearance(s)' || lowerLabel === 'appearances' || lowerLabel === 'apariciones') displayLabel = 'Apariciones';
+        const displayLabel = resolveStatLabel(lowerLabel) ?? stat.cleanLabel;
 
         const sectionHeader = sectionTracker.next(stat.section);
         if (sectionHeader) {

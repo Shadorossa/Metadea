@@ -27,13 +27,3 @@ export function dedupeByProperty<T extends Record<string, any>>(
 export function dedupeByExternalId<T extends { externalId: string }>(items: T[]): T[] {
   return dedupeByProperty(items, 'externalId');
 }
-
-// Dedupe by external_id (database records)
-export function dedupeByExtId<T extends { external_id: string }>(items: T[]): T[] {
-  return dedupeByProperty(items, 'external_id');
-}
-
-// Dedupe by id field
-export function dedupeById<T extends { id: any }>(items: T[]): T[] {
-  return dedupeByProperty(items, 'id');
-}

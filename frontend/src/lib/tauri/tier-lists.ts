@@ -61,10 +61,6 @@ export async function addItemToTierList(tierListId: string, externalId: string):
   return tauriRun('add_item_to_tier_list', { tierListId, externalId });
 }
 
-export async function removeItemFromTierList(tierListId: string, externalId: string): Promise<void> {
-  return tauriRun('remove_item_from_tier_list', { tierListId, externalId });
-}
-
 export async function setTierListPlacements(tierListId: string, placements: TierItemPlacement[]): Promise<void> {
   return tauriRun('set_tier_list_placements', { tierListId, placements });
 }

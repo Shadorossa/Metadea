@@ -714,7 +714,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     const episode = info ? Math.round(info.episode) : 1;
     const tag = encodeExternalIdForFilename(item.externalId);
     const titleSanitized = sanitizeForFilename(item.title);
-    const isBookOrNovel = item.libraryEntry.type === 'lnovel' || item.libraryEntry.type === 'book';
     // Prefer the provider/database title: the text before the marker can be
     // an alternate title of the work, not the episode title.
     let rawEpisodeTitle = '';

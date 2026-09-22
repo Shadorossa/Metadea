@@ -135,6 +135,10 @@ const { t } = Astro.props;
   let emulatorSelections: Record<string, string> = {};
   let emulatorsDataReady: Promise<void> = Promise.resolve();
 
+  const selectionsFrom = (configs: Record<string, any>) => Object.fromEntries(
+    Object.entries(configs).map(([platformId, config]) => [platformId, config?.emulator_name || ''])
+  );
+
   const initEmulatorsTab = async () => {
     // Refresh on each Astro navigation. Existing delegated listeners survive
     // navigation, so platform clicks must wait for this visit's database read
@@ -143,10 +147,7 @@ const { t } = Astro.props;
       try {
         const { readEmulatorsConfig } = await import('../../lib/tauri');
         emulatorsData = await readEmulatorsConfig();
-        emulatorSelections = Object.fromEntries(
-          Object.entries(emulatorsData).map(([platformId, config]) => [platformId, config?.emulator_name || ''])
-        );
-        console.log('[Init] Loaded emulators data:', emulatorsData);
+        emulatorSelections = selectionsFrom(emulatorsData);
       } catch (error) {
         console.error('[Init] Failed to load emulators data:', error);
         emulatorsData = {};
@@ -272,9 +273,7 @@ const { t } = Astro.props;
     window.addEventListener('emulators-config-reset', (event) => {
       const configs = (event as CustomEvent<Record<string, any>>).detail;
       emulatorsData = configs || {};
-      emulatorSelections = Object.fromEntries(
-        Object.entries(emulatorsData).map(([platformId, config]) => [platformId, config?.emulator_name || ''])
-      );
+      emulatorSelections = selectionsFrom(emulatorsData);
       document.querySelectorAll<HTMLSelectElement>('.emulator-select').forEach((select) => {
         const platformId = select.dataset.platform;
         if (!platformId || select.options.length <= 1) return;
@@ -284,16 +283,6 @@ const { t } = Astro.props;
       });
     });
 
-    // Handle ROM folder selection
-    document.addEventListener('click', (e) => {
-      const target = e.target;
-      if (target.closest('.rom-folder-btn')) {
-        const btn = target.closest('.rom-folder-btn');
-        const platformId = btn.getAttribute('data-platform');
-        // TODO: Open file picker for ROM folder
-        console.log('ROM folder picker for platform:', platformId);
-      }
-    });
   };
 
   if (document.readyState === 'loading') {

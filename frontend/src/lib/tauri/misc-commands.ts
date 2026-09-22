@@ -106,10 +106,6 @@ export async function deleteAllMediaEpisodes(externalId: string): Promise<void> 
   return tauriRun('delete_all_media_episodes', { externalId });
 }
 
-export async function deleteMediaEpisode(externalId: string, seasonNumber: number, episodeNumber: number): Promise<void> {
-  return tauriRun('delete_media_episode', { externalId, seasonNumber, episodeNumber });
-}
-
 // API-Sports competition structure and match results are persisted separately
 // from media_catalog, so event pages keep their season/match tabs offline.
 export interface ApiSportsEventSeasonRow {

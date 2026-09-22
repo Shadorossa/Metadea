@@ -25,7 +25,6 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     const stored = await tauriCmd<Record<string, EmulatorConfig>>('read_emulators_config', {});
     emulatorsData = stored || {};
     pendingChanges = JSON.parse(JSON.stringify(emulatorsData));
-    console.log('[Init] Loaded emulators data:', emulatorsData);
   } catch (err) {
     console.error('[Init] Error loading data:', err);
     emulatorsData = {};
@@ -35,7 +34,6 @@ export async function initEmulators(showToast: (msg?: string) => void) {
   // Load saved values into inputs after a short delay to ensure DOM is ready
   setTimeout(() => {
     loadEmulatorInputs();
-    console.log('[Init] Loaded values into inputs');
   }, 100);
 
   if (listenersAttached) return;
@@ -69,7 +67,6 @@ export async function initEmulators(showToast: (msg?: string) => void) {
         showChangeNotification();
       }
 
-      console.log(`[Executable] ${platformId}: ${chosen}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       showToast('Error: ' + message.slice(0, 50));
@@ -104,7 +101,6 @@ export async function initEmulators(showToast: (msg?: string) => void) {
         showChangeNotification();
       }
 
-      console.log(`[ROM Folder] ${platformId}: ${chosen}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       showToast('Error: ' + message.slice(0, 50));
@@ -127,10 +123,8 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     // Check by class and ID patterns
     if (input.classList.contains('emulator-select')) {
       pendingChanges[platformId].emulator_name = input.value;
-      console.log(`[Emulator] ${platformId}: ${input.value}`);
     } else if (input.id.includes('launch-args')) {
       pendingChanges[platformId].launch_args = input.value;
-      console.log(`[Launch Args] ${platformId}: ${input.value}`);
     }
 
     if (!hasChanges) {
@@ -255,11 +249,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       if (!platformId) return;
 
       if (input.classList.contains('emulator-select')) {
-        const savedValue = emulatorsData[platformId]?.emulator_name || '';
-        input.value = savedValue;
-        if (savedValue) {
-          console.log(`[Load] ${platformId} emulator: ${savedValue}`);
-        }
+        input.value = emulatorsData[platformId]?.emulator_name || '';
       } else if (input.id.includes('launch-args')) {
         const savedValue = emulatorsData[platformId]?.launch_args || '';
         input.value = savedValue;
@@ -294,7 +284,6 @@ async function saveEmulators(): Promise<void> {
       config.tracking_mode = 'process';
     }
     await invoke('write_emulators_config', { configs: emulatorsData });
-    console.log('[Save] Emulators config saved to database');
   } catch (err) {
     console.error('[Save] Error saving emulators:', err);
     throw err;

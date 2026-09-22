@@ -167,8 +167,6 @@ function setState(next: PlaybackState | null) {
   notify();
 }
 
-export const subscribePlayback = playbackStore.subscribe;
-export const getPlaybackState = playbackStore.get;
 
 // React binding — any component can call this to reactively read the
 // current playback state without needing its own subscribe/useEffect glue.

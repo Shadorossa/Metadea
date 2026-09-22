@@ -14,12 +14,11 @@ import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { VirtualCardGrid } from './ui/VirtualCardGrid';
+import { SortModeSelect } from './ui/SortModeSelect';
 import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
-import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
+import { LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
-
-const LAUNCHER_LINE_TRANSITION = { duration: 0.3, ease: [0.25, 0, 0.15, 1] as const };
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -289,11 +288,11 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
     const unreleased = [...notReleased]
       .sort((a, b) => (releaseTimestamp(a) ?? Infinity) - (releaseTimestamp(b) ?? Infinity));
 
-    const platformSections = isGameLike ? LAUNCHER_ORDER
-      .filter(id => backlogByPlatform.has(id) || (id === 'steam' && (planningEntries.length > 0 || steamPlanning.length > 0)))
+    const platformSections = LAUNCHER_ORDER
+      .filter(id => backlogByPlatform.has(id) || (isGameLike && id === 'steam' && (planningEntries.length > 0 || steamPlanning.length > 0)))
       .map(id => {
         const platformBacklogGames: StatusEntry[] = (backlogByPlatform.get(id) ?? []).map(game => ({ kind: 'game', game }));
-        const additionalPlatformEntries: StatusEntry[] = id === 'steam'
+        const additionalPlatformEntries: StatusEntry[] = isGameLike && id === 'steam'
           ? [
               ...steamPlanning.map((game): StatusEntry => ({ kind: 'game', game })),
               ...planningEntries,
@@ -305,13 +304,6 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
           ? { kind: 'steam' as const, game: e.game, libraryStatus: e.libraryStatus }
           : { kind: 'catalog' as const, item: e.item, launchGame: e.launchGame }
         );
-        return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries, platformId: id };
-      }) : LAUNCHER_ORDER
-      .filter(id => backlogByPlatform.has(id))
-      .map(id => {
-        const asStatusEntries: StatusEntry[] = backlogByPlatform.get(id)!.map(game => ({ kind: 'game', game }));
-        const sorted = sortEntries(asStatusEntries, sortMode, g => displayNameFor(g, catalogMapById));
-        const entries: SectionEntry[] = sorted.map(e => ({ kind: 'steam' as const, game: (e as { kind: 'game'; game: LocalGame }).game }));
         return { title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries, platformId: id };
       });
     const rawSections = [
@@ -410,16 +402,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                       <>
                         <motion.div className="local-launcher-title-rule" layout="size" transition={LAUNCHER_LINE_TRANSITION} />
                         <div className="local-launcher-title-controls">
-                          <select
-                            className="local-sort-select"
-                            value={sortMode}
-                            onChange={e => setSortMode(e.target.value as SortMode)}
-                            title={t.local.sort_title}
-                          >
-                            <option value="alpha">{t.local.sort_alpha}</option>
-                            <option value="lastPlayed">{t.local.sort_last_played}</option>
-                            <option value="playtime">{t.local.sort_playtime}</option>
-                          </select>
+                          <SortModeSelect value={sortMode} onChange={setSortMode} />
                         </div>
                       </>
                     ) : null}

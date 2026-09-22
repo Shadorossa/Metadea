@@ -121,7 +121,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   }
   function unitLabelForId(id: string): string {
     const type = id.split(':')[0];
-    return type === 'anime' ? 'Episodios' : 'Capítulos';
+    return type === 'anime' ? t.stat_episodes : t.stat_chapters;
   }
   function formatItemRange(item: { ep_start: number | null; ep_end: number | null }): string | null {
     if (item.ep_start != null && item.ep_end != null) return `${item.ep_start}-${item.ep_end}`;
@@ -172,7 +172,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                 className={`saga-strip-tab${activeTab === 'arcs' ? ' saga-strip-tab--active' : ''}`}
                 onClick={() => setActiveTab('arcs')}
               >
-                Arcos Argumentales
+                {t.saga_arcs_tab}
               </button>
             </>
           )}

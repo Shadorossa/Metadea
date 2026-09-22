@@ -1,8 +1,6 @@
 // Unified description handling utilities consolidating scattered formatting
 // logic from anilist-mapper.ts, comicvine-mapper.ts, and openlibrary-mapper.ts
 
-import { sanitizeHtml } from './sanitize-html';
-
 // Strip all HTML tags from a string (used for descriptions from providers
 // that don't support/need markup). Falsy input yields empty string.
 export function stripHtml(html: string | null | undefined): string {
@@ -38,15 +36,4 @@ export function extractDescription(
     if (trimmed) return trimmed;
   }
   return undefined;
-}
-
-// Sanitize and format a description for safe display with HTML markup preserved.
-// Combines sanitization + DOMParser handling for complex structures.
-export function sanitizeAndFormatDescription(
-  html: string | null | undefined,
-  stripMarkup = false
-): string {
-  if (!html) return '';
-  if (stripMarkup) return stripHtml(html);
-  return sanitizeHtml(html);
 }

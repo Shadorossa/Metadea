@@ -1,10 +1,6 @@
 import { getT } from '../../i18n/client';
 import { byId } from '../shared/dom';
-
-function isTauriRuntime(): boolean {
-  return typeof window !== 'undefined' &&
-    ('__TAURI_IPC__' in window || '__TAURI_INTERNALS__' in window || '__TAURI__' in window);
-}
+import { isTauriRuntime } from './status-action';
 
 export function initUpdater(defaultVersionFallback: string) {
   const checkBtn = byId<HTMLButtonElement>('app-check-update-btn');

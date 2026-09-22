@@ -6,13 +6,14 @@ import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
 import { displayNameFor, type StatusEntry, type SortMode, sortEntries, entryKey } from './utils/catalogGameLinking';
-import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, type PlatformId } from './utils/constants';
+import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, type PlatformId } from './utils/constants';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { VirtualCardGrid } from './ui/VirtualCardGrid';
+import { SortModeSelect } from './ui/SortModeSelect';
 import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
 
 // sectionStatus is the badge shown on any kind:'game' entry in this section
@@ -20,17 +21,6 @@ import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
 // hardcode per section since each one is built from an already-homogeneous
 // status bucket (see LocalLibrary's statusBuckets/buildCatalogStatusEntries).
 interface StatusSection { key: string; title: string; entries: StatusEntry[]; sectionStatus: string }
-
-// Same duration/easing as the detail panel's own slide — each launcher
-// title row's rule/controls (see the "Label left, rule fills the rest"
-// comment below) reflow along with .local-main-content narrowing/widening
-// on every open/close, so animating them at the SAME pace as the panel
-// itself is what actually reads as one coherent motion instead of two
-// unrelated things happening on screen at once. Unlike the games grid
-// (deliberately un-animated — see MediaCardShell.tsx), there's only ever a
-// handful of these rows on screen (one per launcher section), so there's no
-// large-list perf/viewport-culling concern to worry about here.
-const LAUNCHER_LINE_TRANSITION = { duration: 0.3, ease: [0.25, 0, 0.15, 1] as const };
 
 // sortEntries/entryKey/SortMode now live in catalogGameLinking.ts, shared
 // with LocalMediaSection's own Steam-backed platform sections.
@@ -43,12 +33,11 @@ interface GamesGridProps {
   onClearRoute:  () => void;
   onRefreshScan: () => void;
   isMounted:     boolean;
-  // currentlyEntries/planningEntries mix in catalog-tracked "pendiente"
-  // entries too (see LocalLibrary's buildCatalogStatusEntries) — there's no
-  // Pausado/Abandonado equivalent: an installed game with that status stays
-  // in its own platform section instead (see statusBuckets), badge and all.
+  // currentlyEntries mixes in catalog-tracked "pendiente" entries too (see
+  // LocalLibrary's buildCatalogStatusEntries) — there's no Pausado/
+  // Abandonado equivalent: an installed game with that status stays in its
+  // own platform section instead (see statusBuckets), badge and all.
   currentlyEntries: StatusEntry[];
-  planningEntries:  StatusEntry[];
   coverCache:      CoverCache;
   coverCacheHits:  Record<string, string>;
   onSelectGame:    (g: LocalGame | null) => void;
@@ -62,13 +51,6 @@ interface GamesGridProps {
   // PlatformSidebar's availablePlatforms so a platform with only pending
   // games (no scanned install at all) still lights up in both places.
   pendingByLauncher:      Map<string, StatusEntry[]>;
-  pendingWithLauncherIds: Set<string>;
-  // Entries whose launcher can't be determined locally and whose live IGDB
-  // check hasn't resolved yet — held out of the status sections too (not
-  // just launcher ones), so a Nintendo/Steam-bound pendiente never flashes
-  // in "Pendientes" for a frame before jumping to its real section once the
-  // check finishes.
-  pendingResolutionIds: Set<string>;
   // Real library status (if any) for each installed game — groupedGames
   // itself only ever holds untracked-or-completed installs, but the badge
   // needs to tell those two apart (see getStatusBadge/GameCard).
@@ -99,13 +81,12 @@ interface GamesGridProps {
 // callbacks.
 export function GamesGrid({
   gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
-  currentlyEntries, planningEntries, coverCache, coverCacheHits,
+  currentlyEntries, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
-  pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds, gameStatusMatch, catalogMapById, onRemoveGame,
+  pendingByLauncher, gameStatusMatch, catalogMapById, onRemoveGame,
   onDeleteLibraryItem,
 }: GamesGridProps) {
   const t = getT();
-  const tLocal = t.local;
   // One shared sort preference across every launcher section (Steam,
   // Nintendo, ...) rather than a separate one per platform — simpler to
   // reason about, and there's no real case for browsing one platform
@@ -125,6 +106,25 @@ export function GamesGrid({
     handleDeleteLibraryItem,
     closeDeleteMenu,
   } = useLocalDeleteMenu({ onRemoveGame, onDeleteLibraryItem });
+
+  const renderEntry = (entry: StatusEntry, status: string | undefined) => entry.kind === 'game' ? (
+    <GameCard
+      game={entry.game}
+      coverCache={coverCache}
+      onClick={onSelectGame}
+      status={status}
+      onRequestDelete={requestDeleteGame}
+      displayName={displayNameFor(entry.game, catalogMapById)}
+    />
+  ) : (
+    <LocalMediaCard
+      item={entry.item}
+      cachedPath={coverCacheHits[entry.item.externalId]}
+      onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
+      onRequestDelete={requestDeleteLibraryItem}
+      launchGame={entry.launchGame}
+    />
+  );
 
   const statusSections: StatusSection[] = [
     ...(currentlyEntries.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: currentlyEntries, sectionStatus: 'playing' }] : []),
@@ -150,24 +150,7 @@ export function GamesGrid({
           <VirtualCardGrid
             entries={sec.entries}
             getKey={entryKey}
-            renderItem={entry => entry.kind === 'game' ? (
-              <GameCard
-                game={entry.game}
-                coverCache={coverCache}
-                onClick={onSelectGame}
-                status={sec.sectionStatus}
-                onRequestDelete={requestDeleteGame}
-                displayName={displayNameFor(entry.game, catalogMapById)}
-              />
-            ) : (
-              <LocalMediaCard
-                item={entry.item}
-                cachedPath={coverCacheHits[entry.item.externalId]}
-                onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
-                onRequestDelete={requestDeleteLibraryItem}
-                launchGame={entry.launchGame}
-              />
-            )}
+            renderItem={entry => renderEntry(entry, sec.sectionStatus)}
           />
         </div>
       ))}
@@ -261,16 +244,7 @@ export function GamesGrid({
                     smoothly either way. */}
                 <motion.div className="local-launcher-title-rule" layout="size" transition={LAUNCHER_LINE_TRANSITION} />
                 <div className="local-launcher-title-controls">
-                  <select
-                    className="local-sort-select"
-                    value={sortMode}
-                    onChange={e => setSortMode(e.target.value as SortMode)}
-                    title={tLocal.sort_title}
-                  >
-                    <option value="alpha">{tLocal.sort_alpha}</option>
-                    <option value="lastPlayed">{tLocal.sort_last_played}</option>
-                    <option value="playtime">{tLocal.sort_playtime}</option>
-                  </select>
+                  <SortModeSelect value={sortMode} onChange={setSortMode} />
                   {idx === 0 && (
                     <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan}>
                       <IconRefresh />
@@ -281,24 +255,7 @@ export function GamesGrid({
               <VirtualCardGrid
                 entries={sortedEntries}
                 getKey={entryKey}
-                renderItem={entry => entry.kind === 'game' ? (
-                  <GameCard
-                    game={entry.game}
-                    coverCache={coverCache}
-                    onClick={onSelectGame}
-                    status={gameStatusMatch.get(entry.game)}
-                    onRequestDelete={requestDeleteGame}
-                    displayName={displayNameFor(entry.game, catalogMapById)}
-                  />
-                ) : (
-                  <LocalMediaCard
-                    item={entry.item}
-                    cachedPath={coverCacheHits[entry.item.externalId]}
-                    onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
-                    onRequestDelete={requestDeleteLibraryItem}
-                    launchGame={entry.launchGame}
-                  />
-                )}
+                renderItem={entry => renderEntry(entry, entry.kind === 'game' ? gameStatusMatch.get(entry.game) : undefined)}
               />
             </section>
           );

@@ -44,4 +44,9 @@ export const PLATFORM_LOGO: Record<PlatformId, string> = {
   local:       '',
 };
 
-export const STEAM_COVER = API_ENDPOINTS.STEAM_COVERS;
+// Same duration/easing as the detail panel's own slide — each launcher
+// title row's rule reflows along with .local-main-content narrowing or
+// widening on every panel open/close, so animating it at the SAME pace as
+// the panel itself is what reads as one coherent motion instead of two
+// unrelated things happening on screen at once.
+export const LAUNCHER_LINE_TRANSITION = { duration: 0.3, ease: [0.25, 0, 0.15, 1] as const };

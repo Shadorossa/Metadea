@@ -132,13 +132,6 @@ export function usePendingLaunchers(planningEntries: StatusEntry[]) {
 
   return useMemo(() => {
     const pendingByLauncher = new Map<string, StatusEntry[]>();
-    const pendingWithLauncherIds = new Set<string>();
-    // Entries whose launcher genuinely can't be determined locally AND
-    // whose live check hasn't finished yet — kept out of the general status
-    // sections too (not just out of a launcher one) so a Nintendo/Steam-
-    // bound game never has a moment where it visibly sits in "Pendientes"
-    // before jumping to its real section once the check resolves.
-    const pendingResolutionIds = new Set<string>();
 
     const idsStillChecking = new Set(idsNeedingRemoteCheck ? idsNeedingRemoteCheck.split(',') : []);
 
@@ -151,22 +144,20 @@ export function usePendingLaunchers(planningEntries: StatusEntry[]) {
       if (resolved) {
         if (!pendingByLauncher.has(resolved)) pendingByLauncher.set(resolved, []);
         pendingByLauncher.get(resolved)!.push(entry);
-        pendingWithLauncherIds.add(entry.item.externalId);
         continue;
       }
 
-      if (idsStillChecking.has(entry.item.externalId) && !checkedIds.has(entry.item.externalId)) {
-        pendingResolutionIds.add(entry.item.externalId);
-        continue;
-      }
+      // An entry whose live check hasn't finished yet is held out of every
+      // launcher section until it resolves, so a Nintendo/Steam-bound game
+      // never visibly sits in the wrong one for a frame.
+      if (idsStillChecking.has(entry.item.externalId) && !checkedIds.has(entry.item.externalId)) continue;
 
       // Si no pertenece a otra plataforma específica, se asigna a Steam
       const fallbackLauncher = 'steam';
       if (!pendingByLauncher.has(fallbackLauncher)) pendingByLauncher.set(fallbackLauncher, []);
       pendingByLauncher.get(fallbackLauncher)!.push(entry);
-      pendingWithLauncherIds.add(entry.item.externalId);
     }
 
-    return { pendingByLauncher, pendingWithLauncherIds, pendingResolutionIds };
+    return { pendingByLauncher };
   }, [planningEntries, remoteByExternalId, checkedIds, idsNeedingRemoteCheck]);
 }

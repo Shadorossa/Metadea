@@ -114,18 +114,3 @@ export function needsResync(entry: {
 
   return Date.now() - lastSynced > intervalDays * backoffMultiplier * 24 * 60 * 60 * 1000;
 }
-
-// A library entry counts as "caught up" (rather than plain "in progress")
-// when its own progress has already reached everything a still-RELEASING
-// work has aired/published so far — used by the profile library to bucket
-// these separately instead of lumping them in with genuinely-behind entries.
-export function isCaughtUpOnReleasing(
-  libraryStatus: string | null | undefined,
-  progress: number | null | undefined,
-  catalogEntry: { status?: string | null; total_count?: number | null } | null | undefined,
-): boolean {
-  if (!catalogEntry || catalogEntry.status !== 'RELEASING') return false;
-  if (!catalogEntry.total_count || catalogEntry.total_count <= 0) return false;
-  if (!isInProgressStatus(libraryStatus)) return false;
-  return (progress ?? 0) >= catalogEntry.total_count;
-}

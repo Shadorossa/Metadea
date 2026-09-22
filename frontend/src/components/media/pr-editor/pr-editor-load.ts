@@ -44,43 +44,27 @@ export interface PrEditorRelationsAndSagaResult {
 export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<PrEditorRelationsAndSagaResult> {
   const rels = await getMediaRelationsForEditor(externalId).catch(() => [] as DbMediaRelation[]);
 
+  // Each of these sections is a plain list of related ids plus the set of ids
+  // it started out with, which the modal diffs against on submit.
+  const summarize = (matches: (r: DbMediaRelation) => boolean) => {
+    const list: BundledRelation[] = rels.filter(matches).map(r => ({
+      external_id: r.related_media_external_id,
+      title: r.title,
+      cover: r.cover,
+    }));
+    return [list, new Set(list.map(r => r.external_id))] as const;
+  };
+
   // Bundled In (PART_OF/UPDATE) vs. Contains (EPISODE) are opposite directions
   // of the same relationship; BUNDLE_RELATION_TYPES covers both for excluding them below.
-  const bundledRelations = rels
-    .filter(r => PART_OF_RELATION_TYPES.includes(r.relation_type))
-    .map(r => ({
-      external_id: r.related_media_external_id,
-      title: r.title,
-      cover: r.cover,
-    }));
-  const originalBundledIds = new Set(bundledRelations.map(r => r.external_id));
-
-  const containedRelations = rels
-    .filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type))
-    .map(r => ({
-      external_id: r.related_media_external_id,
-      title: r.title,
-      cover: r.cover,
-    }));
-  const originalContainedIds = new Set(containedRelations.map(r => r.external_id));
+  const [bundledRelations, originalBundledIds] = summarize(r => PART_OF_RELATION_TYPES.includes(r.relation_type));
+  const [containedRelations, originalContainedIds] = summarize(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
+  const [issueRelations, originalIssueIds] = summarize(r => r.relation_type === 'ISSUE');
+  const [recommendations, originalRecommendationIds] = summarize(r => r.relation_type === 'RECOMMENDATION');
 
   const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
   if (!transitiveIds.includes(externalId)) transitiveIds.push(externalId);
   const sagaMemberIds = new Set(transitiveIds);
-
-  const issueRelations = rels
-    .filter(r => r.relation_type === 'ISSUE')
-    .map(r => ({
-      external_id: r.related_media_external_id,
-      title: r.title,
-      cover: r.cover,
-    }));
-  const originalIssueIds = new Set(issueRelations.map(r => r.external_id));
-
-  const recommendations = rels
-    .filter(r => r.relation_type === 'RECOMMENDATION')
-    .map(r => ({ external_id: r.related_media_external_id, title: r.title, cover: r.cover }));
-  const originalRecommendationIds = new Set(recommendations.map(r => r.external_id));
 
   // Everything not Bundled In, not an ISSUE, and not targeting a saga member
   // — anything targeting a saga member is re-derived by the saga chain

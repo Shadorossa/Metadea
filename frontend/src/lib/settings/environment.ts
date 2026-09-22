@@ -1,4 +1,4 @@
-import { readEnvConfig, writeEnvConfig, openEnvFolder, readRoutes, writeRoutes, pickFolder } from '../tauri';
+import { readEnvConfig, writeEnvConfig, openEnvFolder, readRoutes, writeRoutes, pickFolder, type EnvConfig } from '../tauri';
 import { CATEGORIES } from '../../components/local/utils/constants';
 import { ICON_FOLDER, ICON_X_SMALL } from '../shared/icon-strings';
 
@@ -7,47 +7,45 @@ import { ICON_FOLDER, ICON_X_SMALL } from '../shared/icon-strings';
 // list instead of keeping a second, drifting copy of the same labels.
 const LOCAL_ROUTE_CATEGORIES = CATEGORIES.filter(c => c.id !== 'videojuegos');
 
+// Each credential field's config key paired with the input element holding
+// it — the load, save and clear paths all walk this one list instead of
+// repeating the same eight assignments three times over.
+const ENV_FIELDS: Array<[keyof EnvConfig, string]> = [
+  ['igdb_client_id',     'igdb-client-id'],
+  ['igdb_client_secret', 'igdb-client-secret'],
+  ['steam_api_key',      'steam-api-key'],
+  ['tmdb_access_token',  'tmdb-access-token'],
+  ['tmdb_api_key',       'tmdb-api-key'],
+  ['anilist_client_id',  'anilist-client-id'],
+  ['comicvine_api_key',  'comicvine-api-key'],
+  ['apisports_api_key',  'apisports-api-key'],
+];
+
 export async function initEnvironment(showToast: (msg?: string) => void) {
-  const clientIdInput        = document.getElementById('igdb-client-id')         as HTMLInputElement;
-  const clientSecretInput    = document.getElementById('igdb-client-secret')     as HTMLInputElement;
-  const steamKeyInput        = document.getElementById('steam-api-key')          as HTMLInputElement;
-  const tmdbAccessTokenInput = document.getElementById('tmdb-access-token')      as HTMLInputElement;
-  const tmdbKeyInput         = document.getElementById('tmdb-api-key')           as HTMLInputElement;
-  const anilistClientIdInput = document.getElementById('anilist-client-id')       as HTMLInputElement;
-  const comicVineKeyInput    = document.getElementById('comicvine-api-key')      as HTMLInputElement;
-  const apiSportsKeyInput    = document.getElementById('apisports-api-key')       as HTMLInputElement;
+  const inputs = new Map<keyof EnvConfig, HTMLInputElement>(
+    ENV_FIELDS.map(([key, id]) => [key, document.getElementById(id) as HTMLInputElement]),
+  );
   const envSaveBtn           = document.getElementById('env-save-btn')!;
   const envClearBtn          = document.getElementById('env-clear-btn')!;
   const openFolderBtn        = document.getElementById('open-env-folder-btn')!;
 
   try {
     const cfg = await readEnvConfig();
-    clientIdInput.value        = cfg.igdb_client_id     ?? '';
-    clientSecretInput.value    = cfg.igdb_client_secret ?? '';
-    steamKeyInput.value        = cfg.steam_api_key      ?? '';
-    tmdbAccessTokenInput.value = cfg.tmdb_access_token  ?? '';
-    tmdbKeyInput.value         = cfg.tmdb_api_key       ?? '';
-    anilistClientIdInput.value = cfg.anilist_client_id  ?? '';
-    comicVineKeyInput.value    = cfg.comicvine_api_key  ?? '';
-    apiSportsKeyInput.value    = cfg.apisports_api_key ?? '';
+    for (const [key, input] of inputs) input.value = cfg[key] ?? '';
   } catch {
     // Not in Tauri or file doesn't exist yet
   }
 
+  const writeFields = async (valueFor: (input: HTMLInputElement) => string | undefined) => {
+    const cfg = await readEnvConfig().catch(() => ({}));
+    const updated: EnvConfig = { ...cfg };
+    for (const [key, input] of inputs) updated[key] = valueFor(input);
+    await writeEnvConfig(updated);
+  };
+
   envSaveBtn.addEventListener('click', async () => {
     try {
-      const cfg = await readEnvConfig().catch(() => ({}));
-      await writeEnvConfig({
-        ...cfg,
-        igdb_client_id:     clientIdInput.value.trim() || undefined,
-        igdb_client_secret: clientSecretInput.value.trim() || undefined,
-        steam_api_key:      steamKeyInput.value.trim() || undefined,
-        tmdb_access_token:  tmdbAccessTokenInput.value.trim() || undefined,
-        tmdb_api_key:       tmdbKeyInput.value.trim() || undefined,
-        anilist_client_id:  anilistClientIdInput.value.trim() || undefined,
-        comicvine_api_key:  comicVineKeyInput.value.trim() || undefined,
-        apisports_api_key:  apiSportsKeyInput.value.trim() || undefined,
-      });
+      await writeFields(input => input.value.trim() || undefined);
       showToast('Credenciales guardadas');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -57,26 +55,8 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
 
   envClearBtn.addEventListener('click', async () => {
     try {
-      const cfg = await readEnvConfig().catch(() => ({}));
-      await writeEnvConfig({
-        ...cfg,
-        igdb_client_id: undefined,
-        igdb_client_secret: undefined,
-        steam_api_key: undefined,
-        tmdb_access_token: undefined,
-        tmdb_api_key: undefined,
-        anilist_client_id: undefined,
-        comicvine_api_key: undefined,
-        apisports_api_key: undefined,
-      });
-      clientIdInput.value = '';
-      clientSecretInput.value = '';
-      steamKeyInput.value = '';
-      tmdbAccessTokenInput.value = '';
-      tmdbKeyInput.value = '';
-      anilistClientIdInput.value = '';
-      comicVineKeyInput.value = '';
-      apiSportsKeyInput.value = '';
+      await writeFields(() => undefined);
+      for (const input of inputs.values()) input.value = '';
       showToast('Credenciales eliminadas');
     } catch {
       showToast('Error al eliminar');

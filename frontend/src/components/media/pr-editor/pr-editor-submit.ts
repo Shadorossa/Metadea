@@ -38,6 +38,20 @@ function minimalProposalCatalogEntry(entry: MediaCatalogEntry, editedFields: rea
   return minimal;
 }
 
+// Bundled In / Contains / Issues are all a flat id list persisted under one
+// fixed relation type; only that type and its label differ between them.
+function toDbRelations(list: BundledRelation[], relationType: string, typeLabel: string): DbMediaRelation[] {
+  return list
+    .filter(r => r.external_id.trim())
+    .map(r => ({
+      related_media_external_id: r.external_id.trim(),
+      relation_type: relationType,
+      type_label: typeLabel,
+      title: r.title || r.external_id.trim(),
+      cover: r.cover ?? null,
+    }));
+}
+
 // Last write wins per (related_media_external_id, relation_type) — the saga
 // chain's freshly-resolved rows are concatenated last, so they win over a
 // stale editable/existing row for the same pair.
@@ -230,25 +244,9 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<Pr
     await removeSagaMember(externalId).catch(err => console.error('Failed to remove blocked work from saga cache:', err));
   }
 
-  const bundledDbRelations: DbMediaRelation[] = p.bundledRelations
-    .filter(r => r.external_id.trim())
-    .map(r => ({
-      related_media_external_id: r.external_id.trim(),
-      relation_type: 'PART_OF',
-      type_label: 'Part of',
-      title: r.title || r.external_id.trim(),
-      cover: r.cover ?? null,
-    }));
-
-  const containedDbRelations: DbMediaRelation[] = p.containedRelations
-    .filter(r => r.external_id.trim())
-    .map(r => ({
-      related_media_external_id: r.external_id.trim(),
-      relation_type: 'EPISODE',
-      type_label: 'Episode',
-      title: r.title || r.external_id.trim(),
-      cover: r.cover ?? null,
-    }));
+  const bundledDbRelations = toDbRelations(p.bundledRelations, 'PART_OF', 'Part of');
+  const containedDbRelations = toDbRelations(p.containedRelations, 'EPISODE', 'Episode');
+  const issueDbRelations = toDbRelations(p.issueRelations, 'ISSUE', 'Issue');
 
   const editableDbRelations: DbMediaRelation[] = p.editableRelations
     .filter(r => r.related_media_external_id.trim())
@@ -257,16 +255,6 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<Pr
       relation_type: r.relation_type,
       type_label: r.type_label,
       title: r.title || r.related_media_external_id.trim(),
-      cover: r.cover ?? null,
-    }));
-
-  const issueDbRelations: DbMediaRelation[] = p.issueRelations
-    .filter(r => r.external_id.trim())
-    .map(r => ({
-      related_media_external_id: r.external_id.trim(),
-      relation_type: 'ISSUE',
-      type_label: 'Issue',
-      title: r.title || r.external_id.trim(),
       cover: r.cover ?? null,
     }));
 
@@ -401,31 +389,30 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<Pr
     }
   }
 
-  // Reciprocal side of the block above: each bundleChildren addition needs a
-  // PART_OF relation on that child pointing back at the referenced bundle —
-  // same shape as the Contains loop right below, just targeting p.bundleId
-  // instead of externalId, since this entry didn't add these children to its
-  // own Contains, it added them to a *different* entry's (the bundle's).
-  if (p.bundleId) {
-    const bundleId = p.bundleId;
-    const bundleTitle = p.bundledRelations[0]?.title || bundleId;
-    const bundleCover = p.bundledRelations[0]?.cover ?? null;
-    const currentBundleChildIds = new Set(p.bundleChildren.map(r => r.external_id.trim()).filter(Boolean));
-    const bundleChildTargetsToSync = new Set([...currentBundleChildIds, ...p.originalBundleChildIds]);
-    for (const childId of bundleChildTargetsToSync) {
+  // A child of a Contains list needs the reciprocal PART_OF edge pointing back
+  // at its parent. Two lists need exactly this bookkeeping: this entry's own
+  // Contains, and — since bundleChildren are added to a *different* entry's
+  // Contains — the referenced bundle's.
+  const syncPartOfChildren = async (
+    parent: { id: string; title: string; cover: string | null },
+    currentChildIds: Set<string>,
+    originalChildIds: Set<string>,
+    label: string,
+  ) => {
+    for (const childId of new Set([...currentChildIds, ...originalChildIds])) {
       try {
         const existing = await getMediaRelationsForEditor(childId);
         const kept = (existing || []).filter(r =>
-          !(r.relation_type === 'PART_OF' && r.related_media_external_id === bundleId)
+          !(r.relation_type === 'PART_OF' && r.related_media_external_id === parent.id)
         );
-        const isStillChild = currentBundleChildIds.has(childId);
+        const isStillChild = currentChildIds.has(childId);
         const rows = isStillChild
           ? [...kept, {
-              related_media_external_id: bundleId,
+              related_media_external_id: parent.id,
               relation_type: 'PART_OF',
               type_label: 'Part of',
-              title: bundleTitle,
-              cover: bundleCover,
+              title: parent.title,
+              cover: parent.cover,
             }]
           : kept;
         await saveMediaRelations(childId, rows);
@@ -434,47 +421,33 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<Pr
         const childEntry = await getCatalogEntry(childId).catch(() => null);
         if (childEntry && mode !== 'local') {
           otherProposalEntries.push(
-            buildRelatedProposalBundle(childId, childEntry, rows, p.sagaName, isStillChild ? [] : [bundleId]),
+            buildRelatedProposalBundle(childId, childEntry, rows, p.sagaName, isStillChild ? [] : [parent.id]),
           );
         }
       } catch (err) {
-        console.error(`Failed to propagate bundle-child relation to ${childId}:`, err);
+        console.error(`Failed to propagate ${label} relation to ${childId}:`, err);
       }
     }
+  };
+
+  if (p.bundleId) {
+    const bundleId = p.bundleId;
+    const currentBundleChildIds = new Set(p.bundleChildren.map(r => r.external_id.trim()).filter(Boolean));
+    await syncPartOfChildren(
+      { id: bundleId, title: p.bundledRelations[0]?.title || bundleId, cover: p.bundledRelations[0]?.cover ?? null },
+      currentBundleChildIds,
+      p.originalBundleChildIds,
+      'bundle-child',
+    );
   }
 
-  // Same reciprocity, opposite direction: Contains needs a PART_OF relation on each child.
   const currentContainedIds = new Set(p.containedRelations.map(r => r.external_id.trim()).filter(Boolean));
-  const containedTargetsToSync = new Set([...currentContainedIds, ...p.originalContainedIds]);
-  for (const childId of containedTargetsToSync) {
-    try {
-      const existing = await getMediaRelationsForEditor(childId);
-      const kept = (existing || []).filter(r =>
-        !(r.relation_type === 'PART_OF' && r.related_media_external_id === externalId)
-      );
-      const isStillContained = currentContainedIds.has(childId);
-      const rows = isStillContained
-        ? [...kept, {
-            related_media_external_id: externalId,
-            relation_type: 'PART_OF',
-            type_label: 'Part of',
-            title: entry.title_main || externalId,
-            cover: entry.cover_url ?? null,
-          }]
-        : kept;
-      await saveMediaRelations(childId, rows);
-      invalidateCachedMediaData(childId);
-
-      const childEntry = await getCatalogEntry(childId).catch(() => null);
-      if (childEntry && mode !== 'local') {
-        otherProposalEntries.push(
-          buildRelatedProposalBundle(childId, childEntry, rows, p.sagaName, isStillContained ? [] : [externalId]),
-        );
-      }
-    } catch (err) {
-      console.error(`Failed to propagate contains relation to ${childId}:`, err);
-    }
-  }
+  await syncPartOfChildren(
+    { id: externalId, title: entry.title_main || externalId, cover: entry.cover_url ?? null },
+    currentContainedIds,
+    p.originalContainedIds,
+    'contains',
+  );
 
   // Invalidate frontend session cache so changes load instantly
   invalidateCachedMediaData(externalId);

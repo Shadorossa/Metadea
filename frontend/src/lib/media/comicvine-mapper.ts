@@ -1,4 +1,4 @@
-import type { ComicVineVolume, ComicVineIssueDetail } from '../tauri';
+import type { ComicVineVolume } from '../tauri';
 import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaCompany, MediaStaffMember } from './types';
 import { unifyGenres } from './genre-unifier';
@@ -110,82 +110,5 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     releaseYear:  startParts?.year ?? undefined,
     releaseMonth: startParts?.month ?? undefined,
     releaseDay:   startParts?.day ?? undefined,
-  };
-}
-
-// A single issue gets its own trackable media page — same idea as a game's
-// "Season" (its own catalog row, parented to the base game/volume via
-// parentGame) instead of only existing as a relation card under the volume.
-export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId: string): MediaPageData {
-  const characters: MediaCharacter[] = issue.character_credits.map(c => ({
-    id: `character:co:${c.id}`,
-    name: c.name,
-    image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
-  }));
-
-  const conceptNames = issue.concept_credits.map(c => c.name);
-  const { core, tags } = unifyGenres(conceptNames);
-  const genreDots    = core.join(' · ') || undefined;
-  const genreTagDots = tags.join(' · ') || undefined;
-
-  const authors: MediaAuthor[] = issue.person_credits.map(p => ({
-    external_id: `author:comicvine:${p.id}`,
-    name: p.name,
-    role: p.role ?? undefined,
-    image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
-    url: `/author?id=author:comicvine:${p.id}`,
-  }));
-  const staff = authorsToStaff(authors);
-
-  const description = issue.description
-    ? stripHtml(issue.description)
-    : issue.deck ?? undefined;
-
-  const numberPart = issue.issue_number ? `#${issue.issue_number}` : '';
-  const namePart = issue.name ? ` — ${issue.name}` : '';
-  const titleMain = issue.volume
-    ? `${issue.volume.name} ${numberPart}${namePart}`.trim()
-    : (numberPart + namePart) || `#${issue.id}`;
-
-  const tm = getT().media;
-  const relations: MediaPageData['relations'] = issue.volume
-    ? [{
-        typeLabel: canonicalRelationLabels.BASE_EDITION,
-        relationType: 'BASE_EDITION',
-        title: issue.volume.name,
-        url: `/media?id=comic:${issue.volume.id}`,
-        relatedExternalId: `comic:${issue.volume.id}`,
-      }]
-    : [];
-
-  return {
-    externalId,
-    type: externalId.slice(0, externalId.indexOf(':')),
-    titleMain,
-    titleNative:  undefined,
-    titleEnglish: undefined,
-    cover:        issue.image?.medium_url ?? issue.image?.small_url ?? undefined,
-    bannerImage:  undefined,
-    bannerColor:  'linear-gradient(135deg, #1a1a2e22, #2a1a3e44)',
-    status:       canonicalizeAlwaysFinished(),
-    statusLabel:  undefined,
-    statusClass:  '',
-    genreDots,
-    genreTagDots,
-    metaLines:    [],
-    dateBadge:    issue.cover_date ?? undefined,
-    description,
-    stats: [],
-    characters,
-    staff,
-    relations,
-    progressStatus: 'reading',
-    progressLabel:  getT().profile.status_reading,
-    authors,
-    format:       'ISSUE',
-    source:       'comicvine',
-    parentGame:   issue.volume
-      ? { title: issue.volume.name, externalId: `comic:${issue.volume.id}` }
-      : undefined,
   };
 }

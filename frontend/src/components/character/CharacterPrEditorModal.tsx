@@ -478,7 +478,7 @@ export function CharacterPrEditorModal() {
         };
       } catch (err) {
         console.error('Failed to load character:', err);
-        setErrorMsg('Error al cargar el personaje');
+        setErrorMsg(t.load_error);
       } finally {
         setLoading(false);
       }
@@ -502,8 +502,8 @@ export function CharacterPrEditorModal() {
   const mergedCharacterIds = () => mergedCharacters.map(item => item.external_id).sort();
   const originalMergedCharacterIds = () => originalMergedCharacters.map(item => item.external_id).sort();
   const mergedCharactersChanged = () => JSON.stringify(mergedCharacterIds()) !== JSON.stringify(originalMergedCharacterIds());
-  const hasChanged = () => hasChangedPure(originalCharacter, diffFields) || mergedCharactersChanged();
-  const buildChangeSummary = () => buildChangeSummaryPure(originalCharacter, diffFields);
+  const hasChanged = () => hasChangedPure(diffFields) || mergedCharactersChanged();
+  const buildChangeSummary = () => buildChangeSummaryPure(diffFields);
   const appearanceGroups = RELATION_TYPE_OPTIONS.map(type => ({
     type,
     allAppearances: appearances.filter(appearance => (appearance.relation_type ?? 'SUPPORTING') === type),
@@ -612,14 +612,14 @@ export function CharacterPrEditorModal() {
     };
     return (
       <div className="pr-editor-session-layout pr-editor-session-layout--active" onClick={event => event.stopPropagation()}>
-        <nav className="pr-editor-session-tabs" aria-label="Pestañas de edición">
+        <nav className="pr-editor-session-tabs" aria-label={t.tabs_label}>
           {tabs.map((tab: any, index: number) => (
             <button
               key={`${tab.kind}:${tab.externalId}`}
               type="button"
               className={`pr-editor-session-tab${tab.kind === 'character' && tab.externalId === currentId ? ' pr-editor-session-tab--active' : ''}`}
               aria-current={tab.kind === 'character' && tab.externalId === currentId ? 'page' : undefined}
-              title={`${tab.kind === 'character' ? 'Personaje' : 'Obra'}: ${tab.label}${tab.dirty ? ' · Cambios sin guardar' : ''}`}
+              title={`${tab.kind === 'character' ? t.tab_character : t.tab_work}: ${tab.label}${tab.dirty ? ` · ${t.unsaved_changes}` : ''}`}
               onClick={() => sessionNavigate(tab)}
               onContextMenu={event => {
                 event.preventDefault();
@@ -627,7 +627,7 @@ export function CharacterPrEditorModal() {
               }}
             >
               <span className="pr-editor-session-tab-label">{tab.label}</span>
-              {tab.dirty && <span className="pr-editor-session-tab-dirty" aria-label="Cambios sin guardar" />}
+              {tab.dirty && <span className="pr-editor-session-tab-dirty" aria-label={t.unsaved_changes} />}
             </button>
           ))}
         </nav>
@@ -725,10 +725,10 @@ export function CharacterPrEditorModal() {
 
   const handleChangePhoto = async () => {
     const result = await openImageCropModal({
-      title: 'Foto del personaje',
+      title: t.photo_title,
       initialUrl: imageUrl,
       aspectRatio: 3 / 4,
-      saveLabel: 'Usar esta imagen',
+      saveLabel: t.photo_save,
       outputMimeType: 'image/webp',
     });
     if (result.action === 'saved') setImageUrl(result.imageUrl);
@@ -761,7 +761,7 @@ export function CharacterPrEditorModal() {
     const mergedIds = draft.mergedCharacters.map(item => item.external_id).sort();
     const originalMergedIds = draft.originalMergedCharacters.map(item => item.external_id).sort();
     const mergesChanged = JSON.stringify(mergedIds) !== JSON.stringify(originalMergedIds);
-    if (!hasChangedPure(draft.originalCharacter, draft) && !mergesChanged) return null;
+    if (!hasChangedPure(draft) && !mergesChanged) return null;
     return submitCharacterProposal({
       currentId: externalId,
       originalCharacter: draft.originalCharacter,
@@ -781,9 +781,9 @@ export function CharacterPrEditorModal() {
       originalVoiceActors: draft.originalVoiceActors,
       appearancesChanged: appearancesChangedPure(draft.appearances, draft.originalAppearances),
       voiceActorsChanged: voiceActorsChangedPure(draft.voiceActors, draft.originalVoiceActors),
-      changeSummary: mergesChanged && !hasChangedPure(draft.originalCharacter, draft)
+      changeSummary: mergesChanged && !hasChangedPure(draft)
         ? t.merge_change_summary
-        : buildChangeSummaryPure(draft.originalCharacter, draft),
+        : buildChangeSummaryPure(draft),
       setStatusMsg: updateStatus,
       statusSavingLocal: t.saving_local,
       statusPreparingProposal: t.preparing_proposal,
@@ -798,7 +798,7 @@ export function CharacterPrEditorModal() {
 
   const handleSubmit = async () => {
     if (!originalCharacter || !hasChanged()) {
-      setErrorMsg('No hay cambios para enviar');
+      setErrorMsg(t.no_changes);
       return;
     }
 
@@ -818,7 +818,7 @@ export function CharacterPrEditorModal() {
         voiceActors, originalVoiceActors,
         appearancesChanged: appearancesChanged(),
         voiceActorsChanged: voiceActorsChanged(),
-        changeSummary: mergedCharactersChanged() && !hasChangedPure(originalCharacter, diffFields)
+        changeSummary: mergedCharactersChanged() && !hasChangedPure(diffFields)
           ? t.merge_change_summary
           : buildChangeSummary(),
         setStatusMsg,
@@ -952,7 +952,7 @@ export function CharacterPrEditorModal() {
     <div className={`pr-editor-overlay${isSessionTab ? '' : ' pr-editor-overlay--nested'}`} onClick={requestClose} style={isSessionTab && sharedSessionActiveCharacterId !== currentId ? { display: 'none' } : undefined}>
       {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
         <PrEditorHeader
-          title={`Entrada de ${name || character.name}`}
+          title={`${t.entry_of} ${name || character.name}`}
           subtitle={`ID: ${currentId}`}
           status={statusMsg && (
             <div className="pr-editor-header-status">
@@ -998,7 +998,7 @@ export function CharacterPrEditorModal() {
         />
 
         <div className="pr-editor-content-shell">
-          <nav className="pr-editor-sidebar" aria-label="Secciones del personaje">
+          <nav className="pr-editor-sidebar" aria-label={t.sections_label}>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')} title="General" aria-label="General">
               <Settings size={18} strokeWidth={1.8} />
               {characteristicsChanged() && <span className="pr-editor-tab-changed-dot" />}
@@ -1038,7 +1038,7 @@ export function CharacterPrEditorModal() {
                 title={t.change_image}
               >
                 {imageUrl
-                  ? <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} />
+                  ? <img src={imageUrl} alt={name} onError={() => setErrorMsg(t.invalid_image_url)} />
                   : <span className="pr-editor-cover-placeholder">{t.no_image}</span>}
                 <div className="pr-editor-photo-hover-overlay">
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1312,11 +1312,11 @@ export function CharacterPrEditorModal() {
 
       {showUnsavedPrompt && (
         <div key={unsavedPromptShake} className={`pr-unsaved-changes-toast${unsavedPromptShake ? ' pr-unsaved-changes-toast--shake' : ''}`} role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
-          {pendingCharacterTabCloseId ? <span>Este personaje tiene cambios sin guardar</span> : <span>Tienes cambios sin guardar</span>}
+          {pendingCharacterTabCloseId ? <span>{t.unsaved_this_character}</span> : <span>{t.unsaved_generic}</span>}
           {pendingCharacterTabCloseId ? (
             <>
-              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => removeCharacterEditorTab(pendingCharacterTabCloseId, true)} disabled={submitting}>Cerrar sin guardar</button>
-              <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingCharacterTabCloseId(null); setShowUnsavedPrompt(false); setUnsavedPromptShake(0); }}>Cancelar</button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => removeCharacterEditorTab(pendingCharacterTabCloseId, true)} disabled={submitting}>{t.close_without_saving}</button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingCharacterTabCloseId(null); setShowUnsavedPrompt(false); setUnsavedPromptShake(0); }}>{t.cancel}</button>
             </>
           ) : (
             <>
@@ -1337,7 +1337,7 @@ export function CharacterPrEditorModal() {
                 if (tab && controller?.closeTab) controller.closeTab(tab);
                 else removeCharacterEditorTab(characterTabContextMenu.externalId);
                 setCharacterTabContextMenu(null);
-              }}>Cerrar pestaña</button>
+              }}>{t.close_tab}</button>
         </div>,
         document.body,
       )}

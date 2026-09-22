@@ -21,9 +21,6 @@ export interface ReadingSessionState {
 const sessionStore = createExternalStore<ReadingSessionState | null>(null);
 const resumeOpenStore = createExternalStore(false);
 
-export const subscribeReadingSession = sessionStore.subscribe;
-export const getReadingSession = sessionStore.get;
-export const getResumeOpen = resumeOpenStore.get;
 export const useReadingSession = sessionStore.use;
 export const useResumeOpen = resumeOpenStore.use;
 export const setReadingSession = sessionStore.set;

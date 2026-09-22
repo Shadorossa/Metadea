@@ -79,17 +79,10 @@ async function cleanupLRU(neededSpace: number): Promise<void> {
       const deleteTransaction = database.transaction(STORE_NAME, 'readwrite');
       const deleteStore = deleteTransaction.objectStore(STORE_NAME);
 
-      let deleteCount = 0;
-      for (const key of toDelete) {
-        deleteStore.delete(key);
-        deleteCount++;
-      }
+      for (const key of toDelete) deleteStore.delete(key);
 
       deleteTransaction.onerror = () => reject(deleteTransaction.error);
-      deleteTransaction.oncomplete = () => {
-        console.log(`[ThemeCache] Cleaned up ${deleteCount} entries, freed ~${Math.round(freed / 1024 / 1024)}MB`);
-        resolve();
-      };
+      deleteTransaction.oncomplete = () => resolve();
     };
   });
 }
@@ -150,10 +143,7 @@ export async function cacheThemeVideo(key: string, blob: Blob): Promise<void> {
 
       const request = store.put(entry);
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        console.log(`[ThemeCache] Cached ${key} (${Math.round(blob.size / 1024)}KB)`);
-        resolve();
-      };
+      request.onsuccess = () => resolve();
     });
   } catch (err) {
     console.warn('[ThemeCache] Failed to cache video:', err);

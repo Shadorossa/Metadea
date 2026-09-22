@@ -116,10 +116,33 @@ const FANDOM_LANGUAGE_NAMES: Array<[RegExp, string]> = [
   [/\brussian\b/i, 'Russian'],
 ];
 
+// Infobox group headers too generic to be worth tagging a field with (a
+// "Height [Physical information]" label reads worse than plain "Height").
+const GENERIC_INFOBOX_HEADERS = new Set([
+  'biographical information', 'biographical info', 'biography', 'información biográfica',
+  'personal information', 'personal info', 'información personal',
+  'physical information', 'physical info', 'información física',
+  'physical description', 'descripción física',
+  'career and family information', 'career & family information',
+  'career information', 'family information',
+  'behind the scenes', 'detrás de las cámaras',
+  'general information', 'general info', 'información general',
+  'appearance', 'apariencia', 'portrayal',
+  'voice actors', 'actores de voz',
+  'production information', 'overview', 'profile',
+]);
+
+function stripDiacritics(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function detectFandomLanguage(value: string): string | undefined {
+  return FANDOM_LANGUAGE_NAMES.find(([pattern]) => pattern.test(stripDiacritics(value)))?.[1];
+}
+
 function normalizeVoiceLanguage(annotation: string | undefined, fallback: string): string {
   if (!annotation) return fallback;
-  const normalized = annotation.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return FANDOM_LANGUAGE_NAMES.find(([pattern]) => pattern.test(normalized))?.[1] ?? annotation.trim();
+  return detectFandomLanguage(annotation) ?? annotation.trim();
 }
 
 // Fandom's Portable Infobox pairs an on-hover "explain" tooltip (native
@@ -163,10 +186,7 @@ function parseVoiceActorsFromHtml(html: string, defaultLanguage: string): Extrac
       annotations.unshift(annotationMatch[1].trim());
       name = name.slice(0, annotationMatch.index).trim();
     }
-    const languageAnnotation = annotations.find(annotation => {
-      const normalized = annotation.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return FANDOM_LANGUAGE_NAMES.some(([pattern]) => pattern.test(normalized));
-    });
+    const languageAnnotation = annotations.find(annotation => !!detectFandomLanguage(annotation));
 
     // Some Fandom pages put the actor link and its language annotation on
     // separate lines. Attach a recognized annotation-only line to the actor
@@ -184,6 +204,14 @@ function parseVoiceActorsFromHtml(html: string, defaultLanguage: string): Extrac
   }
 
   return actors;
+}
+
+function addUniqueVoiceActors(target: ExtractedVoiceActor[], incoming: ExtractedVoiceActor[]): void {
+  for (const actor of incoming) {
+    if (!target.some(v => v.name.toLowerCase() === actor.name.toLowerCase() && v.language === actor.language)) {
+      target.push(actor);
+    }
+  }
 }
 
 function extractVoicedBySections(doc: Document, defaultLanguage: string): ExtractedVoiceActor[] {
@@ -209,8 +237,7 @@ function extractVoicedBySections(doc: Document, defaultLanguage: string): Extrac
         : sibling.querySelector('h1, h2, h3, h4, h5, h6');
       if (nextHeading && Number(nextHeading.tagName.slice(1)) <= level) break;
       if (nextHeading) {
-        const languageHeadingText = (nextHeading.textContent || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-        const detectedLanguage = FANDOM_LANGUAGE_NAMES.find(([pattern]) => pattern.test(languageHeadingText))?.[1];
+        const detectedLanguage = detectFandomLanguage((nextHeading.textContent || '').trim());
         if (detectedLanguage) {
           flushSection();
           sectionLanguage = detectedLanguage;
@@ -302,40 +329,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
 
   if (!cleanHeader) return cleanLabel;
 
-  const lowerHeader = cleanHeader.toLowerCase();
-  if (
-    lowerHeader === 'biographical information' ||
-    lowerHeader === 'biographical info' ||
-    lowerHeader === 'biography' ||
-    lowerHeader === 'información biográfica' ||
-    lowerHeader === 'personal information' ||
-    lowerHeader === 'personal info' ||
-    lowerHeader === 'información personal' ||
-    lowerHeader === 'physical information' ||
-    lowerHeader === 'physical info' ||
-    lowerHeader === 'información física' ||
-    lowerHeader === 'physical description' ||
-    lowerHeader === 'descripción física' ||
-    lowerHeader === 'career and family information' ||
-    lowerHeader === 'career & family information' ||
-    lowerHeader === 'career information' ||
-    lowerHeader === 'family information' ||
-    lowerHeader === 'behind the scenes' ||
-    lowerHeader === 'detrás de las cámaras' ||
-    lowerHeader === 'general information' ||
-    lowerHeader === 'general info' ||
-    lowerHeader === 'información general' ||
-    lowerHeader === 'appearance' ||
-    lowerHeader === 'apariencia' ||
-    lowerHeader === 'portrayal' ||
-    lowerHeader === 'voice actors' ||
-    lowerHeader === 'actores de voz' ||
-    lowerHeader === 'production information' ||
-    lowerHeader === 'overview' ||
-    lowerHeader === 'profile'
-  ) {
-    return cleanLabel;
-  }
+  if (GENERIC_INFOBOX_HEADERS.has(cleanHeader.toLowerCase())) return cleanLabel;
 
   const cleanHeaderNoColon = cleanHeader.replace(/[:：\s]+$/, '').trim();
   const parenMatch = cleanHeaderNoColon.match(/\(([^)]+)\)$/);
@@ -491,11 +485,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
         defaultLang = 'Japanese';
       }
 
-      for (const actor of parseVoiceActorsFromHtml(valHtml, defaultLang)) {
-        if (!voiceActors.some(v => v.name.toLowerCase() === actor.name.toLowerCase() && v.language === actor.language)) {
-          voiceActors.push(actor);
-        }
-      }
+      addUniqueVoiceActors(voiceActors, parseVoiceActorsFromHtml(valHtml, defaultLang));
     } else if (sourceAttr === 'appears_in' || sourceAttr === 'appearances' || sourceAttr === 'debut' || normLabel.includes('appears in') || normLabel.includes('aparición')) {
       if (!appearsIn) appearsIn = cleanVal;
     } else if (sourceAttr === 'image' || sourceAttr === 'name' || sourceAttr === 'title') {
@@ -522,11 +512,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     }
   });
 
-  for (const actor of extractVoicedBySections(doc, 'Japanese')) {
-    if (!voiceActors.some(v => v.name.toLowerCase() === actor.name.toLowerCase() && v.language === actor.language)) {
-      voiceActors.push(actor);
-    }
-  }
+  addUniqueVoiceActors(voiceActors, extractVoicedBySections(doc, 'Japanese'));
 
   const imageTitleSet = new Set<string>(Array.isArray(json.parse.images)
     ? (json.parse.images as string[]).filter(title => typeof title === 'string')

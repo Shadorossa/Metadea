@@ -1,36 +1,20 @@
 import { getT } from '../../i18n/client';
-import { byId } from '../shared/dom';
 import { fetchMediaDataInternal } from '../media/mediaService';
 import { getLegacyTmdbCharacterAppearances, remapTmdbCharacterIds } from '../tauri/characters';
-
-function isTauriRuntime(): boolean {
-  return typeof window !== 'undefined' &&
-    ('__TAURI_IPC__' in window || '__TAURI_INTERNALS__' in window || '__TAURI__' in window);
-}
+import { initStatusActionButton } from './status-action';
 
 // Repairs old TMDB character ids and normalizes the intermediate
 // character:ms:<person-id>:<media-type>:<work-id> format.
 export function initFixCharacterIds() {
-  const btn = byId<HTMLButtonElement>('fix-character-ids-btn');
-  const statusText = document.getElementById('fix-character-ids-status');
-  if (!btn) return;
-
-  btn.addEventListener('click', async () => {
-    const t = getT().settings;
-
-    if (!isTauriRuntime()) {
-      if (statusText) {
-        statusText.textContent = 'Solo disponible en la aplicación instalada.';
-        statusText.style.display = 'block';
-      }
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = t.fix_character_ids_running;
-    if (statusText) statusText.style.display = 'none';
-
-    try {
+  initStatusActionButton({
+    buttonId: 'fix-character-ids-btn',
+    statusId: 'fix-character-ids-status',
+    notInTauriMessage: 'Solo disponible en la aplicación instalada.',
+    labels: () => {
+      const t = getT().settings;
+      return { running: t.fix_character_ids_running, idle: t.fix_character_ids_btn };
+    },
+    run: async () => {
       const legacy = await getLegacyTmdbCharacterAppearances();
       const byWork = new Map<string, Set<string>>();
       for (const item of legacy) {
@@ -62,19 +46,9 @@ export function initFixCharacterIds() {
       }
 
       const moved = remaps.length ? await remapTmdbCharacterIds(remaps) : 0;
-      if (statusText) {
-        statusText.textContent = t.fix_character_ids_done.replace('{count}', String(moved));
-        statusText.style.display = 'block';
-      }
-    } catch (error) {
-      if (statusText) {
-        const message = error instanceof Error ? error.message : String(error) || 'Error desconocido';
-        statusText.textContent = t.fix_character_ids_error.replace('{message}', message);
-        statusText.style.display = 'block';
-      }
-    } finally {
-      btn.disabled = false;
-      btn.textContent = t.fix_character_ids_btn;
-    }
+      return getT().settings.fix_character_ids_done.replace('{count}', String(moved));
+    },
+    errorMessage: message => getT().settings.fix_character_ids_error.replace('{message}', message),
+    errorFallback: 'Error desconocido',
   });
 }

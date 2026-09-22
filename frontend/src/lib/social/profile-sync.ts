@@ -31,13 +31,6 @@ function recordAttempt(record: SyncAttemptRecord): void {
   } catch { /* localStorage unavailable/full — the sync itself already ran either way */ }
 }
 
-export function getLastSyncAttempt(): SyncAttemptRecord | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.profileSyncLastAttempt);
-    return raw ? JSON.parse(raw) as SyncAttemptRecord : null;
-  } catch { return null; }
-}
-
 // Flattens the day-grouped journey into a single recency-sorted list — the
 // feed just needs "what happened, when", not the day-bucket structure the
 // local Profile page's calendar view uses it for.

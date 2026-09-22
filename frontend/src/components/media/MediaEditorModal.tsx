@@ -1,8 +1,7 @@
 import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, saveImageFile } from '../../lib/tauri';
-import { parseDelimitedString } from '../../lib/shared/string-utils';
+import { getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, syncFavorites, saveImageFile } from '../../lib/tauri';
 import { getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { generateShareImage } from '../../lib/media/share-image';
 import type { MediaPageData } from '../../lib/media/types';
@@ -12,24 +11,38 @@ import type { Translations } from '../../i18n/index';
 import {
   IconStatusPlanning, IconStatusInProgress, IconStatusCompleted,
   IconStatusPaused, IconStatusDropped,
-  IconHeart, IconPlatinum, IconCheck, IconAlertCircle, IconDownload, IconTrash,
+  IconHeart, IconPlatinum, IconCheck, IconDownload,
 } from '../local/ui/icons';
 import {
   type LogState,
-  createDefaultLog, entryInit, libraryEntryToLog, entryReducer, uiReducer, createEmptyVersionEntry,
+  createDefaultLog, entryInit, entryReducer, uiReducer, createEmptyVersionEntry,
 } from '../../lib/media/log-state';
-import { IGDB_TYPES, pickAggregateStatus } from '../../lib/constants/media';
-import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
+import { pickAggregateStatus } from '../../lib/constants/media';
 import { motion } from 'motion/react';
 import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnifySeasonsEnabled, type RatingSlot } from '../../lib/settings/preferences';
 import { loadSagaChain } from '../../lib/media/sagaData';
 import type { SagaEntry } from '../../lib/anilist/saga';
-import { stripSeasonSuffix, seriesSeasonExternalId, isSeriesSeasonSyntheticId } from '../../lib/media/mapper-utils';
-import { getCoverPreference, setCoverPreference } from '../../lib/media/cover-preferences';
-import { igdbGetLocalizedCovers } from '../../lib/tauri/igdb';
-import { toLargeCover } from '../../lib/shared/small-cover';
-import { fetchApiSportsSeasonMatches } from '../../lib/search/providers/apisports';
-import { getApiSportsEventMatches } from '../../lib/tauri/misc-commands';
+import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mapper-utils';
+import { getCoverPreference } from '../../lib/media/cover-preferences';
+import { getProgressConfig, isFutureDate } from './media-editor/media-editor-helpers';
+import { HeaderField, HoursField, NumberField } from './media-editor/MediaEditorFields';
+import {
+  fetchMonthMediaInfo, fetchCoverCandidates, fetchAnimeSeasonChainLogs,
+  fetchEventSeasonLogs, fetchSeriesSeasonLogs, loadAllVersions,
+  type CoverCandidate, type SeasonMeta,
+} from './media-editor/media-editor-load';
+import { saveMediaEditorLogs } from './media-editor/media-editor-save';
+import { importLogsFromAniList } from './media-editor/media-editor-anilist-import';
+import {
+  buildAvailableEditions, computeGeneralAverageRating, computeChainBoundaryDate,
+  computeIsUpcoming, computeActiveLogDisplay,
+} from './media-editor/media-editor-derived';
+import { MediaEditorVersionTabs } from './media-editor/MediaEditorVersionTabs';
+import { MediaEditorCoverSlot } from './media-editor/MediaEditorCoverSlot';
+import { MediaEditorMonthGrid } from './media-editor/MediaEditorMonthGrid';
+import { MediaEditorActions } from './media-editor/MediaEditorActions';
+import { MediaEditorStatusRow } from './media-editor/MediaEditorStatusRow';
+import { MediaEditorDateFields } from './media-editor/MediaEditorDateFields';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,212 +61,6 @@ interface Props {
   // open-profile-editor dispatch). Every other entry point (media page,
   // local library, search) always means the primary rating.
   activeRatingSlot?: RatingSlot;
-}
-
-interface CoverCandidate {
-  externalId: string;
-  title: string;
-  cover?: string;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-// Progress field(s) shown in the header — which label(s) and step apply
-// depend on the media type. progLabel matches the raw type (not its
-// underscore-stripped base) to preserve each edge case's original mapping.
-function getProgressConfig(type: string, format: string | undefined, tm: Translations['media']): { label: string | null; label2: string | null; step: number } {
-  const base = type.split('_')[0];
-
-  let label: string | null;
-  if (type === 'game' || type === 'vnovel')            label = tm.progress_hours;
-  else if (type === 'anime' || type === 'series')      label = tm.progress_episodes;
-  else if (type === 'manga' || type === 'lnovel')      label = tm.progress_chapters;
-  // 'book' (singular) — 'books' here never matched anything real, so a
-  // book's progress fell through to the generic label below and its
-  // total (page count) was never wired up at all.
-  else if (type === 'book')                            label = tm.progress_pages;
-  else if (type === 'event')                           label = tm.stat_matches;
-  else                                                 label = tm.editor.progress;
-
-  // A movie is a single sitting, not a run of seasons — even though it's
-  // still type 'anime'/'series' (format is what actually distinguishes it).
-  const isMovie = format === 'MOVIE';
-  const label2 =
-    isMovie ? null :
-    base === 'anime' || base === 'series'      ? tm.progress_seasons :
-    base === 'event'                           ? tm.progress_seasons :
-    base === 'manga' || base === 'lnovel'      ? tm.progress_volumes : null;
-
-  const step = base === 'game' || base === 'vnovel' ? 0.5 : 1;
-  return { label, label2, step };
-}
-
-// No work catalogued here predates this — anything a user types earlier
-// (typo, wrong era) gets pulled up to it rather than silently accepted.
-const MIN_DATE_YEAR = 1950;
-
-function clampDateMinYear(value: string): string {
-  if (!value) return value;
-  const [year, month, day] = value.split('-');
-  return Number(year) < MIN_DATE_YEAR ? `${MIN_DATE_YEAR}-${month}-${day}` : value;
-}
-
-// ISO YYYY-MM-DD strings compare correctly lexicographically.
-function clampNotBefore(value: string, floor: string): string {
-  return value && floor && value < floor ? floor : value;
-}
-
-// Relation cards link to another media page via "/media?id=<externalId>" —
-// pull that id back out to look up/link the related game's own log.
-function extractExternalIdFromRelationUrl(url: string | null | undefined): string | undefined {
-  const match = url?.match(/id=([^&]+)/);
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
-
-// Log tab labels show only what's after the title's colon (e.g. "Trails in
-// the Sky: 2nd Chapter" → "2nd Chapter") — titles rarely share a common
-// prefix with the base game, so diffing against it wasn't reliable. A
-// remainder of 2 characters or less ("II", "S2", ":D"...) reads as noise
-// rather than a real edition name, so the full title is kept instead.
-function editionTabLabel(editionTitle: string, defaultLabel: string = 'Edition'): string {
-  if (!editionTitle) return defaultLabel;
-  const idx = editionTitle.indexOf(':');
-  if (idx === -1) return editionTitle;
-  const after = editionTitle.slice(idx + 1).trim();
-  return after.length > 2 ? after : editionTitle;
-}
-
-// ── Small header-field building blocks ───────────────────────────────────────
-
-function HeaderField({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
-  return (
-    <div className={`me-header-field${className ? ` ${className}` : ''}`}>
-      <label className="me-header-field-label">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-// Playtime (game/vnovel progress) is stored as decimal hours (0.5 = 30min,
-// same as before this existed) — only how it's typed/displayed changes.
-// "H:MM" reads far more naturally for hours+minutes than a raw decimal, and
-// a native <input type="number"> can't be typed with ":" at all (nor with
-// "," as a decimal separator — Chromium's number input only accepts "."
-// regardless of OS locale, so a Spanish-locale "10,3" silently failed to
-// parse as anything).
-function formatHoursColon(decimalHours: number): string {
-  // Empty, not "0:00" — matches NumberField's own value={value || ''}: an
-  // unlogged/zero entry starts blank (with "0:00" as a greyed-out
-  // placeholder hint) so typing "6" or "6:45" works immediately instead of
-  // first having to clear out baked-in text.
-  if (!decimalHours) return '';
-  let h = Math.floor(decimalHours);
-  let m = Math.round((decimalHours - h) * 60);
-  if (m === 60) { m = 0; h += 1; }
-  return `${h}:${String(m).padStart(2, '0')}`;
-}
-
-// null = invalid (wrong shape, or minutes >= 60 — "H:90" is never accepted,
-// not even clamped) — the caller reverts to the last valid display instead.
-function parseHoursColonInput(raw: string): number | null {
-  const match = raw.trim().match(/^(\d+)(?::(\d{1,2}))?$/);
-  if (!match) return null;
-  const h = parseInt(match[1], 10);
-  const m = match[2] ? parseInt(match[2], 10) : 0;
-  if (m > 59) return null;
-  return h + m / 60;
-}
-
-function HoursField({ label, value, max, onChange }: {
-  label: string; value: number; max?: number; onChange: (v: number) => void;
-}) {
-  const formatted = formatHoursColon(value);
-  // Local draft text, not tied directly to `value` on every keystroke — a
-  // controlled input re-deriving its display from the parsed number as you
-  // type would reformat (and jump the cursor) mid-entry, e.g. typing "10:3"
-  // toward "10:30" briefly parses as "10:03" and rewrites itself. Only
-  // resynced from outside changes (switching log/version) and on blur.
-  const [text, setText] = useState(formatted);
-  useEffect(() => { setText(formatted); }, [formatted]);
-
-  function commit() {
-    const parsed = parseHoursColonInput(text);
-    if (parsed === null) { setText(formatted); return; }
-    onChange(max !== undefined && parsed > max ? max : parsed);
-  }
-
-  return (
-    <HeaderField label={label} className="me-header-field--hours">
-      <div className="me-header-field-row">
-        <input type="text" inputMode="numeric" className="me-header-field-input me-header-field-input--number"
-          value={text}
-          onChange={e => {
-            // Digits and at most one ":" — comma (or anything else) is
-            // rejected right at the keystroke rather than silently eaten
-            // later. Minutes >= 60 typed mid-entry (e.g. "1:9" on the way to
-            // "1:59") aren't blocked here — parseHoursColonInput rejects
-            // them for good on blur instead, since a bare "9" can't yet know
-            // whether it'll become a valid "09" or an invalid "90".
-            const next = e.target.value;
-            if (/^\d*(:\d{0,2})?$/.test(next)) setText(next);
-          }}
-          onBlur={commit}
-          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-          placeholder="0:00" />
-        {/* Always rendered (reserved min-width, hidden via CSS when there's
-            no max) — switching to a tab whose total isn't known yet must
-            never shift whatever sits after this field. */}
-        <span className={`me-header-field-max${max === undefined ? ' me-header-field-max--hidden' : ''}`}>
-          / {max !== undefined ? formatHoursColon(max) : ''}
-        </span>
-      </div>
-    </HeaderField>
-  );
-}
-
-function NumberField({ label, value, max, step, disabled, unknownMax, onChange }: {
-  label: string; value: number; max?: number; step: number; disabled?: boolean; unknownMax?: boolean; onChange: (v: number) => void;
-}) {
-  return (
-    <HeaderField label={label}>
-      <div className="me-header-field-row">
-        <input type="number" className="me-header-field-input me-header-field-input--number" min={0}
-          max={max} step={step} disabled={disabled}
-          value={value || ''}
-          onChange={e => {
-            let v = parseFloat(e.target.value) || 0;
-            if (max !== undefined && v > max) v = max;
-            onChange(v);
-          }}
-          placeholder="0" />
-        {/* Same always-rendered reserved slot as HoursField above. */}
-        <span className={`me-header-field-max${max === undefined && !unknownMax ? ' me-header-field-max--hidden' : ''}`}>
-          / {max !== undefined ? max : unknownMax ? '?' : ''}
-        </span>
-      </div>
-    </HeaderField>
-  );
-}
-
-// Same 2-character noise floor as editionTabLabel above — a colon or
-// baseTitle-prefix remainder of "II"/"S2"/etc. isn't a usable label on its
-// own, so the full title is kept instead of a near-blank tab.
-function formatSeasonTabLabel(title: string, baseTitle?: string): string {
-  if (!title) return '';
-  const colonIdx = title.indexOf(':');
-  if (colonIdx !== -1) {
-    const after = title.slice(colonIdx + 1).trim();
-    if (after.length > 2) return after;
-  }
-  if (baseTitle && baseTitle.trim().length > 2) {
-    const normBase = baseTitle.trim().toLowerCase();
-    const normTitle = title.trim().toLowerCase();
-    if (normTitle.startsWith(normBase)) {
-      const remainder = title.trim().slice(baseTitle.trim().length).replace(/^[\s:\-–—]+/, '').trim();
-      if (remainder.length > 2) return remainder;
-    }
-  }
-  return title;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -292,23 +99,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     }
     const missing = [...ids].filter(id => !(id in monthMediaInfo));
     if (missing.length === 0) return;
-    Promise.all(missing.map(async id => {
-      if (isSeriesSeasonSyntheticId(id)) {
-        const match = id.match(/^(.*):season:(\d+)$/);
-        const baseId = match?.[1];
-        const seasonNumber = match?.[2];
-        const baseEntry = baseId ? await getCatalogEntry(baseId) : null;
-        return [id, {
-          title: `${baseEntry?.title_main ?? baseId ?? id} · T${seasonNumber ?? '?'}`,
-          cover: baseEntry?.cover_url ?? '',
-        }] as const;
-      }
-      const catalogEntry = await getCatalogEntry(id);
-      return [id, {
-        title: catalogEntry?.title_main ?? id,
-        cover: catalogEntry?.cover_url ?? '',
-      }] as const;
-    })).then(results => {
+    fetchMonthMediaInfo(missing).then(results => {
       setMonthMediaInfo(prev => {
         const next = { ...prev };
         for (const [id, info] of results) next[id] = info;
@@ -348,37 +139,9 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     setCoverPickerOpen(false);
     let cancelled = false;
 
-    async function loadCoverCandidates() {
-      const candidates = new Map<string, CoverCandidate>();
-      const add = (candidate: CoverCandidate) => {
-        if (candidate.cover || candidate.externalId === baseId) candidates.set(candidate.externalId, candidate);
-      };
-
-      // Only show the current, visible game here. A blocked work may be
-      // opened explicitly in PrEditorModal to manage its block state, but it
-      // must not leak into another game's cover picker.
-      add({ externalId, title: data.titleMain, cover: data.cover });
-
-      if (data.type === 'game') {
-        const gameIds = [...new Set([...candidates.keys()])].filter(id => /^game:\d+$/.test(id));
-        const localizedByGame = await Promise.all(gameIds.map(async id => ({
-          id,
-          covers: await igdbGetLocalizedCovers(Number(id.slice('game:'.length))).catch(() => []),
-        })));
-        for (const { id, covers } of localizedByGame) {
-          const owner = candidates.get(id);
-          covers.forEach((cover, index) => add({
-            externalId: `${id}:localized-cover:${index}`,
-            title: `${owner?.title || id} cover ${index + 1}`,
-            cover,
-          }));
-        }
-      }
-
-      if (!cancelled) setCoverCandidates([...candidates.values()]);
-    }
-
-    loadCoverCandidates().catch(() => {});
+    fetchCoverCandidates({ externalId, baseId, type: data.type, titleMain: data.titleMain, cover: data.cover })
+      .then(candidates => { if (!cancelled) setCoverCandidates(candidates); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [baseId, externalId, data.parentGame, data.titleMain, data.cover]);
 
@@ -389,7 +152,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // loadSagaChain (sagaData.ts), same source MediaPage.tsx's own Temporadas
   // tab reads, so this is normally an instant cache hit.
   const [animeSeasonChain, setAnimeSeasonChain] = useState<SagaEntry[]>([]);
-  const [seasonMetaMap, setSeasonMetaMap] = useState<Record<string, { title: string; cover?: string; totalCount?: number | null }>>({});
+  const [seasonMetaMap, setSeasonMetaMap] = useState<Record<string, SeasonMeta>>({});
 
   const sagaUsesOnlySeasonMedia = animeSeasonChain.length <= 1 || animeSeasonChain.every(
     season => season.mediaType === 'anime' || season.mediaType === 'series',
@@ -430,21 +193,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   useEffect(() => {
     if (animeSeasonChain.length === 0) return;
     let cancelled = false;
-    Promise.all(animeSeasonChain.map(async s => {
-      const [lib, cat] = await Promise.all([
-        getLibraryEntry(s.externalId).catch(() => null),
-        getCatalogEntry(s.externalId).catch(() => null),
-      ]);
-      return { id: s.externalId, lib, cat, s };
-    })).then(results => {
+    fetchAnimeSeasonChainLogs(animeSeasonChain).then(results => {
       if (cancelled) return;
-      const meta: Record<string, { title: string; cover?: string; totalCount?: number | null }> = {};
+      const meta: Record<string, SeasonMeta> = {};
       results.forEach(r => {
-        meta[r.id] = {
-          title: r.cat?.title_main || r.s.title,
-          cover: r.cat?.cover_url || r.s.cover || undefined,
-          totalCount: r.cat?.total_count ?? null,
-        };
+        meta[r.id] = r.meta;
         if (r.lib) {
           dispatchEntry({ type: 'LOAD_LOG', id: r.id, entry: r.lib });
         } else {
@@ -475,32 +228,12 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     if (!isUnifiedEvent) return;
     let cancelled = false;
     const seasons = data.seasons ?? [];
-    Promise.all(seasons.map(async season => {
-      const id = season.externalId;
-      if (!id) return null;
-      const [lib, cat, matchCache] = await Promise.all([
-        getLibraryEntry(id).catch(() => null),
-        getCatalogEntry(id).catch(() => null),
-        getApiSportsEventMatches(id).catch(() => ({ syncedAt: null, matches: [] })),
-      ]);
-      const matchCount = matchCache.syncedAt
-        ? matchCache.matches.length
-        : cat?.total_count && cat.total_count > 0
-          ? cat.total_count
-          : (await fetchApiSportsSeasonMatches(id).catch(() => [])).length;
-      return {
-        id,
-        title: cat?.title_main || season.name || id,
-        cover: cat?.cover_url || season.coverUrl || undefined,
-        totalCount: matchCount,
-        lib,
-      };
-    })).then(results => {
+    fetchEventSeasonLogs(seasons).then(results => {
       if (cancelled) return;
-      const meta: Record<string, { title: string; cover?: string; totalCount?: number | null }> = {};
+      const meta: Record<string, SeasonMeta> = {};
       for (const result of results) {
         if (!result) continue;
-        meta[result.id] = { title: result.title, cover: result.cover, totalCount: result.totalCount };
+        meta[result.id] = result.meta;
         dispatchEntry({
           type: 'LOAD_LOG',
           id: result.id,
@@ -529,11 +262,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   useEffect(() => {
     if (!isUnifiedSeries) return;
     let cancelled = false;
-    Promise.all(seriesSeasons.map(async s => {
-      const id = seriesSeasonExternalId(externalId, s.seasonNumber);
-      const lib = await getLibraryEntry(id).catch(() => null);
-      return { id, lib };
-    })).then(results => {
+    fetchSeriesSeasonLogs(externalId, seriesSeasons).then(results => {
       if (cancelled) return;
       results.forEach(r => {
         dispatchEntry({ type: 'LOAD_LOG', id: r.id, entry: r.lib ?? createEmptyVersionEntry(r.id, 'series') });
@@ -545,56 +274,9 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   // Load base game and edition logs
   useEffect(() => {
-    const loadAllVersions = async (bId: string) => {
-      try {
-        // 1. Load the base game
-        const baseEntry = await getLibraryEntry(bId);
-        if (baseEntry) {
-          dispatchEntry({ type: 'LOAD_LOG', id: bId, entry: baseEntry });
-        }
-
-        // 2. Gather related-id candidates (remakes, remasters, etc.) to look up saved logs for
-        const candidates = new Set<string>();
-        if (data.parentGame) {
-          candidates.add(data.parentGame.externalId);
-        }
-        for (const rel of (data.relations || [])) {
-          const relExternalId = extractExternalIdFromRelationUrl(rel.url);
-          if (relExternalId && relExternalId !== bId) {
-            candidates.add(relExternalId);
-          }
-        }
-
-        // 3. Load existing logs for the candidates — in parallel, not one
-        // Tauri IPC round-trip at a time.
-        await Promise.all([...candidates].map(async candId => {
-          const ev = await getLibraryEntry(candId);
-          if (ev) {
-            dispatchEntry({ type: 'LOAD_LOG', id: candId, entry: ev });
-          }
-        }));
-
-        // 4. If the base game has versions explicitly linked via
-        // selected_version that weren't already loaded as candidates,
-        // initialize them empty — also in parallel.
-        if (baseEntry && baseEntry.selected_version) {
-          await Promise.all(parseDelimitedString(baseEntry.selected_version).map(async versionId => {
-            const ev = await getLibraryEntry(versionId);
-            dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) });
-          }));
-        }
-        if (initialActiveLogId) {
-          dispatchEntry({ type: 'SWITCH_LOG', id: initialActiveLogId });
-        }
-      } catch (err) {
-        console.error('Failed to load base and versions', err);
-      } finally {
-        dispatchUi({ type: 'SET_LOADING', value: false });
-      }
-    };
-
     if (initialEntry) dispatchEntry({ type: 'LOAD_LOG', id: externalId, entry: initialEntry });
-    loadAllVersions(baseId);
+    loadAllVersions(baseId, data, initialActiveLogId, dispatchEntry)
+      .finally(() => dispatchUi({ type: 'SET_LOADING', value: false }));
     // The version tabs are derived from `data.relations` and do not need to
     // wait for the user's saved logs. Let the editor render immediately while
     // the IPC reads below hydrate the individual version fields in place.
@@ -638,165 +320,27 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     onClose();
   }, [onClose]);
 
-  const handleImportFromAniList = useCallback(async () => {
-    dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'syncing' });
-
-    if (isGeneralTab && animeSeasonChain.length > 0) {
-      try {
-        const results = await Promise.all(
-          animeSeasonChain.map(s => fetchAniListLogData(s.externalId, data.type))
-        );
-        const updatesById: Record<string, Partial<LogState>> = {};
-        let anySuccess = false;
-        results.forEach((res, idx) => {
-          if (res.ok && res.data) {
-            anySuccess = true;
-            const { status, rating, progress, progressVolumes, startedAt, finishedAt, notes } = res.data;
-            updatesById[animeSeasonChain[idx].externalId] = {
-              status, rating, progress, progressCount2: progressVolumes, startedAt, finishedAt, notes,
-            };
-          }
-        });
-
-        if (!anySuccess) {
-          const firstError = results.find(r => !r.ok)?.error;
-          dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'error', error: firstError });
-          return;
-        }
-
-        dispatchEntry({ type: 'UPDATE_LOGS_BULK', updatesById });
-        dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'ok' });
-        setTimeout(() => dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'idle' }), 3000);
-      } catch (err) {
-        dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'error', error: String(err) });
-      }
-      return;
-    }
-
-    const targetId = entry.activeLogId && !entry.activeLogId.startsWith('general:')
-      ? entry.activeLogId
-      : externalId;
-
-    const result = await fetchAniListLogData(targetId, data.type);
-    if (!result.ok || !result.data) {
-      dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'error', error: result.error });
-      return;
-    }
-    const { status, rating, progress, progressVolumes, startedAt, finishedAt, notes } = result.data;
-    // UPDATE_LOGS_BULK (keyed explicitly by targetId) instead of UPDATE_LOG
-    // (which always writes to whatever state.activeLogId is AT DISPATCH
-    // TIME) — this fetch is async, so if the user switches tabs while it's
-    // in flight, UPDATE_LOG would silently write this response onto
-    // whichever OTHER tab they'd switched to by the time it resolved,
-    // instead of the one it was actually fetched for.
-    dispatchEntry({
-      type: 'UPDATE_LOGS_BULK',
-      updatesById: { [targetId]: { status, rating, progress, progressCount2: progressVolumes, startedAt, finishedAt, notes } },
-    });
-    dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'ok' });
-    setTimeout(() => dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'idle' }), 3000);
-  }, [isGeneralTab, animeSeasonChain, data.type, entry.activeLogId, externalId]);
+  const handleImportFromAniList = useCallback(
+    () => importLogsFromAniList({
+      isGeneralTab, animeSeasonChain, mediaType: data.type,
+      activeLogId: entry.activeLogId, externalId, dispatchEntry, dispatchUi,
+    }),
+    [isGeneralTab, animeSeasonChain, data.type, entry.activeLogId, externalId],
+  );
 
   const handleSave = useCallback(async () => {
     dispatchUi({ type: 'SET_SAVING', value: true });
     try {
-      // Editing a version's own page IS the intent to link it to its base -
-      // don't require the user to have clicked through the Log tab switcher
-      // for that link to actually get persisted.
-      let logsToSave = entry.logs;
-      if (externalId !== baseId) {
-        const baseLog = logsToSave[baseId] || createDefaultLog();
-        const linkedIds = baseLog.selectedVersion ? baseLog.selectedVersion.split(',') : [];
-        if (!linkedIds.includes(externalId)) {
-          const nextSelectedVersion = [...linkedIds, externalId].join(',');
-          logsToSave = { ...logsToSave, [baseId]: { ...baseLog, selectedVersion: nextSelectedVersion } };
-        }
-      }
-
-      let primarySaved: LibraryEntry | null = null;
-
-      for (const [logId, entryLog] of Object.entries(logsToSave)) {
-        if (logId.startsWith('general:')) {
-          const rootId = animeSeasonChain[0]?.externalId;
-          if (rootId) {
-            if (entryLog.rating > 0) {
-              localStorage.setItem(`general_rating:${rootId}`, String(entryLog.rating));
-            } else {
-              localStorage.removeItem(`general_rating:${rootId}`);
-            }
-          }
-          continue;
-        }
-
-        const isBase = logId === baseId;
-        const hasLink = isBase && !!entryLog.selectedVersion;
-
-        const isEmpty =
-          !entryLog.status &&
-          entryLog.rating === 0 &&
-          entryLog.rating2 === 0 &&
-          entryLog.progress === 0 &&
-          !entryLog.notes &&
-          !entryLog.isFavorite &&
-          !entryLog.isPlatinum &&
-          entryLog.tags.length === 0 &&
-          !entryLog.platform &&
-          !entryLog.startedAt &&
-          !entryLog.finishedAt &&
-          !hasLink;
-
-        if (isEmpty && !entryLog.existing) continue;
-
-        const saved = await saveLibraryEntry({
-          id:               entryLog.existing?.id ?? '',
-          user_id:          'local',
-          external_id:      logId,
-          // data.type is this MODAL's own media (the one actually open) —
-          // correct for logId === baseId/externalId, but wrong for any other
-          // log in this same save loop, like a cross-type related work
-          // (e.g. a manga's anime adaptation) whose own entry got loaded
-          // into `logs` via loadAllVersions' unfiltered relations scan. Its
-          // own already-saved type is the source of truth for it; only a
-          // genuinely new log (no `existing` row yet — in practice always
-          // logId === baseId, since loadAllVersions only ever loads logs
-          // for relations that already had a saved entry) falls back to
-          // data.type.
-          type:             entryLog.existing?.type ?? data.type,
-          status:           entryLog.status || null,
-          rating:           entryLog.rating > 0 ? entryLog.rating : null,
-          rating_2:         entryLog.rating2 > 0 ? entryLog.rating2 : null,
-          progress:         entryLog.progress,
-          progress_2:       entryLog.progressCount2,
-          minutes_spent:    entryLog.progress * 60,
-          is_favorite:      entryLog.isFavorite ? 1 : 0,
-          is_platinum:      entryLog.isPlatinum ? 1 : 0,
-          tags:             entryLog.tags.length > 0 ? entryLog.tags : null,
-          notes:            entryLog.notes.trim() || null,
-          added_at:         entryLog.existing?.added_at ?? null,
-          updated_at:       null,
-          selected_platform: entryLog.platform || null,
-          selected_version:  isBase ? (entryLog.selectedVersion || null) : null,
-          started_at:       entryLog.startedAt || null,
-          finished_at:      entryLog.finishedAt || null,
-        });
-
-        if (logId === externalId) {
-          primarySaved = saved;
-        }
-      }
-
-      await writeMonthlyHistory(entry.monthlyHistory);
-      await syncFavorites(data.type, externalId, activeLog.isFavorite)
-        .catch(e => console.error('Failed to sync favorites', e));
-
-      try {
-        const { logJourneyEvent } = await import('../../lib/profile/journey');
-        if (primarySaved) {
-          await logJourneyEvent(activeLog.existing, primarySaved, data.type, data.totalCount ?? undefined);
-        }
-      } catch (e) {
-        console.error('Failed to log journey event', e);
-      }
+      const primarySaved = await saveMediaEditorLogs({
+        logs: entry.logs,
+        monthlyHistory: entry.monthlyHistory,
+        activeLog,
+        externalId,
+        baseId,
+        type: data.type,
+        totalCount: data.totalCount,
+        animeSeasonChain,
+      });
 
       if (primarySaved) {
         onSaved(primarySaved);
@@ -891,101 +435,15 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     [data.type, data.format, t],
   );
 
-  // Editions/versions this entry could be linked to (base game + expanded editions
-  // from the IGDB relation list) grouped by relation type.
-  const editionGroups = useMemo(() => {
-    // vnovel is its own `type` value (see IGDB_TYPES), not a variant of
-    // 'game' — excluding it here meant visual novels never got the version-
-    // log tabs at all, even though they go through the exact same IGDB
-    // edition/relation machinery as games.
-    if (!IGDB_TYPES.includes(data.type as typeof IGDB_TYPES[number])) {
-      return [] as { label: string; options: { externalId: string; label: string; cover?: string }[] }[];
-    }
 
-    const groupsMap: Record<string, { externalId: string; label: string; cover?: string }[]> = {};
-
-    if (data.parentGame) {
-      groupsMap['Original'] = [{ externalId: data.parentGame.externalId, label: data.parentGame.title, cover: data.parentGame.cover }];
-    }
-
-    // Every "full edition" relation type (see IS_FULL_EDITION_TYPE in
-    // igdb-mapper.ts) belongs here, not just Expanded Edition/Remaster —
-    // Remake and Fork are equally their own trackable version. Matched by
-    // relationType (a stable canonical key), never typeLabel — the latter is
-    // re-derived in the UI's *current* locale on every reload
-    // (sortRelationsForDisplay), so a hardcoded English label like "Expanded
-    // Edition" only ever matched by coincidence, and never at all once the
-    // UI language wasn't English (e.g. Spanish's "Edición expandida").
-    const EDITION_RELATION_TYPES = new Set(['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK', 'PORT']);
-    for (const rel of (data.relations || [])) {
-      if (!rel.relationType || !EDITION_RELATION_TYPES.has(rel.relationType)) continue;
-      const relExternalId = extractExternalIdFromRelationUrl(rel.url);
-      if (relExternalId) {
-        const groupLabel = rel.typeLabel || 'Others';
-        if (!groupsMap[groupLabel]) {
-          groupsMap[groupLabel] = [];
-        }
-        groupsMap[groupLabel].push({ externalId: relExternalId, label: rel.title, cover: rel.cover });
-      }
-    }
-
-    return Object.entries(groupsMap).map(([label, options]) => ({ label, options }));
-  }, [data.type, data.parentGame, data.relations]);
-
-  const allAvailableEditions = useMemo(() => {
-    const list: { externalId: string; label: string; cover?: string; relationType?: string; isBundleChild?: boolean; isSeasonTab?: boolean }[] = [];
-    // A saga edge is authoritative for chronology. Some IGDB records also
-    // expose the same work through a broad remakes/remasters array, which
-    // must not turn a PREQUEL/SEQUEL into an edition tab (FFVII Rebirth and
-    // Revelation are examples of this false overlap).
-    const sagaRelatedIds = new Set(
-      (data.relations || [])
-        .filter(rel => rel.relationType === 'PREQUEL' || rel.relationType === 'SEQUEL')
-        .map(rel => rel.relatedExternalId ?? extractExternalIdFromRelationUrl(rel.url))
-        .filter((id): id is string => !!id),
-    );
-    for (const rel of (data.relations || [])) {
-      if (rel.relationType && ['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK', 'PORT'].includes(rel.relationType)) {
-        const relExternalId = rel.relatedExternalId ?? extractExternalIdFromRelationUrl(rel.url);
-        if (relExternalId && !sagaRelatedIds.has(relExternalId) && relExternalId !== baseId && !list.some(item => item.externalId === relExternalId)) {
-          list.push({ externalId: relExternalId, label: rel.title, cover: rel.cover, relationType: rel.relationType });
-        }
-      }
-    }
-    // A bundle's own "editar" should let the user track each contained work
-    // separately — Final Fantasy VII Remake Intergrade's base game AND its
-    // INTERmission DLC — instead of only the bundle as one lump. Labeled by
-    // its own real title, same as every other edition tab above (the
-    // generic Juego/DLC/Part-N shorthand belongs to NeighborsRow's compact
-    // thumbnail row instead — see bundleLabels.ts).
-    const bundleRels = (data.relations || []).filter(rel => rel.relationType && CONTAINS_RELATION_TYPES.includes(rel.relationType));
-    bundleRels.forEach(rel => {
-      const relExternalId = rel.relatedExternalId ?? extractExternalIdFromRelationUrl(rel.url);
-      if (relExternalId && relExternalId !== baseId && !list.some(item => item.externalId === relExternalId)) {
-        list.push({ externalId: relExternalId, label: rel.title, cover: rel.cover, relationType: rel.relationType, isBundleChild: true });
-      }
-    });
-    // Viewing a version's own page: IGDB relations aren't symmetric, so this
-    // version rarely lists its own siblings back — add its own tab explicitly
-    // so the log switcher looks the same as it does from the base's page.
-    if (baseId !== externalId && !list.some(item => item.externalId === externalId)) {
-      list.push({ externalId, label: data.titleMain, cover: data.cover });
-    }
-    // Every OTHER season in the chain — "T{n}" (not the season's own title:
-    // it's usually just "Título 2nd Season", already redundant once labeled
-    // by position, see stripSeasonSuffix) matching Temporadas' own badges,
-    // numbered by real chain position so it still reads correctly regardless
-    // of which season this editor happens to be open on. The one this editor
-    // IS already open on is the "Original" tab (baseId === externalId here,
-    // since anime has no parentGame), so it's excluded from this list.
-    if (!isUnifiedAnime && sagaUsesOnlySeasonMedia) {
-      animeSeasonChain.forEach((seasonEntry, i) => {
-        if (seasonEntry.externalId === baseId || seasonEntry.externalId === externalId) return;
-        list.push({ externalId: seasonEntry.externalId, label: `T${i + 1}`, cover: seasonEntry.cover ?? undefined, isSeasonTab: true });
-      });
-    }
-    return list;
-  }, [baseId, data.parentGame, externalId, data.titleMain, data.cover, data.relations, animeSeasonChain, isUnifiedAnime]);
+  const allAvailableEditions = useMemo(
+    () => buildAvailableEditions({
+      baseId, externalId, titleMain: data.titleMain, cover: data.cover,
+      relations: data.relations, animeSeasonChain, isUnifiedAnime, sagaUsesOnlySeasonMedia,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseId, data.parentGame, externalId, data.titleMain, data.cover, data.relations, animeSeasonChain, isUnifiedAnime],
+  );
 
   // A bundle (Final Fantasy VII Remake Intergrade) is never itself
   // trackable — there's no meaningful "progress" on the bundle as a lump,
@@ -1084,12 +542,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     });
   }, [activeUnifiedSeasonId, sameGameIds, baseId, entry.selectedYear, selectedMonthKey]);
 
-  function isFutureDate(year: number | null | undefined, month: number | null | undefined, day: number | null | undefined): boolean {
-    if (!year) return false;
-    const releaseDate = new Date(year, (month ?? 1) - 1, day ?? 1);
-    return releaseDate.getTime() > Date.now();
-  }
-
   // Nothing not yet out can honestly be completed/dropped/paused/in-progress
   // — checked per *active tab*, not just the modal's own top-level data:
   // opening the editor from a season that hasn't aired must not also lock
@@ -1100,22 +552,13 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // Production" with no date at all yet); the release-date check is a
   // fallback/belt-and-braces for a catalog row whose status hasn't been
   // resynced recently but whose date clearly hasn't arrived.
-  const isUpcoming = useMemo(() => {
-    if (activeAnimeSeasonEntry) {
-      return isFutureDate(activeAnimeSeasonEntry.year, activeAnimeSeasonEntry.month, activeAnimeSeasonEntry.day);
-    }
-    if (activeSeriesSeasonInfo) {
-      if (!activeSeriesSeasonInfo.airDate) return false;
-      const d = new Date(activeSeriesSeasonInfo.airDate);
-      return !isNaN(d.getTime()) && d.getTime() > Date.now();
-    }
-    if (activeEventSeasonInfo?.airDate) {
-      const d = new Date(activeEventSeasonInfo.airDate);
-      return !isNaN(d.getTime()) && d.getTime() > Date.now();
-    }
-    return data.status === 'NOT_YET_RELEASED' || isFutureDate(data.releaseYear, data.releaseMonth, data.releaseDay);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeAnimeSeasonEntry, activeSeriesSeasonInfo, activeEventSeasonInfo, data.status, data.releaseYear, data.releaseMonth, data.releaseDay]);
+  const isUpcoming = useMemo(
+    () => computeIsUpcoming({
+      activeAnimeSeasonEntry, activeSeriesSeasonInfo, activeEventSeasonInfo,
+      status: data.status, releaseYear: data.releaseYear, releaseMonth: data.releaseMonth, releaseDay: data.releaseDay,
+    }),
+    [activeAnimeSeasonEntry, activeSeriesSeasonInfo, activeEventSeasonInfo, data.status, data.releaseYear, data.releaseMonth, data.releaseDay],
+  );
 
   const generalBaseTitle = useMemo(() => {
     if (isUnifiedEvent) return data.titleMain;
@@ -1163,44 +606,25 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return data.totalCount;
   }, [isUnifiedAnime, isUnifiedEvent, isGeneralTab, generalTotalCount, seasonMetaMap, entry.activeLogId, data.totalCount, activeSeriesSeasonInfo]);
 
-  const generalStartDate = useMemo(() => {
-    if (!isUnifiedAnime) return '';
-    const s1 = entry.logs[animeSeasonChain[0]?.externalId]?.startedAt;
-    if (s1) return s1;
-    const allStarted = animeSeasonChain.map(s => entry.logs[s.externalId]?.startedAt).filter(Boolean) as string[];
-    return allStarted.sort()[0] || '';
-  }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
+  const generalStartDate = useMemo(
+    () => isUnifiedAnime ? computeChainBoundaryDate('start', animeSeasonChain, entry.logs) : '',
+    [isUnifiedAnime, animeSeasonChain, entry.logs],
+  );
 
-  const generalEndDate = useMemo(() => {
-    if (!isUnifiedAnime) return '';
-    const lastSeason = animeSeasonChain[animeSeasonChain.length - 1];
-    const sLast = entry.logs[lastSeason?.externalId]?.finishedAt;
-    if (sLast) return sLast;
-    const allFinished = animeSeasonChain.map(s => entry.logs[s.externalId]?.finishedAt).filter(Boolean) as string[];
-    return allFinished.sort().reverse()[0] || '';
-  }, [isUnifiedAnime, animeSeasonChain, entry.logs]);
+  const generalEndDate = useMemo(
+    () => isUnifiedAnime ? computeChainBoundaryDate('end', animeSeasonChain, entry.logs) : '',
+    [isUnifiedAnime, animeSeasonChain, entry.logs],
+  );
 
-  const generalAverageRating = useMemo(() => {
-    const ratings = unifiedSeasonIds
-      .map(id => entry.logs[id]?.rating)
-      .filter((r): r is number => typeof r === 'number' && r > 0);
-    if (ratings.length === 0) {
-      const hasSeasonLogs = unifiedSeasonIds.some(id => !!entry.logs[id]);
-      return isUnifiedEvent && !hasSeasonLogs ? entry.logs[externalId]?.rating ?? 0 : 0;
-    }
-    return ratings.reduce((a, b) => a + b, 0) / ratings.length;
-  }, [isUnifiedEvent, externalId, unifiedSeasonIds, entry.logs]);
+  const generalAverageRating = useMemo(
+    () => computeGeneralAverageRating('rating', { unifiedSeasonIds, logs: entry.logs, isUnifiedEvent, externalId }),
+    [isUnifiedEvent, externalId, unifiedSeasonIds, entry.logs],
+  );
 
-  const generalAverageRating2 = useMemo(() => {
-    const ratings = unifiedSeasonIds
-      .map(id => entry.logs[id]?.rating2)
-      .filter((r): r is number => typeof r === 'number' && r > 0);
-    if (ratings.length === 0) {
-      const hasSeasonLogs = unifiedSeasonIds.some(id => !!entry.logs[id]);
-      return isUnifiedEvent && !hasSeasonLogs ? entry.logs[externalId]?.rating2 ?? 0 : 0;
-    }
-    return ratings.reduce((a, b) => a + b, 0) / ratings.length;
-  }, [isUnifiedEvent, externalId, unifiedSeasonIds, entry.logs]);
+  const generalAverageRating2 = useMemo(
+    () => computeGeneralAverageRating('rating2', { unifiedSeasonIds, logs: entry.logs, isUnifiedEvent, externalId }),
+    [isUnifiedEvent, externalId, unifiedSeasonIds, entry.logs],
+  );
 
   // Auto-derived, never persisted onto any single season's own row — a
   // season's real status stays whatever the user actually set it to (you may
@@ -1216,53 +640,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return entry.logs[externalId]?.status ?? '';
   }, [isUnifiedAnime, isUnifiedEvent, unifiedSeasonIds, entry.logs, externalId]);
 
-  // Header cover/title/year follow whichever log tab is active - the base game's
-  // own title/cover, the current version's, or another linked edition's.
-  const activeLogDisplay = useMemo(() => {
-    const preferredCover = coverPreferenceId;
-    if (isGeneralTab) {
-      return {
-        title: generalBaseTitle,
-        cover: animeSeasonChain[0]?.cover || data.cover,
-        year: animeSeasonChain[0]?.year ?? data.releaseYear,
-      };
-    }
-    if (isUnifiedAnime && seasonMetaMap[entry.activeLogId]) {
-      const meta = seasonMetaMap[entry.activeLogId];
-      return {
-        title: meta.title,
-        cover: meta.cover || data.cover,
-        year: activeAnimeSeasonEntry?.year ?? data.releaseYear,
-      };
-    }
-    if (activeSeriesSeasonInfo) {
-      const sYear = activeSeriesSeasonInfo.airDate ? new Date(activeSeriesSeasonInfo.airDate).getFullYear() : undefined;
-      return {
-        title: activeSeriesSeasonInfo.name || `T${activeSeriesSeasonInfo.seasonNumber}`,
-        cover: activeSeriesSeasonInfo.coverUrl || data.cover,
-        year: !isNaN(sYear as number) ? sYear : data.releaseYear,
-      };
-    }
-    if (entry.activeLogId === baseId) {
-      return {
-        title: data.parentGame?.title || baseRelation?.title || data.titleMain,
-        cover: preferredCover || data.parentGame?.cover || baseRelation?.cover || data.cover,
-        year: data.parentGame ? data.releaseYear : (baseRelation?.releaseYear ?? data.releaseYear),
-      };
-    }
-    if (activeEventSeasonInfo) {
-      const meta = seasonMetaMap[entry.activeLogId];
-      return {
-        title: meta?.title || activeEventSeasonInfo.name || data.titleMain,
-        cover: meta?.cover || activeEventSeasonInfo.coverUrl || data.cover,
-        year: activeEventSeasonInfo.airDate ? new Date(activeEventSeasonInfo.airDate).getFullYear() : data.releaseYear,
-      };
-    }
-    const found = allAvailableEditions.find(ed => ed.externalId === entry.activeLogId);
-    return found
-      ? { title: found.label, cover: preferredCover || found.cover, year: data.releaseYear }
-      : { title: data.titleMain, cover: preferredCover || data.cover, year: data.releaseYear };
-  }, [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data.cover, data.releaseYear, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, baseRelation, data.parentGame, data.titleMain, allAvailableEditions, activeSeriesSeasonInfo, activeEventSeasonInfo, coverCandidates, coverPreferenceId]);
+  const activeLogDisplay = useMemo(
+    () => computeActiveLogDisplay({
+      isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, seasonMetaMap,
+      activeLogId: entry.activeLogId, activeAnimeSeasonEntry, activeSeriesSeasonInfo,
+      activeEventSeasonInfo, allAvailableEditions, baseId, baseRelation, coverPreferenceId, data,
+    }),
+    [isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, data, seasonMetaMap, entry.activeLogId, activeAnimeSeasonEntry, baseId, baseRelation, allAvailableEditions, activeSeriesSeasonInfo, activeEventSeasonInfo, coverPreferenceId],
+  );
 
   const hasCoverCandidates = coverCandidates.length > 1 && data.type === 'game';
 
@@ -1306,99 +691,32 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         {/* Header */}
         <div className="me-header">
           <div className="me-header-left">
-            {/* Always reserves its slot (even with no cover yet for this
-                tab/season) — switching to a tab whose cover hasn't loaded
-                must never shift the title text sideways. */}
-            <div className={`me-header-cover-slot${hasCoverCandidates ? ' me-header-cover-slot--selectable' : ''}`}>
-              {activeLogDisplay.cover && <img src={activeLogDisplay.cover} alt="" className="me-header-cover" />}
-              {hasCoverCandidates && (
-                <>
-                  <button
-                    type="button"
-                    className="me-header-cover-picker-btn"
-                    aria-label={te.editions}
-                    title={te.editions}
-                    onClick={() => setCoverPickerOpen(open => !open)}
-                  >
-                    ⋯
-                  </button>
-                  {coverPickerOpen && (
-                    <div className="me-header-cover-picker-overlay" role="presentation" onClick={() => setCoverPickerOpen(false)}>
-                      <div className="me-header-cover-picker" role="dialog" aria-label={te.editions} onClick={e => e.stopPropagation()}>
-                        {coverCandidates.filter(candidate => candidate.cover).map(candidate => (
-                          <button
-                            key={candidate.externalId}
-                            type="button"
-                            className={`me-header-cover-option${coverPreferenceId === candidate.cover ? ' active' : ''}`}
-                            aria-label={candidate.title}
-                            title={candidate.title}
-                            onClick={() => {
-                              if (!candidate.cover) return;
-                              const aliases = coverCandidates
-                                .filter(c => c.cover && !c.externalId.includes(':localized-cover:'))
-                                .map(c => c.externalId);
-                              setCoverPreference(baseId, candidate.cover, aliases);
-                              setCoverPreferenceId(candidate.cover);
-                              setCoverPickerOpen(false);
-                            }}
-                          >
-                            <img src={toLargeCover(candidate.cover)} alt="" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            <MediaEditorCoverSlot
+              cover={activeLogDisplay.cover}
+              hasCoverCandidates={hasCoverCandidates}
+              coverCandidates={coverCandidates}
+              coverPreferenceId={coverPreferenceId}
+              coverPickerOpen={coverPickerOpen}
+              baseId={baseId}
+              editionsLabel={te.editions}
+              setCoverPreferenceId={setCoverPreferenceId}
+              setCoverPickerOpen={setCoverPickerOpen}
+            />
             <div className="me-header-col">
               <span className="me-header-title">{activeLogDisplay.title}</span>
               <div className="me-header-bottom-row">
-                <div className="me-header-status-row">
-                  {statusButtons.map(({ value, label, Icon }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={`me-header-status-icon${(isGeneralTab ? generalStatus : activeLog.status) === value ? ' active' : ''}`}
-                      // The general tab's status is always the auto-derived
-                      // aggregate (see generalStatus) - every button except
-                      // "completed" is inert there, since only "I finished
-                      // the whole thing" is a real bulk action; the other
-                      // four states already come from whichever season
-                      // actually has them, so clicking them here would have
-                      // nothing real to write.
-                      //
-                      // Nothing not yet released can honestly be completed/
-                      // dropped/paused/in-progress — only "planning" (queued
-                      // up for whenever it comes out) makes sense.
-                      disabled={(isGeneralTab && value !== 'completed') || (isUpcoming && value !== 'planning')}
-                      onClick={() => {
-                        if (isGeneralTab) {
-                          if (value !== 'completed') return;
-                          const updatesById: Record<string, Partial<LogState>> = {};
-                          for (const id of unifiedSeasonIds) {
-                            const seasonTotal = seasonMetaMap[id]?.totalCount;
-                            const su: Partial<LogState> = { status: 'completed' };
-                            if (seasonTotal && seasonTotal > 0) su.progress = seasonTotal;
-                            updatesById[id] = su;
-                          }
-                          dispatchEntry({ type: 'UPDATE_LOGS_BULK', updatesById });
-                          return;
-                        }
-                        const next = activeLog.status === value ? '' : value;
-                        const updates: Partial<LogState> = { status: next };
-                        if (value === 'completed' && next === 'completed') {
-                          if (activeTotalCount && activeTotalCount > 0) updates.progress = activeTotalCount;
-                          if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
-                        }
-                        dispatchEntry({ type: 'UPDATE_LOG', updates });
-                      }}
-                      title={label}
-                    >
-                      <Icon />
-                    </button>
-                  ))}
-                </div>
+                <MediaEditorStatusRow
+                  statusButtons={statusButtons}
+                  status={activeLog.status}
+                  isGeneralTab={isGeneralTab}
+                  generalStatus={generalStatus}
+                  isUpcoming={isUpcoming}
+                  unifiedSeasonIds={unifiedSeasonIds}
+                  seasonMetaMap={seasonMetaMap}
+                  activeTotalCount={activeTotalCount}
+                  totalCount2={data.totalCount_2}
+                  dispatchEntry={dispatchEntry}
+                />
 
                 {/* Progress input — game/vnovel is hours logged as "H:MM"
                     (see HoursField), every other type is a plain count. */}
@@ -1504,65 +822,19 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                 </HeaderField>
 
                 {/* Dates */}
-                {isMovie ? (
-                  <HeaderField label={te.view_date || 'Fecha de visionado'}>
-                    <input type="date" className="me-header-field-input me-header-field-input--date"
-                      min={`${MIN_DATE_YEAR}-01-01`}
-                      value={activeLog.startedAt || activeLog.finishedAt}
-                      onChange={e => {
-                        const val = e.target.value;
-                        const updates: Partial<LogState> = { startedAt: val, finishedAt: val };
-                        if (val && !isUpcoming) {
-                          updates.status = 'completed';
-                          if (activeTotalCount && activeTotalCount > 0) updates.progress = activeTotalCount;
-                          if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
-                        }
-                        dispatchEntry({ type: 'UPDATE_LOG', updates });
-                      }}
-                      onBlur={e => {
-                        const val = clampDateMinYear(e.target.value);
-                        if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: val, finishedAt: val } });
-                      }} />
-                  </HeaderField>
-                ) : (
-                  <>
-                    <HeaderField label={te.started}>
-                      <input type="date" className="me-header-field-input me-header-field-input--date"
-                        min={`${MIN_DATE_YEAR}-01-01`}
-                        max={activeLog.finishedAt || undefined}
-                        disabled={isGeneralTab}
-                        value={isGeneralTab ? generalStartDate : activeLog.startedAt}
-                        onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })}
-                        onBlur={e => {
-                          const val = clampDateMinYear(e.target.value);
-                          const updates: Partial<LogState> = {};
-                          if (val !== e.target.value) updates.startedAt = val;
-                          if (activeLog.finishedAt && val > activeLog.finishedAt) updates.finishedAt = val;
-                          if (Object.keys(updates).length > 0) dispatchEntry({ type: 'UPDATE_LOG', updates });
-                        }} />
-                    </HeaderField>
-                    <HeaderField label={te.ended}>
-                      <input type="date" className="me-header-field-input me-header-field-input--date"
-                        min={activeLog.startedAt || `${MIN_DATE_YEAR}-01-01`}
-                        disabled={isGeneralTab}
-                        value={isGeneralTab ? generalEndDate : activeLog.finishedAt}
-                        onChange={e => {
-                          const val = e.target.value;
-                          const updates: Partial<LogState> = { finishedAt: val };
-                          if (val && !isUpcoming) {
-                            updates.status = 'completed';
-                            if (activeTotalCount && activeTotalCount > 0) updates.progress = activeTotalCount;
-                            if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
-                          }
-                          dispatchEntry({ type: 'UPDATE_LOG', updates });
-                        }}
-                        onBlur={e => {
-                          const val = clampNotBefore(clampDateMinYear(e.target.value), activeLog.startedAt);
-                          if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { finishedAt: val } });
-                        }} />
-                    </HeaderField>
-                  </>
-                )}
+                <MediaEditorDateFields
+                  te={te}
+                  isMovie={isMovie}
+                  isGeneralTab={isGeneralTab}
+                  isUpcoming={isUpcoming}
+                  startedAt={activeLog.startedAt}
+                  finishedAt={activeLog.finishedAt}
+                  generalStartDate={generalStartDate}
+                  generalEndDate={generalEndDate}
+                  activeTotalCount={activeTotalCount}
+                  totalCount2={data.totalCount_2}
+                  dispatchEntry={dispatchEntry}
+                />
               </div>
             </div>
           </div>
@@ -1593,178 +865,27 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           </div>
         </div>
 
-        {(isUnifiedAnime || isUnifiedEvent || isUnifiedSeries || data.parentGame || allAvailableEditions.length > 0) && (
-          <div className="me-versions-tabs">
-            {isUnifiedAnime ? (
-              <>
-                <button
-                  type="button"
-                  className={`me-version-tab-btn${entry.activeLogId === GENERAL_LOG_ID ? ' active' : ''}`}
-                  title={generalBaseTitle}
-                  onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: GENERAL_LOG_ID })}
-                >
-                  {generalBaseTitle}
-                </button>
-                <span className="me-version-tab-separator">|</span>
-                {animeSeasonChain.map(seasonEntry => {
-                  const isActive = entry.activeLogId === seasonEntry.externalId;
-                  const sTitle = seasonMetaMap[seasonEntry.externalId]?.title || seasonEntry.title;
-                  const label = formatSeasonTabLabel(sTitle, generalBaseTitle);
-                  return (
-                    <button
-                      key={seasonEntry.externalId}
-                      type="button"
-                      className={`me-version-tab-btn${isActive ? ' active' : ''}`}
-                      title={sTitle}
-                      onClick={() => {
-                        if (!entry.logs[seasonEntry.externalId]) {
-                          dispatchEntry({ type: 'LOAD_LOG', id: seasonEntry.externalId, entry: createEmptyVersionEntry(seasonEntry.externalId, 'anime') });
-                        }
-                        dispatchEntry({ type: 'SWITCH_LOG', id: seasonEntry.externalId });
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </>
-            ) : isUnifiedEvent ? (
-              <>
-                <button
-                  type="button"
-                  className={`me-version-tab-btn${entry.activeLogId === externalId ? ' active' : ''}`}
-                  title={data.titleMain}
-                  onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: externalId })}
-                >
-                  {data.titleMain}
-                </button>
-                <span className="me-version-tab-separator">|</span>
-                {eventSeasons.map((season, index) => {
-                  const seasonId = season.externalId;
-                  if (!seasonId) return null;
-                  const isActive = entry.activeLogId === seasonId;
-                  const label = season.name || `T${eventSeasons.length - index}`;
-                  return (
-                    <button
-                      key={seasonId}
-                      type="button"
-                      className={`me-version-tab-btn${isActive ? ' active' : ''}`}
-                      title={label}
-                      onClick={() => {
-                        if (!entry.logs[seasonId]) {
-                          dispatchEntry({ type: 'LOAD_LOG', id: seasonId, entry: createEmptyVersionEntry(seasonId, 'event') });
-                        }
-                        dispatchEntry({ type: 'SWITCH_LOG', id: seasonId });
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </>
-            ) : isUnifiedSeries ? (
-              <>
-                {/* Unlike anime's general tab, this one is the series' own
-                    real entry — fully editable as it's always been, not a
-                    derived read-mostly aggregate — so it's just baseId/
-                    externalId under a friendlier label, same identity the
-                    plain (non-tabbed) form below already edits. */}
-                <button
-                  type="button"
-                  className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
-                  title={data.titleMain}
-                  onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
-                >
-                  {data.titleMain}
-                </button>
-                <span className="me-version-tab-separator">|</span>
-                {seriesSeasons.map(season => {
-                  const seasonId = seriesSeasonExternalId(externalId, season.seasonNumber);
-                  const isActive = entry.activeLogId === seasonId;
-                  const label = `T${season.seasonNumber}`;
-                  return (
-                    <button
-                      key={seasonId}
-                      type="button"
-                      className={`me-version-tab-btn${isActive ? ' active' : ''}`}
-                      title={season.name || label}
-                      onClick={() => {
-                        if (!entry.logs[seasonId]) {
-                          dispatchEntry({ type: 'LOAD_LOG', id: seasonId, entry: createEmptyVersionEntry(seasonId, 'series') });
-                        }
-                        dispatchEntry({ type: 'SWITCH_LOG', id: seasonId });
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </>
-            ) : (
-              <>
-                {/* A bundle is never itself trackable (see isBundle's own
-                    comment above) — no "Original" tab for it, only its contents. */}
-                {!isBundle && (
-                  <button
-                    type="button"
-                    className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
-                    onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
-                  >
-                    {te.original}
-                  </button>
-                )}
-                {allAvailableEditions.map(ed => {
-                  const isActive = entry.activeLogId === ed.externalId;
-                  // ed.label is already each edition's (bundle child included)
-                  // own real title — editionTabLabel just shortens it to
-                  // whatever follows a colon, same treatment for all of them.
-                  let tabLabel = editionTabLabel(ed.label, te.edition_default);
-
-                  // If it's a REMAKE with the same suffix as the original, label it "Remake"
-                  if (ed.relationType === 'REMAKE') {
-                    const getLastPart = (title: string) => {
-                      const idx = title.lastIndexOf(':');
-                      return idx === -1 ? '' : title.substring(idx);
-                    };
-                    const originalTitle = data.parentGame?.title || data.titleMain;
-                    const originalLast = getLastPart(originalTitle);
-                    const editionLast = getLastPart(ed.label);
-                    if (originalLast && editionLast && originalLast === editionLast) {
-                      tabLabel = te.remake;
-                    }
-                  }
-
-                  return (
-                    <button
-                      key={ed.externalId}
-                      type="button"
-                      className={`me-version-tab-btn${isActive ? ' active' : ''}`}
-                      title={ed.label}
-                      onClick={() => {
-                        if (!ed.isBundleChild && !ed.isSeasonTab) {
-                          const baseLogVal = entry.logs[baseId] || createDefaultLog();
-                          const currentVersions = baseLogVal.selectedVersion
-                            ? baseLogVal.selectedVersion.split(',')
-                            : [];
-                          if (!currentVersions.includes(ed.externalId)) {
-                            const nextVersions = [...currentVersions, ed.externalId].join(',');
-                            dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
-                          }
-                        }
-                        if (!entry.logs[ed.externalId]) {
-                          dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId, ed.isSeasonTab ? 'anime' : 'game') });
-                        }
-                        dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
-                      }}
-                    >
-                      {tabLabel}
-                    </button>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        )}
+        <MediaEditorVersionTabs
+          te={te}
+          activeLogId={entry.activeLogId}
+          logs={entry.logs}
+          dispatchEntry={dispatchEntry}
+          externalId={externalId}
+          baseId={baseId}
+          titleMain={data.titleMain}
+          parentGame={data.parentGame}
+          isUnifiedAnime={isUnifiedAnime}
+          isUnifiedEvent={isUnifiedEvent}
+          isUnifiedSeries={isUnifiedSeries}
+          isBundle={isBundle}
+          generalLogId={GENERAL_LOG_ID}
+          generalBaseTitle={generalBaseTitle}
+          animeSeasonChain={animeSeasonChain}
+          eventSeasons={eventSeasons}
+          seriesSeasons={seriesSeasons}
+          seasonMetaMap={seasonMetaMap}
+          allAvailableEditions={allAvailableEditions}
+        />
 
         {ui.loading ? (
           <div className="me-loading"><div className="spinner" /></div>
@@ -1807,100 +928,31 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   value={activeLog.notes}
                   onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { notes: e.target.value } })} />
 
-                <div className="me-month-selector-section">
-                  <div className="me-month-header">
-                    <span className="me-label">{te.history_month}</span>
-                    <div className="me-year-selector">
-                      <button type="button" className="me-year-arrow"
-                        onClick={() => dispatchEntry({ type: 'SET_YEAR', delta: -1 })}>&lt;</button>
-                      <span className="me-year-val">{entry.selectedYear}</span>
-                      <button type="button" className="me-year-arrow"
-                        onClick={() => dispatchEntry({ type: 'SET_YEAR', delta: 1 })}>&gt;</button>
-                    </div>
-                  </div>
-                  <div className="me-month-grid">
-                    {te.months.map((mName, idx) => {
-                      const mNumber = idx + 1;
-                      const key = `${entry.selectedYear}-${String(mNumber).padStart(2, '0')}`;
-                      const isSelected = selectedMonthKey === key;
-                      // Only one entry can claim each month. A season tab owns
-                      // only its season id, so sibling seasons remain distinct
-                      // and can be assigned to different months.
-                      const monthIds = entry.monthlyHistory[key] ?? [];
-                      const takenBy = monthIds.find(id => !monthlyHistoryIds.has(id));
-                      const occupantId = takenBy ?? monthIds.find(id => monthlyHistoryIds.has(id));
-                      const occupant = occupantId ? monthMediaInfo[occupantId] : undefined;
-                      return (
-                        <button key={key} type="button"
-                          className={`me-month-btn${isSelected ? ' active' : ''}${takenBy ? ' me-month-btn--taken' : ''}${occupant?.cover ? ' me-month-btn--has-cover' : ''}`}
-                          disabled={!!takenBy}
-                          title={takenBy ? `${te.month_taken}${occupant ? `: ${occupant.title}` : ''}` : undefined}
-                          onClick={() => handleMonthClick(mNumber)}>
-                          {occupant?.cover && (
-                            <>
-                              {/* Blurred, cover-cropped backdrop fills the whole
-                                  card (no dead space) — the sharp <img> on top,
-                                  sized with object-fit:contain, shows the full
-                                  poster undistorted instead of a hard crop,
-                                  since posters are portrait and this card is a
-                                  short rectangle. */}
-                              <div className="me-month-btn-backdrop" style={{ backgroundImage: `url('${occupant.cover}')` }} />
-                              <img className="me-month-btn-cover-img" src={occupant.cover} alt="" />
-                            </>
-                          )}
-                          <span className="me-month-btn-label">{mName}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <MediaEditorMonthGrid
+                  te={te}
+                  selectedYear={entry.selectedYear}
+                  monthlyHistory={entry.monthlyHistory}
+                  monthlyHistoryIds={monthlyHistoryIds}
+                  monthMediaInfo={monthMediaInfo}
+                  selectedMonthKey={selectedMonthKey}
+                  dispatchEntry={dispatchEntry}
+                  handleMonthClick={handleMonthClick}
+                />
               </div>
 
-              <div className="me-button-stack-side">
-                <button type="button" className="me-btn me-btn--save"
-                  onClick={handleSave} disabled={ui.saving}>
-                  {ui.saving ? te.saving : te.save}
-                </button>
-                {/* Always rendered (reserved slot, hidden via CSS when this
-                    tab's log has never been saved) — switching between a
-                    logged and an unlogged season must never shift Share
-                    (and the AniList status line below it) up or down. */}
-                <button type="button"
-                  className={`me-btn me-btn--delete${!activeLog.existing ? ' me-btn--hidden' : ''}`}
-                  onClick={handleDelete} disabled={!activeLog.existing}
-                  tabIndex={activeLog.existing ? 0 : -1}
-                  title={te.delete}>
-                  <IconTrash size={15} strokeWidth={2.5} />
-                </button>
-                <button type="button" className="me-btn me-btn--share"
-                  onClick={handleShare} disabled={activeLog.status !== 'completed' || sharing}
-                  title={activeLog.status !== 'completed' ? 'Termínalo para poder compartirlo' : 'Compartir'}>
-                  {sharing ? (
-                    <span className="spinner spinner--sm" />
-                  ) : (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="18" cy="5" r="3"></circle>
-                      <circle cx="6" cy="12" r="3"></circle>
-                      <circle cx="18" cy="19" r="3"></circle>
-                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                    </svg>
-                  )}
-                </button>
-                {isAniListType(data.type) && ui.anilistStatus !== 'idle' && (
-                  <div className={`me-anilist-status me-anilist-status--${ui.anilistStatus}`}>
-                    {ui.anilistStatus === 'syncing' && (
-                      <><span className="me-anilist-spinner" /><span>AniList…</span></>
-                    )}
-                    {ui.anilistStatus === 'ok' && (
-                      <><IconCheck size={12} strokeWidth={2.5} /><span>AniList</span></>
-                    )}
-                    {ui.anilistStatus === 'error' && (
-                      <><IconAlertCircle size={12} strokeWidth={2.5} /><span title={ui.anilistError ?? ''}>{te.anilist_error}</span></>
-                    )}
-                  </div>
-                )}
-              </div>
+              <MediaEditorActions
+                te={te}
+                saving={ui.saving}
+                sharing={sharing}
+                status={activeLog.status}
+                existingEntry={activeLog.existing}
+                isAniListTypeValue={isAniListType(data.type)}
+                anilistStatus={ui.anilistStatus}
+                anilistError={ui.anilistError}
+                handleSave={handleSave}
+                handleDelete={handleDelete}
+                handleShare={handleShare}
+              />
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 import {
-  Monitor, Folder, File as FileIcon, RefreshCw, Download, Plus, X, SquarePen, Eye, ExternalLink, Trash2,
+  Monitor, Folder, RefreshCw, Download, Plus, X, SquarePen, Eye, ExternalLink, Trash2,
   LayoutGrid, BookOpen, Bookmark, Gamepad2, MessageSquare, Film, MonitorPlay, Book, BookImage, User, IdCard,
   CirclePlay, CircleCheckBig, CirclePause, CircleX, Check, CircleAlert, Layers, Heart, Award, Hourglass, Play, Pause, CalendarDays,
   ChevronLeft, ChevronRight,
@@ -24,10 +24,6 @@ export function IconMonitor() {
 
 export function IconFolder({ size = 40, strokeWidth = 1.5 }: { size?: number; strokeWidth?: number } = {}) {
   return <Folder size={size} strokeWidth={strokeWidth} />;
-}
-
-export function IconFile() {
-  return <FileIcon size={32} strokeWidth={1.5} />;
 }
 
 export function IconRefresh() {

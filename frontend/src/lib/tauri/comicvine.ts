@@ -89,24 +89,6 @@ export interface ComicVineVolumeRef {
   name: string;
 }
 
-export interface ComicVineIssueDetail {
-  id:                number;
-  name:              string | null;
-  issue_number:      string | null;
-  image:             ComicVineImage | null;
-  cover_date:        string | null;
-  description:       string | null;
-  deck:              string | null;
-  volume:            ComicVineVolumeRef | null;
-  character_credits: ComicVineCharacterCredit[];
-  concept_credits:   ComicVineConceptCredit[];
-  person_credits:    ComicVinePersonCredit[];
-}
-
-export async function comicVineGetIssue(issueId: number): Promise<ComicVineIssueDetail | null> {
-  return invoke<ComicVineIssueDetail | null>('comicvine_get_issue', { issueId });
-}
-
 export interface ComicVineVolumeCast {
   characters: ComicVineCharacterCredit[];
   concepts:   ComicVineConceptCredit[];

@@ -10,18 +10,3 @@ export function decodeJwtPayload(token: string): Record<string, unknown> {
     return {};
   }
 }
-
-// Safe JSON.parse wrapper — returns null instead of throwing on invalid JSON.
-export function safeJsonParse<T>(json: string, fallback: T | null = null): T | null {
-  try {
-    return JSON.parse(json) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-// Safe parseInt wrapper — returns fallback value instead of NaN on invalid input.
-export function safeParseInt(value: string | null | undefined, fallback = 0): number {
-  const parsed = parseInt(value ?? '', 10);
-  return Number.isNaN(parsed) ? fallback : parsed;
-}

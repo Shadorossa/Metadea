@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback, Fragment, memo, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
+import { getT } from '../../i18n/client';
 import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes, fetchMediaThemes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
 import { getCatalogEntry, getLibraryEntry, getMediaRelations, replaceIssueRelations, saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
 import type { LibraryEntry, MediaEpisode, MediaTheme } from '../../lib/tauri';
@@ -9,16 +9,15 @@ import type { MediaPageData, MediaSeasonInfo } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
 import { AnimatePresence } from 'motion/react';
-import { ThemePreviewCardVideo, pauseThemeCaptureQueue, resumeThemeCaptureQueue } from './ThemePreviewCardVideo';
+import { pauseThemeCaptureQueue, resumeThemeCaptureQueue } from './ThemePreviewCardVideo';
 import { prefetchSagaData, loadSagaChain } from '../../lib/media/sagaData';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
 import { PrEditorModal } from './PrEditorModal';
 import type { PrEditorSessionHandle, PrEditorSessionTab } from './PrEditorModal';
 import { openSubmittedProposal, submitCollaborativeProposal, type ProposalFileEntry } from '../../lib/github/submitCollaborativeProposal';
-import { STAR_PATH } from '../../lib/media/constants';
-import { dbRatingToStars5, getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
-import { IconPlus, IconCheck, IconTrayStatus, IconLayers, IconHeart, IconRefresh } from '../local/ui/icons';
+import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
+import { IconPlus, IconCheck, IconLayers, IconHeart, IconRefresh } from '../local/ui/icons';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
 import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
 import { useDiscordPresence } from './hooks/useDiscordPresence';
@@ -36,461 +35,14 @@ import { mergePlatformVersions, stripSeasonSuffix } from '../../lib/media/mapper
 import { sanitizeHtml } from '../../lib/shared/sanitize-html';
 import { ANILIST_TYPES, pickAggregateStatus } from '../../lib/constants/media';
 
-function mergeProposalSessionBatches(batches: Array<{ ownerId: string; entries: ProposalFileEntry[] }>): ProposalFileEntry[] {
-  const merged = new Map<string, { entry: ProposalFileEntry; hasOwnerDraft: boolean }>();
-
-  for (const batch of batches) {
-    for (const incoming of batch.entries) {
-      const key = `${incoming.kind}:${incoming.externalId}`;
-      const existing = merged.get(key);
-      const incomingIsOwner = incoming.externalId === batch.ownerId;
-      if (!existing) {
-        merged.set(key, { entry: incoming, hasOwnerDraft: incomingIsOwner });
-        continue;
-      }
-      if (existing.entry.kind !== incoming.kind) continue;
-
-      const preferIncoming = incomingIsOwner || !existing.hasOwnerDraft;
-      const ownerEntry = preferIncoming ? incoming : existing.entry;
-      const otherEntry = preferIncoming ? existing.entry : incoming;
-      if (incoming.kind === 'media' && ownerEntry.kind === 'media' && otherEntry.kind === 'media') {
-        const relations = new Map<string, (typeof incoming.bundle.media_relations)[number]>();
-        [...otherEntry.bundle.media_relations, ...ownerEntry.bundle.media_relations].forEach(relation => {
-          relations.set(relation.related_media_external_id, relation);
-        });
-        merged.set(key, {
-          hasOwnerDraft: existing.hasOwnerDraft || incomingIsOwner,
-          entry: {
-            ...ownerEntry,
-            bundle: {
-              ...otherEntry.bundle,
-              ...ownerEntry.bundle,
-          media_catalog: { ...otherEntry.bundle.media_catalog, ...ownerEntry.bundle.media_catalog },
-          media_relations: [...relations.values()],
-        },
-        removedRelationIds: [...new Set([...(otherEntry.removedRelationIds ?? []), ...(ownerEntry.removedRelationIds ?? [])])].filter(id => !relations.has(id)),
-        removedCharacterIds: [...new Set([...(otherEntry.removedCharacterIds ?? []), ...(ownerEntry.removedCharacterIds ?? [])])]
-          .filter(id => !ownerEntry.bundle.characters.some(character => character.external_id === id)),
-        removedAuthorIds: [...new Set([...(otherEntry.removedAuthorIds ?? []), ...(ownerEntry.removedAuthorIds ?? [])])]
-          .filter(id => !ownerEntry.bundle.media_authors.some(author => author.external_id === id)),
-            removedArcIds: [...new Set([...(otherEntry.removedArcIds ?? []), ...(ownerEntry.removedArcIds ?? [])])],
-          },
-        });
-      } else if (incoming.kind === 'character' && ownerEntry.kind === 'character' && otherEntry.kind === 'character') {
-        const appearances = new Map<string, (typeof incoming.bundle.appearances)[number]>();
-        [...otherEntry.bundle.appearances, ...ownerEntry.bundle.appearances].forEach(item => appearances.set(item.media_external_id, item));
-        const actors = new Map<string, (typeof incoming.bundle.actors)[number]>();
-        [...otherEntry.bundle.actors, ...ownerEntry.bundle.actors].forEach(item => actors.set(item.external_id, item));
-        merged.set(key, {
-          hasOwnerDraft: existing.hasOwnerDraft || incomingIsOwner,
-          entry: {
-            ...ownerEntry,
-            bundle: {
-              ...otherEntry.bundle,
-              ...ownerEntry.bundle,
-              appearances: [...appearances.values()],
-              actors: [...actors.values()],
-            },
-        removedAppearanceIds: [...new Set([...(otherEntry.removedAppearanceIds ?? []), ...(ownerEntry.removedAppearanceIds ?? [])])]
-          .filter(id => !appearances.has(id)),
-        removedActorIds: [...new Set([...(otherEntry.removedActorIds ?? []), ...(ownerEntry.removedActorIds ?? [])])]
-          .filter(id => !actors.has(id)),
-        removedMergedCharacterIds: [...new Set([...(otherEntry.removedMergedCharacterIds ?? []), ...(ownerEntry.removedMergedCharacterIds ?? [])])]
-          .filter(id => !ownerEntry.bundle.merged_character_external_ids?.includes(id)),
-          },
-        });
-      }
-    }
-  }
-
-  return [...merged.values()].map(item => item.entry);
-}
 import { getPreferredCover } from '../../lib/media/cover-preferences';
 import { fetchApiSportsSeasonMatches, type EventMatch } from '../../lib/search/providers/apisports';
+import { splitTitleAfterColon, formatEpisodeNumber, formatThemeEpisodes, fetchUnifiedAnimeEpisodes } from './media-page/media-page-format';
+import { EpisodeCard, MatchCard, RelationCard, CharacterCard, UserScoreCard, ThemeCardItem } from './media-page/MediaPageCards';
+import { StarRating, StatusDropdown, SectionTabs } from './media-page/MediaPageControls';
+import { usePrEditorSession } from './media-page/usePrEditorSession';
+import { ThemePlayerOverlay } from './media-page/ThemePlayerOverlay';
 
-function splitTitleAfterColon(title: string): ReactNode {
-  const colonIdx = title.indexOf(':');
-  if (colonIdx === -1) return title;
-  return <>{title.slice(0, colonIdx + 1)}<br />{title.slice(colonIdx + 1).trim()}</>;
-}
-
-function formatEpisodeNumber(episodeNumber: number): string {
-  if (episodeNumber < 0) {
-    return `Sp${-episodeNumber}`;
-  }
-  return String(episodeNumber);
-}
-
-function formatThemeEpisodes(rawEpisodes: string | null | undefined, episodeOffset: number): string | null {
-  if (!rawEpisodes) return null;
-  const trimmed = rawEpisodes.trim();
-  if (!trimmed) return null;
-  if (episodeOffset <= 0) return trimmed;
-
-  const nums = trimmed.match(/\b\d+\b/g);
-  if (!nums || nums.length === 0) return trimmed;
-
-  const firstNum = parseInt(nums[0], 10);
-  if (firstNum > episodeOffset) return trimmed;
-
-  return trimmed.replace(/\b\d+\b/g, m => String(parseInt(m, 10) + episodeOffset));
-}
-
-const EpisodeCard = memo(function EpisodeCard({ ep }: { ep: MediaEpisode }) {
-  const episodeLabel = ep.display_label ?? formatEpisodeNumber(ep.episode_number);
-  return (
-    <div className="media-relation-card media-relation-card--static">
-      <div className="media-relation-bg-layer media-episode-bg-layer">
-        {ep.cover_url && <img src={ep.cover_url} alt="" loading="lazy" />}
-      </div>
-      <div className="media-relation-card-overlay" />
-      <span className="media-relation-type">{`#${episodeLabel}`}</span>
-      <div className="media-relation-card-content">
-        <div className="media-relation-info">
-          <span className="media-relation-title">{ep.name ?? `#${episodeLabel}`}</span>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-async function fetchUnifiedAnimeEpisodes(chain: SagaEntry[], force = false): Promise<MediaEpisode[]> {
-  const lists = await Promise.all(chain.map(entry =>
-    fetchMediaEpisodes(entry.externalId, force, undefined, true).catch(() => [] as MediaEpisode[]),
-  ));
-  const uniqueEpisodes = new Map<string, MediaEpisode>();
-  const seenSourceEpisodes = new Set<string>();
-  let movieNumber = 0;
-  const standaloneAtOffset = new Map<number, number>();
-  for (let i = 0; i < lists.length; i++) {
-    const isMovie = chain[i].format?.toUpperCase() === 'MOVIE';
-    if (isMovie && lists[i].length > 0) movieNumber++;
-    for (const episode of lists[i]) {
-      // A faulty/stale provider mapping must never make one underlying
-      // episode appear under multiple entries in the unified episode stream.
-      if (episode.source_key && seenSourceEpisodes.has(episode.source_key)) continue;
-      if (episode.source_key) seenSourceEpisodes.add(episode.source_key);
-      let displayedEpisode = episode;
-      if (isMovie) {
-        // The TV stream does not count movies, so place each one fractionally
-        // between the surrounding episodes while giving it a parallel Mxx
-        // label. Consecutive movies remain stable and cannot replace E01 of
-        // the following TV season in the deduplication map.
-        const baseOffset = Math.max(0, episode.episode_number - 1);
-        const position = (standaloneAtOffset.get(baseOffset) ?? 0) + 1;
-        standaloneAtOffset.set(baseOffset, position);
-        displayedEpisode = {
-          ...episode,
-          episode_number: baseOffset + position / (chain.length + 1),
-          display_label: `M${String(movieNumber).padStart(2, '0')}`,
-        };
-      }
-      uniqueEpisodes.set(`${displayedEpisode.external_id}:${displayedEpisode.episode_number}`, displayedEpisode);
-    }
-  }
-  return Array.from(uniqueEpisodes.values()).sort((a, b) => {
-    if (a.episode_number > 0 && b.episode_number > 0) return a.episode_number - b.episode_number;
-    if (a.episode_number < 0 && b.episode_number < 0) return Math.abs(a.episode_number) - Math.abs(b.episode_number);
-    return a.episode_number > 0 ? -1 : 1;
-  });
-}
-
-function formatMatchDate(date: string | null | undefined, time: string | null | undefined): string {
-  if (!date) return time || '';
-  const parsed = new Date(`${date}T${time || '00:00:00'}`);
-  if (Number.isNaN(parsed.getTime())) return [date, time].filter(Boolean).join(' ');
-  const dateLabel = parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-  return time ? `${dateLabel} · ${time.slice(0, 5)}` : dateLabel;
-}
-
-const MatchCard = memo(function MatchCard({ match }: { match: EventMatch }) {
-  const home = match.home || '-';
-  const away = match.away || '-';
-  const hasScore = match.homeScore != null && match.awayScore != null;
-  return (
-    <div className="media-relation-card media-relation-card--static media-match-card">
-      <div className="media-relation-bg-layer">
-        {match.image && <img src={match.image} alt="" loading="lazy" />}
-      </div>
-      <div className="media-relation-card-overlay" />
-      <span className="media-relation-type">{formatMatchDate(match.date, match.time)}</span>
-      <div className="media-relation-card-content">
-        <div className="media-relation-info">
-          <span className="media-relation-title">{home} – {away}</span>
-          <span className="media-match-score">{hasScore ? `${match.homeScore} - ${match.awayScore}` : (match.status || 'vs')}</span>
-          {match.venue && <span className="media-match-venue">{match.venue}</span>}
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const RelationCard = memo(function RelationCard({ relation, changeKind }: { relation: any; changeKind?: 'added' | 'updated' }) {
-  const Wrapper = relation.url ? 'a' : 'div';
-  return (
-    <Wrapper
-      href={relation.url}
-      className={`media-relation-card${relation.url ? '' : ' media-relation-card--static'}${changeKind ? ` media-relation-card--${changeKind}` : ''}`}
-    >
-      <div className="media-relation-bg-layer">
-        {relation.cover && <img src={relation.cover} alt="" loading="lazy" />}
-      </div>
-      <div className="media-relation-card-overlay" />
-      <span className="media-relation-type">{relation.typeLabel}</span>
-      <div className="media-relation-card-content">
-        <div className="media-relation-thumb">
-          {relation.cover && <img src={relation.cover} alt={relation.title} loading="lazy" />}
-        </div>
-        <div className="media-relation-info">
-          <span className="media-relation-title">{splitTitleAfterColon(relation.title)}</span>
-        </div>
-      </div>
-    </Wrapper>
-  );
-});
-
-interface CharacterCardProps {
-  character: any;
-  charTab: 'characters' | 'staff';
-  customImagesMap: Map<string, FavoriteCustomImage>;
-}
-
-const CharacterCard = memo(function CharacterCard({ character: c, charTab, customImagesMap }: CharacterCardProps) {
-  const hrefId = c.hrefId || c.id;
-  const href = hrefId
-    ? (charTab === 'staff' ? `/author?id=${encodeURIComponent(hrefId)}` : `/character?id=${encodeURIComponent(hrefId)}`)
-    : undefined;
-  const customImg = c.id ? customImagesMap.get(c.id) : undefined;
-  const displayImg = customImg ? wrapAssetUrl(customImg.image_url) : c.image;
-
-  return (
-    <a href={href} className="media-char-card">
-      <div className="media-char-bg-layer">
-        {displayImg && <img src={displayImg} alt="" loading="lazy" />}
-      </div>
-      <div className="media-char-card-overlay" />
-      <div className="media-char-card-content">
-        <div className="media-char-thumb">
-          {displayImg && <img src={displayImg} alt={c.name} loading="lazy" />}
-        </div>
-        <div className="media-char-info">
-          {c.role && <span className="media-char-role">{c.role}</span>}
-          <span className="media-char-name">{c.name}</span>
-        </div>
-      </div>
-    </a>
-  );
-});
-
-interface UserScoreCardProps {
-  score: FriendScore;
-  ratingSystem: RatingSystem;
-}
-
-const UserScoreCard = memo(function UserScoreCard({ score: f, ratingSystem }: UserScoreCardProps) {
-  return (
-    <div className="media-user-card" data-tooltip={f.name}>
-      <button
-        type="button"
-        className="media-user-avatar"
-        onClick={() => openLink(f.profileUrl)}
-        title={f.name}
-      >
-        {f.avatar
-          ? <img className="cover-image-fill" src={f.avatar} alt="" loading="lazy" />
-          : <div className="media-user-avatar-placeholder">{f.name[0]?.toUpperCase()}</div>}
-      </button>
-      <span dangerouslySetInnerHTML={{ __html: formatRatingHtml(f.score / 10, ratingSystem, 'media-user-score') }} />
-    </div>
-  );
-});
-
-function ThemeCardItem({
-  theme,
-  onPlay,
-  fallbackUrl,
-}: {
-  theme: MediaTheme;
-  onPlay: () => void;
-  fallbackUrl?: string;
-}) {
-  const [isHovered, setIsHovered] = useState(false);
-  return (
-    <div
-      className={`media-relation-card media-relation-card--static media-theme-card${theme.video_url ? ' media-theme-card--playable' : ''}`}
-      onClick={() => theme.video_url && onPlay()}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="media-relation-bg-layer media-theme-bg-layer">
-        <ThemePreviewCardVideo
-          externalId={theme.external_id}
-          slug={theme.slug}
-          src={theme.video_url ?? undefined}
-          initialPreviewUrl={theme.preview_url ?? undefined}
-          fallbackUrl={fallbackUrl}
-          isHovered={isHovered}
-        />
-      </div>
-      <div className="media-relation-card-overlay" />
-      <span className={`media-relation-type media-theme-badge media-theme-badge--${theme.theme_type.toLowerCase()}`}>
-        {theme.theme_type}{theme.sequence}
-      </span>
-      <div className="media-relation-card-content">
-        <div className="media-relation-info">
-          <span className="media-relation-title">{theme.song_title ?? `${theme.theme_type}${theme.sequence}`}</span>
-          {theme.artists && <span className="media-theme-artist">{theme.artists}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── StarRating ─────────────────────────────────────────────────────────────
-
-function StarRating({
-  rating,
-  onRate,
-}: {
-  rating: number;           // 0-10 DB scale
-  onRate: (stars: number) => void;  // 0.5-5 display scale
-}) {
-  const [hover, setHover] = useState<number | null>(null);
-  const display = hover ?? dbRatingToStars5(rating);
-
-  return (
-    <div className="media-library-rating" onMouseLeave={() => setHover(null)}>
-      {[1, 2, 3, 4, 5].map(v => {
-        const isFull = display >= v;
-        const isHalf = !isFull && display >= v - 0.5;
-
-        return (
-          <div key={v} className="star-container">
-            <svg className="star-icon star-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path d={STAR_PATH} />
-            </svg>
-            <div
-              className="star-filled-wrap page-star-fill"
-              style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}
-            >
-              <svg className="star-icon star-filled" viewBox="0 0 24 24" fill="currentColor">
-                <path d={STAR_PATH} />
-              </svg>
-            </div>
-            <button
-              type="button"
-              className="star-zone zone-left"
-              aria-label={`${v - 0.5} estrellas`}
-              onMouseEnter={() => setHover(v - 0.5)}
-              onClick={() => onRate(v - 0.5)}
-            />
-            <button
-              type="button"
-              className="star-zone zone-right"
-              aria-label={`${v} estrellas`}
-              onMouseEnter={() => setHover(v)}
-              onClick={() => onRate(v)}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── StatusDropdown ─────────────────────────────────────────────────────────
-
-function StatusDropdown({
-  status,
-  progressStatus,
-  progressLabel,
-  onChange,
-  t,
-}: {
-  status: string;
-  progressStatus: string;
-  progressLabel: string;
-  onChange: (next: string) => void;
-  t: Translations['media'];
-}) {
-  const te = t.editor;
-  const trayButtons = [
-    { s: 'planning',     label: te.status_planning },
-    { s: progressStatus, label: progressLabel },
-    { s: 'completed',    label: te.status_completed },
-    { s: 'paused',       label: te.status_paused },
-    { s: 'dropped',      label: te.status_dropped },
-  ];
-
-  return (
-    <div className="media-status-dropdown-container">
-      <button
-        className={`status-dropdown-trigger${status ? ` text-${status}` : ''}`}
-        aria-label={t.change_status_aria}
-      >
-        <IconTrayStatus status={status} />
-      </button>
-      <div className="status-dropdown-tray">
-        {trayButtons.map(btn => (
-          <button
-            key={btn.s}
-            type="button"
-            className={`tray-status-btn${status === btn.s ? ' active' : ''}`}
-            data-status={btn.s}
-            title={btn.label}
-            onClick={e => {
-              e.stopPropagation();
-              onChange(status === btn.s ? '' : btn.s);
-            }}
-          >
-            <IconTrayStatus status={btn.s} />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── SectionTabs ────────────────────────────────────────────────────────────
-// Shared "tabs vs. plain label" section header — a section's label becomes a
-// row of switchable tabs once there's more than one thing to show (Related/
-// Editions/Recommended, Personajes/Staff), falling back to a single static
-// label + line otherwise. `tabs` must already be pre-filtered to only the
-// ones actually visible right now (a tab always renders once included).
-
-interface SectionTab {
-  key: string;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}
-
-function SectionTabs({ tabs, fallbackLabel }: { tabs: SectionTab[]; fallbackLabel: string }) {
-  if (tabs.length === 0) {
-    return (
-      <>
-        <p className="section-label">{fallbackLabel}</p>
-        <div className="media-section-header-line" />
-      </>
-    );
-  }
-  return (
-    <>
-      {tabs.map((tab, i) => (
-        <Fragment key={tab.key}>
-          <button
-            type="button"
-            className={`section-label section-label--tab${tab.active ? ' active' : ''}`}
-            onClick={tab.onClick}
-          >
-            {tab.label}
-          </button>
-          <div className={`media-section-header-line${i < tabs.length - 1 ? ' media-section-header-line--short' : ''}`} />
-        </Fragment>
-      ))}
-    </>
-  );
-}
 
 // ── MediaPage ──────────────────────────────────────────────────────────────
 
@@ -509,6 +61,7 @@ interface Props {
 export default function MediaPage({ i18n, previewData, previewMode = false, previewAddedRelationIds = [], previewUpdatedRelationIds = [] }: Props) {
   const t  = i18n;
   const tm = t.media;
+  const pe = getT().pr_editor;
 
   // Estado para el ID actual de la obra
   const [currentId, setCurrentId] = useState('');
@@ -517,22 +70,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const [data,               setData]               = useState<MediaPageData | null>(null);
   const [showEditor,         setShowEditor]         = useState(false);
   const [showSaga,           setShowSaga]           = useState(false);
-  const [showPrEditor,       setShowPrEditor]       = useState(false);
-  const [prEditorSessionIds, setPrEditorSessionIds] = useState<string[]>([]);
-  const [activePrEditorId, setActivePrEditorId] = useState<string | null>(null);
-  const [activePrEditorCharacterId, setActivePrEditorCharacterId] = useState<string | null>(null);
-  const [prEditorCharacterEntries, setPrEditorCharacterEntries] = useState<Record<string, { title: string; dirty: boolean }>>({});
-  const [prEditorDirtyById, setPrEditorDirtyById] = useState<Record<string, boolean>>({});
-  const [prEditorSessionTitles, setPrEditorSessionTitles] = useState<Record<string, string>>({});
-  const [prEditorSagaOrderById, setPrEditorSagaOrderById] = useState<Record<string, string[]>>({});
-  const [showPrEditorExitPrompt, setShowPrEditorExitPrompt] = useState(false);
-  const [prEditorExitPromptShake, setPrEditorExitPromptShake] = useState(0);
-  const [pendingPrEditorTabCloseId, setPendingPrEditorTabCloseId] = useState<string | null>(null);
-  const [pendingPrEditorCharacterCloseId, setPendingPrEditorCharacterCloseId] = useState<string | null>(null);
-  const [prEditorSessionSubmitting, setPrEditorSessionSubmitting] = useState(false);
-  const [prEditorSessionStatus, setPrEditorSessionStatus] = useState('');
-  const [prEditorExitError, setPrEditorExitError] = useState('');
-  const prEditorSessionHandles = useRef(new Map<string, PrEditorSessionHandle>());
+  const prSession = usePrEditorSession({
+    currentId,
+    currentTitle: data?.titleMain,
+    pe,
+    onSubmitted: () => {
+      if (currentId) fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
+    },
+  });
   const [relationPage,       setRelationPage]       = useState(1);
   const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes' | 'matches' | 'seasons' | 'themes'>('related');
   const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
@@ -1481,229 +1026,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     window.location.replace('/profile');
   }, [data]);
 
-  const registerPrEditorSession = useCallback((externalId: string, handle: PrEditorSessionHandle | null) => {
-    if (handle) prEditorSessionHandles.current.set(externalId, handle);
-    else prEditorSessionHandles.current.delete(externalId);
-  }, []);
-
-  const updatePrEditorDirty = useCallback((externalId: string, dirty: boolean) => {
-    setPrEditorDirtyById(previous => previous[externalId] === dirty ? previous : { ...previous, [externalId]: dirty });
-  }, []);
-
-  const updatePrEditorSessionTitle = useCallback((externalId: string, title: string) => {
-    setPrEditorSessionTitles(previous => previous[externalId] === title ? previous : { ...previous, [externalId]: title });
-  }, []);
-
-  const updatePrEditorSagaOrder = useCallback((externalId: string, sagaOrder: string[]) => {
-    setPrEditorSagaOrderById(previous => {
-      const current = previous[externalId] ?? [];
-      return current.length === sagaOrder.length && current.every((id, index) => id === sagaOrder[index])
-        ? previous
-        : { ...previous, [externalId]: sagaOrder };
-    });
-  }, []);
-
-  const startPrEditorSession = useCallback(() => {
-    if (!currentId) return;
-    prEditorSessionHandles.current.clear();
-    setPrEditorSessionIds([currentId]);
-    setPrEditorDirtyById({});
-    setPrEditorSessionTitles(currentId && data?.titleMain ? { [currentId]: data.titleMain } : {});
-    setPrEditorSagaOrderById({});
-    setActivePrEditorId(currentId);
-    setActivePrEditorCharacterId(null);
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'media', externalId: currentId } }));
-    setShowPrEditorExitPrompt(false);
-    setPrEditorExitPromptShake(0);
-    setPendingPrEditorTabCloseId(null);
-    setPrEditorSessionStatus('');
-    setPrEditorExitError('');
-    setShowPrEditor(true);
-  }, [currentId, data?.titleMain]);
-
-  const addPrEditorSessionEntry = useCallback((externalId: string) => {
-    setPrEditorSessionIds(previous => previous.includes(externalId) ? previous : [...previous, externalId]);
-    setActivePrEditorId(externalId);
-    setActivePrEditorCharacterId(null);
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'media', externalId } }));
-    setShowPrEditorExitPrompt(false);
-    setPrEditorExitPromptShake(0);
-    setPendingPrEditorTabCloseId(null);
-  }, []);
-
-  const openCharacterPrEditorTab = useCallback((externalId: string, initialAppearance?: {
-    media_external_id: string;
-    title: string;
-    cover: string | null;
-    release_year?: number | null;
-    release_month?: number | null;
-    release_day?: number | null;
-  }, initialTitle?: string) => {
-    setShowPrEditor(true);
-    setActivePrEditorCharacterId(externalId);
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'character', externalId } }));
-    setPrEditorCharacterEntries(previous => ({
-      ...previous,
-      [externalId]: { title: initialTitle || previous[externalId]?.title || 'Cargando personaje…', dirty: previous[externalId]?.dirty ?? false },
-    }));
-    (window as any).openCharacterEditor?.(externalId, initialAppearance, { mediaSession: true, title: initialTitle });
-  }, []);
-
-  useEffect(() => {
-    const onCharacterSessionChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ action: 'update' | 'close'; externalId: string; title?: string; dirty?: boolean }>).detail;
-      if (!detail?.externalId) return;
-      if (detail.action === 'close') {
-        setPrEditorCharacterEntries(previous => {
-          const { [detail.externalId]: _removed, ...remaining } = previous;
-          return remaining;
-        });
-        setActivePrEditorCharacterId(current => current === detail.externalId ? null : current);
-        return;
-      }
-      setPrEditorCharacterEntries(previous => ({
-        ...previous,
-        [detail.externalId]: {
-          title: detail.title || previous[detail.externalId]?.title || 'Cargando personaje…',
-          dirty: detail.dirty ?? previous[detail.externalId]?.dirty ?? false,
-        },
-      }));
-    };
-    window.addEventListener('metadea:character-editor-session-change', onCharacterSessionChange);
-    return () => window.removeEventListener('metadea:character-editor-session-change', onCharacterSessionChange);
-  }, []);
-
-  const removePrEditorSessionEntry = useCallback((externalId: string) => {
-    const currentIndex = prEditorSessionIds.indexOf(externalId);
-    const remaining = prEditorSessionIds.filter(id => id !== externalId);
-    setPrEditorSessionIds(remaining);
-    if (!remaining.length) {
-      const nextCharacterId = Object.keys(prEditorCharacterEntries)[0];
-      if (nextCharacterId) {
-        setActivePrEditorId(null);
-        setActivePrEditorCharacterId(nextCharacterId);
-        setPrEditorDirtyById({});
-        setPrEditorSessionTitles({});
-        setPrEditorSagaOrderById({});
-        prEditorSessionHandles.current.delete(externalId);
-        (window as any).openCharacterEditor?.(nextCharacterId, undefined, { mediaSession: true });
-        return;
-      }
-      setShowPrEditor(false);
-      setActivePrEditorId(null);
-      setActivePrEditorCharacterId(null);
-      setPrEditorDirtyById({});
-      setPrEditorSessionTitles({});
-      setPrEditorSagaOrderById({});
-      setShowPrEditorExitPrompt(false);
-      setPendingPrEditorTabCloseId(null);
-      prEditorSessionHandles.current.clear();
-      prEditorSessionHandles.current.delete(externalId);
-      return;
-    }
-    if (activePrEditorId === externalId) setActivePrEditorId(remaining[Math.max(0, Math.min(currentIndex - 1, remaining.length - 1))]);
-    prEditorSessionHandles.current.delete(externalId);
-    setPrEditorDirtyById(previous => { const { [externalId]: _removed, ...next } = previous; return next; });
-    setPrEditorSessionTitles(previous => { const { [externalId]: _removed, ...next } = previous; return next; });
-    setPrEditorSagaOrderById(previous => { const { [externalId]: _removed, ...next } = previous; return next; });
-  }, [activePrEditorId, prEditorSessionIds, prEditorCharacterEntries]);
-
-  const requestClosePrEditorSessionEntry = useCallback((externalId: string) => {
-    if (prEditorDirtyById[externalId]) {
-      setPendingPrEditorTabCloseId(externalId);
-      setShowPrEditorExitPrompt(true);
-      return;
-    }
-    setShowPrEditorExitPrompt(false);
-    setPrEditorExitPromptShake(0);
-    removePrEditorSessionEntry(externalId);
-  }, [prEditorDirtyById, removePrEditorSessionEntry]);
-
-  const confirmClosePrEditorSessionEntry = useCallback(() => {
-    if (!pendingPrEditorTabCloseId) return;
-    const externalId = pendingPrEditorTabCloseId;
-    setShowPrEditorExitPrompt(false);
-    setPrEditorExitPromptShake(0);
-    setPendingPrEditorTabCloseId(null);
-    removePrEditorSessionEntry(externalId);
-  }, [pendingPrEditorTabCloseId, removePrEditorSessionEntry]);
-
-  const confirmClosePrEditorCharacterEntry = useCallback(() => {
-    if (!pendingPrEditorCharacterCloseId) return;
-    const externalId = pendingPrEditorCharacterCloseId;
-    setShowPrEditorExitPrompt(false);
-    setPrEditorExitPromptShake(0);
-    setPendingPrEditorCharacterCloseId(null);
-    (window as any).closeCharacterEditorTab?.(externalId, true);
-  }, [pendingPrEditorCharacterCloseId]);
-
-  const discardPrEditorSession = useCallback(() => {
-    setShowPrEditorExitPrompt(false);
-    setPrEditorExitPromptShake(0);
-    setPendingPrEditorTabCloseId(null);
-    setPendingPrEditorCharacterCloseId(null);
-    setShowPrEditor(false);
-    setPrEditorSessionIds([]);
-    setActivePrEditorId(null);
-    setActivePrEditorCharacterId(null);
-    setPrEditorCharacterEntries({});
-    setPrEditorDirtyById({});
-    setPrEditorSessionTitles({});
-    setPrEditorSagaOrderById({});
-    prEditorSessionHandles.current.clear();
-    setPrEditorSessionStatus('');
-    (window as any).closeCharacterEditorSession?.();
-  }, []);
-
-  const requestPrEditorSessionClose = useCallback(() => {
-    if (!Object.values(prEditorDirtyById).some(Boolean) && !Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) {
-      discardPrEditorSession();
-      return;
-    }
-    if (showPrEditorExitPrompt) setPrEditorExitPromptShake(previous => previous + 1);
-    setPendingPrEditorTabCloseId(null);
-    setShowPrEditorExitPrompt(true);
-  }, [discardPrEditorSession, prEditorDirtyById, prEditorCharacterEntries, showPrEditorExitPrompt]);
-
-  const submitPrEditorSession = useCallback(async () => {
-    if (prEditorSessionSubmitting) return;
-    setPrEditorSessionSubmitting(true);
-    setPrEditorSessionStatus('Preparando cambios…');
-    try {
-      const batches: Array<{ ownerId: string; entries: ProposalFileEntry[] }> = [];
-      const summaries: string[] = [];
-      for (const [ownerId, character] of Object.entries(prEditorCharacterEntries)) {
-        if (!character.dirty) continue;
-        const prepared = await (window as any).prepareCharacterEditorProposal?.(ownerId, setPrEditorSessionStatus);
-        if (!prepared) throw new Error(`No se pudieron preparar los cambios del personaje ${character.title}.`);
-        batches.push({ ownerId, entries: prepared.entries as ProposalFileEntry[] });
-        summaries.push(prepared.changeSummary as string);
-      }
-      for (const ownerId of prEditorSessionIds) {
-        const handle = prEditorSessionHandles.current.get(ownerId);
-        if (!handle?.hasChanges()) continue;
-        const prepared = await handle.prepareProposal();
-        if (!prepared) throw new Error(`No se pudieron preparar los cambios de ${ownerId}.`);
-        batches.push({ ownerId, entries: prepared.entries });
-        summaries.push(prepared.changeSummary);
-      }
-      const entries = mergeProposalSessionBatches(batches);
-      if (!entries.length) throw new Error('No hay cambios para enviar.');
-      const primaryId = batches[0]?.ownerId || currentId;
-      const proposal = await submitCollaborativeProposal(primaryId, entries, summaries.join('\n'), setPrEditorSessionStatus);
-      if (!proposal) throw new Error('No se pudo crear la propuesta.');
-      openSubmittedProposal(proposal);
-      discardPrEditorSession();
-      if (currentId) fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
-    } catch (error) {
-      console.error('Failed to submit media editor session:', error);
-      setPrEditorSessionStatus('');
-      setPrEditorExitError(error instanceof Error ? error.message : 'No se pudo enviar la propuesta.');
-    } finally {
-      setPrEditorSessionSubmitting(false);
-    }
-  }, [currentId, discardPrEditorSession, prEditorSessionIds, prEditorSessionSubmitting, prEditorCharacterEntries]);
-
   // Closing without saving: roll back any optimistic quick-click draft to
   // the last confirmed DB state, so a re-open (or the hero widget) doesn't
   // keep showing changes that were never actually persisted.
@@ -1784,69 +1106,38 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
 
   // ── States: loading / error ──────────────────────────────────────────────
 
-  const prEditorAffectedIds = new Set(prEditorSessionIds.flatMap(id => prEditorSessionHandles.current.get(id)?.affectedExternalIds() ?? []));
-  const insertionOrder = new Map(prEditorSessionIds.map((id, index) => [id, index]));
-  const orderCandidates = prEditorSessionIds.map((id, index) => {
-    const sagaOrder = prEditorSagaOrderById[id] ?? [];
-    return { sagaOrder, index, coverage: prEditorSessionIds.filter(sessionId => sagaOrder.includes(sessionId)).length, active: id === activePrEditorId };
-  }).sort((a, b) => b.coverage - a.coverage || Number(b.active) - Number(a.active) || b.index - a.index);
-  const sagaOrderForTabs = orderCandidates[0]?.sagaOrder ?? [];
-  const sagaPosition = new Map(sagaOrderForTabs.map((id, index) => [id, index]));
-  const orderedPrEditorSessionIds = [...prEditorSessionIds].sort((a, b) =>
-    (sagaPosition.get(a) ?? Number.MAX_SAFE_INTEGER) - (sagaPosition.get(b) ?? Number.MAX_SAFE_INTEGER)
-    || (insertionOrder.get(a) ?? 0) - (insertionOrder.get(b) ?? 0),
-  );
-  const prEditorSessionTabs: PrEditorSessionTab[] = orderedPrEditorSessionIds.map(id => ({
-    externalId: id,
-    label: prEditorSessionTitles[id] || (id === currentId ? data?.titleMain : '') || 'Cargando obra…',
-    dirty: prEditorDirtyById[id] ?? false,
-    affected: prEditorAffectedIds.has(id),
-    kind: 'media',
-  }));
-  const prEditorAllSessionTabs: PrEditorSessionTab[] = [
-    ...prEditorSessionTabs,
-    ...Object.entries(prEditorCharacterEntries).map(([externalId, character]) => ({
-      externalId,
-      label: character.title,
-      dirty: character.dirty,
-      affected: false,
-      kind: 'character' as const,
-    })),
-  ];
+  const navigateToThemeEpisodes = (formatted: string) => {
+    const match = formatted.match(/\b\d+\b/);
+    if (match) {
+      const targetEpNum = parseInt(match[0], 10);
+      const regularEps = episodes
+        .filter(e => e.episode_number > 0)
+        .sort((a, b) => a.episode_number - b.episode_number);
+      const specialEps = episodes
+        .filter(e => e.episode_number < 0)
+        .sort((a, b) => Math.abs(a.episode_number) - Math.abs(b.episode_number));
 
-  const navigatePrEditorSessionTab = (tab: PrEditorSessionTab) => {
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: tab.kind, externalId: tab.externalId } }));
-    if (tab.kind === 'character') {
-      setActivePrEditorCharacterId(tab.externalId);
-      (window as any).openCharacterEditor?.(tab.externalId, undefined, { mediaSession: true, title: tab.label });
-      return;
+      const regularPages = Math.ceil(regularEps.length / EPISODE_PAGE_SIZE);
+
+      if (targetEpNum > 0) {
+        const regIdx = regularEps.findIndex(e => e.episode_number === targetEpNum);
+        if (regIdx !== -1) {
+          setRelationPage(Math.floor(regIdx / EPISODE_PAGE_SIZE) + 1);
+        }
+      } else {
+        const spIdx = specialEps.findIndex(e => e.episode_number === targetEpNum);
+        if (spIdx !== -1) {
+          setRelationPage(regularPages + Math.floor(spIdx / EPISODE_PAGE_SIZE) + 1);
+        }
+      }
     }
-    setActivePrEditorCharacterId(null);
-    setActivePrEditorId(tab.externalId);
+    setRelationsTab('episodes');
+    setPlayingTheme(null);
+    setTimeout(() => {
+      const section = document.querySelector('.media-relations-section');
+      section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
-
-  useEffect(() => {
-    const controller = {
-      tabs: prEditorAllSessionTabs,
-      active: activePrEditorCharacterId
-        ? { kind: 'character' as const, externalId: activePrEditorCharacterId }
-        : { kind: 'media' as const, externalId: activePrEditorId },
-      navigate: navigatePrEditorSessionTab,
-      closeTab: (tab: PrEditorSessionTab) => {
-        if (tab.kind === 'character') (window as any).closeCharacterEditorTab?.(tab.externalId);
-        else requestClosePrEditorSessionEntry(tab.externalId);
-      },
-      requestClose: requestPrEditorSessionClose,
-      finishSession: discardPrEditorSession,
-      submitProposal: () => { void submitPrEditorSession(); },
-      hasChanges: Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty),
-    };
-    (window as any).__metadeaPrEditorSession = controller;
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-session-update', { detail: controller }));
-    return () => {
-      if ((window as any).__metadeaPrEditorSession === controller) delete (window as any).__metadeaPrEditorSession;
-    };
-  }, [prEditorAllSessionTabs, activePrEditorCharacterId, activePrEditorId, requestPrEditorSessionClose, requestClosePrEditorSessionEntry, discardPrEditorSession, submitPrEditorSession, prEditorDirtyById, prEditorCharacterEntries]);
 
   if (pageState === 'loading') {
     return <div className="media-loading"><div className="spinner" /></div>;
@@ -1973,251 +1264,59 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           <SagaViewerModal externalId={currentId} i18n={tm} onClose={() => setShowSaga(false)} />
         )}
       </AnimatePresence>
-      {playingTheme && (() => {
-        const currentThemeIdx = themes.findIndex(t => t.slug === playingTheme.slug);
-        const prevTheme = currentThemeIdx > 0 ? themes[currentThemeIdx - 1] : null;
-        const nextTheme = currentThemeIdx !== -1 && currentThemeIdx < themes.length - 1 ? themes[currentThemeIdx + 1] : null;
-        
-        const themeVersions: Array<{ version: number; episodes: string | null; videoUrl: string | null }> = (() => {
-          if (playingTheme.versions) {
-            try {
-              const parsed = JSON.parse(playingTheme.versions);
-              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-            } catch {}
-          }
-          return [{ version: 1, episodes: playingTheme.episodes, videoUrl: playingTheme.video_url }];
-        })();
-
-        const currentVersionObj = themeVersions.find(v => v.version === selectedThemeVersion) || themeVersions[0];
-        const targetId = playingTheme.external_id || currentId;
-
-        const themeSeason = (() => {
-          if (animeSeasonChain.length > 0) {
-            const idx = animeSeasonChain.findIndex(s => s.externalId === targetId);
-            if (idx !== -1) {
-              return {
-                seasonIndex: idx + 1,
-                title: animeSeasonChain[idx].title,
-                cover: animeSeasonChain[idx].cover,
-                externalId: animeSeasonChain[idx].externalId,
-              };
-            }
-          }
-          return null;
-        })();
-
-        const seasonOffset = (() => {
-          if (!themeSeason || animeSeasonChain.length <= 1) return episodeOffset;
-          const sIdx = themeSeason.seasonIndex - 1;
-          if (sIdx <= 0) return episodeOffset;
-          let offset = 0;
-          for (let i = 0; i < sIdx; i++) {
-            const sId = animeSeasonChain[i].externalId;
-            const sEps = episodes.filter(e => (e.external_id || currentId) === sId && e.episode_number > 0);
-            offset += sEps.length;
-          }
-          return offset > 0 ? offset : episodeOffset;
-        })();
-
-        const rawEps = (() => {
-          if (currentVersionObj?.episodes) return currentVersionObj.episodes;
-          if (playingTheme.episodes) return playingTheme.episodes;
-          const seasonEps = episodes.filter(e => (e.external_id || currentId) === targetId && e.episode_number > 0);
-          if (seasonEps.length > 0) {
-            const minEp = seasonEps[0].episode_number;
-            const maxEp = seasonEps[seasonEps.length - 1].episode_number;
-            return minEp === maxEp ? String(minEp) : `${minEp}-${maxEp}`;
-          }
-          return null;
-        })();
-
-        const formattedEps = formatThemeEpisodes(rawEps, seasonOffset);
-
-        const handleNavigateToThemeEpisodes = (formatted: string) => {
-          const match = formatted.match(/\b\d+\b/);
-          if (match) {
-            const targetEpNum = parseInt(match[0], 10);
-            const regularEps = episodes
-              .filter(e => e.episode_number > 0)
-              .sort((a, b) => a.episode_number - b.episode_number);
-            const specialEps = episodes
-              .filter(e => e.episode_number < 0)
-              .sort((a, b) => Math.abs(a.episode_number) - Math.abs(b.episode_number));
-
-            const regularPages = Math.ceil(regularEps.length / EPISODE_PAGE_SIZE);
-
-            if (targetEpNum > 0) {
-              const regIdx = regularEps.findIndex(e => e.episode_number === targetEpNum);
-              if (regIdx !== -1) {
-                setRelationPage(Math.floor(regIdx / EPISODE_PAGE_SIZE) + 1);
-              }
-            } else {
-              const spIdx = specialEps.findIndex(e => e.episode_number === targetEpNum);
-              if (spIdx !== -1) {
-                setRelationPage(regularPages + Math.floor(spIdx / EPISODE_PAGE_SIZE) + 1);
-              }
-            }
-          }
-          setRelationsTab('episodes');
-          setPlayingTheme(null);
-          setTimeout(() => {
-            const section = document.querySelector('.media-relations-section');
-            section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 100);
-        };
-
-        return createPortal(
-          <div className="theme-player-overlay" onClick={() => setPlayingTheme(null)}>
-            <div className="theme-player-container" onClick={e => e.stopPropagation()}>
-              <button
-                type="button"
-                className="theme-player-nav theme-player-nav--prev"
-                disabled={!prevTheme}
-                onClick={() => prevTheme && setPlayingTheme(prevTheme)}
-                aria-label="Anterior"
-                title={prevTheme ? (prevTheme.song_title ?? `${prevTheme.theme_type}${prevTheme.sequence}`) : undefined}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-
-              <div className="theme-player-modal">
-                <button type="button" className="theme-player-close" onClick={() => setPlayingTheme(null)} aria-label="Close">×</button>
-                <div className="theme-player-video-wrap">
-                  {playingVideoSrc && (
-                    <video
-                      key={`${playingTheme.slug}-${playerRetryKey}`}
-                      className="theme-player-video"
-                      src={playingVideoSrc}
-                      controls
-                      autoPlay
-                      preload="auto"
-                      onError={() => {
-                        setPlayerError(true);
-                      }}
-                    />
-                  )}
-                  {playerError && (
-                    <div className="theme-player-error-overlay">
-                      <p className="theme-player-error-text">No se pudo cargar el vídeo</p>
-                      <button
-                        type="button"
-                        className="theme-player-retry-btn"
-                        onClick={() => {
-                          setPlayerError(false);
-                          setPlayerRetryKey(k => k + 1);
-                        }}
-                      >
-                        Reintentar
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="theme-player-info">
-                  <span className={`media-theme-badge media-theme-badge--${playingTheme.theme_type.toLowerCase()}`}>
-                    {playingTheme.theme_type}{playingTheme.sequence}
-                  </span>
-                  <div className="theme-player-text">
-                    <span className="theme-player-title">{playingTheme.song_title ?? `${playingTheme.theme_type}${playingTheme.sequence}`}</span>
-                    {playingTheme.artists && <span className="theme-player-artist">{playingTheme.artists}</span>}
-                  </div>
-                  {themeVersions.length > 1 && (
-                    <div className="theme-player-version-tabs">
-                      {themeVersions.map(v => (
-                        <button
-                          key={v.version}
-                          type="button"
-                          className={`theme-player-version-tab${currentVersionObj.version === v.version ? ' active' : ''}`}
-                          onClick={() => {
-                            setSelectedThemeVersion(v.version);
-                            if (v.videoUrl) setPlayingVideoSrc(v.videoUrl);
-                          }}
-                        >
-                          {`v${v.version}`}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {animeSeasonChain.length > 1 && themeSeason && (
-                    <a
-                      href={`/media?id=${encodeURIComponent(themeSeason.externalId)}`}
-                      className="theme-player-season-card"
-                      title={themeSeason.title}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {themeSeason.cover && (
-                        <div className="theme-player-season-bg">
-                          <img src={themeSeason.cover} alt="" />
-                        </div>
-                      )}
-                      <div className="theme-player-season-overlay" />
-                      <span className="theme-player-season-title">{splitTitleAfterColon(themeSeason.title)}</span>
-                    </a>
-                  )}
-                  {formattedEps && (
-                    <button
-                      type="button"
-                      className={`theme-player-episodes${hasEpisodes ? ' theme-player-episodes--interactive' : ''}`}
-                      onClick={() => hasEpisodes && handleNavigateToThemeEpisodes(formattedEps)}
-                      title={hasEpisodes ? 'Ir a los episodios' : undefined}
-                    >
-                      {formattedEps.includes('-') || formattedEps.includes(',') ? 'Episodios ' : 'Episodio '}
-                      {formattedEps}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="theme-player-nav theme-player-nav--next"
-                disabled={!nextTheme}
-                onClick={() => nextTheme && setPlayingTheme(nextTheme)}
-                aria-label="Siguiente"
-                title={nextTheme ? (nextTheme.song_title ?? `${nextTheme.theme_type}${nextTheme.sequence}`) : undefined}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-            </div>
-          </div>,
-          document.body,
-        );
-      })()}
-      {!previewMode && showPrEditor && prEditorSessionIds.map(externalId => {
+      {playingTheme && (
+        <ThemePlayerOverlay
+          theme={playingTheme}
+          themes={themes}
+          videoSrc={playingVideoSrc}
+          playerError={playerError}
+          retryKey={playerRetryKey}
+          selectedVersion={selectedThemeVersion}
+          animeSeasonChain={animeSeasonChain}
+          episodes={episodes}
+          currentId={currentId}
+          episodeOffset={episodeOffset}
+          hasEpisodes={hasEpisodes}
+          t={tm}
+          onClose={() => setPlayingTheme(null)}
+          onSelectTheme={setPlayingTheme}
+          onSelectVersion={(version, videoUrl) => {
+            setSelectedThemeVersion(version);
+            if (videoUrl) setPlayingVideoSrc(videoUrl);
+          }}
+          onVideoError={() => setPlayerError(true)}
+          onRetry={() => {
+            setPlayerError(false);
+            setPlayerRetryKey(k => k + 1);
+          }}
+          onNavigateToEpisodes={navigateToThemeEpisodes}
+        />
+      )}
+      {!previewMode && prSession.showPrEditor && prSession.sessionIds.map(externalId => {
         return (
           <PrEditorModal
             key={externalId}
             externalId={externalId}
-            sessionActive={activePrEditorCharacterId === null && activePrEditorId === externalId}
+            sessionActive={prSession.activeCharacterId === null && prSession.activeId === externalId}
             sessionMode
-            sessionHasChanges={Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(item => item.dirty)}
-            sessionAffected={prEditorAffectedIds.has(externalId)}
-            sessionTabs={prEditorAllSessionTabs}
-            onNavigateSessionEntry={setActivePrEditorId}
-            onNavigateSessionTab={navigatePrEditorSessionTab}
-            onRequestCloseSessionEntry={requestClosePrEditorSessionEntry}
-            onRequestCloseSessionTab={tab => {
-              if (tab.kind === 'character') {
-                if (prEditorCharacterEntries[tab.externalId]?.dirty) {
-                  setPendingPrEditorCharacterCloseId(tab.externalId);
-                  setShowPrEditorExitPrompt(true);
-                } else (window as any).closeCharacterEditorTab?.(tab.externalId);
-              } else requestClosePrEditorSessionEntry(tab.externalId);
-            }}
-            onSessionTitleChange={updatePrEditorSessionTitle}
-            onSessionSagaOrderChange={updatePrEditorSagaOrder}
-            onSessionDirtyChange={updatePrEditorDirty}
-            onEditSagaEntry={addPrEditorSessionEntry}
-            onEditCharacter={openCharacterPrEditorTab}
-            onSubmitProposalSession={() => void submitPrEditorSession()}
-            onRequestSessionClose={requestPrEditorSessionClose}
-            onDiscardSession={discardPrEditorSession}
-            onRegisterSessionEditor={registerPrEditorSession}
+            sessionHasChanges={Object.values(prSession.dirtyById).some(Boolean) || Object.values(prSession.characterEntries).some(item => item.dirty)}
+            sessionAffected={prSession.affectedIds.has(externalId)}
+            sessionTabs={prSession.allSessionTabs}
+            onNavigateSessionEntry={prSession.setActiveId}
+            onNavigateSessionTab={prSession.navigateTab}
+            onRequestCloseSessionEntry={prSession.requestCloseEntry}
+            onRequestCloseSessionTab={prSession.requestCloseTab}
+            onSessionTitleChange={prSession.updateSessionTitle}
+            onSessionSagaOrderChange={prSession.updateSagaOrder}
+            onSessionDirtyChange={prSession.updateDirty}
+            onEditSagaEntry={prSession.addEntry}
+            onEditCharacter={prSession.openCharacterTab}
+            onSubmitProposalSession={() => void prSession.submit()}
+            onRequestSessionClose={prSession.requestClose}
+            onDiscardSession={prSession.discard}
+            onRegisterSessionEditor={prSession.registerSession}
             onBlockedSubmitted={handleBlockedProposalSubmitted}
-            onClose={requestPrEditorSessionClose}
+            onClose={prSession.requestClose}
             onSaved={() => {
               if (externalId !== currentId) return;
               fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
@@ -2225,27 +1324,27 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           />
         );
       })}
-      {!previewMode && showPrEditorExitPrompt && (pendingPrEditorTabCloseId || pendingPrEditorCharacterCloseId || Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) && createPortal(
-        <div key={prEditorExitPromptShake} className={`pr-unsaved-changes-toast${prEditorExitPromptShake ? ' pr-unsaved-changes-toast--shake' : ''}`} role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
-          {pendingPrEditorTabCloseId ? (
-            <span>«{prEditorSessionTitles[pendingPrEditorTabCloseId] || pendingPrEditorTabCloseId}» tiene cambios sin guardar</span>
-          ) : pendingPrEditorCharacterCloseId ? (
-            <span>«{prEditorCharacterEntries[pendingPrEditorCharacterCloseId]?.title || pendingPrEditorCharacterCloseId}» tiene cambios sin guardar</span>
-          ) : Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty) ? (
-            <span>Tienes cambios sin guardar</span>
+      {!previewMode && prSession.showExitPrompt && (prSession.pendingTabCloseId || prSession.pendingCharacterCloseId || Object.values(prSession.dirtyById).some(Boolean) || Object.values(prSession.characterEntries).some(entry => entry.dirty)) && createPortal(
+        <div key={prSession.exitPromptShake} className={`pr-unsaved-changes-toast${prSession.exitPromptShake ? ' pr-unsaved-changes-toast--shake' : ''}`} role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
+          {prSession.pendingTabCloseId ? (
+            <span>{pe.session_entry_unsaved.replace('{title}', prSession.sessionTitles[prSession.pendingTabCloseId] || prSession.pendingTabCloseId)}</span>
+          ) : prSession.pendingCharacterCloseId ? (
+            <span>{pe.session_entry_unsaved.replace('{title}', prSession.characterEntries[prSession.pendingCharacterCloseId]?.title || prSession.pendingCharacterCloseId)}</span>
+          ) : Object.values(prSession.dirtyById).some(Boolean) || Object.values(prSession.characterEntries).some(entry => entry.dirty) ? (
+            <span>{pe.unsaved_changes_title}</span>
           ) : (
-            <span>¿Salir de la sesión de edición?</span>
+            <span>{pe.session_exit_confirm}</span>
           )}
-          {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && Object.values(prEditorDirtyById).some(Boolean) && prEditorSessionStatus && <span className="pr-unsaved-changes-toast__status">{prEditorSessionStatus}</span>}
-          {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && Object.values(prEditorDirtyById).some(Boolean) && prEditorExitError && <span className="pr-unsaved-changes-toast__error">{prEditorExitError}</span>}
-          {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && (Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) && <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => void submitPrEditorSession()} disabled={prEditorSessionSubmitting}>
-            {prEditorSessionSubmitting ? 'Enviando…' : 'Submit proposal'}
+          {!prSession.pendingTabCloseId && !prSession.pendingCharacterCloseId && Object.values(prSession.dirtyById).some(Boolean) && prSession.status && <span className="pr-unsaved-changes-toast__status">{prSession.status}</span>}
+          {!prSession.pendingTabCloseId && !prSession.pendingCharacterCloseId && Object.values(prSession.dirtyById).some(Boolean) && prSession.exitError && <span className="pr-unsaved-changes-toast__error">{prSession.exitError}</span>}
+          {!prSession.pendingTabCloseId && !prSession.pendingCharacterCloseId && (Object.values(prSession.dirtyById).some(Boolean) || Object.values(prSession.characterEntries).some(entry => entry.dirty)) && <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => void prSession.submit()} disabled={prSession.submitting}>
+            {prSession.submitting ? pe.sending : pe.submit_proposal}
           </button>}
-          {pendingPrEditorTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={confirmClosePrEditorSessionEntry}>Cerrar sin guardar</button>}
-          {pendingPrEditorTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingPrEditorTabCloseId(null); setShowPrEditorExitPrompt(false); setPrEditorExitPromptShake(0); }}>Cancelar</button>}
-          {pendingPrEditorCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={confirmClosePrEditorCharacterEntry}>Cerrar sin guardar</button>}
-          {pendingPrEditorCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingPrEditorCharacterCloseId(null); setShowPrEditorExitPrompt(false); setPrEditorExitPromptShake(0); }}>Cancelar</button>}
-          {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && (Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={discardPrEditorSession} disabled={prEditorSessionSubmitting}>Descartar</button>}
+          {prSession.pendingTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={prSession.confirmCloseEntry}>{pe.close_without_saving}</button>}
+          {prSession.pendingTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { prSession.setPendingTabCloseId(null); prSession.setShowExitPrompt(false); prSession.setExitPromptShake(0); }}>{pe.cancel}</button>}
+          {prSession.pendingCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={prSession.confirmCloseCharacterEntry}>{pe.close_without_saving}</button>}
+          {prSession.pendingCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { prSession.setPendingCharacterCloseId(null); prSession.setShowExitPrompt(false); prSession.setExitPromptShake(0); }}>{pe.cancel}</button>}
+          {!prSession.pendingTabCloseId && !prSession.pendingCharacterCloseId && (Object.values(prSession.dirtyById).some(Boolean) || Object.values(prSession.characterEntries).some(entry => entry.dirty)) && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={prSession.discard} disabled={prSession.submitting}>{pe.discard}</button>}
         </div>,
         document.body,
       )}
@@ -2269,7 +1368,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
             <button
               type="button"
               className="media-banner-pr-btn"
-              onClick={startPrEditorSession}
+              onClick={prSession.start}
               title={tm.propose_github_changes}
             >
               <IconPlus />
@@ -2413,7 +1512,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
                   onChange={handleStatusChange}
                   t={tm}
                 />
-                <StarRating rating={eventAggregateRating} onRate={handleRate} />
+                <StarRating rating={eventAggregateRating} onRate={handleRate} t={tm} />
               </div>
             </div>
             )}

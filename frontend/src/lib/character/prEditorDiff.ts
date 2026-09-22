@@ -1,4 +1,3 @@
-import type { CharacterEntry } from '../tauri/characters';
 import type { ParsedCharacteristic } from './biography-parser';
 
 // Pure diff/change-tracking helpers extracted out of CharacterPrEditorModal
@@ -71,7 +70,7 @@ export const voiceActorsChanged = (voiceActors: VoiceActorRow[], originalVoiceAc
 export const aliasesChanged = (aliases: string[], originalAliases: string[]) =>
   JSON.stringify(aliases) !== JSON.stringify(originalAliases);
 
-export const hasChanged = (originalCharacter: CharacterEntry | null, f: CharacterDiffFields): boolean => {
+export const hasChanged = (f: CharacterDiffFields): boolean => {
   return (
     isFieldChanged(f.name, f.originalName) ||
     isFieldChanged(f.nameNative, f.originalNameNative) ||
@@ -84,7 +83,7 @@ export const hasChanged = (originalCharacter: CharacterEntry | null, f: Characte
   );
 };
 
-export const buildChangeSummary = (originalCharacter: CharacterEntry | null, f: CharacterDiffFields): string => {
+export const buildChangeSummary = (f: CharacterDiffFields): string => {
   const changes: string[] = [];
   if (isFieldChanged(f.name, f.originalName)) changes.push(`Nombre: ${f.name}`);
   if (isFieldChanged(f.nameNative, f.originalNameNative)) changes.push(`Nombre nativo: ${f.nameNative || '(vacío)'}`);
