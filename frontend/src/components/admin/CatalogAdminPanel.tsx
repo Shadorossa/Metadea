@@ -8,8 +8,7 @@ import {
 } from '../../lib/tauri/catalog';
 import { getAllCharacters, deleteCharacter, getCommunityCharacters, type CharacterEntry } from '../../lib/tauri/characters';
 import {
-  getAllMediaEpisodesGrouped, getMediaEpisodes, deleteAllMediaEpisodes, deleteMediaEpisode,
-  type MediaEpisodeGroup, type MediaEpisode,
+  getAllMediaEpisodesGrouped, deleteAllMediaEpisodes, type MediaEpisodeGroup,
 } from '../../lib/tauri/misc-commands';
 import {
   listDatabaseFiles, getFileAtRef, deleteFileFromMain, externalIdFromDatabaseFilename,
@@ -25,7 +24,6 @@ import { AdminAddSearch } from './AdminAddSearch';
 import { CatalogEntryCard } from './CatalogEntryCard';
 import { IconTrash } from '../local/ui/icons';
 import { searchAnimeAndSeries, type SearchResult as ApiSearchResult } from '../../lib/search';
-import { fetchMediaEpisodes } from '../../lib/media/episode-list';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
 import { DIFF_FIELDS } from '../../lib/media/constants';
@@ -106,13 +104,9 @@ export function CatalogAdminPanel({ i18n }: Props) {
   // Episodes state
   const [episodeQuery, setEpisodeQuery] = useState('');
   const [episodeMediaTypeFilter, setEpisodeMediaTypeFilter] = useState<'all' | 'anime' | 'series'>('all');
-  const [episodeSelectedShow, setEpisodeSelectedShow] = useState<{ externalId: string; titleMain: string; coverUrl?: string | null; type?: string } | null>(null);
   const [episodeGroups, setEpisodeGroups] = useState<MediaEpisodeGroup[]>([]);
   const [episodesLoading, setEpisodesLoading] = useState(false);
-  const [groupEpisodes, setGroupEpisodes] = useState<MediaEpisode[]>([]);
-  const [loadingGroupEpisodes, setLoadingGroupEpisodes] = useState(false);
   const [episodesDeleteTarget, setEpisodesDeleteTarget] = useState<MediaEpisodeGroup | null>(null);
-  const [episodeSingleDeleteTarget, setEpisodeSingleDeleteTarget] = useState<MediaEpisode | null>(null);
 
   // One-off backfill sweep (see catalog-backfill.ts) for rows missing the
   // fields added this session (country_code, release_end_*, title_english).
@@ -142,6 +136,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   // not just stay on this machine.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingInitialTab, setEditingInitialTab] = useState<'general' | 'cast' | 'relations'>('general');
+  const [editingInitialRelationsSubtab, setEditingInitialRelationsSubtab] = useState<'episodes' | undefined>();
   // Field names present locally but absent from the GitHub bundle that was
   // actually opened — passed to PrEditorModal so it can dim them. Cleared
   // whenever the editor is opened from anywhere other than the GitHub tab
@@ -230,24 +225,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   };
 
-  const openEpisodeDetails = async (show: { externalId: string; titleMain: string; coverUrl?: string | null; type?: string }) => {
-    setEpisodeSelectedShow(show);
-    setLoadingGroupEpisodes(true);
-    try {
-      // First check local DB cached episodes
-      let eps = await getMediaEpisodes(show.externalId);
-      if (!eps || eps.length === 0) {
-        // If not cached yet, fetch from provider (AniList/TMDB)
-        eps = await fetchMediaEpisodes(show.externalId, false);
-      }
-      setGroupEpisodes(eps);
-      await loadEpisodeGroups();
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to load media episodes:', err);
-      setGroupEpisodes([]);
-    } finally {
-      setLoadingGroupEpisodes(false);
-    }
+  const openEpisodeEditor = (externalId: string) => {
+    setEditingNonGithubFields(undefined);
+    setEditingInitialTab('relations');
+    setEditingInitialRelationsSubtab('episodes');
+    setEditingId(externalId);
   };
 
   const confirmDeleteAllEpisodes = async () => {
@@ -255,37 +237,10 @@ export function CatalogAdminPanel({ i18n }: Props) {
     try {
       await deleteAllMediaEpisodes(episodesDeleteTarget.external_id);
       setEpisodeGroups(prev => prev.filter(g => g.external_id !== episodesDeleteTarget.external_id));
-      if (episodeSelectedShow?.externalId === episodesDeleteTarget.external_id) {
-        setGroupEpisodes([]);
-      }
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to delete all episodes:', err);
     } finally {
       setEpisodesDeleteTarget(null);
-    }
-  };
-
-  const confirmDeleteSingleEpisode = async () => {
-    if (!episodeSingleDeleteTarget || !episodeSelectedShow) return;
-    try {
-      await deleteMediaEpisode(
-        episodeSingleDeleteTarget.external_id,
-        episodeSingleDeleteTarget.season_number,
-        episodeSingleDeleteTarget.episode_number
-      );
-      setGroupEpisodes(prev => prev.filter(ep =>
-        !(ep.season_number === episodeSingleDeleteTarget.season_number && ep.episode_number === episodeSingleDeleteTarget.episode_number)
-      ));
-      setEpisodeGroups(prev => prev.map(g => {
-        if (g.external_id === episodeSelectedShow.externalId) {
-          return { ...g, episode_count: Math.max(0, g.episode_count - 1) };
-        }
-        return g;
-      }));
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to delete episode:', err);
-    } finally {
-      setEpisodeSingleDeleteTarget(null);
     }
   };
 
@@ -442,7 +397,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const pagedCharacters = pageItems(`characters-${source}`, visibleCharacters);
   const pagedEpisodeShows = pageItems('episode-search', deduplicatedEpisodeShows);
   const pagedEpisodeGroups = pageItems('episode-groups', visibleEpisodeGroups);
-  const pagedGroupEpisodes = pageItems(`episode-details-${episodeSelectedShow?.externalId ?? ''}`, groupEpisodes);
   const pagedBackfillResults = pageItems('backfill-results', backfillResults ?? []);
 
   useEffect(() => {
@@ -456,7 +410,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
     deferredSagaQuery,
     deferredCharacterQuery,
     deferredEpisodeQuery,
-    episodeSelectedShow?.externalId,
   ]);
 
   if (gate.state === 'loading') return null;
@@ -563,6 +516,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
     setEditingId(null);
     setEditingNonGithubFields(undefined);
     setEditingInitialTab('general');
+    setEditingInitialRelationsSubtab(undefined);
   };
 
   const handleEditorSaved = () => {
@@ -638,7 +592,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
         </div>
 
         <div className="catalog-admin-search-wrapper">
-          {entity === 'episodes' && source === 'local' && !episodeSelectedShow && (
+          {entity === 'episodes' && source === 'local' && (
             <>
               <input
                 type="text"
@@ -719,83 +673,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
       {entity === 'episodes' && source === 'local' && (
         <>
-          {episodeSelectedShow ? (
-            <div>
-              <button
-                type="button"
-                className="catalog-admin-episode-back"
-                onClick={() => setEpisodeSelectedShow(null)}
-              >
-                ← {t.back_to_shows}
-              </button>
-
-              <div className="catalog-admin-selected-show-banner">
-                {episodeSelectedShow.coverUrl && (
-                  <img src={episodeSelectedShow.coverUrl} alt="" className="catalog-admin-selected-show-cover" />
-                )}
-                <div className="catalog-admin-selected-show-meta">
-                  <span className="catalog-admin-selected-show-title">{episodeSelectedShow.titleMain}</span>
-                  <span className="catalog-admin-selected-show-sub">{episodeSelectedShow.externalId} · {groupEpisodes.length} eps</span>
-                </div>
-                {groupEpisodes.length > 0 && (
-                  <button
-                    type="button"
-                    className="catalog-admin-source-btn"
-                    style={{ marginLeft: 'auto' }}
-                    onClick={() => setEpisodesDeleteTarget({
-                      external_id: episodeSelectedShow.externalId,
-                      episode_count: groupEpisodes.length,
-                      sample_name: episodeSelectedShow.titleMain,
-                      sample_cover: episodeSelectedShow.coverUrl ?? null,
-                    })}
-                  >
-                    {t.delete_all_episodes}
-                  </button>
-                )}
-              </div>
-
-              {loadingGroupEpisodes && <p className="catalog-admin-status">{t.loading}</p>}
-              {!loadingGroupEpisodes && groupEpisodes.length === 0 && (
-                <p className="catalog-admin-status">{t.no_episodes_for_show}</p>
-              )}
-
-              {!loadingGroupEpisodes && groupEpisodes.length > 0 && (
-                <>
-                <div className="catalog-admin-episodes-list" style={{ padding: 0 }}>
-                  {pagedGroupEpisodes.items.map(ep => (
-                    <div key={`${ep.season_number}-${ep.episode_number}`} className="catalog-admin-episode-row">
-                      <div className="catalog-admin-episode-info">
-                        {ep.cover_url ? (
-                          <img src={ep.cover_url} alt="" className="catalog-admin-episode-thumb" loading="lazy" />
-                        ) : (
-                          <div className="catalog-admin-episode-thumb" />
-                        )}
-                        <span className="catalog-admin-episode-badge">
-                          {ep.season_number > 1 ? `T${ep.season_number} E${ep.episode_number}` : `Ep. ${ep.episode_number}`}
-                        </span>
-                        <span className="catalog-admin-episode-name">
-                          {ep.name || `Episodio ${ep.episode_number}`}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="catalog-admin-icon-btn catalog-admin-icon-btn--delete"
-                        onClick={() => setEpisodeSingleDeleteTarget(ep)}
-                        title={t.delete_button}
-                      >
-                        <IconTrash size={13} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {renderPagination(`episode-details-${episodeSelectedShow.externalId}`, pagedGroupEpisodes.totalPages, pagedGroupEpisodes.currentPage)}
-                </>
-              )}
-            </div>
-          ) : (
-            <>
-
-              {/* If user typed a query, show API search results (like the lists episode search) */}
+          {/* Selecting Edit opens the media entry directly at Relations → Episodes. */}
               {episodeQuery.trim() ? (
                 <>
                   {isSearchingEpisodeShows && <p className="catalog-admin-status">{t.loading}</p>}
@@ -817,7 +695,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                           mediaPageUrl={catalogInfoMap[show.externalId]?.blocked
                             ? undefined
                             : `/media?id=${encodeURIComponent(show.externalId)}`}
-                          onEdit={() => openEpisodeDetails(show)}
+                          onEdit={() => openEpisodeEditor(show.externalId)}
                           onDelete={() => setEpisodesDeleteTarget({
                             external_id: show.externalId,
                             episode_count: 0,
@@ -857,11 +735,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                             deleteLabel={t.delete_button}
                             openMediaLabel={t.open_media_page}
                             mediaPageUrl={info?.blocked ? undefined : `/media?id=${encodeURIComponent(group.external_id)}`}
-                            onEdit={() => openEpisodeDetails({
-                              externalId: group.external_id,
-                              titleMain: title,
-                              coverUrl: cover,
-                            })}
+                            onEdit={() => openEpisodeEditor(group.external_id)}
                             onDelete={() => setEpisodesDeleteTarget(group)}
                           />
                         );
@@ -872,8 +746,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   )}
                 </>
               )}
-            </>
-          )}
         </>
       )}
 
@@ -914,6 +786,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                       } else {
                         setEditingNonGithubFields(undefined);
                         setEditingInitialTab('relations');
+                        setEditingInitialRelationsSubtab(undefined);
                         setEditingId(saga.id);
                       }
                     }}
@@ -1004,6 +877,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   onEdit={() => {
                     setEditingNonGithubFields(undefined);
                     setEditingInitialTab('general');
+                    setEditingInitialRelationsSubtab(undefined);
                     setEditingId(entry.external_id);
                   }}
                   onDelete={() => setDeleteTarget(entry)}
@@ -1145,6 +1019,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
               }
               setEditingNonGithubFields(undefined);
               setEditingInitialTab('general');
+              setEditingInitialRelationsSubtab(undefined);
               setEditingId(externalId);
             }}
           />
@@ -1155,6 +1030,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
         <PrEditorModal
           externalId={editingId}
           initialTab={editingInitialTab}
+          initialRelationsSubtab={editingInitialRelationsSubtab}
           onClose={handleEditorClose}
           onSaved={handleEditorSaved}
           nonGithubFields={editingNonGithubFields}
@@ -1246,27 +1122,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
                 {t.cancel_button}
               </button>
               <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteAllEpisodes}>
-                {t.delete_button}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {episodeSingleDeleteTarget && episodeSelectedShow && (
-        <div className="me-overlay" onClick={() => setEpisodeSingleDeleteTarget(null)}>
-          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
-            <p>
-              {t.delete_episode_confirm
-                .replace('{num}', String(episodeSingleDeleteTarget.episode_number))
-                .replace('{name}', episodeSingleDeleteTarget.name || `Episodio ${episodeSingleDeleteTarget.episode_number}`)
-                .replace('{title}', episodeSelectedShow.titleMain || episodeSelectedShow.externalId)}
-            </p>
-            <div className="catalog-admin-confirm-actions">
-              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setEpisodeSingleDeleteTarget(null)}>
-                {t.cancel_button}
-              </button>
-              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteSingleEpisode}>
                 {t.delete_button}
               </button>
             </div>
