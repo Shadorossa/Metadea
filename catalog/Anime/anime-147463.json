@@ -1,0 +1,60 @@
+{
+  "media_catalog": {
+    "id": "a0cd82bdaa546e63a0cd82bdaa546e63",
+    "external_id": "anime:147463",
+    "type": "anime",
+    "title_main": "Jujutsu Kaisen PV",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-22T01:46:54.004Z"
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:147463",
+      "related_media_external_id": "manga:101517",
+      "relation_type": "SOURCE",
+      "type_label": "Source Material",
+      "title": "Jujutsu Kaisen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx101517-H3TdM3g5ZUe9.jpg",
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
+    },
+    {
+      "related_media_external_id": "anime:113415",
+      "relation_type": "OTHER",
+      "type_label": "Other",
+      "title": "Jujutsu Kaisen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg",
+      "media_external_id": "anime:147463"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:127691",
+      "name": "Satoru Gojou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b127691-9zqh1xpIubn7.png",
+      "relation_type": "MAIN",
+      "character_name": null,
+      "merged_character_external_id": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:a215274",
+      "name": "Xinya Cai",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/large/default.jpg",
+      "role": "Director",
+      "url": "/author?id=person:a215274",
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "saga_name": "Jujutsu Kaisen PV",
+  "story_arcs": []
+}
