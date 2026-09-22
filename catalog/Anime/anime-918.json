@@ -11,68 +11,100 @@
   },
   "media_relations": [
     {
+      "media_external_id": "anime:918",
       "related_media_external_id": "manga:30044",
       "relation_type": "SOURCE",
       "type_label": "Source Material",
       "title": "Gintama",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx30044-vPmoz3vTPvZs.jpg",
-      "media_external_id": "anime:918"
+      "format": null,
+      "release_day": 8,
+      "release_month": 12,
+      "release_year": 2003
     },
     {
+      "media_external_id": "anime:918",
       "related_media_external_id": "anime:162890",
       "relation_type": "SPIN_OFF",
       "type_label": "Spin-off",
       "title": "3-nen Z-gumi Ginpachi-sensei",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx162890-vDRlo1KuRM6W.jpg",
-      "media_external_id": "anime:918"
+      "format": null,
+      "release_day": 7,
+      "release_month": 10,
+      "release_year": 2025
     },
     {
+      "media_external_id": "anime:918",
       "related_media_external_id": "anime:7472",
       "relation_type": "ALTERNATIVE",
       "type_label": "Alternative",
       "title": "Gintama: Shinyaku Benizakura-hen",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx7472-RveDgQsIZUNG.jpg",
-      "media_external_id": "anime:918"
+      "format": null,
+      "release_day": 24,
+      "release_month": 4,
+      "release_year": 2010
     },
     {
+      "media_external_id": "anime:918",
       "related_media_external_id": "anime:20760",
       "relation_type": "ALTERNATIVE",
       "type_label": "Alternative",
       "title": "Gintama: Yorinuki Gintama-san on Theater 2D",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx20760-6JlxgXfJh92a.jpg",
-      "media_external_id": "anime:918"
+      "format": null,
+      "release_day": null,
+      "release_month": null,
+      "release_year": null
     },
     {
+      "media_external_id": "anime:918",
       "related_media_external_id": "anime:197474",
       "relation_type": "ALTERNATIVE",
       "type_label": "Alternative",
       "title": "Shin Gintama Movie: Yoshiwara Daienjou",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx197474-jTeY1G9gtD8i.jpg",
-      "media_external_id": "anime:918"
+      "format": null,
+      "release_day": 13,
+      "release_month": 2,
+      "release_year": 2026
     },
     {
+      "media_external_id": "anime:918",
       "related_media_external_id": "anime:2951",
       "relation_type": "SIDE_STORY",
       "type_label": "Side story",
       "title": "Gintama: Jump Festa 2005 Special",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx2951-rl0US7OuMXbA.jpg",
-      "media_external_id": "anime:918"
+      "format": null,
+      "release_day": 24,
+      "release_month": 9,
+      "release_year": 2005
     },
     {
+      "media_external_id": "anime:918",
       "related_media_external_id": "anime:6945",
       "relation_type": "SIDE_STORY",
       "type_label": "Side story",
       "title": "Gintama: Jump Festa 2008 Special",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/6945.jpg",
-      "media_external_id": "anime:918"
+      "format": null,
+      "release_day": 30,
+      "release_month": 9,
+      "release_year": 2009
     },
     {
+      "media_external_id": "anime:918",
       "related_media_external_id": "anime:10643",
       "relation_type": "SIDE_STORY",
       "type_label": "Side story",
       "title": "Gintama: Dai Hanseikai",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/10643.jpg",
-      "media_external_id": "anime:918"
+      "format": null,
+      "release_day": 25,
+      "release_month": 3,
+      "release_year": 2010
     },
     {
       "media_external_id": "anime:918",
@@ -89,1267 +121,1640 @@
       "name": "Shinpachi Shimura",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b673-nScArSMt85kd.jpg",
       "relation_type": "MAIN",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:672",
       "name": "Gintoki Sakata",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b672-cP5VPriN67xJ.png",
       "relation_type": "MAIN",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:674",
       "name": "Kagura",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b674-w8wCh0A5Qa8R.png",
       "relation_type": "MAIN",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:2651",
       "name": "Sadaharu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n2651-e8BTqVZl8lK2.jpg",
       "relation_type": "MAIN",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32259",
       "name": "Hakkekkyuu Ou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32259.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:28144",
       "name": "Shouyou Yoshida",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b28144-QsZ8pBkqo4rj.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32661",
       "name": "Atsumasuke Watanabe",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32661.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32153",
       "name": "Kuriko Matsudaira",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b32153-CRE6SYhdAgnp.jpg",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b32153-CRE6SYhdAgnp.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32340",
       "name": "Goemon",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32340.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:30643",
       "name": "Seimei Ketsuno",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n30643-ac68LiCZzwrY.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:6187",
       "name": "Tsuu Terakado",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n6187-8sGEwWKV15xb.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:33953",
       "name": "Rei",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n33953-dgQlx7zroCz7.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32967",
       "name": "Kamenashi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n32967-TYUmyAeicNlQ.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:2947",
       "name": "Bansai Kawakami",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2947-sbdT3jDNmzS2.png",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:15146",
       "name": "Mitsuba Okita",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n15146-tESRXrkdZjmH.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32124",
       "name": "Kyoshirou Honjou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32124-shdHjFz5jFJG.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:22633",
       "name": "Ryuu Taichou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n22633-k4ql5ZjfrrYf.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:30609",
       "name": "Kaikei",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/30609.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32966",
       "name": "Seizou Kumanaku",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32966.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32238",
       "name": "Hinowa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32238.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:7930",
       "name": "Catherine",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n7930-HPv7rh74r6bl.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43218",
       "name": "Ojii-san",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n43218-vrO9Z7LAO3rZ.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:15580",
       "name": "Binbokusai Yagyuu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n15580-sOuVFsP9cZlz.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:27892",
       "name": "Danzou Tobita",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n27892-5JcnZWkiTONN.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:46973",
       "name": "Magistrate",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n46973-ySePcHOoT0WT.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:45101",
       "name": "Suitsu Andromeda",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n45101-XHA1pusWL92R.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43915",
       "name": "Hideaki Amachi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43915.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32207",
       "name": "Jii",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32207.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52927",
       "name": "Kanemaru",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52927-0oS482E4jHeA.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:10892",
       "name": "No. 502",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n10892-4dsTirVpxArt.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:49501",
       "name": "Cello",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n49501-woziMLO2PJbd.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:30306",
       "name": "Gedoumaru",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n30306-cToZmYH6cV4G.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:10645",
       "name": "Saki Hanano",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/10645.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:2950",
       "name": "Zenzou Hattori",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2950-MPIhNKfyJE2r.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32731",
       "name": "Gou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n32731-VbllY0RWExRX.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:14660",
       "name": "Sui Minamito",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n14660-BaEKbNOf4cc1.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:42331",
       "name": "Cherry Taisa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n42331-eUijTM9AFfCu.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:6110",
       "name": "Kyuubei Yagyuu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n6110-2TQFGi833X4t.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:12946",
       "name": "Kamui",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12946-wqrTLWsy7dW5.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:18030",
       "name": "Hachibei Takaya",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n18030-ZLVJaV0dgm3N.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:17063",
       "name": "Heiji Kozenigata",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n17063-7kBERYJpaUz2.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:18823",
       "name": "Tsukuyo",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b18823-EHKT9u7r91s0.png",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:45215",
       "name": "Houichi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n45215-QJz2fMdpP0ZF.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32209",
       "name": "Harada Unosuke",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32209.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43599",
       "name": "Kahei Tanaka",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43599.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:6225",
       "name": "Christel Ketsuno",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n6225-LgPlEHrUqCZ5.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:15581",
       "name": "Koshinori Yagyuu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/15581.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:47033",
       "name": "Kawasaki",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n47033-0lEidjWMXaXP.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32957",
       "name": "Kurikan",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n32957-TDy8uiwLvyyg.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:9534",
       "name": "Nizou Okada",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n9534-CzHkQ8dnD8K9.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:9876",
       "name": "Umibouzu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n9876-6WfhJ9Q3QWyQ.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32960",
       "name": "Kaguzou Mashiroi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b32960-jMlzrly7ILCA.png",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52527",
       "name": "Mikako Nakajima",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52527-LJcU2GrwhJIe.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:7927",
       "name": "Gengai Hiraga",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n7927-4EwfGY7dhxvG.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32235",
       "name": "Urara",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32235.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32790",
       "name": "Saizou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32790.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:8734",
       "name": "Lake Toya",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/8734.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:2948",
       "name": "Shinsuke Takasugi",
       "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_2948.png",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43084",
       "name": "Kouhei Konishi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n43084-qhivdoNW0QbB.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:26730",
       "name": "Daisaku Amarao",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n26730-ToksHtuSyk1F.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43030",
       "name": "Ivanov",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43030.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:2949",
       "name": "Matako Kijima",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n2949-I6xXUlBaFuIh.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:42937",
       "name": "Megami",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/42937.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:42427",
       "name": "Daito",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n42427-5OYd4eobYomM.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32213",
       "name": "Daraku",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32213.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:2943",
       "name": "Isao Kondou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2943-QVEHBh0T6hPC.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43219",
       "name": "Kintarou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n43219-nrYc2MUFjQhN.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:49533",
       "name": "Kobayashi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n49533-O8RZcOKMMYru.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:3760",
       "name": "Taizou Hasegawa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b3760-bxdyoPARX4Sx.png",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:55733",
       "name": "Tom",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n55733-fj70GyB7nMV8.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:6615",
       "name": "Tama",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b6615-KlhhQlhWbO1A.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:25666",
       "name": "Housen",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/25666.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:26731",
       "name": "Abuto",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n26731-2XyAM66CVJDL.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32205",
       "name": "Ichi Terakado",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32205.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:14659",
       "name": "Itsuki Kitaooji",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n14659-j8p2cQoBfgSe.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32230",
       "name": "Oryou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32230-Bdy2XJ02tvlJ.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:11458",
       "name": "Kamotarou Itou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n11458-5d75YzFKspQH.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:9515",
       "name": "Ikumatsu Nishiki",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n9515-Hve5I6XE7Sh8.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32239",
       "name": "Seita",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32239.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52529",
       "name": "Mitsuhide Akechi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52529-Wxl2mjtuXSkm.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:46897",
       "name": "Space Woman",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n46897-4kZNEsvDl4jn.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:44581",
       "name": "Kantarou Hashida",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n44581-RSppASwU7vk4.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43598",
       "name": "Kirie Muneharu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43598.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:42429",
       "name": "Santa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n42429-DDhBeKejzd16.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:46899",
       "name": "Space Boss",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n46899-hDQKBZwh8mGB.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32968",
       "name": "Otohime",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32968.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:18016",
       "name": "Tetsuko Murata",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n18016-NzwXcn8lFVQ2.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43596",
       "name": "Hisashi Hongou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43596.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:45207",
       "name": "Reporter",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n45207-cuFaoVsemhuy.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32666",
       "name": "Eromes",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32666.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32839",
       "name": "Haji",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32839-I8SGJjddRRC6.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:50789",
       "name": "M",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/50789.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32963",
       "name": "Shachi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32963.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:47449",
       "name": "Tenchou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n47449-1fqhlVdN3S4R.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52531",
       "name": "Koishi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52531-dEvwfAxnldes.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32193",
       "name": "Ken Katou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32193.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32204",
       "name": "Inoue",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32204.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32771",
       "name": "Tetsuya Murata",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32771.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:7928",
       "name": "Hedoro",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n7928-jIS5wwIWW1Yz.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:45415",
       "name": "Ochi-san",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n45415-YGNqTlJXNPqV.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:42431",
       "name": "Akage",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n42431-Wv2vCF0koB9X.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:9535",
       "name": "Henpeita Takechi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n9535-9yxNPYhaxjET.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52537",
       "name": "Hideyoshi Toyotomi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52537-H4CjDGtR3wH1.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32232",
       "name": "Ane",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32232-0qkAPEv8Qd48.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32247",
       "name": "Shouji",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32247.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:44579",
       "name": "Kanshichirou Hashida",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n44579-HSHy2KHsjYzl.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:49499",
       "name": "Breeza",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n49499-oB7oJ9iijXXi.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:4653",
       "name": "Sagaru Yamazaki",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n4653-HTmFLlAViL0t.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32246",
       "name": "Oonishi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32246.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32279",
       "name": "Wakame",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32279.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32793",
       "name": "Ryuuzan Hayashi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32793.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32231",
       "name": "Mone",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32231-nZuJQsuC1YOQ.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:9877",
       "name": "Musashi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/9877.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32656",
       "name": "Tamo",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32656.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52533",
       "name": "Nobunaga Oda",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52533-FlZS0dlLgE4V.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:7929",
       "name": "Hata Ouji",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n7929-MaggNZrysMXT.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:7157",
       "name": "Shigeshige Tokugawa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/7157.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32276",
       "name": "Teruhiko Saigou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32276.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:34865",
       "name": "Kimiko",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n34865-ZNdIUfQBSe6L.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32277",
       "name": "Azumi Agonoske",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32277.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:48123",
       "name": "Sugiyama",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n48123-d8FQBbndilq8.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:47035",
       "name": "Michiko Kawasaki",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n47035-v14YccG5yY8N.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:58679",
       "name": "Debugon",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/58679.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:46397",
       "name": "Hisho",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n46397-Ir3wwOAhXk59.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32729",
       "name": "Shuwa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n32729-Cp0oIsnkDgF0.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32275",
       "name": "Tokumori Saigou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32275-Wu54dkBFIWZx.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:44583",
       "name": "Fusa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n44583-F7s18dSHUxej.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:47783",
       "name": "Nakano",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n47783-ANuU2oWPIVXM.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32668",
       "name": "Tomu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32668.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:45417",
       "name": "Kei",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n45417-jM3ICcdMjy4V.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:15452",
       "name": "Hideaki Sorachi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/15452.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:2946",
       "name": "Elizabeth",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2946-Wr6RcgisCsbi.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32956",
       "name": "Hatsu Hasegawa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32956-WqmMJpFBLNbl.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:44577",
       "name": "Kahei Hashida",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n44577-AJjHcfldW2LS.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:42428",
       "name": "Tsuu no Chichioya",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n42428-NDhAH3vYnIaN.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:41779",
       "name": "Zenzou no Chichi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/41779.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:46073",
       "name": "Marinosuke",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n46073-vHJAh9wYptAO.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32739",
       "name": "Katsuo Kurogoma",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32739.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32194",
       "name": "Kariya",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32194.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32123",
       "name": "Hachirou no Kaa-chan",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32123.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32211",
       "name": "Ishida Genpachi Zaemon",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32211.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43216",
       "name": "Sanzou Fudou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n43216-HrrTczzn2xRN.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:49067",
       "name": "Kamemiya",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n49067-vvYwC9EeunWL.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:22551",
       "name": "Taka-tin",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n22551-fqo0FvC2boxQ.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:28987",
       "name": "Ungyou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n28987-j5hlDIlTKd0P.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:49069",
       "name": "Captain Turtle",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n49069-b3QzI7zQfHEA.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52929",
       "name": "Stainless Boy",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52929-Kotei7fgoysL.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32837",
       "name": "Tsukamu Nishino",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32837.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32196",
       "name": "Buu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32196.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32733",
       "name": "Kanbei",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32733.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32201",
       "name": "Yashichi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32201.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32122",
       "name": "Tatsumi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32122-wQcYXLDbzhOz.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32660",
       "name": "Mamushi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32660.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32737",
       "name": "Hachirou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32737.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:42430",
       "name": "Ben",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/42430.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:47549",
       "name": "Ojii-san",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n47549-Kg0Ewi2B67ug.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:48125",
       "name": "Matsuko Matsubara",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n48125-yjSlypNjI9MY.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32792",
       "name": "Kuroda Heihachirou",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32792.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:34864",
       "name": "Tasuke",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n34864-tmg7LBSMhQAq.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32961",
       "name": "Utsuzou Mashiroi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32961.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32738",
       "name": "Kankichi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32738.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32657",
       "name": "Muu-san",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32657.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:23618",
       "name": "Mahha Noriko",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n23618-mF9G4KG8PEwn.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:46953",
       "name": "Heidi",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n46953-PVo8LAARQSNk.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32730",
       "name": "Matsuo",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n32730-chDultEpJCrE.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32838",
       "name": "Jirochou Doromizu",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b32838-FvPuCvzvjNuV.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32959",
       "name": "Shinnoshin Shinohara",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32959.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32964",
       "name": "Juurouta",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32964.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52073",
       "name": "Puke Shogun",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/52073.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52535",
       "name": "Ieyasu Tokugawa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52535-C1Jk4eJwCqkp.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:41429",
       "name": "Taki",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n41429-WsbfTfeghuvx.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:41430",
       "name": "Iwa Ogami",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/41430.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43023",
       "name": "Kai",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43023.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:43839",
       "name": "Shimomoto",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43839.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:47551",
       "name": "Hana",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n47551-SEUnqup9vEp6.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:52925",
       "name": "Ikezawa",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n52925-Tg7LNPFhGdqQ.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:36309",
       "name": "Narrator",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b36309-6KM0riV4lqfN.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:5140",
       "name": "Unkei",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/5140.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:32218",
       "name": "No.305",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32218.jpg",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:46829",
       "name": "Omohide Sake no Oyaji",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b46829-ZTU91pJ9vSuZ.png",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
     },
     {
       "external_id": "character:a:382393",
       "name": "Juttoku no Musume",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b382393-7bzJlPdEWQ8C.png",
       "relation_type": "SUPPORTING",
-      "character_name": null
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:8282",
+      "name": "Ayumu Toujou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n8282-XAaxRDRUwTFH.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:12161",
+      "name": "Mutsu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12161-3RbIADepKtNT.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:18664",
+      "name": "Kenji Haga",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/18664.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:20478",
+      "name": "Kameyama Duuke",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/20478.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:29241",
+      "name": "Daigorou Kitaouji",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n29241-wwurBZgqHjJA.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:30641",
+      "name": "Pandemonium",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n30641-3dRakIo0jJA8.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:30761",
+      "name": "Ebina",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/30761.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:31501",
+      "name": "Kyoujirou Nakamura",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/31501.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32208",
+      "name": "Vanessa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32208.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32214",
+      "name": "Soyo Tokugawa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b32214-FXnbYbXAc4XL.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32229",
+      "name": "Hanako",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32229-80nET6wEGLvP.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32233",
+      "name": "Kada",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32233.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32234",
+      "name": "Yocchan",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n32234-HonPRoGxohKy.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32236",
+      "name": "Kirara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32236.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32667",
+      "name": "Shichibee",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32667.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32728",
+      "name": "Kaoru Waki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/32728.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32929",
+      "name": "Uchino",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32929.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:32962",
+      "name": "Suekichi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32962.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:35580",
+      "name": "Tendou Soutatsu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n35580-FlYG0buuRNWM.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:42426",
+      "name": "Doushin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n42426-eV0EGfUMNStW.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:42485",
+      "name": "Touma Kuraba",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n42485-YyGUNYgh4PBB.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:43404",
+      "name": "Kamiyama",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43404.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:45311",
+      "name": "Doman Shirino",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n45311-4BdBX0q3Yp8l.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
+    },
+    {
+      "external_id": "character:a:49531",
+      "name": "Delde",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n49531-302LlxtNjGF9.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null,
+      "merged_character_external_id": null
     }
   ],
   "media_authors": [
