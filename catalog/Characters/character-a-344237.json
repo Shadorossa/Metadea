@@ -1,0 +1,44 @@
+{
+  "character": {
+    "external_id": "character:a:344237",
+    "name": "Sasanami Unmei",
+    "name_native": "笹波 雲明",
+    "biography": "<b>Gender:</b> Male<br>\n<b>Dub name [Name]:</b> Destin Billows<br>\n<b>Gender [Personal]:</b> Male<br>\n<b>Relationships [Personal]:</b> Sasanami Mako <small>(mother)</small><br>\n<b>Position [Player info]:</b> <small>(Midfielder)</small><br>\n<b>Number [Player info]:</b> 9 <small>(unnamed youth team)</small><br>None <small>(Nagumohara)</small><br>\n<b>Element [Player info]:</b> Forest<br>\n<b>Team [Player info]:</b> Unnamed youth team<br>Nagumohara <small>(captain &amp; coach)</small><br>\n<b>School year [Player info]:</b> 1st year<br>\n<b>Japanese:</b> Komura Shou<br>\n<b>English:</b> Dominic Allen<br>\n<b>Game [Debut]:</b> <i>Inazuma Eleven Eiyuutachi no Victory Road</i><br>\n<b>Anime [Debut]:</b> <i>Inazuma Eleven the Movie: The Prologue to New Heroes</i><br>\n<b>Manga [Debut]:</b> Chapter 01 <small>(Victory Road)</small><br>\n<br>\n<p>–Sasanami Unmei, Inazuma Eleven Eiyuutachi no Great Road's blog.</p>\n<p>Unmei has shoulder-length teal hair with turquoise highlights and deep dark blue eyes. His eyebrows and eyelashes are also teal and he has a light red nose.</p>\n<p>His casual clothing involves three colors: white, black and yellow; he wears a white sweat jacket with black and yellow stripes with a black triangle on the top left side, black sweatpants with white and yellow stripes and yellow sneakers with white stripes and black soles.</p>\n<p>His school uniform consists of a deep dark blue blazer with a white shirt and a cyan striped dark blue necktie. He also wears a black belt, gray pants and black shoes.</p>\n<p>Unmei is cold and calculating. He starts out trying to avoid soccer due to the bad memories associated with losing the ability to play the sport, but ends up being incredibly passionate about it when realizing he can still be involved in the sport. He's incredible at tactics, being able to use his team to take advantage of opponent weaknesses, but he's also known to draft up rough training regimen for the team in the pursuit of the strength required to do so. He has the tendency of throwing himself into challenges, like when he challenged the Baseball Club to a soccer match after seeing the sport being disrespected or when he challenged Raika to a dance-off in an attempt to recruit her into the team. Amazing at researching things, he's been shown to consistently read people with pinpoint accuracy, which mildly creeps people around him out. Despite his cold demeanor, it's clear that he still cares about his team, who in turn also respect him enough to unanimously make him the coach.</p>\n<p>When Unmei was younger, he used to actively play soccer. One day, during a match against Soramiya's team, he suddenly collapsed due to his then-undiagnosed congenital heart defect (CHD). Unmei was advised to avoid strenuous physical activity in his lifestyle, which ultimately meant no longer playing soccer. Learning this, Unmei became devastated and desperately researched ways of curing his disease to play once again, but to no avail.</p>\n<p>As a result, he lived the rest of his life avoiding soccer, trying to forget about the sport that caused him so much pain, which would lead him to enroll in Nagumohara since the sport had been abolished there.</p>\n<p>The initial plan for Unmei was for him to meet Endou at the Riverbank and, when seeing Endou's passion to win the Football Frontier, his own passion for soccer is rekindled and sets out to join the Raimon team as their manager and, later, becomes their assistant coach, despite his trauma.</p>",
+    "image_url": "https://metadea.metadea.workers.dev/images/character/character:a:344237.webp?v=869410e17e3021e3805758ef2c47ee33f4d05a76f0e66fe47d120b35ceeb8843"
+  },
+  "appearances": [
+    {
+      "media_external_id": "anime:180806",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:72812",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:397928",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "person:a297355",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "va:Komura Shou",
+      "name": "Komura Shou",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a367735",
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
