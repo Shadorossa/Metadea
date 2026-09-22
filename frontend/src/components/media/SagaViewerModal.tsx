@@ -205,13 +205,11 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                     return (
                       <div className="saga-strip-item-bg">
                         {backgroundEntry.cover && (
-                          <motion.img
+                          <img
+                            className="saga-strip-alternative-bg-image"
                             key={backgroundEntry.externalId}
                             src={toMediumCover(backgroundEntry.cover)}
                             alt=""
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.3 }}
-                            transition={{ duration: 0.22 }}
                           />
                         )}
                         <div className="saga-strip-item-overlay" />

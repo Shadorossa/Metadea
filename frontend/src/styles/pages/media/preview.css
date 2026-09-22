@@ -38,16 +38,11 @@
 
 .saga-strip-container {
   width: 100%;
-  /* Sized to content, NOT full-height - the blurred, translucent
-     .saga-overlay backdrop showing around this strip is the intended look.
-     What must be avoided is any *opaque* black padding/border of its own
-     poking past that translucent edge, which reads as a mismatched hard
-     seam rather than part of the blur. */
   background: #0d0d0d;
   display: flex;
   flex-direction: column;
   position: relative;
-  padding: 2.5rem 0;
+  padding: 1.25rem 0;
   /* Rendering artifact, not a rule anyone wrote: browsers draw a faint
      seam where an opaque box sits directly against a backdrop-filter:
      blur() region (.saga-overlay) with nothing between them. A same-color
@@ -60,7 +55,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -204,25 +199,47 @@
 }
 
 .saga-strip-item-bg img {
-  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: auto;
   height: 100%;
-  object-fit: cover;
+  max-height: 100%;
+  max-width: none;
+  object-fit: contain;
   object-position: center;
   opacity: 0.15;
   filter: blur(3px) grayscale(0.5);
-  transform: scale(1.1);
-  transition: opacity 0.3s ease, transform 0.5s ease;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+@keyframes saga-strip-bg-image-in {
+  from { opacity: 0; }
+  to { opacity: 0.15; }
+}
+
+.saga-strip-alternative-bg-image {
+  animation: saga-strip-bg-image-in 0.22s ease backwards;
 }
 
 .saga-strip-item-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, #0d0d0d 0%, rgba(13, 13, 13, 0.3) 25%, rgba(13, 13, 13, 0.3) 75%, #0d0d0d 100%);
+  background: linear-gradient(
+    to bottom,
+    rgba(13, 13, 13, 0.96) 0%,
+    rgba(13, 13, 13, 0.72) 12%,
+    rgba(13, 13, 13, 0.18) 34%,
+    rgba(13, 13, 13, 0.18) 66%,
+    rgba(13, 13, 13, 0.72) 88%,
+    rgba(13, 13, 13, 0.96) 100%
+  );
 }
 
 .saga-strip-item:hover .saga-strip-item-bg img {
   opacity: 0.3;
-  transform: scale(1.05) blur(1px);
+  filter: blur(1px) grayscale(0.5);
 }
 
 .saga-strip-item-cover {
@@ -329,10 +346,6 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 2.5rem 1.25rem 1.5rem;
-}
-
-.saga-strip-item--alternatives .saga-strip-item-bg img {
-  opacity: 0.3;
 }
 
 .saga-strip-alternative-stage {
@@ -540,11 +553,6 @@
   cursor: default;
 }
 
-.saga-strip-item--current .saga-strip-item-bg img {
-  opacity: 0.25;
-  filter: blur(4px) grayscale(0);
-}
-
 .saga-strip-item--current .saga-strip-item-cover {
   border: 2px solid var(--accent, #7c6af7);
   box-shadow: 0 0 15px rgba(var(--accent-rgb, 124, 106, 247), 0.4);
@@ -563,32 +571,26 @@
 
 .saga-strip-close {
   position: absolute;
-  /* Floats over the translucent, blurred .saga-overlay backdrop just below
-     the strip's own edge - that's the intended look. Pulling it fully
-     inside the strip instead just moved the problem: it forced extra
-     opaque padding, which then read as its own flat black border. */
   bottom: -1.5rem;
   left: 50%;
   transform: translateX(-50%);
   width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
+  height: 1.5rem;
+  border-radius: 0 0 1.5rem 1.5rem;
   background: #0d0d0d;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 0;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-  transition: all 0.2s ease;
+  box-shadow: none;
+  transition: color 0.16s ease;
   z-index: 10;
 }
 
 .saga-strip-close:hover {
-  background: var(--accent, #7c6af7);
-  border-color: var(--accent, #7c6af7);
-  transform: translateX(-50%) scale(1.05);
+  color: var(--accent, #7c6af7);
 }
 
 /* Rendered via a portal straight to <body>, positioned in viewport
