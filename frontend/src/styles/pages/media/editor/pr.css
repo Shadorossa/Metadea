@@ -1314,24 +1314,16 @@
 }
 
 .pr-editor-character-merges {
-  margin-top: 1.5rem;
-  padding-top: 1.1rem;
-  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.16));
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
-.pr-editor-character-merges-header,
 .pr-editor-merge-cast-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.pr-editor-merge-title {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
 }
 
 .pr-editor-merge-info {
@@ -1354,6 +1346,10 @@
 .pr-editor-merge-info:hover .info-indicator,
 .pr-editor-merge-info:focus-visible .info-indicator {
   color: currentColor;
+}
+
+.pr-editor-character-merge-add-row {
+  gap: 0.35rem;
 }
 
 .pr-editor-merge-tooltip {
@@ -1614,6 +1610,71 @@
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 0.75rem;
   width: 100%;
+}
+
+.pr-editor-character-appearance-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.pr-editor-character-appearance-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.pr-editor-character-appearance-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme] h3.pr-editor-character-appearance-title {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+.pr-editor-character-appearance-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--text-main, #e3e1db);
+}
+
+.pr-editor-character-appearance-title > span {
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.pr-editor-character-appearance-group .pr-editor-media-group-cards {
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+}
+
+.pr-editor-character-appearance-year {
+  margin-top: -0.25rem;
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.62rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pr-editor-character-add-btn {
+  display: block;
+  margin: 0.75rem auto 0;
+}
+
+@media (max-width: 760px) {
+  .pr-editor-character-appearance-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* Wider variant for sections that span the modal's full body width instead

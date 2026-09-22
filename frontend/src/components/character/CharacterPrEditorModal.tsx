@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, Mic, Settings } from 'lucide-react';
+import { BookOpen, GitMerge, Mic, Settings } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { openSubmittedProposal } from '../../lib/github/submitCollaborativeProposal';
 import { getDroppedImageUrl, openImageCropModal } from '../shared/ImageCropModal';
 import { getCharacterMergeTarget, getCharacterMerges, getMediaCharacters, type CharacterEntry, type CharacterMerge } from '../../lib/tauri/characters';
-import type { AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import type { ParsedCharacteristic } from '../../lib/character/biography-parser';
 import { compareByReleaseDateThenTitle } from '../../lib/media/mapper-utils';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
-import { VoiceActorSearchPopup } from './VoiceActorSearchPopup';
+import { VoiceActorSearchPopup, type VoiceActorSearchResult } from './VoiceActorSearchPopup';
 import { FandomImportModal, type SelectedImportFields } from './FandomImportModal';
 import { correlateVoiceActor } from '../../lib/character/voiceActorResolver';
 import type { FandomCharacterData } from '../../lib/character/fandomImporter';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
 import { Field } from '../shared/PrEditorField';
+import { PrEditorAddButton } from '../media/pr-editor/PrEditorAddButton';
 import { TagsInput } from '../shared/TagsInput';
 import { RichTextEditor } from '../shared/RichTextEditor';
 import { loadCharacterEditorData, type PendingAppearance } from '../../lib/character/characterPrEditorLoad';
@@ -203,12 +203,12 @@ export function CharacterPrEditorModal() {
   const [mergeAppearanceIds, setMergeAppearanceIds] = useState<Record<string, string>>({});
   const [voiceActors, setVoiceActors] = useState<VoiceActorRow[]>([]);
   const [originalVoiceActors, setOriginalVoiceActors] = useState<VoiceActorRow[]>([]);
-  const [appearanceRelationType, setAppearanceRelationType] = useState('SUPPORTING');
+  const [appearanceSearchRole, setAppearanceSearchRole] = useState('SUPPORTING');
   const [appearanceSearchOpen, setAppearanceSearchOpen] = useState(false);
   const [mergeMediaSearchOpen, setMergeMediaSearchOpen] = useState(false);
   const [voiceActorSearchOpen, setVoiceActorSearchOpen] = useState(false);
   const [fandomModalOpen, setFandomModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'appearances' | 'voices'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'appearances' | 'merges' | 'voices'>('general');
   const mergeInfoRef = useRef<HTMLButtonElement | null>(null);
   const [mergeHintPosition, setMergeHintPosition] = useState<{ top: number; left: number } | null>(null);
   const isMergeHintOpen = mergeHintPosition !== null;
@@ -321,7 +321,7 @@ export function CharacterPrEditorModal() {
 
         const pendingAppearance = pendingAppearanceRef.current;
         pendingAppearanceRef.current = null;
-        const result = await loadCharacterEditorData(currentId, pendingAppearance, appearanceRelationType);
+        const result = await loadCharacterEditorData(currentId, pendingAppearance, 'SUPPORTING');
 
         setCharacter(result.character);
         setOriginalCharacter(result.originalCharacter);
@@ -398,8 +398,6 @@ export function CharacterPrEditorModal() {
 
   const removeAppearance = (mediaExternalId: string) =>
     setAppearances(appearances.filter(a => a.media_external_id !== mediaExternalId));
-  const updateAppearanceRelationType = (mediaExternalId: string, relationType: string) =>
-    setAppearances(appearances.map(a => a.media_external_id === mediaExternalId ? { ...a, relation_type: relationType } : a));
   const removeMergedCharacter = (externalId: string) =>
     {
       const mergeAppearanceId = mergeAppearanceIds[externalId];
@@ -451,11 +449,11 @@ export function CharacterPrEditorModal() {
       setMergeAppearanceIds(previous => ({ ...previous, [candidate.external_id]: work.externalId }));
     }
   };
-  const addAppearance = (result: ApiSearchResult) => {
+  const addAppearance = (result: ApiSearchResult, relationType = 'SUPPORTING') => {
     if (appearances.some(a => a.media_external_id === result.externalId)) return;
     const next = [...appearances, {
       media_external_id: result.externalId,
-      relation_type: appearanceRelationType,
+      relation_type: relationType,
       title: result.titleMain || result.externalId,
       cover: result.coverUrl,
       release_year: result.releaseYear,
@@ -542,16 +540,13 @@ export function CharacterPrEditorModal() {
     }
   };
 
-  const addVoiceActor = (result: AniListStaffSearchResult) => {
-    const externalId = `person:a${result.id}`;
-    setVoiceActorSearchOpen(false);
-    if (voiceActors.some(v => v.externalId === externalId)) return;
-    setVoiceActors(prev => [...prev, {
-      externalId,
+  const addVoiceActor = (result: VoiceActorSearchResult) => {
+    setVoiceActors(prev => prev.some(v => v.externalId === result.externalId) ? prev : [...prev, {
+      externalId: result.externalId,
       name: result.name,
-      native: result.nameNative || '',
+      native: result.nameNative,
       language: 'Japanese',
-      image: result.image || '',
+      image: result.image,
       role: 'voice',
     }]);
   };
@@ -681,7 +676,11 @@ export function CharacterPrEditorModal() {
             </button>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'appearances' ? ' active' : ''}`} onClick={() => setActiveTab('appearances')} title={t.appearances_tab} aria-label={t.appearances_tab}>
               <BookOpen size={18} strokeWidth={1.8} />
-              {(appearancesChanged() || mergedCharactersChanged()) && <span className="pr-editor-tab-changed-dot" />}
+              {appearancesChanged() && <span className="pr-editor-tab-changed-dot" />}
+            </button>
+            <button type="button" className={`pr-editor-tab-btn${activeTab === 'merges' ? ' active' : ''}`} onClick={() => setActiveTab('merges')} title={t.merge_section} aria-label={t.merge_section}>
+              <GitMerge size={18} strokeWidth={1.8} />
+              {mergedCharactersChanged() && <span className="pr-editor-tab-changed-dot" />}
             </button>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'voices' ? ' active' : ''}`} onClick={() => setActiveTab('voices')} title={t.voice_actors} aria-label={t.voice_actors}>
               <Mic size={18} strokeWidth={1.8} />
@@ -774,14 +773,7 @@ export function CharacterPrEditorModal() {
                 );
               })}
             </div>
-            <button
-              type="button"
-              className="pr-editor-add-btn"
-              onClick={addCharacteristic}
-              style={{ marginTop: '0.75rem' }}
-            >
-              {t.add_characteristic}
-            </button>
+            <PrEditorAddButton onClick={addCharacteristic} title={t.add_characteristic} className="pr-editor-character-add-btn" />
           </div>
 
           {/* ── Biografía ── */}
@@ -803,18 +795,26 @@ export function CharacterPrEditorModal() {
           <>
           {/* ── Apariciones ── */}
           <div className="pr-editor-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <span className="pr-editor-section-title" style={{ margin: 0 }}>
-                {t.appearances} ({appearances.length})
-                {appearancesChanged() && <span className="pr-editor-section-changed-dot" />}
-              </span>
-              <button type="button" className="pr-editor-add-btn" onClick={() => setAppearanceSearchOpen(true)}>
-                {t.add_appearance}
-              </button>
-            </div>
-
-            <div className="pr-editor-media-group-cards pr-editor-media-group-cards--wide">
-              {appearances.map(a => (
+            <div className="pr-editor-character-appearance-groups">
+              {RELATION_TYPE_OPTIONS.map(type => {
+                const label = getRelationTypeLabels()[type as keyof ReturnType<typeof getRelationTypeLabels>] || type;
+                const roleAppearances = appearances.filter(a => (a.relation_type ?? 'SUPPORTING') === type);
+                return (
+                  <section className="pr-editor-character-appearance-group" key={type}>
+                    <div className="pr-editor-character-appearance-header">
+                      <h3 className="pr-editor-section-title pr-editor-character-appearance-title">
+                        {label} <span>({roleAppearances.length})</span>
+                      </h3>
+                      <PrEditorAddButton
+                        onClick={() => {
+                          setAppearanceSearchRole(type);
+                          setAppearanceSearchOpen(true);
+                        }}
+                        title={`${t.add_appearance}: ${label}`}
+                      />
+                    </div>
+                    <div className="pr-editor-media-group-cards pr-editor-media-group-cards--wide">
+                      {roleAppearances.map(a => (
                 <div key={a.media_external_id} className="pr-editor-media-card">
                   <div className="pr-editor-media-card-cover">
                     {a.cover
@@ -830,20 +830,14 @@ export function CharacterPrEditorModal() {
                   </div>
                   <div className="pr-editor-media-card-title" title={a.release_year ? `${a.title} (${a.release_year})` : a.title}>
                     {a.title}
-                    {a.release_year ? <span style={{ opacity: 0.65, fontSize: '0.62rem', marginLeft: '0.25rem' }}>({a.release_year})</span> : null}
                   </div>
-                  <select
-                    value={a.relation_type ?? 'SUPPORTING'}
-                    onChange={e => updateAppearanceRelationType(a.media_external_id, e.target.value)}
-                    className="pr-editor-media-card-select"
-                    style={{ fontSize: '0.7rem' }}
-                  >
-                    {RELATION_TYPE_OPTIONS.map(type => (
-                      <option key={type} value={type}>{getRelationTypeLabels()[type as keyof ReturnType<typeof getRelationTypeLabels>] || type}</option>
-                    ))}
-                  </select>
+                  {a.release_year ? <div className="pr-editor-character-appearance-year">({a.release_year})</div> : null}
                 </div>
-              ))}
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
             </div>
 
             {/* Character identity merges are managed in the dedicated tab. */}
@@ -885,32 +879,8 @@ export function CharacterPrEditorModal() {
           </>
           )}
 
-          {activeTab === 'appearances' && (
+          {activeTab === 'merges' && (
             <div className="pr-editor-section pr-editor-character-merges">
-              <div className="pr-editor-character-merges-header">
-                <div>
-                  <span className="pr-editor-section-title pr-editor-merge-title">
-                    {t.merge_section}
-                    {mergedCharactersChanged() && <span className="pr-editor-section-changed-dot" />}
-                    <button
-                      ref={mergeInfoRef}
-                      type="button"
-                      className="pr-editor-merge-info"
-                      aria-label={`${t.merge_info}: ${t.merge_hint}`}
-                      aria-describedby={mergeHintPosition ? 'character-merge-info-tooltip' : undefined}
-                      onMouseEnter={updateMergeHintPosition}
-                      onMouseLeave={() => {
-                        if (document.activeElement !== mergeInfoRef.current) setMergeHintPosition(null);
-                      }}
-                      onFocus={updateMergeHintPosition}
-                      onBlur={() => setMergeHintPosition(null)}
-                    ><span className="info-indicator" aria-hidden="true">i</span></button>
-                  </span>
-                </div>
-                <button type="button" className="pr-editor-add-btn" onClick={() => setMergeMediaSearchOpen(true)}>
-                  {t.add_merge}
-                </button>
-              </div>
               {mergedCharacters.length > 0 ? (
                 <div className="pr-editor-character-merge-list">
                   {mergedCharacters.map(item => (
@@ -927,23 +897,28 @@ export function CharacterPrEditorModal() {
                   ))}
                 </div>
               ) : null}
+              <div className="pr-editor-add-row pr-editor-character-merge-add-row">
+                <PrEditorAddButton onClick={() => setMergeMediaSearchOpen(true)} title={t.add_merge} />
+                <button
+                  ref={mergeInfoRef}
+                  type="button"
+                  className="pr-editor-merge-info"
+                  aria-label={`${t.merge_info}: ${t.merge_hint}`}
+                  aria-describedby={mergeHintPosition ? 'character-merge-info-tooltip' : undefined}
+                  onMouseEnter={updateMergeHintPosition}
+                  onMouseLeave={() => {
+                    if (document.activeElement !== mergeInfoRef.current) setMergeHintPosition(null);
+                  }}
+                  onFocus={updateMergeHintPosition}
+                  onBlur={() => setMergeHintPosition(null)}
+                ><span className="info-indicator" aria-hidden="true">i</span></button>
+              </div>
             </div>
           )}
 
           {activeTab === 'voices' && (
           <>
-          {/* Actores de Voz */}
           <div className="pr-editor-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <span className="pr-editor-section-title" style={{ margin: 0 }}>
-                {t.voice_actors} ({voiceActors.length})
-                {voiceActorsChanged() && <span className="pr-editor-section-changed-dot" />}
-              </span>
-              <button type="button" className="pr-editor-add-btn" onClick={() => setVoiceActorSearchOpen(true)}>
-                {t.add_voice_actor}
-              </button>
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem' }}>
               {voiceActors.map((va, idx) => (
                 <div key={idx} className="pr-editor-va-card">
@@ -990,6 +965,9 @@ export function CharacterPrEditorModal() {
                 </div>
               ))}
             </div>
+            <div className="pr-editor-add-row">
+              <PrEditorAddButton onClick={() => setVoiceActorSearchOpen(true)} title={t.add_voice_actor} />
+            </div>
           </div>
           </>
           )}
@@ -1009,7 +987,7 @@ export function CharacterPrEditorModal() {
 
       {appearanceSearchOpen && (
         <MediaSearchPopup
-          onSelect={addAppearance}
+          onSelect={result => addAppearance(result, appearanceSearchRole)}
           onClose={() => setAppearanceSearchOpen(false)}
           excludeIds={appearances.map(a => a.media_external_id)}
           closeOnSelect={false}

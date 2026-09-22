@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useMemo, memo, type MouseEvent } from 'react';
 import {
   BookImage, BookMarked, BookOpen, BookText, Clapperboard, Gamepad2,
-  MessageSquareText, Tv, TvMinimalPlay, type LucideIcon,
+  MessageSquareText, Tv, type LucideIcon,
 } from 'lucide-react';
 import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry, type DbMediaRelation } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
@@ -18,7 +18,6 @@ import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../local/utils/constants';
 
 const LIBRARY_MEDIA_ICONS: Record<string, LucideIcon> = {
   game: Gamepad2,
-  anime: TvMinimalPlay,
   manga: BookOpen,
   lnovel: BookMarked,
   vnovel: MessageSquareText,
@@ -68,6 +67,17 @@ function nextReadingIssueCover(
 
 export function LibraryTypeIcon({ type, size = 16 }: { type: string; size?: number }) {
   const baseType = type.split('_')[0] || 'book';
+  if (baseType === 'anime') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M2.5 12c2.1-4.1 5.3-6.2 9.5-6.2s7.4 2.1 9.5 6.2c-2.1 4.1-5.3 6.2-9.5 6.2S4.6 16.1 2.5 12z" />
+        <path d="m5.1 8.7-1.8-2m5-1.1-.7-2.5m5 2.2V2.8m5 2.8.7-2.5m3.2 5.6 1.8-2" />
+        <ellipse cx="12" cy="12" rx="3.4" ry="4.1" />
+        <circle cx="12" cy="12.7" r="1.35" fill="currentColor" stroke="none" />
+        <path d="m10.3 10.3.8-.8m2.6.8-.8-.8" />
+      </svg>
+    );
+  }
   const Icon = LIBRARY_MEDIA_ICONS[baseType] ?? BookText;
   return <Icon size={size} strokeWidth={2} aria-hidden="true" />;
 }

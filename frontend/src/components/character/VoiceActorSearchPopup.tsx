@@ -1,32 +1,74 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { searchAniListStaff, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
+import { searchAniListStaff } from '../../lib/search/providers/anilist';
+import { searchTmdbPeople } from '../../lib/search/providers/tmdb';
+import { API_ENDPOINTS } from '../../lib/api/endpoints';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 import { getT } from '../../i18n/client';
 
-export interface VoiceActorSearchPopupProps {
-  onSelect: (result: AniListStaffSearchResult) => void;
-  onClose: () => void;
-  excludeIds?: string[];
-  closeOnSelect?: boolean;
+export interface VoiceActorSearchResult {
+  externalId: string;
+  name: string;
+  nameNative: string;
+  image: string;
+  provider: 'AniList' | 'TMDB';
 }
 
-export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = false }: VoiceActorSearchPopupProps) {
+export interface VoiceActorSearchPopupProps {
+  onSelect: (result: VoiceActorSearchResult) => void;
+  onClose: () => void;
+  excludeIds?: string[];
+}
+
+export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: VoiceActorSearchPopupProps) {
   const ce = getT().character_editor;
   const [query, setQuery] = useState('');
-  const { results, isLoading } = useDebouncedSearch<AniListStaffSearchResult>(
+  const [selected, setSelected] = useState<Record<string, VoiceActorSearchResult>>({});
+  const { results, isLoading } = useDebouncedSearch<VoiceActorSearchResult>(
     query,
-    (q, signal) => searchAniListStaff(q, signal).then(page => page.results),
+    async (q, signal) => {
+      const [aniListResult, tmdbPeople] = await Promise.all([
+        searchAniListStaff(q, signal).then(page => page.results).catch(() => []),
+        searchTmdbPeople(q, signal).catch(() => []),
+      ]);
+      return [
+        ...aniListResult.map(person => ({
+          externalId: `person:a${person.id}`,
+          name: person.name,
+          nameNative: person.nameNative || '',
+          image: person.image || '',
+          provider: 'AniList' as const,
+        })),
+        ...tmdbPeople.map(person => ({
+          externalId: `person:t${person.id}`,
+          name: person.name,
+          nameNative: '',
+          image: person.profile_path ? API_ENDPOINTS.TMDB_IMAGE(person.profile_path, 'w185') : '',
+          provider: 'TMDB' as const,
+        })),
+      ];
+    },
   );
 
   const filteredResults = dedupeByKey(
-    results.filter(r => !excludeIds.includes(`person:a${r.id}`)),
-    r => String(r.id),
+    results.filter(result => !excludeIds.includes(result.externalId)),
+    result => result.externalId,
   );
+  const selectedIds = Object.keys(selected);
 
-  const handleSelect = (r: AniListStaffSearchResult) => {
-    if (closeOnSelect) onClose();
-    onSelect(r);
+  const toggleSelected = (result: VoiceActorSearchResult) => {
+    setSelected(current => {
+      if (current[result.externalId]) {
+        const { [result.externalId]: _removed, ...remaining } = current;
+        return remaining;
+      }
+      return { ...current, [result.externalId]: result };
+    });
+  };
+
+  const handleConfirm = () => {
+    selectedIds.forEach(id => onSelect(selected[id]));
+    onClose();
   };
 
   const modal = (
@@ -49,25 +91,45 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [], clos
             <div className="pr-editor-search-empty">{ce.voice_actor_search_no_results}</div>
           )}
           <div className="pr-editor-search-grid">
-            {filteredResults.map(r => (
+            {filteredResults.map(result => (
               <button
-                key={r.id}
+                key={result.externalId}
                 type="button"
-                className="pr-editor-search-result-card"
-                onClick={() => handleSelect(r)}
+                className={`pr-editor-search-result-card${selected[result.externalId] ? ' is-selected' : ''}`}
+                aria-pressed={!!selected[result.externalId]}
+                onClick={() => toggleSelected(result)}
               >
-                {r.image ? (
-                  <img src={r.image} alt="" className="pr-editor-search-result-cover" />
+                {result.image ? (
+                  <img src={result.image} alt="" className="pr-editor-search-result-cover" />
                 ) : (
                   <div className="pr-editor-cover-placeholder" style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{ce.no_image}</div>
                 )}
                 <div className="pr-editor-search-result-info">
-                  <div className="pr-editor-search-result-title">{r.name}</div>
-                  {r.nameNative && <div className="pr-editor-search-result-id">{r.nameNative}</div>}
+                  <div className="pr-editor-search-result-title pr-editor-voice-actor-result-title">
+                    <span>{result.name}</span>
+                    <img
+                      src={result.provider === 'AniList' ? '/API/Anilist_logo.png' : '/API/Tmdb.new.logo.png'}
+                      alt={`${result.provider} logo`}
+                      title={result.provider}
+                      className="media-store-icon"
+                    />
+                  </div>
+                  {result.nameNative && <div className="pr-editor-search-result-id">{result.nameNative}</div>}
                 </div>
               </button>
             ))}
           </div>
+        </div>
+        <div className="pr-editor-search-cast-actions">
+          <span>{selectedIds.length} seleccionados</span>
+          <button
+            type="button"
+            className="pr-editor-btn pr-editor-btn--submit"
+            onClick={handleConfirm}
+            disabled={selectedIds.length === 0}
+          >
+            Añadir seleccionados
+          </button>
         </div>
       </div>
     </div>

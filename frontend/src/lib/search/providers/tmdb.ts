@@ -346,6 +346,22 @@ function normalizePersonName(name: string): string {
   return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
+export async function searchTmdbPeople(query: string, signal?: AbortSignal): Promise<TmdbPersonSearchHit[]> {
+  const clean = query.trim();
+  if (!clean) return [];
+
+  const auth = await getTmdbAuth();
+  if (!auth) return [];
+
+  const headers: Record<string, string> = {};
+  if (auth.accessToken) headers.Authorization = `Bearer ${auth.accessToken}`;
+  let url = `${API_ENDPOINTS.TMDB}/search/person?query=${encodeURIComponent(clean)}&page=1&language=${tmdbLocale()}`;
+  if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
+
+  const data = await fetchJson<{ results?: TmdbPersonSearchHit[] }>(url, { headers, signal }).catch(() => null);
+  return data?.results ?? [];
+}
+
 /** Exact-name fallback for staff/voice actors not present in AniList. */
 export async function findTmdbPersonExactMatch(
   query: string,
@@ -354,17 +370,8 @@ export async function findTmdbPersonExactMatch(
   const clean = query.trim();
   if (!clean) return null;
 
-  const auth = await getTmdbAuth();
-  if (!auth) return null;
-
-  const headers: Record<string, string> = {};
-  if (auth.accessToken) headers.Authorization = `Bearer ${auth.accessToken}`;
-  let url = `${API_ENDPOINTS.TMDB}/search/person?query=${encodeURIComponent(clean)}&page=1&language=${tmdbLocale()}`;
-  if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
-
-  const data = await fetchJson<{ results?: TmdbPersonSearchHit[] }>(url, { headers, signal }).catch(() => null);
   const normalizedQuery = normalizePersonName(clean);
-  return (data?.results ?? [])
+  return (await searchTmdbPeople(clean, signal))
     .filter(person => normalizePersonName(person.name) === normalizedQuery)
     .sort((a, b) => {
       const actingDifference = Number(b.known_for_department === 'Acting') - Number(a.known_for_department === 'Acting');
