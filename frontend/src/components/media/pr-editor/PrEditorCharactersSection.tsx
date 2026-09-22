@@ -11,7 +11,7 @@ interface Props {
   onRemove: (externalId: string) => void;
   onOpenSearch: (role: string) => void;
   onOpenCreate: (role: string) => void;
-  onOpenCharacterEditor: (externalId: string) => void;
+  onOpenCharacterEditor: (externalId: string, title?: string) => void;
 }
 
 const CHARACTER_ROLES = [
@@ -131,7 +131,7 @@ export function PrEditorCharactersSection({ t, characters, onRemove, onOpenSearc
           onPointerDown={event => event.stopPropagation()}
         >
           <button type="button" role="menuitem" onClick={() => {
-            onOpenCharacterEditor(contextMenu.externalId);
+            onOpenCharacterEditor(contextMenu.externalId, characters.find(character => character.external_id === contextMenu.externalId)?.name);
             setContextMenu(null);
           }}>
             Editar personaje

@@ -1511,6 +1511,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     setPrEditorSagaOrderById({});
     setActivePrEditorId(currentId);
     setActivePrEditorCharacterId(null);
+    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'media', externalId: currentId } }));
     setShowPrEditorExitPrompt(false);
     setPendingPrEditorTabCloseId(null);
     setPrEditorSessionStatus('');
@@ -1522,6 +1523,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     setPrEditorSessionIds(previous => previous.includes(externalId) ? previous : [...previous, externalId]);
     setActivePrEditorId(externalId);
     setActivePrEditorCharacterId(null);
+    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'media', externalId } }));
     setShowPrEditorExitPrompt(false);
     setPendingPrEditorTabCloseId(null);
   }, []);
@@ -1533,11 +1535,15 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     release_year?: number | null;
     release_month?: number | null;
     release_day?: number | null;
-  }) => {
+  }, initialTitle?: string) => {
     setShowPrEditor(true);
     setActivePrEditorCharacterId(externalId);
-    setPrEditorCharacterEntries(previous => ({ ...previous, [externalId]: previous[externalId] ?? { title: externalId, dirty: false } }));
-    (window as any).openCharacterEditor?.(externalId, initialAppearance, { mediaSession: true });
+    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'character', externalId } }));
+    setPrEditorCharacterEntries(previous => ({
+      ...previous,
+      [externalId]: { title: initialTitle || previous[externalId]?.title || 'Cargando personaje…', dirty: previous[externalId]?.dirty ?? false },
+    }));
+    (window as any).openCharacterEditor?.(externalId, initialAppearance, { mediaSession: true, title: initialTitle });
   }, []);
 
   useEffect(() => {
@@ -1552,11 +1558,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         setActivePrEditorCharacterId(current => current === detail.externalId ? null : current);
         return;
       }
-      setActivePrEditorCharacterId(detail.externalId);
       setPrEditorCharacterEntries(previous => ({
         ...previous,
         [detail.externalId]: {
-          title: detail.title || previous[detail.externalId]?.title || detail.externalId,
+          title: detail.title || previous[detail.externalId]?.title || 'Cargando personaje…',
           dirty: detail.dirty ?? previous[detail.externalId]?.dirty ?? false,
         },
       }));
@@ -1785,7 +1790,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   );
   const prEditorSessionTabs: PrEditorSessionTab[] = orderedPrEditorSessionIds.map(id => ({
     externalId: id,
-    label: prEditorSessionTitles[id] || (id === currentId ? data?.titleMain : '') || id,
+    label: prEditorSessionTitles[id] || (id === currentId ? data?.titleMain : '') || 'Cargando obra…',
     dirty: prEditorDirtyById[id] ?? false,
     affected: prEditorAffectedIds.has(id),
     kind: 'media',
@@ -1802,9 +1807,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   ];
 
   const navigatePrEditorSessionTab = (tab: PrEditorSessionTab) => {
+    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: tab.kind, externalId: tab.externalId } }));
     if (tab.kind === 'character') {
       setActivePrEditorCharacterId(tab.externalId);
-      (window as any).openCharacterEditor?.(tab.externalId, undefined, { mediaSession: true });
+      (window as any).openCharacterEditor?.(tab.externalId, undefined, { mediaSession: true, title: tab.label });
       return;
     }
     setActivePrEditorCharacterId(null);

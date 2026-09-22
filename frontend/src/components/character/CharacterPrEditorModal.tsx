@@ -168,6 +168,7 @@ export function CharacterPrEditorModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSessionTab, setIsSessionTab] = useState(false);
   const [sharedSessionTabs, setSharedSessionTabs] = useState<any[]>([]);
+  const [sharedSessionActiveCharacterId, setSharedSessionActiveCharacterId] = useState<string | null>(null);
   const [currentId, setCurrentId] = useState('');
   const [characterEditorTabIds, setCharacterEditorTabIds] = useState<string[]>([]);
   const [pendingCharacterTabCloseId, setPendingCharacterTabCloseId] = useState<string | null>(null);
@@ -275,12 +276,22 @@ export function CharacterPrEditorModal() {
   }, [currentId]);
 
   useEffect(() => {
-    const onSessionUpdate = (event: Event) => {
-      setSharedSessionTabs((event as CustomEvent<{ tabs?: any[] }>).detail?.tabs ?? []);
+    const syncSession = (detail: { tabs?: any[]; active?: { kind?: string; externalId?: string | null } } | undefined) => {
+      setSharedSessionTabs(detail?.tabs ?? []);
+      setSharedSessionActiveCharacterId(detail?.active?.kind === 'character' ? detail.active.externalId ?? null : null);
+    };
+    const onSessionUpdate = (event: Event) => syncSession((event as CustomEvent).detail);
+    const onActiveTabChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ kind?: string; externalId?: string }>).detail;
+      setSharedSessionActiveCharacterId(detail?.kind === 'character' ? detail.externalId ?? null : null);
     };
     window.addEventListener('metadea:pr-editor-session-update', onSessionUpdate);
-    setSharedSessionTabs((window as any).__metadeaPrEditorSession?.tabs ?? []);
-    return () => window.removeEventListener('metadea:pr-editor-session-update', onSessionUpdate);
+    window.addEventListener('metadea:pr-editor-active-tab-change', onActiveTabChange);
+    syncSession((window as any).__metadeaPrEditorSession);
+    return () => {
+      window.removeEventListener('metadea:pr-editor-session-update', onSessionUpdate);
+      window.removeEventListener('metadea:pr-editor-active-tab-change', onActiveTabChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -320,7 +331,7 @@ export function CharacterPrEditorModal() {
         release_month?: number | null;
         release_day?: number | null;
       },
-      options?: { mediaSession?: boolean },
+      options?: { mediaSession?: boolean; title?: string },
     ) => {
       setIsSessionTab(!!options?.mediaSession);
       const activeDraft = currentCharacterDraftRef.current;
@@ -338,7 +349,8 @@ export function CharacterPrEditorModal() {
       setLoading(true);
       setLoadNonce(n => n + 1);
       if (options?.mediaSession) {
-        window.dispatchEvent(new CustomEvent('metadea:character-editor-session-change', { detail: { action: 'update', externalId, title: externalId, dirty: false } }));
+        const cachedTitle = characterDraftsRef.current.get(externalId)?.name || characterCacheRef.current[externalId]?.name;
+        window.dispatchEvent(new CustomEvent('metadea:character-editor-session-change', { detail: { action: 'update', externalId, title: options.title || cachedTitle || '', dirty: false } }));
       }
     };
 
@@ -584,8 +596,6 @@ export function CharacterPrEditorModal() {
       });
     }
     controller?.navigate?.(tab);
-    setIsOpen(false);
-    setIsSessionTab(false);
   };
 
   const renderSessionLayout = (panel: React.ReactNode) => {
@@ -924,8 +934,9 @@ export function CharacterPrEditorModal() {
 
   if (loading) {
     return createPortal(
-      <div className={`pr-editor-overlay${isSessionTab ? '' : ' pr-editor-overlay--nested'}`} onClick={requestClose}>
+      <div className={`pr-editor-overlay${isSessionTab ? '' : ' pr-editor-overlay--nested'}`} onClick={requestClose} style={isSessionTab && sharedSessionActiveCharacterId !== currentId ? { display: 'none' } : undefined}>
         {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--loading" onClick={e => e.stopPropagation()}><div className="spinner" /></div>)}
+        {isSessionTab && <PrEditorChangelogPanel externalId={currentId} />}
       </div>,
       document.body
     );
@@ -934,10 +945,10 @@ export function CharacterPrEditorModal() {
   if (!character) return null;
 
   return createPortal(
-    <div className={`pr-editor-overlay${isSessionTab ? '' : ' pr-editor-overlay--nested'}`} onClick={requestClose}>
+    <div className={`pr-editor-overlay${isSessionTab ? '' : ' pr-editor-overlay--nested'}`} onClick={requestClose} style={isSessionTab && sharedSessionActiveCharacterId !== currentId ? { display: 'none' } : undefined}>
       {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
         <PrEditorHeader
-          title={`Editar ${name || character.name}`}
+          title={`Entrada de ${name || character.name}`}
           subtitle={`ID: ${currentId}`}
           status={statusMsg && (
             <div className="pr-editor-header-status">
@@ -949,7 +960,7 @@ export function CharacterPrEditorModal() {
           <>
             <button
               type="button"
-              className="pr-editor-btn pr-editor-btn--secondary pr-editor-header-action"
+              className="pr-editor-btn pr-editor-btn--secondary pr-editor-header-action pr-editor-header-action--import"
               onClick={() => setFandomModalOpen(true)}
               title={t.import_fandom_title}
             >
@@ -958,7 +969,7 @@ export function CharacterPrEditorModal() {
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              <span>{t.import_fandom}</span>
+              <span>Importar datos</span>
             </button>
             <button
               type="button"

@@ -89,7 +89,7 @@ interface Props {
   onSaved?: () => void;
   onBlockedSubmitted?: (externalId: string) => void;
   onEditSagaEntry?: (externalId: string) => void;
-  onEditCharacter?: (externalId: string, initialAppearance?: { media_external_id: string; title: string; cover: string | null; release_year?: number | null; release_month?: number | null; release_day?: number | null }) => void;
+  onEditCharacter?: (externalId: string, initialAppearance?: { media_external_id: string; title: string; cover: string | null; release_year?: number | null; release_month?: number | null; release_day?: number | null }, title?: string) => void;
   sessionActive?: boolean;
   sessionMode?: boolean;
   sessionHasChanges?: boolean;
@@ -1150,12 +1150,14 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   }, [externalId, onRegisterSessionEditor]);
 
   if (githubGate === 'checking') {
-    return (
+    return createPortal(
       <div className="pr-editor-overlay" style={sessionActive ? undefined : { display: 'none' }}>
         {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--loading">
           <div className="spinner" />
         </div>)}
-      </div>
+        <PrEditorChangelogPanel externalId={externalId} />
+      </div>,
+      document.body,
     );
   }
 
@@ -1183,12 +1185,14 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   }
 
   if (loading) {
-    return (
+    return createPortal(
       <div className="pr-editor-overlay" style={sessionActive ? undefined : { display: 'none' }}>
         {renderSessionLayout(<div className="pr-editor-modal pr-editor-modal--loading">
           <div className="spinner" />
         </div>)}
-      </div>
+        <PrEditorChangelogPanel externalId={externalId} />
+      </div>,
+      document.body,
     );
   }
 
@@ -1513,8 +1517,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
               t={t}
               characters={characters}
               onRemove={removeCharacter}
-              onOpenCharacterEditor={id => {
-                if (onEditCharacter) onEditCharacter(id);
+              onOpenCharacterEditor={(id, title) => {
+                if (onEditCharacter) onEditCharacter(id, undefined, title);
                 else (window as any).openCharacterEditor?.(id);
               }}
               onOpenSearch={role => {
@@ -1533,7 +1537,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                 release_month: entry?.release_month ?? null,
                 release_day: entry?.release_day ?? null,
                 };
-                if (onEditCharacter) onEditCharacter(characterId, initialAppearance);
+                if (onEditCharacter) onEditCharacter(characterId, initialAppearance, 'Nuevo personaje');
                 else (window as any).openCharacterEditor?.(characterId, initialAppearance);
               }}
             />

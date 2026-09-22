@@ -59,6 +59,18 @@ export function cleanFandomImageUrl(rawUrl: string): string {
   return clean.split('?')[0];
 }
 
+function fandomImageFilename(value: string): string {
+  const imageSegment = value
+    .split(/[?#]/, 1)[0]
+    .split('/')
+    .reverse()
+    .map(segment => {
+      try { return decodeURIComponent(segment); } catch { return segment; }
+    })
+    .find(segment => /\.(?:jpe?g|png|webp|avif|bmp|svg|tiff?|gif)$/i.test(segment));
+  return (imageSegment ?? '').replace(/^file:/i, '').replace(/_/g, ' ').toLocaleLowerCase();
+}
+
 function imageHasTransparency(url: string): Promise<boolean> {
   if (typeof Image === 'undefined' || typeof document === 'undefined') return Promise.resolve(false);
 
@@ -563,10 +575,18 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
             const imageInfo = page.imageinfo?.[0];
             const resolvedUrl = imageInfo?.url;
             const meetsMinimumSize = imageInfo?.width >= 100 && imageInfo?.height >= 100;
-            return resolvedUrl && meetsMinimumSize ? [{
+            const imageMime = String(imageInfo?.mime ?? '').toLowerCase();
+            const imageFile = String(page.title ?? resolvedUrl ?? '').split(/[?#]/, 1)[0].toLowerCase();
+            const isGif = /\.gif$/i.test(imageFile) || imageMime === 'image/gif';
+            const isImage = imageMime ? imageMime.startsWith('image/') : /\.(?:jpe?g|png|webp|avif|bmp|svg|tiff?)$/i.test(imageFile);
+            const previewUrl = imageInfo.thumburl || resolvedUrl;
+            return resolvedUrl && meetsMinimumSize && isImage && !isGif ? [{
               title: page.title || '',
-              url: cleanFandomImageUrl(resolvedUrl),
-              previewUrl: imageInfo.thumburl || resolvedUrl,
+              // Fandom's original `/revision/latest` URLs can return 404 even
+              // when its API thumbnail URL is valid; use that same served
+              // image for preview and selection.
+              url: previewUrl,
+              previewUrl,
             }] : [];
           }));
       }
@@ -585,7 +605,13 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     .map((option, index) => ({ option, isTransparent: transparencyFlags[index] }))
     .sort((a, b) => Number(a.isTransparent) - Number(b.isTransparent))
     .map(({ option }) => option);
-  if (!imageUrl && imageOptions[0]) imageUrl = imageOptions[0].url;
+  if (imageUrl) {
+    const infoboxFilename = fandomImageFilename(imageUrl);
+    const matchingOption = imageOptions.find(option => fandomImageFilename(option.title) === infoboxFilename);
+    if (matchingOption) imageUrl = matchingOption.url;
+  } else if (imageOptions[0]) {
+    imageUrl = imageOptions[0].url;
+  }
 
   // Extraer biografía limpia eliminando todo elemento de infobox o ficha lateral
   const contentRoot = doc.querySelector('.mw-parser-output') || doc.body;
