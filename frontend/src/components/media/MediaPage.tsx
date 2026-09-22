@@ -2747,7 +2747,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
                     });
                   })()}
 
-                  {data.platforms && data.platforms.length > 0 && (
+                  {data.type === 'game' && data.platforms && data.platforms.length > 0 && (
                     <div className="media-stat-item media-stat-item--platforms">
                       <span className="media-stat-label">{tm.stat_platforms}</span>
                       <span className="media-stat-divider" />

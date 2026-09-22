@@ -1157,6 +1157,12 @@
 .pr-editor-cover-uploader input {
   flex: 1;
   height: 36px;
+  color: var(--text-main, #e3e1db);
+}
+
+.pr-editor-cover-uploader input::placeholder {
+  color: var(--text-muted, #a0a0b8);
+  opacity: 0.85;
 }
 
 /* Custom Grids inside columns */
@@ -1164,6 +1170,18 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
+}
+
+.pr-editor-field.pr-editor-field--inline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pr-editor-field.pr-editor-field--inline > label {
+  margin: 0;
+  white-space: nowrap;
 }
 
 .pr-editor-field-row.pr-editor-field-row--release-progress {
@@ -1255,10 +1273,29 @@
   border-top: 0;
 }
 
+.pr-editor-col .pr-editor-section+.pr-editor-section.pr-editor-section--classification {
+  border-top: 0;
+}
+
 .pr-editor-shop-links-row {
   display: flex;
   align-items: stretch;
   gap: 0.75rem;
+}
+
+.pr-editor-labeled-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.pr-editor-labeled-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pr-editor-labeled-content > .pr-editor-field {
+  width: 100%;
 }
 
 .pr-editor-shop-links-content {

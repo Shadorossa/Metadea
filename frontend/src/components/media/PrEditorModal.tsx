@@ -1219,6 +1219,42 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     </Field>
   );
 
+  const releaseDateField = (field: 'release_year' | 'release_month' | 'release_day', label: string) => {
+    const daysInMonth = (month: number | null, year: number | null) =>
+      month ? new Date(year ?? 2000, month, 0).getDate() : 31;
+    const max = field === 'release_year' ? 9999
+      : field === 'release_month' ? 12
+        : daysInMonth(entry.release_month ?? null, entry.release_year ?? null);
+    const min = field === 'release_year' ? 1 : 1;
+
+    return (
+      <Field label={label} changed={isFieldChanged(field)} small dim={isLocalOnly(field)}>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={1}
+          value={entry[field] ?? ''}
+          onChange={event => {
+            const rawValue = event.target.value;
+            const parsed = rawValue === '' ? null : Number.parseInt(rawValue, 10);
+            const value = parsed == null || !Number.isFinite(parsed)
+              ? null
+              : Math.max(min, Math.min(max, parsed));
+            const next = { ...entry, [field]: value };
+            if (field === 'release_month' || field === 'release_year') {
+              const nextMonth = field === 'release_month' ? value : entry.release_month ?? null;
+              const nextYear = field === 'release_year' ? value : entry.release_year ?? null;
+              const maxDay = daysInMonth(nextMonth, nextYear);
+              if (next.release_day != null && next.release_day > maxDay) next.release_day = maxDay;
+            }
+            setEntry(next);
+          }}
+        />
+      </Field>
+    );
+  };
+
   const primaryCountLabel = ({
     anime: 'Nº of episodes',
     series: 'Nº of episodes',
@@ -1252,20 +1288,20 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     comic: 'Cómic',
   }) as Record<string, string>;
 
-  const typeField = (field: keyof MediaCatalogEntry, label: string) => {
+  const typeField = (field: keyof MediaCatalogEntry, label: string, inline = false) => {
     const currentType = entry[field] as string;
     const isGameOrVn = currentType === 'game' || currentType === 'vnovel';
 
     if (!isGameOrVn) {
       return (
-        <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
+        <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)} inline={inline}>
           <input type="text" value={mediaTypesDict[currentType] || currentType || ''} disabled className="pr-editor-readonly-input" />
         </Field>
       );
     }
 
     return (
-      <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
+      <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)} inline={inline}>
         <select value={currentType || ''} onChange={e => handleChange(field, e.target.value || null)}>
           <option value="game">{mediaTypesDict.game || 'Videojuego'}</option>
           <option value="vnovel">{mediaTypesDict.vnovel || 'Novela Visual'}</option>
@@ -1274,8 +1310,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     );
   };
 
-  const formatField = (field: keyof MediaCatalogEntry, label: string) => (
-    <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
+  const formatField = (field: keyof MediaCatalogEntry, label: string, inline = false) => (
+    <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)} inline={inline}>
       <select value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value || null)}>
         <option value="">—</option>
         {Object.keys(tm.formats)
@@ -1436,17 +1472,30 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
             <div className="pr-editor-body--grid pr-editor-body--grid-2col">
               <div className="pr-editor-col pr-editor-col--left">
                 <div className="pr-editor-section">
-                  <div className="pr-editor-form-grid">
-                    {textField('title_main', 'Main Title')}
-                    {textField('title_romaji', 'Romaji Title')}
-                    {textField('title_native', 'Native Title')}
-                    <Field label="Synopsis / Description" changed={isFieldChanged('synopsis')} full dim={isLocalOnly('synopsis')}>
-                      <RichTextEditor
-                        value={entry.synopsis || ''}
-                        onChange={html => handleChange('synopsis', html)}
-                        placeholder={tPr.synopsis_ph}
-                      />
-                    </Field>
+                  <div className="pr-editor-labeled-row">
+                    <span className="pr-editor-vertical-label">Titles</span>
+                    <div className="pr-editor-labeled-content">
+                      <div className="pr-editor-form-grid">
+                        {textField('title_main', 'Main Title')}
+                        {textField('title_romaji', 'Romaji Title')}
+                        {textField('title_native', 'Native Title')}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pr-editor-labeled-row">
+                    <span className="pr-editor-vertical-label">
+                      Synopsis
+                      <ChangedDot show={isFieldChanged('synopsis')} className="pr-editor-section-changed-dot" />
+                    </span>
+                    <div className="pr-editor-labeled-content">
+                      <div className={`pr-editor-field${isLocalOnly('synopsis') ? ' pr-editor-field--dim' : ''}`}>
+                        <RichTextEditor
+                          value={entry.synopsis || ''}
+                          onChange={html => handleChange('synopsis', html)}
+                          placeholder={tPr.synopsis_ph}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1455,9 +1504,9 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                     <div className="pr-editor-subgroup pr-editor-subgroup--vertical-label">
                       <span className="pr-editor-vertical-label">Release</span>
                       <div className="pr-editor-subgroup-fields">
-                        {numberField('release_year', 'Year')}
-                        {numberField('release_month', 'Month')}
-                        {numberField('release_day', 'Day')}
+                        {releaseDateField('release_year', 'Year')}
+                        {releaseDateField('release_month', 'Month')}
+                        {releaseDateField('release_day', 'Day')}
                       </div>
                     </div>
 
@@ -1474,17 +1523,17 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                 </div>
 
                 <div className="pr-editor-section pr-editor-section--shop-links">
-                  <div className="pr-editor-shop-links-row">
+                  <div className="pr-editor-labeled-row pr-editor-shop-links-row">
                     <span className="pr-editor-vertical-label">Shop Links</span>
                     <div className="pr-editor-shop-links-content">
-                  {/* One slot per "platform|url" pair (steam|https://...,
-                      gog|https://...) — the exact format
-                      usePendingLaunchers/build_store_links already parse
-                      this CSV into, so a game missing its own storefront
-                      links (a common gap for anything the user never opened
-                      /media on, see that hook's own comment) can get them
-                      added here manually instead of only ever being backfilled
-                      by a live IGDB fetch. */}
+                      {/* One slot per "platform|url" pair (steam|https://...,
+                          gog|https://...) - the exact format
+                          usePendingLaunchers/build_store_links already parse
+                          this CSV into, so a game missing its own storefront
+                          links (a common gap for anything the user never opened
+                          /media on, see that hook's own comment) can get them
+                          added here manually instead of only ever being backfilled
+                          by a live IGDB fetch. */}
                       {slotField('shop_links_csv', 'platform|url pairs', { fullWidth: true, transformNewItem: detectShopLinkPlatform })}
                     </div>
                   </div>
@@ -1494,7 +1543,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
               <div className="pr-editor-col pr-editor-col--right">
                 <div className="pr-editor-section">
                   <div className="pr-editor-assets-box">
-                    <div className="pr-editor-asset-row">
+                    <div className="pr-editor-labeled-row pr-editor-asset-row">
                       <span className="pr-editor-vertical-label">
                         Cover URL
                         <ChangedDot show={isFieldChanged('cover_url')} />
@@ -1518,7 +1567,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                       </div>
                     </div>
 
-                    <div className="pr-editor-asset-row">
+                    <div className="pr-editor-labeled-row pr-editor-asset-row">
                       <span className="pr-editor-vertical-label">Banner URLs</span>
                       <div className="pr-editor-banner-section">
                         {slotField('banners_csv', 'Banner URLs', { preview: true, fullWidth: true, dotClass: 'pr-editor-changed-dot--banner' })}
@@ -1527,13 +1576,18 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                   </div>
                 </div>
 
-                <div className="pr-editor-section">
-                  <div className="pr-editor-classification-grid">
-                    {typeField('type', 'Type')}
-                    {formatField('format', 'Format')}
-                    {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
-                    {slotField('genres_tag_csv', 'Themes / Tags')}
-                    {slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}
+                <div className="pr-editor-section pr-editor-section--classification">
+                  <div className="pr-editor-labeled-row">
+                    <span className="pr-editor-vertical-label">Classification</span>
+                    <div className="pr-editor-labeled-content">
+                      <div className="pr-editor-classification-grid">
+                        {typeField('type', 'Type', true)}
+                        {formatField('format', 'Format', true)}
+                        {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
+                        {slotField('genres_tag_csv', 'Themes / Tags')}
+                        {entry.type === 'game' && slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1785,6 +1839,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
           role="menu"
           style={{ left: Math.min(sessionTabContextMenu.x, window.innerWidth - 190), top: Math.min(sessionTabContextMenu.y, window.innerHeight - 58) }}
           onPointerDown={event => event.stopPropagation()}
+          onClick={event => event.stopPropagation()}
         >
           <button type="button" role="menuitem" onClick={() => {
             const tab = sessionTabs.find(item => item.externalId === sessionTabContextMenu.externalId && item.kind === sessionTabContextMenu.kind);

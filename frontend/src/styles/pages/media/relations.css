@@ -918,6 +918,25 @@
   filter: brightness(0) invert(1);
 }
 
+.media-store-icon--favicon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: none;
+}
+
+.media-store-fallback {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 4px;
+  background: var(--surface-2, #333);
+  color: var(--text-main, #fff);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .media-store-link:hover {
   opacity: 1;
   transform: scale(1.1);
