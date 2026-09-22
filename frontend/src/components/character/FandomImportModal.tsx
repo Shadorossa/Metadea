@@ -82,6 +82,13 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
     setSelectedFields(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const renderFieldOption = (key: keyof SelectedImportFields, label: string, disabled = false) => (
+    <label key={key} className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
+      <input type="checkbox" checked={selectedFields[key]} onChange={() => toggleField(key)} disabled={disabled} />
+      <span>{label}</span>
+    </label>
+  );
+
   const modalContent = (
     <div className="pr-editor-search-popup" onClick={event => { event.stopPropagation(); onClose(); }}>
       <div
@@ -249,45 +256,41 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
             </div>
 
             {/* Selector de campos a transferir */}
-            <div>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main, #eae6df)', display: 'block', marginBottom: '0.75rem' }}>
-                {t.import_fandom_select_fields}
+            <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.65rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', flexShrink: 0, fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                Importar
               </span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem' }}>
-                <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedFields.name} onChange={() => toggleField('name')} />
-                  <span>{t.import_fandom_preview_name} ({data.name})</span>
-                </label>
+              <div style={{ display: 'grid', flex: 1, minWidth: 0, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.75rem' }}>
+                <section style={{ minWidth: 0, padding: '0.7rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)', background: 'rgba(255,255,255,0.015)' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.65rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                    Identidad<span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                    {renderFieldOption('name', `${t.import_fandom_preview_name} (${data.name})`)}
+                    {renderFieldOption('nativeName', `${t.native_name}${data.nativeName ? ` (${data.nativeName})` : ''}`, !data.nativeName)}
+                    {renderFieldOption('image', t.import_fandom_preview_image, !data.imageUrl)}
+                  </div>
+                </section>
 
-                <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedFields.nativeName} onChange={() => toggleField('nativeName')} disabled={!data.nativeName} />
-                  <span>{t.native_name}{data.nativeName ? ` (${data.nativeName})` : ''}</span>
-                </label>
+                <section style={{ minWidth: 0, padding: '0.7rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)', background: 'rgba(255,255,255,0.015)' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.65rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                    Contenido<span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                    {renderFieldOption('aliases', `${t.import_fandom_preview_aliases} (${data.aliases.length})`, data.aliases.length === 0)}
+                    {renderFieldOption('characteristics', `${t.import_fandom_preview_characteristics} (${data.characteristics.length})`, data.characteristics.length === 0)}
+                    {renderFieldOption('biography', t.import_fandom_preview_bio, !data.cleanBiography)}
+                  </div>
+                </section>
 
-                <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedFields.image} onChange={() => toggleField('image')} disabled={!data.imageUrl} />
-                  <span>{t.import_fandom_preview_image}</span>
-                </label>
-
-                <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedFields.aliases} onChange={() => toggleField('aliases')} disabled={data.aliases.length === 0} />
-                  <span>{t.import_fandom_preview_aliases} ({data.aliases.length})</span>
-                </label>
-
-                <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedFields.characteristics} onChange={() => toggleField('characteristics')} disabled={data.characteristics.length === 0} />
-                  <span>{t.import_fandom_preview_characteristics} ({data.characteristics.length})</span>
-                </label>
-
-                <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedFields.biography} onChange={() => toggleField('biography')} disabled={!data.cleanBiography} />
-                  <span>{t.import_fandom_preview_bio}</span>
-                </label>
-
-                <label className="fandom-import-field-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selectedFields.voiceActors} onChange={() => toggleField('voiceActors')} disabled={data.voiceActors.length === 0} />
-                  <span>{t.import_fandom_preview_voices} ({data.voiceActors.length})</span>
-                </label>
+                <section style={{ minWidth: 0, padding: '0.7rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)', background: 'rgba(255,255,255,0.015)' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.65rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                    Voces<span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                    {renderFieldOption('voiceActors', `${t.import_fandom_preview_voices} (${data.voiceActors.length})`, data.voiceActors.length === 0)}
+                  </div>
+                </section>
               </div>
             </div>
 
