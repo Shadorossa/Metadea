@@ -120,7 +120,7 @@ export function initGitHubAuth() {
             } else {
               hideModal(githubDeviceModal);
               showDisconnected();
-              alert(t.github_login_failed.replace('{error}', tokenData.error_description || tokenData.error));
+              alert((t.github_login_failed ?? 'GitHub login failed: {error}').replace('{error}', tokenData.error_description || tokenData.error || 'unknown error'));
               return; // Stop polling
             }
           } catch (e) {

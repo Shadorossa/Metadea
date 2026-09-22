@@ -5,14 +5,16 @@ export interface IgdbImage { id: number; image_id: string }
 export interface IgdbCover { id: number; image_id: string }
 export interface IgdbInvolvedCompany {
   id:         number;
-  company?:   IgdbNamed;
+  company?:   IgdbNamed & { logo?: { image_id: string } };
   developer?: boolean;
   publisher?: boolean;
 }
-export interface IgdbGame {
+export interface IgdbGame extends Record<string, unknown> {
   id:                   number;
   name:                 string;
+  url?:                 string;
   summary?:             string;
+  banner_image_id?:     string | null;
   cover?:               IgdbCover;
   screenshots?:         IgdbImage[];
   artworks?:            IgdbImage[];
@@ -20,8 +22,24 @@ export interface IgdbGame {
   involved_companies?:  IgdbInvolvedCompany[];
   first_release_date?:  number; // unix timestamp
   rating?:              number;
+  total_rating?:        number;
   rating_count?:        number;
-  hypes?:               number; // pre-release "anticipation" follow count — used as a popularity proxy
+  hypes?:               number; // pre-release "anticipation" follow count - used as a popularity proxy
+  category?:            number;
+  status?:              number;
+  game_type?:           number;
+  platforms?:           IgdbNamed[];
+  alternative_names?:   { name: string; comment?: string }[];
+  store_links?:         { platform: string; url: string }[] | null;
+  parent_game?:         { id: number; name: string; cover?: IgdbCover; first_release_date?: number; game_type?: number; is_vn?: boolean };
+  version_parent?:      { id: number; name: string; cover?: IgdbCover; first_release_date?: number; game_type?: number; is_vn?: boolean };
+  remakes?:             IgdbGame[];
+  remasters?:           IgdbGame[];
+  expansions?:          IgdbGame[];
+  standalone_expansions?: IgdbGame[];
+  expanded_games?:      IgdbGame[];
+  ports?:               IgdbGame[];
+  forks?:               IgdbGame[];
 }
 
 export function igdbImageUrl(imageId: string, size = 'screenshot_big'): string {
@@ -65,8 +83,8 @@ export async function igdbUpcomingReleases(startUnix: number, endUnix: number): 
   return tauriCmd<IgdbGame[]>('igdb_upcoming_releases', [], { startUnix, endUnix });
 }
 
-export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, unknown> | null> {
-  return tauriTry<Record<string, unknown> | null>('igdb_get_game_detail', null, { igdbId });
+export async function igdbGetGameDetail(igdbId: number): Promise<IgdbGame | null> {
+  return tauriTry<IgdbGame | null>('igdb_get_game_detail', null, { igdbId });
 }
 
 /** All IGDB cover variants, including localized covers, for one game. */

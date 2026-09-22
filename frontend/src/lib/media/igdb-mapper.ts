@@ -7,6 +7,7 @@ import { unixToDateParts, formatDateParts, normalizeScore100, lookupLabel, parse
 import { getPublisherNamesString } from '../shared/string-utils';
 import { canonicalizeIgdbStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
+import type { IgdbGame } from '../tauri/igdb';
 
 export interface IgdbSubGame {
   id: number;
@@ -22,42 +23,7 @@ export interface IgdbSubGame {
   is_vn?: boolean;
 }
 
-interface IgdbDetailGame {
-  id: number;
-  name: string;
-  url?: string;
-  summary?: string;
-  cover?: { image_id: string };
-  banner_image_id?: string | null;
-  first_release_date?: number;
-  rating?: number;
-  total_rating?: number;
-  /** IGDB's release-status enum: 0 Released, 2 Alpha, 3 Beta, 4 Early Access,
-   *  5 Offline, 6 Cancelled, 7 Rumored, 8 Delisted (no 1). */
-  status?: number;
-  game_type?: number;
-  genres?: { id: number; name: string }[];
-  involved_companies?: {
-    id: number;
-    company?: { id: number; name: string; logo?: { image_id: string } };
-    developer?: boolean;
-    publisher?: boolean;
-  }[];
-  platforms?: { id: number; name: string }[];
-  alternative_names?: { name: string; comment?: string }[];
-  store_links?: { platform: string; url: string }[] | null;
-  parent_game?: IgdbSubGame;
-  version_parent?: IgdbSubGame;
-
-  // Relaciones de versiones
-  remakes?: IgdbSubGame[];
-  remasters?: IgdbSubGame[];
-  expansions?: IgdbSubGame[];
-  standalone_expansions?: IgdbSubGame[];
-  expanded_games?: IgdbSubGame[];
-  ports?: IgdbSubGame[];
-  forks?: IgdbSubGame[];
-}
+type IgdbDetailGame = IgdbGame;
 
 const GAME_TYPE_FORMAT: Record<number, string> = {
   0: 'GAME',

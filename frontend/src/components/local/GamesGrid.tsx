@@ -272,7 +272,7 @@ export function GamesGrid({
                     <option value="playtime">{tLocal.sort_playtime}</option>
                   </select>
                   {idx === 0 && (
-                    <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan} disabled={gamesState === 'loading'}>
+                    <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan}>
                       <IconRefresh />
                     </button>
                   )}

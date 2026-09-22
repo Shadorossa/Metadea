@@ -194,7 +194,7 @@ export function LibrarySection({
       const playableIds = new Set<string>();
       const routes = await readRoutes().catch(() => ({} as Record<string, string>));
       const mediaCandidates = candidates.filter(entry => entry.type !== 'game' && entry.type !== 'vnovel');
-      const categories = [...new Set(mediaCandidates.map(entry => LOCAL_CATEGORY_BY_MEDIA_TYPE[entry.type]).filter((category): category is string => !!category))];
+      const categories = [...new Set(mediaCandidates.map(entry => LOCAL_CATEGORY_BY_MEDIA_TYPE[entry.type]).filter((category): category is NonNullable<typeof category> => !!category))];
       const rootEntriesByCategory = new Map<string, Awaited<ReturnType<typeof scanFolderContents>>>();
       await Promise.all(categories.map(async category => {
         const rootPath = routes[category];

@@ -20,7 +20,6 @@ import { getPublisherNames } from '../shared/string-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
 import { API_SPORTS_EVENT_BANNER_COLOR } from './constants';
-
 import { getCachedMediaData, setCachedMediaData, patchCachedRelations, patchCachedCharacters, invalidateCachedMediaData, CACHE_PREFIX } from './media-cache';
 import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
 import {
@@ -33,6 +32,14 @@ import { fetchComicIssues } from './comic-issues';
 import { fetchComicCollectedEditions } from './comic-collected-editions';
 import { fetchMediaEpisodes } from './episode-list';
 import { fetchMediaThemes, getAnimePrequelThemeOffsets } from './theme-list';
+
+function isAniListMediaType(value: string): value is typeof ANILIST_TYPES[number] {
+  return (ANILIST_TYPES as readonly string[]).includes(value);
+}
+
+function isIgdbMediaType(value: string): value is typeof IGDB_TYPES[number] {
+  return (IGDB_TYPES as readonly string[]).includes(value);
+}
 
 // Re-exported so callers keep one import path despite the split into
 // media-cache/media-relations/catalog-mapper/book-editions/comic-issues/
@@ -74,13 +81,13 @@ export async function fetchMediaDataInternal(rawId: string, allowBlocked = false
     return null;
   }
 
-  if (ANILIST_TYPES.includes(type)) {
+  if (isAniListMediaType(type)) {
     if (!numericId) return null;
     const raw = await fetchAniListDetail(numericId);
     return raw ? mapAniListToMedia(raw, type) : null;
   }
 
-  if (IGDB_TYPES.includes(type)) {
+  if (isIgdbMediaType(type)) {
     if (!numericId) return null;
 
     // Banner/store links ride along as Game sub-fields in one request.
@@ -685,7 +692,7 @@ function fetchMediaDataWithFallbackVisible(
 // patch the cache themselves, gated on their own relevance check.
 export async function fetchExtraRelations(rawId: string, currentData: MediaPageData): Promise<MediaPageData['relations'] | null> {
   const { type, id: numericId } = parseExternalId(rawId);
-  if (!IGDB_TYPES.includes(type)) return null;
+  if (!isIgdbMediaType(type)) return null;
   if (!numericId) return null;
 
   // Relation graph and optional base-game (PARENT) lookup, in parallel.
@@ -728,7 +735,7 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
 export async function fetchExtraCharacters(rawId: string, currentData: MediaPageData): Promise<MediaPageData['characters'] | null> {
   if (!currentData.charactersHasMore) return null;
   const { type, id: numericId } = parseExternalId(rawId);
-  if (!ANILIST_TYPES.includes(type) || !numericId) return null;
+  if (!isAniListMediaType(type) || !numericId) return null;
 
   const extraEdges = await fetchAniListRemainingCharacters(numericId, true).catch(() => []);
   if (extraEdges.length === 0) return null;

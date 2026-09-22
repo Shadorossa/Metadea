@@ -611,6 +611,7 @@ export const es = {
     progress_hours: "Horas",
     progress_episodes: "Episodios",
     progress_chapters: "Capítulos",
+    chapter: "Capítulo",
     progress_pages: "Páginas",
     progress_seasons: "Temporadas",
     progress_volumes: "Volúmenes",
@@ -995,6 +996,8 @@ export const es = {
     seen_count: "Has visto",
     next_episode_aria: "Siguiente episodio",
     stop_aria: "Detener",
+    pause_aria: "Pausar",
+    play_aria: "Reanudar",
   },
   character: {
     role_main: "Principal",

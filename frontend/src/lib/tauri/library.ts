@@ -8,6 +8,7 @@ export interface LibraryEntry {
   user_id: string;
   external_id: string;
   type: string;
+  total_count_2?: number | null;
   status: string | null;
   rating: number | null;
   rating_2: number | null;

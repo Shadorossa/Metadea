@@ -33,12 +33,14 @@ export function mergeResyncFields(prev: MediaCatalogEntry, partialFromLive: Part
 
 export function buildResyncCharacters(liveData: MediaPageData, hasExistingCharacters: boolean): DbMediaCharacter[] | null {
   if (hasExistingCharacters || !liveData.characters || liveData.characters.length === 0) return null;
-  return liveData.characters.map(c => ({
+  return liveData.characters
+    .filter((c): c is typeof c & { id: string } => typeof c.id === 'string' && c.id.length > 0)
+    .map(c => ({
     external_id: c.id,
     name: c.name,
     image_url: c.image || null,
     relation_type: c.role || null,
-  }));
+    }));
 }
 
 export function appendResyncRelations(prev: EditableRelation[], liveData: MediaPageData, externalId: string): EditableRelation[] {

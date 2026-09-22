@@ -6,6 +6,7 @@ import {
 } from '../local/utils/folderMatch';
 import { resolveOwnSeasonNumber, resolveSeasonExternalIds } from '../local/utils/seasonResolve';
 import { isInProgressStatus, isReadingType } from '../../lib/constants/media';
+import type { SeasonInfo } from '../local/utils/seasonResolve';
 
 export function toLocalMediaItem(entry: LibraryEntry, catalog?: MediaCatalogEntry): LocalMediaItem {
   return {
@@ -94,7 +95,7 @@ export async function isLocalMediaItemPlayable(
   );
   let seasonOffset = 0;
   if (itemSeason != null && itemSeason > 1 && !entriesHaveSeasonMarkers) {
-    const seasons = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason).catch(() => ({}));
+    const seasons: Record<number, SeasonInfo> = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason).catch(() => ({}));
     let precedingTotal = 0;
     for (let season = 1; season < itemSeason; season++) {
       const count = seasons[season]?.totalCount;

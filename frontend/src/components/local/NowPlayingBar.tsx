@@ -58,7 +58,7 @@ export function NowPlayingBar() {
                 type="button"
                 className="now-playing-btn"
                 onClick={() => (playback.status === 'playing' ? pausePlayback() : resumePlayback())}
-                aria-label={playback.status === 'playing' ? t.pause : t.play}
+                aria-label={playback.status === 'playing' ? t.pause_aria : t.play_aria}
               >
                 {playback.status === 'playing' ? (
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
@@ -71,13 +71,13 @@ export function NowPlayingBar() {
                 )}
               </button>
               {hasNext && (
-                <button type="button" className="now-playing-btn" onClick={skipToNext} aria-label={t.next_episode}>
+                <button type="button" className="now-playing-btn" onClick={skipToNext} aria-label={t.next_episode_aria}>
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                     <polygon points="5 4 15 12 5 20 5 4" /><rect x="17" y="4" width="3" height="16" />
                   </svg>
                 </button>
               )}
-              <button type="button" className="now-playing-btn now-playing-btn--close" onClick={stopPlayback} aria-label={t.stop}>
+              <button type="button" className="now-playing-btn now-playing-btn--close" onClick={stopPlayback} aria-label={t.stop_aria}>
                 <IconX size={14} />
               </button>
             </>
@@ -99,8 +99,8 @@ export function NowPlayingBar() {
             <button
               type="button"
               className="now-playing-btn now-playing-btn--close"
-              aria-label={t.stop}
-              title={t.stop}
+              aria-label={t.stop_aria}
+              title={t.stop_aria}
               onClick={() => stopGameProcess(game.installPath!, game.romPlatform)
                 .then(() => clearGamePresence())
                 .catch(console.error)}

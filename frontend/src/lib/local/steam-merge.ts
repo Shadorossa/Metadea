@@ -1,4 +1,4 @@
-import { scanAllGames, steamGetOwnedGames, readEnvConfig, getHiddenLocalGames } from '../tauri';
+import { scanAllGames, steamGetOwnedGames, readEnvConfig, getHiddenLocalGames, type EnvConfig } from '../tauri';
 import type { LocalGame, SteamOwnedGame } from '../tauri';
 
 /**
@@ -11,7 +11,7 @@ import type { LocalGame, SteamOwnedGame } from '../tauri';
 export async function scanGamesWithSteam(): Promise<LocalGame[]> {
   const [localGames, cfg] = await Promise.all([
     scanAllGames(),
-    readEnvConfig().catch(() => ({})),
+    readEnvConfig().catch((): EnvConfig => ({})),
   ]);
 
   if (!cfg.steam_api_key) return localGames;

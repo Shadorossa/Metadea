@@ -329,7 +329,7 @@ export function UserProfileView() {
       setData({
         items, catalogMap, characterMap, sagaRelations, sagaNames,
         journey: toDayJourney(socialActivity),
-        lists: socialLists.map(l => ({ key: l.key, name: l.name, description: l.description, is_fav: l.is_fav, item_count: l.item_count, preview_ids: [] })),
+        lists: socialLists.map(l => ({ key: l.key, name: l.name, description: l.description, is_fav: l.is_fav, is_private: false, item_count: l.item_count, preview_ids: [] })),
         favorites: p.favorites ?? {},
         monthlyHistory,
       });

@@ -6,7 +6,10 @@ export {};
 declare global {
   interface Window {
     __TAURI__?: {
-      core?: { invoke: <T = unknown>(cmd: string, args?: Record<string, unknown>) => Promise<T> };
+      core?: {
+        invoke: <T = unknown>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+        convertFileSrc?: (filePath: string, protocol?: string) => string;
+      };
       path?: { appDataDir: () => Promise<string> };
       opener?: { openUrl: (url: string) => void };
     };

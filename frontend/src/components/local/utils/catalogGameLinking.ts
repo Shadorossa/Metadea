@@ -16,7 +16,7 @@ export function computeBundleCompletionStatus(
   const partOfChildIds = relations
     .filter(r => r.related_media_external_id === bundleId && (PART_OF_RELATION_TYPES.includes(r.relation_type) || r.relation_type === 'PART_OF' || r.relation_type === 'UPDATE'))
     .map(r => r.media_external_id);
-  const childIds = Array.from(new Set([...containsChildIds, ...partOfChildIds])).filter(id => id && id !== bundleId);
+  const childIds = Array.from(new Set([...containsChildIds, ...partOfChildIds])).filter((id): id is string => !!id && id !== bundleId);
   if (childIds.length === 0) return undefined;
   return childIds.every(id => byExternalId.get(id)?.status === 'completed') ? 'completed' : undefined;
 }
@@ -29,12 +29,13 @@ export function computeBundleCompletionStatus(
 // videojuegos status match, its "already owned" set, and the Visual Novel
 // tab's own Steam-backlog match) before being pulled out here.
 export function candidateExternalIdsForGame(g: LocalGame, pathCache: Record<string, MetaEntry>): string[] {
-  const igdbId = g.app_id ? pathCache[g.app_id]?.igdb_id : undefined;
+  const appId = g.app_id ?? '';
+  const igdbId = appId ? pathCache[appId]?.igdb_id : undefined;
   return [
     g.external_id,
     igdbId != null ? gameExternalId(igdbId, true) : undefined,
     igdbId != null ? gameExternalId(igdbId, false) : undefined,
-  ].filter((id): id is string => !!id);
+  ].filter((id): id is string => typeof id === 'string' && id.length > 0);
 }
 
 // A season/update/issue/episode-tagged catalog entry (a Steam "season pass"

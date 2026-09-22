@@ -93,7 +93,7 @@ export interface SearchPage {
 
 // Every type folded into the "all" tab — deliberately excludes 'character',
 // which stays its own dedicated tab/result shape.
-const ALL_SEARCH_TYPES: MediaType[] = [
+const ALL_SEARCH_TYPES: Exclude<MediaType, 'all'>[] = [
   'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event',
 ];
 

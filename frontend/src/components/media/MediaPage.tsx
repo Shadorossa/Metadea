@@ -591,7 +591,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         if (totalCount > 0) seasonUpdates.progress = totalCount;
       }
       const draft: LibraryEntry = {
-        id: '', user_id: 'local', external_id: id, type: 'event',
+        id: '', user_id: 'local',
         status: null, rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
         is_favorite: 0, is_platinum: 0, tags: null, notes: null,
         added_at: null, updated_at: null, selected_platform: null, selected_version: null,

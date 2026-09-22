@@ -521,7 +521,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
   'movies':       'movie',
 };
 
-  const CATEGORY_ICONS: Record<CategoryId, JSX.Element> = {
+  const CATEGORY_ICONS: Record<CategoryId, React.ReactElement> = {
     'videojuegos': <IconGame />,
     'visual-novel': <IconVNovel />,
     'anime': <IconAnime />,

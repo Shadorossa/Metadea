@@ -20,13 +20,6 @@ jobs:
         run: npm install
         working-directory: frontend
 
-      # Informational only for now, not blocking — the frontend already has
-      # ~45 pre-existing type errors unrelated to any given PR (loose EnvConfig
-      # unions, i18n locale-union mismatches, a missing JSX namespace, etc.).
-      # Flipping this to a hard gate before that baseline is cleaned up would
-      # fail on day one for reasons no PR caused. Once the baseline is clean,
-      # remove `continue-on-error` so this actually blocks regressions.
-      - name: Typecheck (informational)
+      - name: Typecheck frontend
         working-directory: frontend
-        continue-on-error: true
-        run: npx tsc --noEmit
+        run: npm run typecheck

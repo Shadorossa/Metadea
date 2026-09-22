@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, memo, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Database } from 'lucide-react';
 import { search, topRated, type MediaType, type SearchResult, type SeasonId, type SearchFilters, MissingApiKeyError } from '../../lib/search/index';
@@ -48,7 +48,7 @@ function EventDisciplineIcon({ discipline }: { discipline: ApiSportsDiscipline |
 
 // ── Tab icons ────────────────────────────────────────────────────────────────
 
-const TAB_ICONS: Record<MediaType, JSX.Element> = {
+const TAB_ICONS: Record<MediaType, ReactElement> = {
   all:       <IconAll />,
   anime:     <IconAnime />,
   manga:     <IconManga />,

@@ -77,7 +77,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
           const numId = Number(c.external_id?.split(':')[1]) || 0;
           return {
             id: numId,
-            name: c.title_main,
+            name: c.title_main || c.external_id,
             year: c.release_year || 0,
             cover_url: c.cover_url || '',
             developer: c.type === 'vnovel' ? 'Visual Novel' : 'Base de datos',

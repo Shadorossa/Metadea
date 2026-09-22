@@ -5,6 +5,7 @@ import { showAuthConnected, showAuthDisconnected } from './auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
 import { byId } from '../shared/dom';
 import { getT } from '../../i18n/client';
+import type { Translations } from '../../i18n';
 import { showToast } from '../shared/toast';
 
 const DISCONNECTED_AVATAR_HTML = `<img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />`;
@@ -18,7 +19,7 @@ const ls = {
 const TOKEN_KEY = STORAGE_KEYS.anilistToken;
 
 export function initAniListAuth() {
-  const t = getT().settings;
+  const t: Translations['settings'] = getT().settings;
   const anilistLoginBtn     = byId<HTMLButtonElement>('anilist-login-btn');
   const anilistUserStatus   = document.getElementById('anilist-user-status');
   const anilistAvatarContainer = document.getElementById('anilist-avatar-container');
@@ -69,7 +70,7 @@ export function initAniListAuth() {
       } else {
         // Check if it's a token error
         const errors = res?.errors;
-        if (errors?.some(e =>
+        if (errors?.some((e: { message?: string }) =>
           e.message?.includes('Unauthorized') ||
           e.message?.includes('expired') ||
           e.message?.includes('invalid')
@@ -141,9 +142,9 @@ export function initAniListAuth() {
           showToast(t.connect + ' ✓', 'success');
         } else {
           const errors = res?.errors;
-          let errorMsg = t.anilist_token_invalid;
+          let errorMsg: string = t.anilist_token_invalid;
 
-          if (errors?.some(e =>
+          if (errors?.some((e: { message?: string }) =>
             e.message?.includes('Unauthorized') ||
             e.message?.includes('expired')
           )) {

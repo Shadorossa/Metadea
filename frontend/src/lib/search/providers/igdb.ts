@@ -1,5 +1,5 @@
 import { API_URL } from '../../config';
-import { igdbSearch, igdbImageUrl, isTauri, readEnvConfig } from '../../tauri';
+import { igdbSearch, igdbImageUrl, isTauri, readEnvConfig, type EnvConfig } from '../../tauri';
 import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../index';
 import { cleanEditionTitle } from '../../media/title-utils';
 import { unixToDateParts } from '../../media/mapper-utils';
@@ -53,7 +53,7 @@ async function searchGamesByCategories(
   mediaType: MediaType = 'game',
 ): Promise<SearchPage> {
   if (isTauri()) {
-    const cfg = await readEnvConfig().catch(() => ({}));
+    const cfg = await readEnvConfig().catch((): EnvConfig => ({}));
     if (!cfg.igdb_client_id || !cfg.igdb_client_secret) return { results: [], hasMore: false };
 
     let pageResult;
@@ -115,7 +115,7 @@ async function searchGamesLocal(
   page: number,
   filters?: SearchFilters,
 ): Promise<SearchPage> {
-  const cfg = await readEnvConfig().catch(() => ({}));
+  const cfg = await readEnvConfig().catch((): EnvConfig => ({}));
   if (!cfg.igdb_client_id || !cfg.igdb_client_secret) {
     throw new MissingApiKeyError(['igdb']);
   }
