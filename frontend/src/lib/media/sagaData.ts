@@ -33,49 +33,26 @@ async function fetchSagaAlternativeGroups(entries: SagaEntry[]): Promise<SagaEnt
   const baseById = new Map(entries.map(entry => [entry.externalId, entry]));
   const adjacency = new Map<string, Set<string>>();
   const orderById = new Map<string, number>();
-  const pending = entries.map(entry => entry.externalId);
-  const loadedIds = new Set<string>();
+  const rowsById = await Promise.all(entries.map(async entry => [entry.externalId, await getMediaRelations(entry.externalId).catch(() => [] as DbMediaRelation[])] as const));
 
-  while (pending.length > 0) {
-    const batch = [...new Set(pending.splice(0))].filter(id => !loadedIds.has(id));
-    if (batch.length === 0) break;
-    batch.forEach(id => loadedIds.add(id));
-    const rowsById = await Promise.all(batch.map(async id => [id, await getMediaRelations(id).catch(() => [] as DbMediaRelation[])] as const));
-
-    for (const [ownerId, rows] of rowsById) {
-      for (const relation of rows) {
-        if (relation.relation_type !== 'ALTERNATIVE') continue;
-        const otherId = relation.related_media_external_id;
-        if (!adjacency.has(ownerId)) adjacency.set(ownerId, new Set());
-        if (!adjacency.has(otherId)) adjacency.set(otherId, new Set());
-        adjacency.get(ownerId)!.add(otherId);
-        adjacency.get(otherId)!.add(ownerId);
-        const position = /#(\d+)\s*$/.exec(relation.type_label || '');
-        if (position) orderById.set(ownerId, Number(position[1]));
-        if (!loadedIds.has(otherId)) pending.push(otherId);
-      }
+  for (const [ownerId, rows] of rowsById) {
+    for (const relation of rows) {
+      if (relation.relation_type !== 'ALTERNATIVE') continue;
+      const otherId = relation.related_media_external_id;
+      // Only combine alternatives that are already members of this saga;
+      // don't pull unrelated works into the viewer through relation edges.
+      if (!baseById.has(otherId)) continue;
+      if (!adjacency.has(ownerId)) adjacency.set(ownerId, new Set());
+      if (!adjacency.has(otherId)) adjacency.set(otherId, new Set());
+      adjacency.get(ownerId)!.add(otherId);
+      adjacency.get(otherId)!.add(ownerId);
+      const position = /#(\d+)\s*$/.exec(relation.type_label || '');
+      if (position) orderById.set(ownerId, Number(position[1]));
     }
   }
 
   const blockedIds = new Set(await getBlockedExternalIds().catch(() => [] as string[]));
-  const candidateIds = [...adjacency.keys()].filter(id => !blockedIds.has(id));
-  const metadata = await Promise.all(candidateIds.map(async id => {
-    const cached = baseById.get(id);
-    if (cached) return [id, cached] as const;
-    const entry = await getCatalogEntry(id).catch(() => null);
-    if (!entry || entry.format?.trim().toUpperCase() === 'SUMMARY') return [id, null] as const;
-    return [id, {
-      externalId: id,
-      title: entry.title_main || id,
-      cover: entry.cover_url || null,
-      format: entry.format || null,
-      mediaType: entry.type || id.split(':')[0] || 'game',
-      year: entry.release_year ?? null,
-      month: entry.release_month ?? null,
-      day: entry.release_day ?? null,
-    }] as const;
-  }));
-  const entriesById = new Map(metadata.filter((row): row is readonly [string, SagaEntry] => row[1] !== null));
+  const entriesById = new Map(entries.filter(entry => !blockedIds.has(entry.externalId)).map(entry => [entry.externalId, entry] as const));
   const visited = new Set<string>();
   const componentById = new Map<string, SagaEntry[]>();
 
@@ -120,8 +97,8 @@ async function fetchSagaAlternativeGroups(entries: SagaEntry[]): Promise<SagaEnt
 }
 
 /** Returns viewer-only panels: ordinary saga entries stay unchanged, while
- *  ALTERNATIVE-connected works share one panel. Season consumers continue
- *  reading loadSagaChain().entries and never receive these display groups. */
+ *  ALTERNATIVE-connected members of the saga share one panel. Season
+ *  consumers continue reading loadSagaChain().entries without these groups. */
 export function loadSagaAlternativeGroups(entries: SagaEntry[]): Promise<SagaEntry[][]> {
   const key = entries.map(entry => entry.externalId).join(',');
   let cached = alternativeGroupsCache.get(key);

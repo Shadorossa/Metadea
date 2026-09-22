@@ -17,10 +17,29 @@ interface Props {
 
 type LoadState = 'loading' | 'done' | 'error';
 
+function splitAlternativeTitles(entries: SagaEntry[]): { root: string; variants: string[] } | null {
+  const titles = entries.map(entry => entry.title.trim());
+  if (titles.length < 2) return null;
+
+  const first = titles[0];
+  const commonLength = titles.slice(1).reduce((length, title) => {
+    let shared = 0;
+    while (shared < length && shared < title.length && first[shared].toLowerCase() === title[shared].toLowerCase()) shared++;
+    return shared;
+  }, first.length);
+  const root = first.slice(0, commonLength).trim().replace(/[\s:|/–—-]+$/u, '');
+  if (!root) return null;
+
+  const variants = titles.map(title => title.slice(root.length).trim().replace(/^[\s:|/–—-]+/u, ''));
+  return variants.every(Boolean) ? { root, variants } : null;
+}
+
 export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   const t = i18n;
   const [entries, setEntries] = useState<SagaEntry[]>([]);
   const [panels, setPanels] = useState<SagaEntry[][]>([]);
+  const [hoveredAlternativeId, setHoveredAlternativeId] = useState<string | null>(null);
+  const [activeAlternativeId, setActiveAlternativeId] = useState<string | null>(null);
   const [sagaTitle, setSagaTitle] = useState<string>('');
   const [loadState, setLoadState] = useState<LoadState>('loading');
   // Every Arcos Argumentales (see PrEditorStoryArcsSection) touching any
@@ -88,6 +107,9 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   }, [externalId]);
 
   const firstEntry = entries[0];
+  const showFormatTooltips = new Set(
+    entries.map(entry => entry.format?.trim().toLocaleUpperCase()).filter(Boolean),
+  ).size > 1;
 
   // Arc items usually point at one of this saga's own entries, but can also
   // point at something pulled in alongside it (e.g. a manga source) that
@@ -167,39 +189,98 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
           )}
           {loadState === 'done' && activeTab === 'saga' && (
             <div className="saga-strip-list">
-              {panels.map(panel => panel.length > 1 ? (
+              {panels.map(panel => {
+                if (panel.length > 1) {
+                  const titleParts = splitAlternativeTitles(panel);
+                  const isPanelActive = panel.some(entry => entry.externalId === activeAlternativeId);
+                  const sharedYear = panel[0].year != null && panel.every(entry => entry.year === panel[0].year)
+                    ? panel[0].year
+                    : null;
+                  return (
                 <div key={panel.map(item => item.externalId).join('|')} className="saga-strip-item saga-strip-item--alternatives">
-                  {panel.map(entry => {
-                    const isCurrent = entry.externalId === externalId;
+                  {(() => {
+                    const backgroundEntry = panel.find(item => item.externalId === hoveredAlternativeId)
+                      ?? panel.find(item => item.externalId === externalId)
+                      ?? panel[0];
                     return (
-                      <a
-                        key={entry.externalId}
-                        className={`saga-strip-alternative-slot${isCurrent ? ' saga-strip-alternative-slot--current' : ''}`}
-                        href={`/media?id=${encodeURIComponent(entry.externalId)}`}
-                        onClick={e => { if (isCurrent) e.preventDefault(); }}
-                      >
-                        <div className="saga-strip-item-bg">
-                          {entry.cover && <img src={toMediumCover(entry.cover)} alt="" />}
-                          <div className="saga-strip-item-overlay" />
-                        </div>
-                        {isCurrent && <span className="saga-strip-item-current-indicator" />}
-                        <div className="saga-strip-alternative-cover">
-                          {entry.cover
-                            ? <img className="cover-image-fill" src={toMediumCover(entry.cover)} alt="" loading="lazy" />
-                            : <div className="saga-strip-item-cover-fallback" />}
-                        </div>
-                        <div className="saga-strip-item-info">
-                          <span className="saga-strip-item-title">{entry.title}</span>
-                          <div className="saga-strip-item-meta-row">
-                            {entry.format && <span className="saga-strip-item-badge">{lookupLabel(t.formats, entry.format, entry.format)}</span>}
-                            {entry.year && <span className="saga-strip-item-year">{entry.year}</span>}
-                          </div>
-                        </div>
-                      </a>
+                      <div className="saga-strip-item-bg">
+                        {backgroundEntry.cover && (
+                          <motion.img
+                            key={backgroundEntry.externalId}
+                            src={toMediumCover(backgroundEntry.cover)}
+                            alt=""
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 0.3 }}
+                            transition={{ duration: 0.22 }}
+                          />
+                        )}
+                        <div className="saga-strip-item-overlay" />
+                      </div>
                     );
-                  })}
+                  })()}
+                  <div
+                    className="saga-strip-alternative-stage"
+                    onMouseMove={e => {
+                      const bounds = e.currentTarget.getBoundingClientRect();
+                      const position = Math.min(panel.length - 1, Math.floor(((e.clientX - bounds.left) / bounds.width) * panel.length));
+                      const hoveredEntry = panel[position];
+                      if (hoveredEntry) {
+                        setHoveredAlternativeId(hoveredEntry.externalId);
+                        setActiveAlternativeId(hoveredEntry.externalId);
+                      }
+                    }}
+                    onMouseLeave={() => setActiveAlternativeId(null)}
+                  >
+                    {panel.map((entry, index) => {
+                      const isCurrent = entry.externalId === externalId;
+                      const isExpanded = activeAlternativeId === entry.externalId;
+                      const isCollapsed = isPanelActive && !isExpanded;
+                      return (
+                        <div
+                          key={entry.externalId}
+                          className={`saga-strip-alternative-pane-wrap${isExpanded ? ' saga-strip-alternative-pane-wrap--expanded' : ''}${isCollapsed ? ' saga-strip-alternative-pane-wrap--collapsed' : ''}`}
+                        >
+                          {showFormatTooltips && entry.format && (
+                            <span className="saga-strip-format-tooltip">
+                              {lookupLabel(t.formats, entry.format, entry.format)}
+                            </span>
+                          )}
+                          <a
+                            className={`saga-strip-alternative-pane${isCurrent ? ' saga-strip-alternative-pane--current' : ''}`}
+                            href={`/media?id=${encodeURIComponent(entry.externalId)}`}
+                            onMouseEnter={() => {
+                              setHoveredAlternativeId(entry.externalId);
+                              setActiveAlternativeId(entry.externalId);
+                            }}
+                            onClick={e => { if (isCurrent) e.preventDefault(); }}
+                            aria-label={entry.title}
+                          >
+                            {isCurrent && <span className="saga-strip-item-current-indicator" />}
+                            {entry.cover
+                              ? <img className="saga-strip-alternative-half-image" src={toMediumCover(entry.cover)} alt="" loading="lazy" />
+                              : <div className="saga-strip-item-cover-fallback" />}
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="saga-strip-alternative-variants">
+                    {panel.map((entry, index) => (
+                      <span key={entry.externalId} className="saga-strip-item-title">
+                        {titleParts ? titleParts.variants[index] : entry.title}
+                      </span>
+                    ))}
+                  </div>
+                  {(titleParts || sharedYear) && (
+                    <div className="saga-strip-alternative-footer">
+                      <span className="saga-strip-item-title">{titleParts?.root ?? ''}</span>
+                      <span className="saga-strip-item-year">{sharedYear ?? ''}</span>
+                    </div>
+                  )}
                 </div>
-              ) : panel.map(entry => {
+                  );
+                }
+                return panel.map(entry => {
                 const isCurrent = entry.externalId === externalId;
                 return (
                   <a
@@ -215,22 +296,29 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
 
                     {isCurrent && <span className="saga-strip-item-current-indicator" />}
 
-                    <div className="saga-strip-item-cover">
-                      {entry.cover
-                        ? <img className="cover-image-fill" src={toMediumCover(entry.cover)} alt="" loading="lazy" />
-                        : <div className="saga-strip-item-cover-fallback" />}
+                    <div className="saga-strip-cover-wrap">
+                      {showFormatTooltips && entry.format && (
+                        <span className="saga-strip-format-tooltip">
+                          {lookupLabel(t.formats, entry.format, entry.format)}
+                        </span>
+                      )}
+                      <div className="saga-strip-item-cover">
+                        {entry.cover
+                          ? <img className="cover-image-fill" src={toMediumCover(entry.cover)} alt="" loading="lazy" />
+                          : <div className="saga-strip-item-cover-fallback" />}
+                      </div>
                     </div>
 
                     <div className="saga-strip-item-info">
                       <span className="saga-strip-item-title">{entry.title}</span>
                       <div className="saga-strip-item-meta-row">
-                        {entry.format && <span className="saga-strip-item-badge">{lookupLabel(t.formats, entry.format, entry.format)}</span>}
                         {entry.year && <span className="saga-strip-item-year">{entry.year}</span>}
                       </div>
                     </div>
                   </a>
                 );
-              }))}
+                });
+              })}
             </div>
           )}
 

@@ -277,15 +277,21 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  height: 2.8em;
+  min-height: 2.8em;
   max-height: 2.8em;
   width: 100%;
+  flex: 0 0 auto;
 }
 
 .saga-strip-item-meta-row {
   display: flex;
+  flex: 0 0 0.9rem;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  height: 0.9rem;
+  min-height: 0.9rem;
 }
 
 .saga-strip-item-badge {
@@ -301,6 +307,8 @@
 .saga-strip-item-year {
   font-size: 0.65rem;
   color: var(--text-muted, #aaa);
+  line-height: 0.9rem;
+  min-height: 0.9rem;
 }
 
 /* Second saga-strip-list - same card style, one card per Arcos Argumentales
@@ -317,65 +325,215 @@
 }
 
 .saga-strip-item--alternatives {
-  flex-direction: column;
-  justify-content: flex-start;
-  padding: 0;
-}
-
-.saga-strip-alternative-slot {
   position: relative;
-  display: flex;
-  flex: 1 1 50%;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  width: 100%;
-  min-height: 0;
-  overflow: hidden;
-  padding: 0.55rem 0.8rem;
-  color: inherit;
-  text-align: center;
-  text-decoration: none;
-  box-sizing: border-box;
+  justify-content: space-between;
+  padding: 2.5rem 1.25rem 1.5rem;
 }
 
-.saga-strip-alternative-slot + .saga-strip-alternative-slot {
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
+.saga-strip-item--alternatives .saga-strip-item-bg img {
+  opacity: 0.3;
 }
 
-.saga-strip-alternative-cover {
+.saga-strip-alternative-stage {
   position: relative;
   z-index: 2;
-  width: min(42%, 95px);
+  display: flex;
+  flex: 0 0 auto;
+  width: 70%;
+  max-width: 200px;
   aspect-ratio: 2 / 3;
-  flex-shrink: 0;
+  overflow: visible;
+  border-radius: 4px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+.saga-strip-alternative-pane-wrap {
+  position: relative;
+  flex: 1 1 50%;
+  min-width: 0;
+  overflow: visible;
+  transition:
+    flex-basis 0.2s cubic-bezier(0.25, 0.75, 0.3, 1),
+    flex-grow 0.2s cubic-bezier(0.25, 0.75, 0.3, 1),
+    opacity 0.15s ease;
+}
+
+.saga-strip-alternative-pane-wrap--expanded {
+  flex-grow: 1;
+  flex-basis: 100%;
+}
+
+.saga-strip-alternative-pane-wrap--collapsed {
+  flex-grow: 0;
+  flex-basis: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.saga-strip-alternative-pane {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  border-radius: 3px;
   background: #1a1a1a;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.55);
+  color: inherit;
+  text-decoration: none;
 }
 
-.saga-strip-alternative-slot .saga-strip-item-info {
-  flex-shrink: 0;
-  gap: 0.25rem;
-  margin: 0;
+.saga-strip-alternative-pane-wrap:first-child .saga-strip-alternative-pane {
+  border-radius: 4px 0 0 4px;
 }
 
-.saga-strip-alternative-slot .saga-strip-item-title {
-  font-size: 0.66rem;
+.saga-strip-alternative-pane-wrap:last-child .saga-strip-alternative-pane {
+  border-radius: 0 4px 4px 0;
+}
+
+.saga-strip-alternative-pane-wrap--expanded .saga-strip-alternative-pane {
+  border-radius: 4px;
+}
+
+.saga-strip-alternative-half-image {
+  position: absolute;
+  top: 0;
+  width: 200%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition:
+    width 0.2s cubic-bezier(0.25, 0.75, 0.3, 1),
+    transform 0.2s cubic-bezier(0.25, 0.75, 0.3, 1);
+}
+
+.saga-strip-alternative-pane-wrap:first-child .saga-strip-alternative-half-image {
+  left: 0;
+  transform: translateX(0);
+}
+
+.saga-strip-alternative-pane-wrap:last-child .saga-strip-alternative-half-image {
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.saga-strip-alternative-pane-wrap--expanded .saga-strip-alternative-half-image {
+  width: 100%;
+  transform: translateX(0);
+}
+
+.saga-strip-alternative-pane-wrap--expanded:last-child .saga-strip-alternative-half-image {
+  transform: translateX(0);
+}
+
+.saga-strip-alternative-pane--current {
+  outline: 2px solid var(--accent, #7c6af7);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.saga-strip-alternative-variants {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 240px;
+  text-align: center;
+}
+
+.saga-strip-alternative-variants .saga-strip-item-title {
+  font-size: 0.62rem;
   line-height: 1.2;
   -webkit-line-clamp: 2;
+  height: 2.4em;
+  min-height: 2.4em;
   max-height: 2.4em;
 }
 
-.saga-strip-alternative-slot .saga-strip-item-meta-row {
-  gap: 0.35rem;
+.saga-strip-alternative-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.45rem 0.8rem 0;
+  text-align: center;
+  box-sizing: border-box;
 }
 
-.saga-strip-alternative-slot--current .saga-strip-alternative-cover {
-  outline: 2px solid var(--accent, #7c6af7);
-  outline-offset: -2px;
+.saga-strip-alternative-footer .saga-strip-item-title {
+  line-height: 1.2;
+  height: 2.4em;
+  min-height: 2.4em;
+  max-height: 2.4em;
+}
+
+.saga-strip-alternative-footer .saga-strip-item-year {
+  height: 0.9rem;
+}
+
+.saga-strip-cover-wrap {
+  position: relative;
+  z-index: 3;
+  width: 70%;
+  max-width: 200px;
+  flex-shrink: 0;
+}
+
+.saga-strip-cover-wrap .saga-strip-item-cover {
+  width: 100%;
+  max-width: none;
+}
+
+.saga-strip-format-tooltip {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  padding: 0.28rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(18, 18, 18, 0.96);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+  pointer-events: none;
+}
+
+.saga-strip-format-tooltip::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(18, 18, 18, 0.96);
+  content: '';
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.saga-strip-cover-wrap:hover .saga-strip-format-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.saga-strip-alternative-pane-wrap:hover .saga-strip-format-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
 }
 
 .saga-strip-item--current {
