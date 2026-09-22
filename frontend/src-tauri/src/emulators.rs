@@ -60,11 +60,14 @@ pub async fn write_emulators_config(
     configs: HashMap<String, EmulatorConfig>,
 ) -> Result<String, String> {
     let db = app_handle.state::<crate::db::MetadeaDb>();
-    let conn = db.conn.lock().str_err()?;
+    let mut conn = db.conn.lock().str_err()?;
     let now = chrono::Utc::now().to_rfc3339();
+    // Saved as one configuration; a partial write leaves some platforms
+    // pointing at the previous emulator and others at the new one.
+    let tx = conn.transaction().str_err()?;
 
     for (platform_id, config) in configs {
-        conn.execute(
+        tx.execute(
             "INSERT INTO emulator_configs (platform_id, emulator_name, executable_path, launch_args, rom_folder, tracking_mode, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT(platform_id) DO UPDATE SET
@@ -86,5 +89,6 @@ pub async fn write_emulators_config(
         )
         .str_err()?;
     }
+    tx.commit().str_err()?;
     Ok("ok".to_string())
 }

@@ -1,4 +1,6 @@
-export const en = {
+import type { Translations } from './types';
+
+export const en: Translations = {
   home: {
     profile_sync_prompt: "Sync your profile with Metadea?",
     profile_sync_description: "Upload your library and activity changes to your cloud profile.",

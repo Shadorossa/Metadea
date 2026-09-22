@@ -279,12 +279,15 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<Pr
   const removedSagaRelationIds = p.sagaChanged
     ? p.originalSagaOrder.filter(id => id !== externalId)
     : [];
-  await saveMediaRelations(externalId, currentFinalRelations)
-    .catch(err => console.error('Failed to save relations:', err));
+  // Not caught here: everything below this point builds and submits the
+  // GitHub proposal. Swallowing a failed local write would publish a proposal
+  // the local database does not match, and saveMediaRelations is also what
+  // writes the deletion tombstones — so a silent failure lets a later resync
+  // reintroduce relations the curator deliberately removed.
+  await saveMediaRelations(externalId, currentFinalRelations);
 
   if (p.charactersChanged) {
-    await saveCharactersSkeleton(externalId, p.characters)
-      .catch(err => console.error('Failed to save characters:', err));
+    await saveCharactersSkeleton(externalId, p.characters);
   }
 
   // Every other chain member gets its chain-managed edges rewritten too — union

@@ -2,6 +2,7 @@
 // (GitHub device code, AniList token paste). The actual auth mechanics differ
 // per provider — only the "how do we show the result" shape is identical.
 import { setAuthButtonState } from './auth-button';
+import { safeUrl } from '../shared/sanitize-html';
 
 export interface AuthStatusEls {
   loginBtn:  HTMLButtonElement | null;
@@ -19,6 +20,6 @@ export function showAuthConnected(els: AuthStatusEls, username: string, avatarUr
   if (els.statusEl) els.statusEl.textContent = `@${username}`;
   setAuthButtonState(els.loginBtn, 'connected');
   if (els.avatarEl && avatarUrl) {
-    els.avatarEl.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
+    els.avatarEl.innerHTML = `<img src="${safeUrl(avatarUrl)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
   }
 }

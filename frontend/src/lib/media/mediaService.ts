@@ -93,7 +93,7 @@ export async function fetchMediaDataInternal(rawId: string, allowBlocked = false
     // Banner/store links ride along as Game sub-fields in one request.
     const game = await igdbGetGameDetail(numericId);
     if (!game) return null;
-    let data = mapIgdbToMedia(game, rawId);
+    const data = mapIgdbToMedia(game, rawId);
     data.relations = dedupeRelationsByTarget(data.relations);
     // Base-game/relation-graph queries are slow — deferred to fetchExtraRelations.
     return data;

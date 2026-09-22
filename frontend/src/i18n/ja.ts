@@ -1,4 +1,6 @@
-export const ja = {
+import type { Translations } from './types';
+
+export const ja: Translations = {
   home: {
     profile_sync_prompt: "Metadea とプロフィールを同期しますか？",
     profile_sync_description: "ライブラリとアクティビティの変更をクラウドプロフィールにアップロードします。",
@@ -74,6 +76,7 @@ export const ja = {
   discord: {
   },
   profile: {
+    continue_in_local: "Local / Play で続ける",
     sign_out: "ログアウト",
     library: "マイライブラリ",
     empty: "ライブラリはまだ空です。作品を探してみましょう!",
@@ -208,6 +211,10 @@ export const ja = {
     },
   },
   notifications: {
+    release_day_title: "本日のライブラリ配信",
+    release_day_body: "{count} 件の配信: {titles}",
+    airing_weekly_title: "放送中の未完了アニメ",
+    airing_weekly_body: "ライブラリに放送中で未完了のアニメが {count} 件あります: {titles}",
     title: "通知",
     coming_soon: "通知機能は近日公開予定です。",
     pr_list_title: "カタログへの提案(オープン中)",
@@ -431,6 +438,7 @@ export const ja = {
     season_fall: "秋",
   },
   media: {
+    chapter: "章",
     not_found: "作品が見つかりませんでした。",
     change_status_aria: "ステータスを変更",
     stars_aria: "星{count}個",
@@ -692,6 +700,8 @@ export const ja = {
     import_fandom_preview_voices: "声優",
   },
   settings: {
+    unify_seasons_highest_rated_cover: "最高評価シーズンの表紙",
+    unify_seasons_highest_rated_cover_hint: "ライブラリで第1シーズンではなく、あなたが最も高く評価したシーズンの表紙を表示します（作品が完了している場合のみ）。",
     title: "設定",
     tab_environment: "環境設定",
     section_account: "アカウント",
@@ -890,6 +900,8 @@ export const ja = {
     delete_title: "ティアリストを削除",
   },
   local: {
+    pause_aria: "一時停止",
+    play_aria: "再開",
     search_game_ph: "ゲームを検索…",
     remove_local_folder: "ローカルフォルダを削除",
     change_folder: "フォルダを変更",

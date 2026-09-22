@@ -9,20 +9,22 @@ import { ru } from './ru';
 
 export const LOCALES = ['es', 'en', 'de', 'ja', 'it', 'fr', 'ca', 'ru'] as const;
 export type Locale = typeof LOCALES[number];
-export type Translations = typeof es;
+import type { Translations } from './types';
+export type { Translations };
 
-// es.ts is the source of truth for the shape of Translations (typeof es) —
-// every other locale file is cast since TS can't verify their literal string
-// values match es's inferred literal types, only that the keys/shape line up.
+// Each locale is annotated `: Translations` in its own file, so a missing,
+// renamed or wrongly-shaped key is a compile error there rather than a
+// silent Spanish fallback at runtime. See types.ts for why the leaves are
+// widened to `string`.
 const translations: Record<Locale, Translations> = {
   es,
-  en: en as unknown as Translations,
-  de: de as unknown as Translations,
-  ja: ja as unknown as Translations,
-  it: it as unknown as Translations,
-  fr: fr as unknown as Translations,
-  ca: ca as unknown as Translations,
-  ru: ru as unknown as Translations,
+  en,
+  de,
+  ja,
+  it,
+  fr,
+  ca,
+  ru,
 };
 
 export function useTranslations(locale: Locale) {

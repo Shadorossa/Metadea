@@ -1,4 +1,6 @@
-export const it = {
+import type { Translations } from './types';
+
+export const it: Translations = {
   home: {
     profile_sync_prompt: "Vuoi sincronizzare il tuo profilo con Metadea?",
     profile_sync_description: "Carica le modifiche alla tua libreria e attività sul tuo profilo cloud.",
@@ -74,6 +76,7 @@ export const it = {
   discord: {
   },
   profile: {
+    continue_in_local: "Continua in Local / Play",
     sign_out: "Esci",
     library: "La mia libreria",
     empty: "La tua libreria è vuota. Inizia a cercare qualcosa!",
@@ -208,6 +211,10 @@ export const it = {
     stats_activity_plural: "{count} attività",
   },
   notifications: {
+    release_day_title: "Uscite di oggi nella tua libreria",
+    release_day_body: "{count} uscita/e: {titles}",
+    airing_weekly_title: "Anime in onda da completare",
+    airing_weekly_body: "Hai {count} anime della libreria non completati e ancora in onda: {titles}",
     title: "Notifiche",
     coming_soon: "Le notifiche saranno disponibili a breve.",
     pr_list_title: "Proposte di catalogo aperte",
@@ -431,6 +438,7 @@ export const it = {
     season_fall: "Autunno",
   },
   media: {
+    chapter: "Capitolo",
     not_found: "Opera non trovata.",
     change_status_aria: "Cambia stato",
     stars_aria: "{count} stelle",
@@ -692,6 +700,8 @@ export const it = {
     import_fandom_preview_voices: "Doppiatori",
   },
   settings: {
+    unify_seasons_highest_rated_cover: "Copertina della stagione con voto più alto",
+    unify_seasons_highest_rated_cover_hint: "Mostra nella libreria la copertina della stagione che hai valutato meglio invece della prima stagione (solo quando l’opera è completata).",
     title: "Impostazioni",
     tab_environment: "Ambiente",
     section_account: "Account",
@@ -890,6 +900,8 @@ export const it = {
     pool_unclassified: "Non classificato ({count})",
   },
   local: {
+    pause_aria: "Metti in pausa",
+    play_aria: "Riprendi",
     search_game_ph: "Cerca gioco…",
     remove_local_folder: "Rimuovi cartella locale",
     change_folder: "Cambia cartella",

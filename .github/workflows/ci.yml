@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  typecheck-frontend:
+  frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,11 +15,57 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: frontend
 
-      - name: Typecheck frontend
+      - name: Lint
+        run: npm run lint
         working-directory: frontend
+
+      - name: Typecheck
         run: npm run typecheck
+        working-directory: frontend
+
+      - name: Test
+        run: npm run test
+        working-directory: frontend
+
+      - name: Coverage
+        run: npm run test:coverage
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+
+  rust:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/src-tauri
+
+      # `cargo fmt --check` is deliberately NOT here yet: the crate has never
+      # been formatted, so it fails on every file. Run `cargo fmt` once as its
+      # own commit, then add the check back as the first step of this job.
+
+      # Not -D warnings yet: the crate has never been linted, so a clean
+      # baseline has to be established first. This catches hard errors today
+      # and the warning count can be ratcheted down from there.
+      - name: Clippy
+        run: cargo clippy --all-targets
+        working-directory: frontend/src-tauri
+
+      - name: Test
+        run: cargo test
+        working-directory: frontend/src-tauri

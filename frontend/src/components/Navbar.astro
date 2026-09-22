@@ -101,9 +101,9 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
         <svg id="nav-avatar-fallback" class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true" style="display: none;"><use href="#nav-icon-profile" /></svg>
         <script is:inline>
           (function () {
-            var img = document.getElementById('nav-avatar-img');
-            var fallback = document.getElementById('nav-avatar-fallback');
-            var src = localStorage.getItem('profile_avatar_cache');
+            const img = document.getElementById('nav-avatar-img');
+            const fallback = document.getElementById('nav-avatar-fallback');
+            const src = localStorage.getItem('profile_avatar_cache');
             if (src && img && fallback) {
               img.src = src;
               img.style.display = 'block';

@@ -110,24 +110,8 @@ fn is_inside(path: &Path, directory: &Path) -> bool {
 }
 
 fn safe_zip_path(name: &str) -> Result<PathBuf, String> {
-    let path = Path::new(name);
-    if path.is_absolute() {
-        return Err("El ZIP contiene una ruta absoluta no segura".into());
-    }
-    let mut safe = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::Normal(part) => safe.push(part),
-            Component::CurDir => {}
-            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
-                return Err("El ZIP contiene una ruta fuera de su carpeta".into())
-            }
-        }
-    }
-    if safe.as_os_str().is_empty() {
-        return Err("El ZIP contiene una entrada vacía".into());
-    }
-    Ok(safe)
+    crate::utils::safe_archive_path(Path::new(name))
+        .ok_or_else(|| "El ZIP contiene una ruta fuera de su carpeta".to_string())
 }
 
 fn extract_and_validate(archive_path: &Path, stage_dir: &Path) -> Result<(), String> {

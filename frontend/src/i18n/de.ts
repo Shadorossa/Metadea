@@ -1,4 +1,6 @@
-export const de = {
+import type { Translations } from './types';
+
+export const de: Translations = {
   home: {
     profile_sync_prompt: "Möchtest du dein Profil mit Metadea synchronisieren?",
     profile_sync_description: "Lade Änderungen an deiner Bibliothek und Aktivität in dein Cloud-Profil hoch.",
@@ -74,6 +76,7 @@ export const de = {
   discord: {
   },
   profile: {
+    continue_in_local: "In Local / Play fortsetzen",
     sign_out: "Abmelden",
     library: "Meine Bibliothek",
     empty: "Deine Bibliothek ist leer. Beginne mit der Suche nach Werken!",
@@ -208,6 +211,10 @@ export const de = {
     stats_activity_plural: "{count} Aktivitäten",
   },
   notifications: {
+    release_day_title: "Heutige Veröffentlichungen in deiner Bibliothek",
+    release_day_body: "{count} Veröffentlichung(en): {titles}",
+    airing_weekly_title: "Laufende Anime noch offen",
+    airing_weekly_body: "Du hast {count} unvollendete(n) Anime in der Bibliothek, die noch ausgestrahlt werden: {titles}",
     title: "Benachrichtigungen",
     coming_soon: "Benachrichtigungen werden in Kürze verfügbar sein.",
     pr_list_title: "Offene Katalogvorschläge",
@@ -431,6 +438,7 @@ export const de = {
     season_fall: "Herbst",
   },
   media: {
+    chapter: "Kapitel",
     not_found: "Werk nicht gefunden.",
     change_status_aria: "Status ändern",
     stars_aria: "{count} Sterne",
@@ -692,6 +700,8 @@ export const de = {
     import_fandom_preview_voices: "Synchronsprecher",
   },
   settings: {
+    unify_seasons_highest_rated_cover: "Cover der bestbewerteten Staffel",
+    unify_seasons_highest_rated_cover_hint: "Zeigt in der Bibliothek das Cover der von dir bestbewerteten Staffel statt der ersten Staffel (nur wenn das Werk abgeschlossen ist).",
     title: "Einstellungen",
     tab_environment: "Umgebung",
     section_account: "Konto",
@@ -890,6 +900,8 @@ export const de = {
     pool_unclassified: "Nicht eingeordnet ({count})",
   },
   local: {
+    pause_aria: "Pausieren",
+    play_aria: "Fortsetzen",
     search_game_ph: "Spiel suchen…",
     remove_local_folder: "Lokalen Ordner entfernen",
     change_folder: "Ordner ändern",

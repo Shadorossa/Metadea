@@ -14,7 +14,7 @@ import { NowPlayingBar } from '../components/local/NowPlayingBar';
 import { NowReadingBar } from '../components/reader/NowReadingBar';
 import '../styles/components/now-playing-bar.css';
 import { CharacterPrEditorModal } from '../components/character/CharacterPrEditorModal';
-import type { Locale, Translations } from '../i18n/index';
+import type { Locale } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
 import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 import ClientRouter from 'astro/components/ClientRouter.astro';
@@ -63,7 +63,7 @@ const t = useTranslations(lang);
     <!-- Apply theme before CSS loads to prevent flash -->
     <script is:inline define:vars={{ themeStorageKey: STORAGE_KEYS.appTheme }}>
       function applyTheme() {
-        var t = localStorage.getItem(themeStorageKey) || 'nebula';
+        const t = localStorage.getItem(themeStorageKey) || 'nebula';
         document.documentElement.setAttribute('data-theme', t);
       }
       applyTheme();

@@ -204,12 +204,15 @@ pub async fn set_tier_list_placements(
     tier_list_id: String,
     placements: Vec<TierItemPlacement>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().str_err()?;
+    let mut conn = state.conn.lock().str_err()?;
+    // Half-applied placements leave items in tiers the user never put them in.
+    let tx = conn.transaction().str_err()?;
     for p in placements {
-        conn.execute(
+        tx.execute(
             "UPDATE tier_list_items SET tier_key = ?1, position = ?2 WHERE tier_list_id = ?3 AND external_id = ?4",
             rusqlite::params![p.tier_key, p.position, tier_list_id, p.external_id],
         ).str_err()?;
     }
+    tx.commit().str_err()?;
     Ok(())
 }

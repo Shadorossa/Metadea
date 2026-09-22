@@ -102,7 +102,11 @@ pub async fn write_user_favorites(
     let favs: serde_json::Value = serde_json::from_str(&content).str_err()?;
     let obj = favs.as_object().ok_or("Expected JSON object")?;
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().str_err()?;
+    let mut conn = state.conn.lock().str_err()?;
+    // Each list is wiped and rebuilt. Without a transaction, a failure part
+    // way through the insert loop leaves the user's favourites deleted and
+    // only partially restored — and nothing else holds a copy of them.
+    let tx = conn.transaction().str_err()?;
 
     for (type_name, ids_val) in obj {
         let fav_key = type_to_fav_key(type_name);
@@ -111,11 +115,11 @@ pub async fn write_user_favorites(
             .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
             .unwrap_or_default();
 
-        conn.execute("DELETE FROM user_list_items WHERE list_key = ?1", [&fav_key])
+        tx.execute("DELETE FROM user_list_items WHERE list_key = ?1", [&fav_key])
             .str_err()?;
 
         for (pos, id) in ids.iter().enumerate() {
-            conn.execute(
+            tx.execute(
                 "INSERT OR IGNORE INTO user_list_items (list_key, external_id, position, added_at)
                  VALUES (?1, ?2, ?3, ?4)",
                 rusqlite::params![fav_key, id, pos as i64, now],
@@ -123,6 +127,7 @@ pub async fn write_user_favorites(
         }
     }
 
+    tx.commit().str_err()?;
     Ok(())
 }
 
@@ -379,12 +384,16 @@ pub async fn reorder_list_items(
     list_key: String,
     external_ids: Vec<String>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().str_err()?;
+    let mut conn = state.conn.lock().str_err()?;
+    // A partial reorder is worse than none: the surviving rows keep their old
+    // positions and collide with the new ones.
+    let tx = conn.transaction().str_err()?;
     for (pos, id) in external_ids.iter().enumerate() {
-        conn.execute(
+        tx.execute(
             "UPDATE user_list_items SET position = ?1 WHERE list_key = ?2 AND external_id = ?3",
             rusqlite::params![pos as i64, list_key, id],
         ).str_err()?;
     }
+    tx.commit().str_err()?;
     Ok(())
 }

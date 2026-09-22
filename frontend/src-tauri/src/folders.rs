@@ -120,10 +120,13 @@ pub async fn write_routes(
         serde_json::from_str(&routes_json).str_err()?;
     let obj = v.as_object().ok_or("Expected JSON object")?;
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().str_err()?;
+    let mut conn = state.conn.lock().str_err()?;
+    // The routes are written as one set; applying half of them points the
+    // library at a mix of old and new folders.
+    let tx = conn.transaction().str_err()?;
     for (k, val) in obj.iter() {
         if let Some(p) = val.as_str() {
-            conn.execute(
+            tx.execute(
                 "INSERT INTO local_routes (key, path, updated_at) VALUES (?1, ?2, ?3)
                  ON CONFLICT(key) DO UPDATE SET path = excluded.path, updated_at = excluded.updated_at",
                 rusqlite::params![k, p, now],
@@ -131,6 +134,7 @@ pub async fn write_routes(
             .str_err()?;
         }
     }
+    tx.commit().str_err()?;
     Ok(())
 }
 

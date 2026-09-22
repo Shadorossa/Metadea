@@ -214,7 +214,10 @@ pub struct SteamScreenshot {
 }
 
 #[tauri::command]
-pub async fn steam_get_screenshots(app_id: String) -> Result<Vec<SteamScreenshot>, String> {
+pub async fn steam_get_screenshots(
+    app_handle: tauri::AppHandle,
+    app_id: String,
+) -> Result<Vec<SteamScreenshot>, String> {
     if app_id.is_empty() || !app_id.chars().all(|c| c.is_ascii_digit()) {
         return Err("Invalid Steam app ID".to_string());
     }
@@ -241,11 +244,19 @@ pub async fn steam_get_screenshots(app_id: String) -> Result<Vec<SteamScreenshot
             .join("remote")
             .join(&app_id)
             .join("screenshots");
-        let entries = match std::fs::read_dir(screenshots_dir) {
+        let entries = match std::fs::read_dir(&screenshots_dir) {
             Ok(entries) => entries,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
             Err(_) => continue,
         };
+
+        // Steam's install root is user-configurable, so this directory cannot
+        // be expressed in the static assetProtocol scope. Widen the scope to
+        // exactly the screenshot folders we just found, instead of shipping a
+        // blanket "**" that would expose the whole filesystem to the webview.
+        let scope = app_handle.asset_protocol_scope();
+        let _ = scope.allow_directory(&screenshots_dir, false);
+        let _ = scope.allow_directory(screenshots_dir.join("thumbnails"), false);
 
         screenshots.extend(entries.flatten().filter_map(|entry| {
             let path = entry.path();

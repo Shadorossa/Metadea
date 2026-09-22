@@ -251,7 +251,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
     loadSagas();
     loadCharacters();
     loadEpisodeGroups();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {

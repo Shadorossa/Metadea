@@ -98,7 +98,11 @@ fn extract_rar(src: &Path, dest: &Path) -> Result<(), String> {
         .map_err(|e| format!("Error leyendo el CBR: {e}"))?
     {
         let entry = header.entry();
-        archive = if entry.is_file() && is_image(&entry.filename) {
+        // `extract_with_base` joins the entry's stored name onto `dest`, so a
+        // name containing `..` would escape the cache directory. Skip anything
+        // that does not resolve to a plain path inside it.
+        let safe_name = crate::utils::safe_archive_path(&entry.filename);
+        archive = if entry.is_file() && is_image(&entry.filename) && safe_name.is_some() {
             header
                 .extract_with_base(dest)
                 .map_err(|e| format!("Error extrayendo página: {e}"))?

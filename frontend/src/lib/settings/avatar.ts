@@ -1,5 +1,6 @@
 import { initImageUploadField } from './image-upload-field';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { escapeHtml, safeUrl } from '../shared/sanitize-html';
 import { saveImage, getImage, removeImage } from '../storage/images';
 import { openImageCropModal } from '../../components/shared/ImageCropModal';
 
@@ -22,7 +23,7 @@ export function initAvatar(
     renderPreview: (custom) => {
       const src = custom || googleAvatar;
       if (src) {
-        preview.innerHTML = `<img src="${src}" alt="${username}" referrerpolicy="no-referrer">`;
+        preview.innerHTML = `<img src="${safeUrl(src)}" alt="${escapeHtml(username)}" referrerpolicy="no-referrer">`;
       } else {
         preview.textContent = (username[0] ?? '?').toUpperCase();
       }
@@ -56,7 +57,7 @@ export function initShareAvatar(showToast: (msg?: string) => void) {
     hasPhoto = !!src;
     preview!.classList.toggle('avatar-preview-wrap--empty', !hasPhoto);
     preview!.innerHTML = src
-      ? `<img src="${src}" alt="">`
+      ? `<img src="${safeUrl(src)}" alt="">`
       : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>';
   }
 

@@ -46,7 +46,7 @@ export function parseFandomUrl(url: string): FandomUrlParts {
 
 export function cleanFandomImageUrl(rawUrl: string): string {
   if (!rawUrl) return '';
-  let clean = rawUrl
+  const clean = rawUrl
     .replace(/\/scale-to-width(?:-down)?\/\d+/gi, '')
     .replace(/\/scale-to-height(?:-down)?\/\d+/gi, '')
     .replace(/\/zoom-crop\/\d+\/\d+/gi, '');
@@ -278,7 +278,7 @@ export async function fetchFandomCharacter(url: string): Promise<FandomCharacter
   const parser = new DOMParser();
   const doc = parser.parseFromString(rawHtml, 'text/html');
 
-  let name = doc.querySelector('.portable-infobox .pi-title')?.textContent?.trim()
+  const name = doc.querySelector('.portable-infobox .pi-title')?.textContent?.trim()
     || json.parse.title
     || pageTitle;
 
@@ -333,7 +333,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
 
   const cleanHeaderNoColon = cleanHeader.replace(/[:：\s]+$/, '').trim();
   const parenMatch = cleanHeaderNoColon.match(/\(([^)]+)\)$/);
-  const colonMatch = cleanHeaderNoColon.match(/[:–—\-]\s*(.+)$/);
+  const colonMatch = cleanHeaderNoColon.match(/[:–—-]\s*(.+)$/);
 
   let tag = cleanHeaderNoColon;
   if (parenMatch) {
@@ -354,7 +354,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
   const characteristics: ParsedCharacteristic[] = [];
   const seenCharacteristicValues = new Map<string, Set<string>>();
   const voiceActors: ExtractedVoiceActor[] = [];
-  let aliases: string[] = [];
+  const aliases: string[] = [];
   let nativeName: string | null = null;
   let appearsIn: string | null = null;
 

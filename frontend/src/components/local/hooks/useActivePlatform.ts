@@ -26,7 +26,7 @@ export function useActivePlatform(games: LocalGame[], activeCategory: CategoryId
     // about which platform sections exist has changed, which tore down and
     // rebuilt this observer far more often than the scroll-tracking it's for
     // actually needed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [activeCategory, gamesState, games.length]);
 
   const scrollTo = useCallback((id: PlatformId) => {

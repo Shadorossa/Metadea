@@ -285,7 +285,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
     { key: 'movie', label: s.movie, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['movie'] }} /> },
     { key: 'book', label: s.book, icon: <span dangerouslySetInnerHTML={{ __html: TYPE_ICON['book'] }} /> },
     { key: 'character', label: s.character || 'Personajes', icon: <IconCharacter size={14} strokeWidth={2} /> },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   ], [p, s]);
 
   // Persists favData both to React state and to disk in one place, since

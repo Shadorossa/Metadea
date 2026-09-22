@@ -23,7 +23,7 @@ export function useCoverCacheBatch(externalIds: string[]): Record<string, string
       .then(map => { if (!cancelled) setHits(prev => ({ ...prev, ...map })); })
       .catch(() => {});
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [idsKey]);
   return hits;
 }

@@ -109,7 +109,7 @@ export default function TierMaker() {
     const { itemId, fromTier } = src;
 
     setState(prev => {
-      let entry: Entry | null =
+      const entry: Entry | null =
         fromTier === 'pool'
           ? prev.pool.find(e => e.external_id === itemId) ?? null
           : prev.tiers.find(t => t.id === fromTier)?.items.find(e => e.external_id === itemId) ?? null;

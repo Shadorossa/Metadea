@@ -50,7 +50,7 @@ pub async fn sync_community_catalog(
     let temp_path_str = temp_path.to_string_lossy().to_string();
 
     let imported = (|| -> Result<i64, String> {
-        let conn = state.conn.lock().str_err()?;
+        let mut conn = state.conn.lock().str_err()?;
 
         conn.execute("ATTACH DATABASE ?1 AS community", rusqlite::params![temp_path_str])
             .str_err()?;
@@ -59,6 +59,12 @@ pub async fn sync_community_catalog(
         // changed" even when every title was already in the local catalog.
         let mut changes: i64 = 0;
         let merge_result = (|| -> Result<(), String> {
+            // The merge below deletes and rebuilds the saga graph, story arcs
+            // and the synced-id set. Without a transaction, a failure part way
+            // through leaves those rows deleted and not restored, and nothing
+            // else holds a copy of the user's data. ATTACH/DETACH stay outside
+            // it: SQLite does not allow them inside a transaction.
+            let tx = conn.transaction().str_err()?;
             // Explicit column list, not `SELECT *`: a DB upgraded via an old
             // migration can have a given column as its *last* physical
             // column, while a fresh DB has it inline — position-based
@@ -85,12 +91,12 @@ pub async fn sync_community_catalog(
 
             let mut select_cols = Vec::new();
             for col in possible_cols {
-                if attached_db_has_column(&conn, "community", "media_catalog", col) {
+                if attached_db_has_column(&tx, "community", "media_catalog", col) {
                     select_cols.push(col);
                 }
             }
 
-            let has_blocked_col = attached_db_has_column(&conn, "community", "media_catalog", "blocked_at");
+            let has_blocked_col = attached_db_has_column(&tx, "community", "media_catalog", "blocked_at");
 
             let mut insert_cols_str = select_cols.join(", ");
             let mut select_cols_str = select_cols.join(", ");
@@ -103,7 +109,7 @@ pub async fn sync_community_catalog(
             insert_cols_str.push_str(", created_at, updated_at");
             select_cols_str.push_str(", created_at, updated_at");
 
-            changes += conn.execute(
+            changes += tx.execute(
                 &format!(
                     "INSERT OR IGNORE INTO media_catalog ({insert_cols_str})
                      SELECT {select_cols_str}
@@ -115,7 +121,7 @@ pub async fn sync_community_catalog(
             // Existing rows also adopt a not-yet-reflected community block —
             // but only fills a NULL, so a local unblock is never overwritten.
             if has_blocked_col {
-                changes += conn.execute(
+                changes += tx.execute(
                     "UPDATE media_catalog
                      SET blocked_at = (SELECT c.blocked_at FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
                      WHERE blocked_at IS NULL
@@ -130,8 +136,8 @@ pub async fn sync_community_catalog(
             // pick up a merged PR's update — fill each only where still
             // empty, never clobbering a local edit or fresher live value.
             for col in ["banners_csv", "genres_csv", "genres_tag_csv"] {
-                if attached_db_has_column(&conn, "community", "media_catalog", col) {
-                    changes += conn.execute(
+                if attached_db_has_column(&tx, "community", "media_catalog", col) {
+                    changes += tx.execute(
                         &format!(
                             "UPDATE media_catalog
                              SET {col} = (SELECT c.{col} FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
@@ -148,12 +154,12 @@ pub async fn sync_community_catalog(
             // appearances (see PrEditorModal's bundle export) — merge both
             // the character rows and their media links the same "fill gaps
             // only" way.
-            changes += conn.execute(
+            changes += tx.execute(
                 "INSERT OR IGNORE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at)
                  SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at FROM community.characters",
                 [],
             ).str_err()? as i64;
-            changes += conn.execute(
+            changes += tx.execute(
                 "INSERT OR IGNORE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
                  SELECT c.character_external_id, c.media_external_id, c.relation_type, c.character_name, c.added_at
                  FROM community.character_appearances c
@@ -161,8 +167,8 @@ pub async fn sync_community_catalog(
                 [],
             ).str_err()? as i64;
 
-            if attached_db_has_column(&conn, "community", "character_merges", "source_character_external_id") {
-                changes += conn.execute(
+            if attached_db_has_column(&tx, "community", "character_merges", "source_character_external_id") {
+                changes += tx.execute(
                     "INSERT OR IGNORE INTO character_merges (source_character_external_id, canonical_character_external_id, added_at)
                      SELECT m.source_character_external_id, m.canonical_character_external_id, m.added_at
                      FROM community.character_merges m",
@@ -175,8 +181,8 @@ pub async fn sync_community_catalog(
             // (including an explicit clear), so apply corrections to rows
             // that already existed locally instead of INSERT OR IGNORE alone.
             for col in ["issue_source_id", "episode_source_id"] {
-                if attached_db_has_column(&conn, "community", "media_catalog", col) {
-                    changes += conn.execute(
+                if attached_db_has_column(&tx, "community", "media_catalog", col) {
+                    changes += tx.execute(
                         &format!(
                             "UPDATE media_catalog
                              SET {col} = (SELECT c.{col} FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
@@ -189,7 +195,7 @@ pub async fn sync_community_catalog(
             }
 
             // Actors (voice/live-action) — same fill-gaps merge as characters above.
-            let has_actor_tables: bool = conn
+            let has_actor_tables: bool = tx
                 .query_row(
                     "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'actors'",
                     [],
@@ -198,12 +204,12 @@ pub async fn sync_community_catalog(
                 .map(|c: i64| c > 0)
                 .unwrap_or(false);
             if has_actor_tables {
-                changes += conn.execute(
+                changes += tx.execute(
                     "INSERT OR IGNORE INTO actors (id, external_id, name, name_native, image_url, created_at, updated_at)
                      SELECT id, external_id, name, name_native, image_url, created_at, updated_at FROM community.actors",
                     [],
                 ).str_err()? as i64;
-                changes += conn.execute(
+                changes += tx.execute(
                     "INSERT OR IGNORE INTO character_actors (actor_external_id, character_external_id, role, language, added_at)
                      SELECT actor_external_id, character_external_id, role, language, added_at FROM community.character_actors",
                     [],
@@ -213,7 +219,7 @@ pub async fn sync_community_catalog(
             // Relations, same fill-gaps merge (composite PK means this never
             // overwrites one the user's own API sync produced). Respects the
             // deleted_relations tombstone, same as a live resync would.
-            changes += conn.execute(
+            changes += tx.execute(
                 "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
                  SELECT c.media_external_id, c.related_media_external_id, c.relation_type, c.type_label
                  FROM community.media_relations c
@@ -230,12 +236,12 @@ pub async fn sync_community_catalog(
             ).str_err()? as i64;
 
             // Authors carried over the same "fill gaps only" way.
-            changes += conn.execute(
+            changes += tx.execute(
                 "INSERT OR IGNORE INTO media_author (external_id, name, author_image_url, author_url, created_at, updated_at)
                  SELECT external_id, name, author_image_url, author_url, created_at, updated_at FROM community.media_author",
                 [],
             ).str_err()? as i64;
-            changes += conn.execute(
+            changes += tx.execute(
                 "INSERT OR IGNORE INTO media_by_author (media_external_id, author_external_id, role)
                  SELECT media_external_id, author_external_id, role FROM community.media_by_author c
                  WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
@@ -244,7 +250,7 @@ pub async fn sync_community_catalog(
 
             // Custom saga display name, same fill-gaps merge — guarded since
             // an older community catalog build might not have these tables yet.
-            let has_saga_tables: bool = conn
+            let has_saga_tables: bool = tx
                 .query_row(
                     "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'sagas'",
                     [],
@@ -254,12 +260,12 @@ pub async fn sync_community_catalog(
                 .unwrap_or(false);
 
             if has_saga_tables {
-                changes += conn.execute(
+                changes += tx.execute(
                     "INSERT OR IGNORE INTO sagas (id, name)
                      SELECT id, name FROM community.sagas",
                     [],
                 ).str_err()? as i64;
-                changes += conn.execute(
+                changes += tx.execute(
                     "INSERT OR IGNORE INTO saga_relations (media_external_id, saga_id)
                      SELECT c.media_external_id, c.saga_id FROM community.saga_relations c
                      WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
@@ -273,14 +279,14 @@ pub async fn sync_community_catalog(
             // rows (PrEditorModal always rewrites the whole chain), so wipe
             // and rebuild from the community catalog for types it has an
             // opinion on (SAGA_GROUPABLE_TYPES in library-grouping.ts).
-            changes += conn.execute(
+            changes += tx.execute(
                 "DELETE FROM media_relations
                  WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')
                    AND EXISTS (SELECT 1 FROM community.media_catalog cm WHERE cm.external_id = media_relations.media_external_id AND cm.type IN ('anime', 'manga', 'lnovel', 'game', 'vnovel'))
                    AND EXISTS (SELECT 1 FROM community.media_catalog cr WHERE cr.external_id = media_relations.related_media_external_id AND cr.type IN ('anime', 'manga', 'lnovel', 'game', 'vnovel'))",
                 [],
             ).str_err()? as i64;
-            changes += conn.execute(
+            changes += tx.execute(
                 "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
                  SELECT c.media_external_id, c.related_media_external_id, c.relation_type, c.type_label
                  FROM community.media_relations c
@@ -294,7 +300,7 @@ pub async fn sync_community_catalog(
 
             if has_saga_tables {
                 // sagas rows first — saga_relations.saga_id has an enforced FK into it.
-                changes += conn.execute(
+                changes += tx.execute(
                     "INSERT OR REPLACE INTO sagas (id, name)
                      SELECT DISTINCT cs.id, cs.name
                      FROM community.sagas cs
@@ -305,12 +311,12 @@ pub async fn sync_community_catalog(
                      )",
                     [],
                 ).str_err()? as i64;
-                changes += conn.execute(
+                changes += tx.execute(
                     "DELETE FROM saga_relations
                      WHERE EXISTS (SELECT 1 FROM community.media_catalog cm WHERE cm.external_id = saga_relations.media_external_id AND cm.type IN ('anime', 'manga', 'lnovel', 'game', 'vnovel'))",
                     [],
                 ).str_err()? as i64;
-                changes += conn.execute(
+                changes += tx.execute(
                     "INSERT OR REPLACE INTO saga_relations (media_external_id, saga_id)
                      SELECT c.media_external_id, c.saga_id FROM community.saga_relations c
                      JOIN community.media_catalog cm ON cm.external_id = c.media_external_id AND cm.type IN ('anime', 'manga', 'lnovel', 'game', 'vnovel')
@@ -323,10 +329,10 @@ pub async fn sync_community_catalog(
             // fragmented (see merge_fragmented_sagas' doc comment) — rebuild
             // from the now-reconciled media_relations graph instead of
             // trusting what was just copied in above verbatim.
-            let _ = crate::db::merge_fragmented_sagas(&conn);
+            let _ = crate::db::merge_fragmented_sagas(&tx);
 
             // Story arcs
-            let has_story_arc_tables: bool = conn
+            let has_story_arc_tables: bool = tx
                 .query_row(
                     "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'story_arcs'",
                     [],
@@ -336,7 +342,7 @@ pub async fn sync_community_catalog(
                 .unwrap_or(false);
 
             if has_story_arc_tables {
-                changes += conn.execute(
+                changes += tx.execute(
                     "INSERT INTO story_arcs (id, name, image_base64, sort_order, created_at, updated_at)
                      SELECT ca.id, ca.name, ca.image_base64,
                             (COALESCE((SELECT MAX(sort_order) FROM story_arcs), 0) + ROW_NUMBER() OVER (ORDER BY ca.sort_order, ca.name)),
@@ -346,7 +352,7 @@ pub async fn sync_community_catalog(
                     [],
                 ).str_err()? as i64;
 
-                changes += conn.execute(
+                changes += tx.execute(
                     "UPDATE story_arcs
                      SET name = (SELECT ca.name FROM community.story_arcs ca WHERE ca.id = story_arcs.id),
                          image_base64 = COALESCE(
@@ -358,13 +364,13 @@ pub async fn sync_community_catalog(
                     [],
                 ).str_err()? as i64;
 
-                changes += conn.execute(
+                changes += tx.execute(
                     "DELETE FROM story_arc_items
                      WHERE EXISTS (SELECT 1 FROM community.story_arcs ca WHERE ca.id = story_arc_items.arc_id)",
                     [],
                 ).str_err()? as i64;
 
-                changes += conn.execute(
+                changes += tx.execute(
                     "INSERT OR REPLACE INTO story_arc_items (id, arc_id, media_external_id, ep_start, ep_end, position)
                      SELECT ci.id, ci.arc_id, ci.media_external_id, ci.ep_start, ci.ep_end, ci.position
                      FROM community.story_arc_items ci
@@ -372,7 +378,7 @@ pub async fn sync_community_catalog(
                     [],
                 ).str_err()? as i64;
 
-                conn.execute(
+                tx.execute(
                     "DELETE FROM story_arcs
                      WHERE EXISTS (SELECT 1 FROM community.story_arcs ca WHERE ca.id = story_arcs.id)
                        AND NOT EXISTS (SELECT 1 FROM story_arc_items sai WHERE sai.arc_id = story_arcs.id)",
@@ -385,7 +391,7 @@ pub async fn sync_community_catalog(
             // this download now = removed upstream. Only deleted locally if
             // the user isn't tracking it in their own library.
             let removed_ids: Vec<String> = {
-                let mut stmt = conn.prepare(
+                let mut stmt = tx.prepare(
                     "SELECT s.external_id FROM community_synced_ids s
                      WHERE NOT EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = s.external_id)
                        AND NOT EXISTS (SELECT 1 FROM user_library l WHERE l.external_id = s.external_id)"
@@ -400,10 +406,10 @@ pub async fn sync_community_catalog(
                 // round trips against the connection.
                 let placeholders = removed_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
                 let ids_params = rusqlite::params_from_iter(removed_ids.iter());
-                conn.execute(&format!("DELETE FROM media_catalog WHERE external_id IN ({placeholders})"), ids_params).str_err()?;
+                tx.execute(&format!("DELETE FROM media_catalog WHERE external_id IN ({placeholders})"), ids_params).str_err()?;
 
                 let ids_params = rusqlite::params_from_iter(removed_ids.iter().chain(removed_ids.iter()));
-                conn.execute(
+                tx.execute(
                     &format!("DELETE FROM media_relations WHERE media_external_id IN ({placeholders}) OR related_media_external_id IN ({placeholders})"),
                     ids_params,
                 ).str_err()?;
@@ -416,19 +422,20 @@ pub async fn sync_community_catalog(
                     ("story_arc_items", "media_external_id"),
                 ] {
                     let ids_params = rusqlite::params_from_iter(removed_ids.iter());
-                    conn.execute(&format!("DELETE FROM {table} WHERE {column} IN ({placeholders})"), ids_params).str_err()?;
+                    tx.execute(&format!("DELETE FROM {table} WHERE {column} IN ({placeholders})"), ids_params).str_err()?;
                 }
             }
             changes += removed_ids.len() as i64;
 
             // Refresh the snapshot to the current community set so the next
             // sync's diff is against what's actually live now.
-            conn.execute("DELETE FROM community_synced_ids", []).str_err()?;
-            conn.execute(
+            tx.execute("DELETE FROM community_synced_ids", []).str_err()?;
+            tx.execute(
                 "INSERT INTO community_synced_ids (external_id) SELECT external_id FROM community.media_catalog",
                 [],
             ).str_err()?;
 
+            tx.commit().str_err()?;
             Ok(())
         })();
         conn.execute("DETACH DATABASE community", []).str_err()?;

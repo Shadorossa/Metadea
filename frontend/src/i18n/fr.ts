@@ -1,4 +1,6 @@
-export const fr = {
+import type { Translations } from './types';
+
+export const fr: Translations = {
   home: {
     profile_sync_prompt: "Synchroniser votre profil avec Metadea ?",
     profile_sync_description: "Envoyez les modifications de votre bibliothèque et de votre activité vers votre profil cloud.",
@@ -74,6 +76,7 @@ export const fr = {
   discord: {
   },
   profile: {
+    continue_in_local: "Continuer dans Local / Play",
     sign_out: "Se déconnecter",
     library: "Ma bibliothèque",
     empty: "Votre bibliothèque est vide. Commencez à explorer les œuvres !",
@@ -208,6 +211,10 @@ export const fr = {
     stats_activity_plural: "{count} activités",
   },
   notifications: {
+    release_day_title: "Sorties du jour dans votre bibliothèque",
+    release_day_body: "{count} sortie(s) : {titles}",
+    airing_weekly_title: "Animes en diffusion à terminer",
+    airing_weekly_body: "Vous avez {count} anime(s) de la bibliothèque non terminés et toujours en diffusion : {titles}",
     title: "Notifications",
     coming_soon: "Les notifications seront bientôt disponibles.",
     pr_list_title: "Propositions de catalogue ouvertes",
@@ -431,6 +438,7 @@ export const fr = {
     season_fall: "Automne",
   },
   media: {
+    chapter: "Chapitre",
     not_found: "L'œuvre est introuvable.",
     change_status_aria: "Changer de statut",
     stars_aria: "{count} étoiles",
@@ -692,6 +700,8 @@ export const fr = {
     import_fandom_preview_voices: "Acteurs de doublage",
   },
   settings: {
+    unify_seasons_highest_rated_cover: "Couverture de la saison la mieux notée",
+    unify_seasons_highest_rated_cover_hint: "Affiche dans la bibliothèque la couverture de la saison que vous avez la mieux notée au lieu de la première saison (uniquement lorsque l’œuvre est terminée).",
     title: "Paramètres",
     tab_environment: "Environnement",
     section_account: "Compte",
@@ -890,6 +900,8 @@ export const fr = {
     pool_unclassified: "Non classé ({count})",
   },
   local: {
+    pause_aria: "Mettre en pause",
+    play_aria: "Reprendre",
     search_game_ph: "Rechercher un jeu…",
     remove_local_folder: "Retirer le dossier local",
     change_folder: "Changer de dossier",

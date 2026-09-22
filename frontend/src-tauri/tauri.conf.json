@@ -24,10 +24,16 @@
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' https: data: asset: http://asset.localhost https://asset.localhost; connect-src 'self' https: ipc: http://asset.localhost https://asset.localhost; script-src 'self'; style-src 'self' 'unsafe-inline';",
-      "dangerousDisableAssetCspModification": ["style-src"],
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ],
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPDATA/metadata/**", "$APPDATA/user_metadata/**", "**"]
+        "scope": [
+          "$APPDATA/metadata/**",
+          "$APPDATA/user_metadata/**",
+          "$PICTURE/Metadea/**"
+        ]
       }
     },
     "withGlobalTauri": true

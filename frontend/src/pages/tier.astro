@@ -1,11 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getLang, useTranslations } from '../i18n/index';
+import { getLang } from '../i18n/index';
 import TierIndex from '../components/tier/TierIndex';
 import '../styles/pages/tier.css';
 
 const lang = getLang(Astro.url);
-const t = useTranslations(lang);
 ---
 
 <BaseLayout title="Tier List — Metadea" lang={lang} activePage="tier">

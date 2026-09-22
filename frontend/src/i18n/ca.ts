@@ -1,4 +1,6 @@
-export const ca = {
+import type { Translations } from './types';
+
+export const ca: Translations = {
   home: {
     profile_sync_prompt: "Vols sincronitzar el teu perfil amb Metadea?",
     profile_sync_description: "Puja els canvis de la teva biblioteca i activitat al teu perfil al núvol.",
@@ -74,6 +76,7 @@ export const ca = {
   discord: {
   },
   profile: {
+    continue_in_local: "Continua a Local / Play",
     sign_out: "Tancar sessió",
     library: "La meva biblioteca",
     empty: "La teva biblioteca està buida. Comença a buscar obres!",
@@ -208,6 +211,10 @@ export const ca = {
     stats_activity_plural: "{count} activitats",
   },
   notifications: {
+    release_day_title: "Estrenes d’avui a la teva biblioteca",
+    release_day_body: "{count} estrena/es: {titles}",
+    airing_weekly_title: "Anime en emissió pendent",
+    airing_weekly_body: "Tens {count} anime(s) de la biblioteca sense completar que continuen en emissió: {titles}",
     title: "Notificacions",
     coming_soon: "Les notificacions estaran disponibles properament.",
     pr_list_title: "Propostes de catàleg obertes",
@@ -431,6 +438,7 @@ export const ca = {
     season_fall: "Tardor",
   },
   media: {
+    chapter: "Capítol",
     not_found: "No s'ha trobat l'obra.",
     change_status_aria: "Canviar estat",
     stars_aria: "{count} estrelles",
@@ -892,6 +900,8 @@ export const ca = {
     delete_title: "Eliminar tier list",
   },
   local: {
+    pause_aria: "Pausa",
+    play_aria: "Reprèn",
     search_game_ph: "Cerca un joc…",
     remove_local_folder: "Treure carpeta local",
     change_folder: "Canviar carpeta",

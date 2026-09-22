@@ -14,8 +14,8 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
   if (!rawHtml) return { characteristics: [], cleanBiography: '' };
 
   const normalized = rawHtml
-    .replace(/(?:__|\*\*)([^\n_*\<]+?)(?:__|\*\*)\s*:\s*/g, '<b>$1:</b> ')
-    .replace(/(?:__|\*\*)([^\n_*\<]+?)(?:__|\*\*)/g, '<b>$1</b>');
+    .replace(/(?:__|\*\*)([^\n_*<]+?)(?:__|\*\*)\s*:\s*/g, '<b>$1:</b> ')
+    .replace(/(?:__|\*\*)([^\n_*<]+?)(?:__|\*\*)/g, '<b>$1</b>');
 
   const doc = new DOMParser().parseFromString(normalized, 'text/html');
   const boldElements = doc.querySelectorAll('b, strong');

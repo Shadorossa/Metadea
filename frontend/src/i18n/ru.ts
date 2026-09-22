@@ -1,4 +1,6 @@
-export const ru = {
+import type { Translations } from './types';
+
+export const ru: Translations = {
   home: {
     profile_sync_prompt: "Синхронизировать профиль с Metadea?",
     profile_sync_description: "Загрузить изменения библиотеки и активности в облачный профиль.",
@@ -74,6 +76,7 @@ export const ru = {
   discord: {
   },
   profile: {
+    continue_in_local: "Продолжить в Local / Play",
     sign_out: "Выйти",
     library: "Моя библиотека",
     empty: "Твоя библиотека пуста. Начни искать тайтлы!",
@@ -208,6 +211,10 @@ export const ru = {
     stats_activity_plural: "{count} активностей",
   },
   notifications: {
+    release_day_title: "Сегодняшние премьеры в вашей библиотеке",
+    release_day_body: "Премьер: {count} — {titles}",
+    airing_weekly_title: "Выходящее аниме не завершено",
+    airing_weekly_body: "В вашей библиотеке {count} незавершённых аниме, которые ещё выходят: {titles}",
     title: "Уведомления",
     coming_soon: "Уведомления скоро появятся.",
     pr_list_title: "Открытые предложения по каталогу",
@@ -431,6 +438,7 @@ export const ru = {
     season_fall: "Осень",
   },
   media: {
+    chapter: "Глава",
     not_found: "Тайтл не найден.",
     change_status_aria: "Изменить статус",
     stars_aria: "{count} звёзд",
@@ -692,6 +700,8 @@ export const ru = {
     import_fandom_preview_voices: "Актеры озвучивания",
   },
   settings: {
+    unify_seasons_highest_rated_cover: "Обложка сезона с наивысшей оценкой",
+    unify_seasons_highest_rated_cover_hint: "Показывать в библиотеке обложку сезона, который вы оценили выше всего, вместо первого сезона (только если произведение завершено).",
     title: "Настройки",
     tab_environment: "Окружение",
     section_account: "Аккаунт",
@@ -890,6 +900,8 @@ export const ru = {
     pool_unclassified: "Не распределено ({count})",
   },
   local: {
+    pause_aria: "Пауза",
+    play_aria: "Продолжить",
     search_game_ph: "Поиск игры…",
     remove_local_folder: "Убрать локальную папку",
     change_folder: "Изменить папку",
@@ -951,7 +963,7 @@ export const ru = {
     choose_folder_category_hint: "Выберите папку для просмотра вашей коллекции «{category}»",
     no_results: "Нет результатов",
     games_count: "Найдено игр: {count}",
-    game_count: "Найдена 1 игра",
+    game_count: "Найдена {count} игра",
     scan_again: "Сканировать снова",
     scanning: "Сканирование…",
     scanning_installed: "Поиск установленных игр…",

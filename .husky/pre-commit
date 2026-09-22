@@ -1,0 +1,15 @@
+#!/bin/sh
+# RULE 5 — nothing reaches a commit without passing these.
+# Activate once per clone:  git config core.hooksPath .husky
+set -e
+
+cd frontend
+
+echo "[pre-commit] lint"
+npm run lint
+
+echo "[pre-commit] typecheck"
+npm run typecheck
+
+echo "[pre-commit] test"
+npm run test

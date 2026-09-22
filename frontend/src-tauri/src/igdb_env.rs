@@ -63,7 +63,10 @@ pub async fn write_env_config(
     config: EnvConfig,
 ) -> Result<String, String> {
     let db = app_handle.state::<crate::db::MetadeaDb>();
-    let conn = db.conn.lock().str_err()?;
+    let mut conn = db.conn.lock().str_err()?;
+    // All eight credentials are saved together; a partial write mixes the old
+    // and new sets and leaves providers authenticating with mismatched pairs.
+    let tx = conn.transaction().str_err()?;
     let now = chrono::Utc::now().to_rfc3339();
     let pairs = [
         ("anilist_client_id",  config.anilist_client_id.as_deref().unwrap_or("")),
@@ -76,12 +79,13 @@ pub async fn write_env_config(
         ("apisports_api_key",  config.apisports_api_key.as_deref().unwrap_or("")),
     ];
     for (name, value) in pairs {
-        conn.execute(
+        tx.execute(
             "INSERT INTO app_env (name, value, updated_at) VALUES (?1, ?2, ?3)
              ON CONFLICT(name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
             rusqlite::params![name, value, now],
         ).str_err()?;
     }
+    tx.commit().str_err()?;
     Ok("ok".to_string())
 }
 
