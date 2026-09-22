@@ -4,6 +4,7 @@ import type { DbMediaRelation } from '../tauri/catalog';
 export interface MediaMeta {
   title: string | null;
   cover: string | null;
+  release_year?: number | null;
 }
 
 export type MetaResolver = (id: string) => MediaMeta;

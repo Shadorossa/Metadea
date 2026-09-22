@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BookOpen, Boxes, Clapperboard, GitBranch, Layers, Link, List, Music2, Package, Settings, Sparkles, Users, type LucideIcon } from 'lucide-react';
+import { BookOpen, Boxes, Clapperboard, GitBranch, Layers, Link, List, Music2, Package, RefreshCw, Settings, Sparkles, Trash2, Users, type LucideIcon } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
 import { getCatalogEntryForEditor, getBlockedExternalIds, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
@@ -199,8 +199,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   // either from the existing relation rows (which already join title/cover
   // from media_catalog) or from the live API search result the user picked.
   const [sagaMeta, setSagaMeta] = useState<Record<string, MediaMeta>>({});
-  // 'main' ids can share a free-text Concept Group name (sagaGroups) to
-  // collapse into one saga-timeline step and become alternates of each other
+  // 'main' ids can share a sagaGroups key to collapse into one timeline step
+  // and become alternate versions of each other
   // (e.g. a console remaster + its PC original); 'source'/'episode'/'update'
   // ids attach to the nearest preceding group instead (see classifySagaChain).
   const [sagaRelationTypes, setSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
@@ -518,6 +518,13 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     if (id === externalId) return; // this entry can move, not leave its own saga
     setSagaOrder(sagaOrder.filter(x => x !== id));
   };
+  const ungroupSagaItems = (ids: string[]) => {
+    setSagaGroups(previous => {
+      const next = { ...previous };
+      ids.forEach(id => { delete next[id]; });
+      return next;
+    });
+  };
   const reorderSaga = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= sagaOrder.length || toIndex >= sagaOrder.length) return;
     const next = [...sagaOrder];
@@ -525,8 +532,54 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     next.splice(toIndex, 0, moved);
     setSagaOrder(next);
   };
-  const updateSagaGroup = (id: string, group: string) =>
-    setSagaGroups(prev => ({ ...prev, [id]: group }));
+  const canGroupSagaItems = (fromIndex: number, toIndex: number) => {
+    const sourceId = sagaOrder[fromIndex];
+    const targetId = sagaOrder[toIndex];
+    if (!sourceId || !targetId || sourceId === targetId) return false;
+
+    const sourceRole = sagaRelationTypes[sourceId] || 'main';
+    const targetRole = sagaRelationTypes[targetId] || 'main';
+    if (sourceRole !== 'main' || targetRole !== 'main') return false;
+
+    const yearOf = (id: string) => id === externalId ? entry?.release_year ?? null : sagaMeta[id]?.release_year ?? null;
+    const sourceYear = yearOf(sourceId);
+    const targetYear = yearOf(targetId);
+    if (sourceYear == null || targetYear == null || sourceYear !== targetYear) return false;
+
+    const sourceGroup = sagaGroups[sourceId]?.trim();
+    const targetGroup = sagaGroups[targetId]?.trim();
+    const members = new Set([sourceId, targetId]);
+    if (sourceGroup) {
+      sagaOrder.filter(id => sagaGroups[id]?.trim() === sourceGroup).forEach(id => members.add(id));
+    }
+    if (targetGroup) {
+      sagaOrder.filter(id => sagaGroups[id]?.trim() === targetGroup).forEach(id => members.add(id));
+    }
+    return [...members].every(id => yearOf(id) != null && yearOf(id) === sourceYear);
+  };
+
+  const groupSagaItems = (fromIndex: number, toIndex: number) => {
+    if (!canGroupSagaItems(fromIndex, toIndex)) return;
+    const sourceId = sagaOrder[fromIndex];
+    const targetId = sagaOrder[toIndex];
+    const sourceGroup = sagaGroups[sourceId]?.trim();
+    const targetGroup = sagaGroups[targetId]?.trim();
+    const group = targetGroup || sourceGroup || `Alternative ${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${fromIndex}-${toIndex}`}`;
+    const members = new Set([sourceId, targetId]);
+    if (sourceGroup) {
+      sagaOrder.filter(id => sagaGroups[id]?.trim() === sourceGroup).forEach(id => members.add(id));
+    }
+    if (targetGroup) {
+      sagaOrder.filter(id => sagaGroups[id]?.trim() === targetGroup).forEach(id => members.add(id));
+    }
+
+    setSagaGroups(previous => {
+      const next = { ...previous };
+      members.forEach(id => { next[id] = group; });
+      return next;
+    });
+    reorderSaga(fromIndex, toIndex);
+  };
 
   const reorderRelations = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= editableRelations.length || toIndex >= editableRelations.length) return;
@@ -536,8 +589,12 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     setEditableRelations(next);
   };
 
-  const { draggedIndex: draggedSagaIndex, dragHandlers: sagaDragHandlers } =
-    useDragReorder(reorderSaga);
+  const {
+    draggedIndex: draggedSagaIndex,
+    dragHandlers: sagaDragHandlers,
+    dwellTargetIndex: sagaGroupTargetIndex,
+    dwellReady: sagaGroupDropReady,
+  } = useDragReorder(reorderSaga, { onDwellDrop: groupSagaItems, canDwellOver: canGroupSagaItems, dwellMs: 1000 });
   const { draggedIndex: draggedRelationIndex, dragHandlers: relationDragHandlers } =
     useDragReorder(reorderRelations);
 
@@ -862,7 +919,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     setErrorMsg('');
 
     try {
-      const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, sagaMeta);
+      const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null, release_year: entry.release_year ?? null }, sagaMeta);
       const sagaChangeDiff = getDiff();
       const sagaChanged = !!entry.blocked_at || sagaChangeDiff.sagaOrderChanged || sagaChangeDiff.relTypesChanged
         || sagaChangeDiff.groupsChanged || sagaChangeDiff.addedSaga.length > 0 || sagaChangeDiff.removedSaga.length > 0;
@@ -1070,7 +1127,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     </span>
   );
 
-  const resolveMeta = createMetaResolver(externalId, { title: entry.title_main ?? null, cover: entry.cover_url ?? null }, sagaMeta);
+  const resolveMeta = createMetaResolver(externalId, { title: entry.title_main ?? null, cover: entry.cover_url ?? null, release_year: entry.release_year ?? null }, sagaMeta);
 
   return createPortal(
     <div className="pr-editor-overlay" onClick={onClose}>
@@ -1091,22 +1148,22 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
               type="button"
               className="pr-editor-block-btn pr-editor-block-btn--icon"
               title={pe.resync_tooltip}
+              aria-label={pe.resync_tooltip}
+              aria-busy={isResyncing}
               disabled={isResyncing}
               onClick={handleResync}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isResyncing ? 'pr-editor-spin' : undefined}>
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-              </svg>
-              {isResyncing ? 'Descargando...' : 'Re-sync datos vacíos'}
+              <RefreshCw size={16} aria-hidden="true" className={isResyncing ? 'pr-editor-spin' : undefined} />
             </button>
             <button
               type="button"
-              className={`pr-editor-block-btn${entry.blocked_at ? ' pr-editor-block-btn--active' : ''}`}
+              className={`pr-editor-block-btn pr-editor-block-btn--icon${entry.blocked_at ? ' pr-editor-block-btn--active' : ''}`}
               aria-pressed={!!entry.blocked_at}
               title={pe.block_tooltip}
+              aria-label={pe.block_tooltip}
               onClick={() => handleChange('blocked_at', entry.blocked_at ? null : new Date().toISOString())}
             >
-              Eliminar de Metadea
+              <Trash2 size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -1297,8 +1354,10 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
                   sagaGroups={sagaGroups}
                   draggedIndex={draggedSagaIndex}
                   dragHandlers={sagaDragHandlers}
+                  groupTargetIndex={sagaGroupTargetIndex}
+                  groupDropReady={sagaGroupDropReady}
                   onRemove={removeFromSaga}
-                  onUpdateGroup={updateSagaGroup}
+                  onUngroup={ungroupSagaItems}
                   resolveMeta={resolveMeta}
                 />
                 <div className="pr-editor-saga-name-row">

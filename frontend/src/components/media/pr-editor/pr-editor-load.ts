@@ -117,7 +117,7 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
 
   const sagaMeta: Record<string, MediaMeta> = {};
   for (const x of validEntries) {
-    sagaMeta[x.id] = { title: x.entry.title_main || x.id, cover: x.entry.cover_url || null };
+    sagaMeta[x.id] = { title: x.entry.title_main || x.id, cover: x.entry.cover_url || null, release_year: x.entry.release_year ?? null };
   }
 
   // Bootstraps sagaRelationTypes/sagaGroups from existing SOURCE/EPISODE/

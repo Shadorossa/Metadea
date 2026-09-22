@@ -149,7 +149,8 @@
   flex-direction: row;
   /* "safe" keeps the start reachable via scroll if there are ever enough
      items to overflow - plain center can clip the first item off-screen
-     with no way to scroll back to .10 tokens truncated.safe center;
+     with no way to scroll back. */
+  justify-content: safe center;
   overflow-x: auto;
   overflow-y: hidden;
   width: 100%;
@@ -313,6 +314,68 @@
 
 .saga-strip-item--arc {
   cursor: default;
+}
+
+.saga-strip-item--alternatives {
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.saga-strip-alternative-slot {
+  position: relative;
+  display: flex;
+  flex: 1 1 50%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.55rem 0.8rem;
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.saga-strip-alternative-slot + .saga-strip-alternative-slot {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.saga-strip-alternative-cover {
+  position: relative;
+  z-index: 2;
+  width: min(42%, 95px);
+  aspect-ratio: 2 / 3;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #1a1a1a;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.55);
+}
+
+.saga-strip-alternative-slot .saga-strip-item-info {
+  flex-shrink: 0;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.saga-strip-alternative-slot .saga-strip-item-title {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  -webkit-line-clamp: 2;
+  max-height: 2.4em;
+}
+
+.saga-strip-alternative-slot .saga-strip-item-meta-row {
+  gap: 0.35rem;
+}
+
+.saga-strip-alternative-slot--current .saga-strip-alternative-cover {
+  outline: 2px solid var(--accent, #7c6af7);
+  outline-offset: -2px;
 }
 
 .saga-strip-item--current {

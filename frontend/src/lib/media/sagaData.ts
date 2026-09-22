@@ -25,6 +25,113 @@ export interface SagaArcsResult {
 
 const chainCache = new Map<string, Promise<SagaChainResult>>();
 const arcsCache = new Map<string, Promise<SagaArcsResult>>();
+const alternativeGroupsCache = new Map<string, Promise<SagaEntry[][]>>();
+
+async function fetchSagaAlternativeGroups(entries: SagaEntry[]): Promise<SagaEntry[][]> {
+  if (entries.length === 0) return [];
+
+  const baseById = new Map(entries.map(entry => [entry.externalId, entry]));
+  const adjacency = new Map<string, Set<string>>();
+  const orderById = new Map<string, number>();
+  const pending = entries.map(entry => entry.externalId);
+  const loadedIds = new Set<string>();
+
+  while (pending.length > 0) {
+    const batch = [...new Set(pending.splice(0))].filter(id => !loadedIds.has(id));
+    if (batch.length === 0) break;
+    batch.forEach(id => loadedIds.add(id));
+    const rowsById = await Promise.all(batch.map(async id => [id, await getMediaRelations(id).catch(() => [] as DbMediaRelation[])] as const));
+
+    for (const [ownerId, rows] of rowsById) {
+      for (const relation of rows) {
+        if (relation.relation_type !== 'ALTERNATIVE') continue;
+        const otherId = relation.related_media_external_id;
+        if (!adjacency.has(ownerId)) adjacency.set(ownerId, new Set());
+        if (!adjacency.has(otherId)) adjacency.set(otherId, new Set());
+        adjacency.get(ownerId)!.add(otherId);
+        adjacency.get(otherId)!.add(ownerId);
+        const position = /#(\d+)\s*$/.exec(relation.type_label || '');
+        if (position) orderById.set(ownerId, Number(position[1]));
+        if (!loadedIds.has(otherId)) pending.push(otherId);
+      }
+    }
+  }
+
+  const blockedIds = new Set(await getBlockedExternalIds().catch(() => [] as string[]));
+  const candidateIds = [...adjacency.keys()].filter(id => !blockedIds.has(id));
+  const metadata = await Promise.all(candidateIds.map(async id => {
+    const cached = baseById.get(id);
+    if (cached) return [id, cached] as const;
+    const entry = await getCatalogEntry(id).catch(() => null);
+    if (!entry || entry.format?.trim().toUpperCase() === 'SUMMARY') return [id, null] as const;
+    return [id, {
+      externalId: id,
+      title: entry.title_main || id,
+      cover: entry.cover_url || null,
+      format: entry.format || null,
+      mediaType: entry.type || id.split(':')[0] || 'game',
+      year: entry.release_year ?? null,
+      month: entry.release_month ?? null,
+      day: entry.release_day ?? null,
+    }] as const;
+  }));
+  const entriesById = new Map(metadata.filter((row): row is readonly [string, SagaEntry] => row[1] !== null));
+  const visited = new Set<string>();
+  const componentById = new Map<string, SagaEntry[]>();
+
+  for (const entry of entries) {
+    if (visited.has(entry.externalId) || !adjacency.has(entry.externalId)) continue;
+    const componentIds: string[] = [];
+    const queue = [entry.externalId];
+    visited.add(entry.externalId);
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (entriesById.has(id)) componentIds.push(id);
+      for (const next of adjacency.get(id) ?? []) {
+        if (!visited.has(next)) { visited.add(next); queue.push(next); }
+      }
+    }
+    if (componentIds.length < 2) continue;
+    componentIds.sort((a, b) => {
+      const rankA = orderById.get(a) ?? Number.MAX_SAFE_INTEGER;
+      const rankB = orderById.get(b) ?? Number.MAX_SAFE_INTEGER;
+      if (rankA !== rankB) return rankA - rankB;
+      const indexA = entries.findIndex(item => item.externalId === a);
+      const indexB = entries.findIndex(item => item.externalId === b);
+      if (indexA >= 0 && indexB >= 0) return indexA - indexB;
+      if (indexA >= 0) return -1;
+      if (indexB >= 0) return 1;
+      const yearA = entriesById.get(a)?.year ?? Number.MAX_SAFE_INTEGER;
+      const yearB = entriesById.get(b)?.year ?? Number.MAX_SAFE_INTEGER;
+      return yearA - yearB;
+    });
+    const component = componentIds.map(id => entriesById.get(id)!);
+    component.forEach(item => componentById.set(item.externalId, component));
+  }
+
+  const emitted = new Set<string>();
+  return entries.flatMap(entry => {
+    if (emitted.has(entry.externalId)) return [];
+    const group = componentById.get(entry.externalId);
+    if (!group) { emitted.add(entry.externalId); return [[entry]]; }
+    group.forEach(item => emitted.add(item.externalId));
+    return [group];
+  });
+}
+
+/** Returns viewer-only panels: ordinary saga entries stay unchanged, while
+ *  ALTERNATIVE-connected works share one panel. Season consumers continue
+ *  reading loadSagaChain().entries and never receive these display groups. */
+export function loadSagaAlternativeGroups(entries: SagaEntry[]): Promise<SagaEntry[][]> {
+  const key = entries.map(entry => entry.externalId).join(',');
+  let cached = alternativeGroupsCache.get(key);
+  if (!cached) {
+    cached = fetchSagaAlternativeGroups(entries);
+    alternativeGroupsCache.set(key, cached);
+    cached.catch(() => alternativeGroupsCache.delete(key));
+  }
+  return cached;
+}
 
 async function reconstructFromRelations(externalId: string): Promise<SagaEntry[] | null> {
   const { invoke } = await import('@tauri-apps/api/core');

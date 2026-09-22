@@ -137,7 +137,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     invalidateCachedMediaData(entry.external_id);
   }
 
-  const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, p.sagaMeta);
+  const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null, release_year: entry.release_year ?? null }, p.sagaMeta);
 
   // classifySagaChain clusters sagaOrder into groups + standalone entries;
   // walked pairwise below, every adjacent group gets a SEQUEL/PREQUEL edge.
@@ -282,6 +282,14 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   const currentFinalRelations: DbMediaRelation[] = dedupeRelations(
     [...editableDbRelations, ...issueDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows, ...blockedOwnedChainRows]
   );
+  // The GitHub bundle merge preserves upstream relation rows unless their
+  // related id is explicitly tombstoned. Remove every old saga-member key
+  // first, then mergeListByKey re-adds only the currently valid rows from
+  // currentFinalRelations. This also handles a pair that remains connected
+  // as SEQUEL/PREQUEL after its old ALTERNATIVE edge is removed.
+  const removedSagaRelationIds = p.sagaChanged
+    ? p.originalSagaOrder.filter(id => id !== externalId)
+    : [];
   await saveMediaRelations(externalId, currentFinalRelations)
     .catch(err => console.error('Failed to save relations:', err));
 
@@ -309,15 +317,11 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       const otherRelations = dedupeRelations([...kept, ...newRows]);
       await saveMediaRelations(otherId, otherRelations);
 
-      // Targets that had a chain-type edge to a former saga-mate but no
-      // longer do (dropped entirely, not just replaced by a new edge to the
-      // same id) — these are what actually have to be told to the GitHub
-      // merge as removals, or it'll keep whatever's already published there.
-      const otherRelationIdsAfter = new Set(otherRelations.map(r => r.related_media_external_id));
-      const removedForOther = (existing || [])
-        .filter(r => ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && p.originalSagaOrder.includes(r.related_media_external_id))
-        .map(r => r.related_media_external_id)
-        .filter(id => !otherRelationIdsAfter.has(id));
+      // Replace all former saga-member keys on this owner before re-adding
+      // its freshly-derived rows. This is needed when an ALTERNATIVE becomes
+      // a SEQUEL/PREQUEL for the same related id: a relation-type change is
+      // still an explicit deletion + addition in the upstream merge.
+      const removedForOther = p.originalSagaOrder.filter(id => id !== otherId);
 
       // saveMediaRelations already tombstoned any dropped pair, so a resync won't reintroduce it.
       const otherEntry = await getCatalogEntry(otherId).catch(() => null);
@@ -563,7 +567,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       // A blocked entry keeps its own outgoing relation rows for ancestry and
       // fallback lookup. The reciprocal rows are removed from visible
       // neighbors above and their own proposal entries carry those removals.
-      removedRelationIds: [...new Set(p.removedRelationIds)],
+      removedRelationIds: [...new Set([...p.removedRelationIds, ...removedSagaRelationIds])],
       removedCharacterIds: p.removedCharacterIds,
       removedAuthorIds: p.removedAuthorIds,
       removedArcIds: p.removedArcIds,

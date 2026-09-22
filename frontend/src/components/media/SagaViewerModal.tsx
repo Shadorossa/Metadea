@@ -5,7 +5,7 @@ import type { SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
 import { lookupLabel } from '../../lib/media/mapper-utils';
 import { motion } from 'motion/react';
-import { loadSagaChain, loadSagaArcs } from '../../lib/media/sagaData';
+import { loadSagaChain, loadSagaArcs, loadSagaAlternativeGroups } from '../../lib/media/sagaData';
 import type { StoryArc } from '../../lib/tauri/story-arcs';
 import { toMediumCover } from '../../lib/shared/small-cover';
 
@@ -20,6 +20,7 @@ type LoadState = 'loading' | 'done' | 'error';
 export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   const t = i18n;
   const [entries, setEntries] = useState<SagaEntry[]>([]);
+  const [panels, setPanels] = useState<SagaEntry[][]>([]);
   const [sagaTitle, setSagaTitle] = useState<string>('');
   const [loadState, setLoadState] = useState<LoadState>('loading');
   // Every Arcos Argumentales (see PrEditorStoryArcsSection) touching any
@@ -66,12 +67,18 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
       if (chain.sagaTitle) setSagaTitle(chain.sagaTitle);
       setLoadState('done');
 
-      loadSagaArcs(chain.entries).then(({ arcs, arcItemMeta }) => {
+      Promise.all([loadSagaArcs(chain.entries), loadSagaAlternativeGroups(chain.entries)]).then(([{ arcs, arcItemMeta }, groupedPanels]) => {
         if (cancelled) return;
         setSagaArcs(arcs);
+        setPanels(groupedPanels);
         setArcItemMeta(prev => ({ ...prev, ...arcItemMeta }));
         setArcsFullyChecked(true);
-      }).catch(() => { if (!cancelled) setArcsFullyChecked(true); });
+      }).catch(() => {
+        if (!cancelled) {
+          setPanels(chain.entries.map(entry => [entry]));
+          setArcsFullyChecked(true);
+        }
+      });
     }).catch(() => {
       if (cancelled) return;
       setLoadState('error');
@@ -160,7 +167,39 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
           )}
           {loadState === 'done' && activeTab === 'saga' && (
             <div className="saga-strip-list">
-              {entries.map(entry => {
+              {panels.map(panel => panel.length > 1 ? (
+                <div key={panel.map(item => item.externalId).join('|')} className="saga-strip-item saga-strip-item--alternatives">
+                  {panel.map(entry => {
+                    const isCurrent = entry.externalId === externalId;
+                    return (
+                      <a
+                        key={entry.externalId}
+                        className={`saga-strip-alternative-slot${isCurrent ? ' saga-strip-alternative-slot--current' : ''}`}
+                        href={`/media?id=${encodeURIComponent(entry.externalId)}`}
+                        onClick={e => { if (isCurrent) e.preventDefault(); }}
+                      >
+                        <div className="saga-strip-item-bg">
+                          {entry.cover && <img src={toMediumCover(entry.cover)} alt="" />}
+                          <div className="saga-strip-item-overlay" />
+                        </div>
+                        {isCurrent && <span className="saga-strip-item-current-indicator" />}
+                        <div className="saga-strip-alternative-cover">
+                          {entry.cover
+                            ? <img className="cover-image-fill" src={toMediumCover(entry.cover)} alt="" loading="lazy" />
+                            : <div className="saga-strip-item-cover-fallback" />}
+                        </div>
+                        <div className="saga-strip-item-info">
+                          <span className="saga-strip-item-title">{entry.title}</span>
+                          <div className="saga-strip-item-meta-row">
+                            {entry.format && <span className="saga-strip-item-badge">{lookupLabel(t.formats, entry.format, entry.format)}</span>}
+                            {entry.year && <span className="saga-strip-item-year">{entry.year}</span>}
+                          </div>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : panel.map(entry => {
                 const isCurrent = entry.externalId === externalId;
                 return (
                   <a
@@ -191,7 +230,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                     </div>
                   </a>
                 );
-              })}
+              }))}
             </div>
           )}
 

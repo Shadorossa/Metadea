@@ -9,6 +9,180 @@
   align-content: start;
 }
 
+.pr-editor-saga-timeline {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  column-gap: 0.75rem;
+  row-gap: 2.5rem;
+  overflow: visible;
+  padding: 2rem 0.25rem 0.5rem;
+}
+
+.pr-editor-saga-timeline-item {
+  position: relative;
+  display: flex;
+  flex: 0 0 8rem;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pr-editor-saga-timeline-item::before {
+  position: absolute;
+  z-index: 0;
+  top: -0.525rem;
+  left: 50%;
+  width: calc(100% + 0.75rem);
+  height: 1px;
+  background: var(--border-color, #2d2a24);
+  content: '';
+  pointer-events: none;
+}
+
+.pr-editor-saga-timeline-item[data-row-last]::before {
+  display: none;
+}
+
+.pr-editor-saga-timeline-item[data-next-group]::before {
+  width: calc(100% + 1.15rem);
+}
+
+.pr-editor-saga-timeline-group {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.75rem;
+  padding: 0 0.4rem;
+}
+
+.pr-editor-saga-timeline-group::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0.25rem 0 -0.4rem;
+  border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 45%, var(--border-color, #2d2a24));
+  border-radius: 0;
+  background: color-mix(in srgb, var(--accent, #7c6af7) 9%, transparent);
+  content: '';
+  pointer-events: none;
+}
+
+.pr-editor-saga-timeline-ungroup {
+  position: absolute;
+  z-index: 3;
+  top: 0.25rem;
+  left: 50%;
+  appearance: none;
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: 0;
+  background: var(--bg-elevated, #1b1917);
+  color: var(--text-main, #e3e1db);
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: opacity 120ms ease, color 120ms ease;
+}
+
+.pr-editor-saga-timeline-group:hover .pr-editor-saga-timeline-ungroup,
+.pr-editor-saga-timeline-group:focus-within .pr-editor-saga-timeline-ungroup {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pr-editor-saga-timeline-ungroup:hover {
+  border-color: var(--danger, #e05a5a);
+  color: var(--danger, #e05a5a);
+}
+
+.pr-editor-saga-timeline-item::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0.25rem -0.4rem -0.4rem;
+  border: 1px dashed transparent;
+  border-radius: 0;
+  background: transparent;
+  content: '';
+  pointer-events: none;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.pr-editor-saga-timeline-item.is-grouping::after {
+  border-color: color-mix(in srgb, var(--accent, #7c6af7) 45%, var(--border-color, #2d2a24));
+  background: color-mix(in srgb, var(--accent, #7c6af7) 9%, transparent);
+}
+
+.pr-editor-saga-timeline-item.is-group-drop-ready::after {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent, #7c6af7) 45%, var(--border-color, #2d2a24));
+}
+
+.pr-editor-saga-timeline-node {
+  position: absolute;
+  z-index: 2;
+  top: -0.8rem;
+  left: 50%;
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1px solid var(--text-muted, #a0a0b8);
+  border-radius: 50%;
+  background: var(--bg-primary, #12110f);
+  transform: translateX(-50%);
+}
+
+.pr-editor-saga-timeline-year {
+  position: absolute;
+  z-index: 2;
+  top: -1.9rem;
+  left: 50%;
+  min-height: 0.8rem;
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.65rem;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.pr-editor-saga-timeline-item.is-current .pr-editor-saga-timeline-node {
+  border-color: var(--accent, #7c6af7);
+  background: var(--accent, #7c6af7);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #7c6af7) 20%, transparent);
+}
+
+.pr-editor-saga-timeline-item .pr-editor-media-card {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  margin-top: 0.65rem;
+}
+
+.pr-editor-saga-timeline-title {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  padding: 0.35rem 0.25rem 0.25rem;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.88));
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  pointer-events: none;
+}
+
 @media (max-width: 1100px) {
   .pr-editor-media-group-cards--twelve {
     grid-template-columns: repeat(10, minmax(0, 1fr));
