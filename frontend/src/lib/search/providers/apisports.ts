@@ -436,7 +436,3 @@ export async function fetchApiSportsEvent(rawId: string): Promise<MediaPageData 
     totalCount: matches.length,
   };
 }
-
-// Kept as a compatibility alias for callers built before competition pages
-// existed. It now resolves either a competition or one of its seasons.
-export const fetchApiSportsSeason = fetchApiSportsEvent;

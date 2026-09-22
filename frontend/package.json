@@ -39,7 +39,6 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@tauri-apps/cli": "^2.11.3",
-    "@types/dompurify": "^3.0.5",
     "knip": "^6.26.0",
     "typescript": "^6.0.3"
   }
