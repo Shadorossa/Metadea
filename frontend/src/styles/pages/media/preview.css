@@ -214,15 +214,6 @@
   transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
-@keyframes saga-strip-bg-image-in {
-  from { opacity: 0; }
-  to { opacity: 0.15; }
-}
-
-.saga-strip-alternative-bg-image {
-  animation: saga-strip-bg-image-in 0.22s ease backwards;
-}
-
 .saga-strip-item-overlay {
   position: absolute;
   inset: 0;

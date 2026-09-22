@@ -206,7 +206,6 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                       <div className="saga-strip-item-bg">
                         {backgroundEntry.cover && (
                           <img
-                            className="saga-strip-alternative-bg-image"
                             key={backgroundEntry.externalId}
                             src={toMediumCover(backgroundEntry.cover)}
                             alt=""
