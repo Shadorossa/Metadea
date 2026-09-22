@@ -20,18 +20,9 @@
       "relation_type": "SUPPORTING"
     }
   ],
-  "merged_character_external_ids": [],
   "actors": [
     {
       "external_id": "person:a297355",
-      "role": "voice",
-      "language": "Japanese"
-    },
-    {
-      "external_id": "va:Komura Shou",
-      "name": "Komura Shou",
-      "name_native": null,
-      "image_url": null,
       "role": "voice",
       "language": "Japanese"
     },
@@ -40,5 +31,6 @@
       "role": "voice",
       "language": "English"
     }
-  ]
+  ],
+  "merged_character_external_ids": []
 }
