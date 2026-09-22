@@ -182,6 +182,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   const [githubGate, setGithubGate] = useState<'checking' | 'ok' | 'signed-out'>(mode === 'local' ? 'ok' : 'checking');
   const [submitting, setSubmitting] = useState(false);
   const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
+  const [unsavedPromptShake, setUnsavedPromptShake] = useState(0);
   const [sessionTabContextMenu, setSessionTabContextMenu] = useState<{ externalId: string; kind?: 'media' | 'character'; x: number; y: number } | null>(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -1124,6 +1125,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
       return;
     }
     if (hasChanges()) {
+      if (showUnsavedPrompt) setUnsavedPromptShake(previous => previous + 1);
       setShowUnsavedPrompt(true);
       return;
     }
@@ -1826,7 +1828,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
       </div>)}
 
       {showUnsavedPrompt && !sessionMode && (
-        <div className="pr-unsaved-changes-toast" role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
+        <div key={unsavedPromptShake} className={`pr-unsaved-changes-toast${unsavedPromptShake ? ' pr-unsaved-changes-toast--shake' : ''}`} role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
           <span>Tienes cambios sin guardar</span>
           <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { setShowUnsavedPrompt(false); void handleSubmit(); }}>Submit proposal</button>
           <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={discardAndClose}>Descartar</button>

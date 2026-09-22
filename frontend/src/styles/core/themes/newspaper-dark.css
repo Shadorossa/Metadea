@@ -441,6 +441,10 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   filter: brightness(0) invert(1) sepia(1) saturate(2) brightness(0.85) !important;
 }
 
+[data-theme="newspaper-dark"] .media-store-icon--favicon {
+  filter: none !important;
+}
+
 /* Vintage style for monthly history cards */
 [data-theme="newspaper-dark"] .mh-card {
   border: 1px solid var(--border-color) !important;

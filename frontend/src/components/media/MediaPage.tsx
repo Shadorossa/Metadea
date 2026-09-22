@@ -526,6 +526,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const [prEditorSessionTitles, setPrEditorSessionTitles] = useState<Record<string, string>>({});
   const [prEditorSagaOrderById, setPrEditorSagaOrderById] = useState<Record<string, string[]>>({});
   const [showPrEditorExitPrompt, setShowPrEditorExitPrompt] = useState(false);
+  const [prEditorExitPromptShake, setPrEditorExitPromptShake] = useState(0);
   const [pendingPrEditorTabCloseId, setPendingPrEditorTabCloseId] = useState<string | null>(null);
   const [pendingPrEditorCharacterCloseId, setPendingPrEditorCharacterCloseId] = useState<string | null>(null);
   const [prEditorSessionSubmitting, setPrEditorSessionSubmitting] = useState(false);
@@ -1653,9 +1654,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       discardPrEditorSession();
       return;
     }
+    if (showPrEditorExitPrompt) setPrEditorExitPromptShake(previous => previous + 1);
     setPendingPrEditorTabCloseId(null);
     setShowPrEditorExitPrompt(true);
-  }, [discardPrEditorSession, prEditorDirtyById, prEditorCharacterEntries]);
+  }, [discardPrEditorSession, prEditorDirtyById, prEditorCharacterEntries, showPrEditorExitPrompt]);
 
   const submitPrEditorSession = useCallback(async () => {
     if (prEditorSessionSubmitting) return;
@@ -2218,7 +2220,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         );
       })}
       {!previewMode && showPrEditorExitPrompt && (pendingPrEditorTabCloseId || pendingPrEditorCharacterCloseId || Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) && createPortal(
-        <div className="pr-unsaved-changes-toast" role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
+        <div key={prEditorExitPromptShake} className={`pr-unsaved-changes-toast${prEditorExitPromptShake ? ' pr-unsaved-changes-toast--shake' : ''}`} role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
           {pendingPrEditorTabCloseId ? (
             <span>«{prEditorSessionTitles[pendingPrEditorTabCloseId] || pendingPrEditorTabCloseId}» tiene cambios sin guardar</span>
           ) : pendingPrEditorCharacterCloseId ? (

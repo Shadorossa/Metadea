@@ -177,6 +177,7 @@ export function CharacterPrEditorModal() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showUnsavedPrompt, setShowUnsavedPrompt] = useState(false);
+  const [unsavedPromptShake, setUnsavedPromptShake] = useState(0);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [character, setCharacter] = useState<CharacterEntry | null>(null);
@@ -531,6 +532,7 @@ export function CharacterPrEditorModal() {
     }
     const hasAnyUnsavedChanges = hasChanged() || [...characterDraftsRef.current.values()].some(draft => draft.dirty);
     if (hasAnyUnsavedChanges) {
+      if (showUnsavedPrompt) setUnsavedPromptShake(previous => previous + 1);
       setShowUnsavedPrompt(true);
       return;
     }
@@ -1307,7 +1309,7 @@ export function CharacterPrEditorModal() {
       <PrEditorChangelogPanel externalId={currentId} />
 
       {showUnsavedPrompt && (
-        <div className="pr-unsaved-changes-toast" role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
+        <div key={unsavedPromptShake} className={`pr-unsaved-changes-toast${unsavedPromptShake ? ' pr-unsaved-changes-toast--shake' : ''}`} role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
           {pendingCharacterTabCloseId ? <span>Este personaje tiene cambios sin guardar</span> : <span>Tienes cambios sin guardar</span>}
           {pendingCharacterTabCloseId ? (
             <>
