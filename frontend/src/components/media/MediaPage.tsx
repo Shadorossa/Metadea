@@ -1514,6 +1514,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     setActivePrEditorCharacterId(null);
     window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'media', externalId: currentId } }));
     setShowPrEditorExitPrompt(false);
+    setPrEditorExitPromptShake(0);
     setPendingPrEditorTabCloseId(null);
     setPrEditorSessionStatus('');
     setPrEditorExitError('');
@@ -1526,6 +1527,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     setActivePrEditorCharacterId(null);
     window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'media', externalId } }));
     setShowPrEditorExitPrompt(false);
+    setPrEditorExitPromptShake(0);
     setPendingPrEditorTabCloseId(null);
   }, []);
 
@@ -1613,6 +1615,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       return;
     }
     setShowPrEditorExitPrompt(false);
+    setPrEditorExitPromptShake(0);
     removePrEditorSessionEntry(externalId);
   }, [prEditorDirtyById, removePrEditorSessionEntry]);
 
@@ -1620,6 +1623,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     if (!pendingPrEditorTabCloseId) return;
     const externalId = pendingPrEditorTabCloseId;
     setShowPrEditorExitPrompt(false);
+    setPrEditorExitPromptShake(0);
     setPendingPrEditorTabCloseId(null);
     removePrEditorSessionEntry(externalId);
   }, [pendingPrEditorTabCloseId, removePrEditorSessionEntry]);
@@ -1628,12 +1632,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     if (!pendingPrEditorCharacterCloseId) return;
     const externalId = pendingPrEditorCharacterCloseId;
     setShowPrEditorExitPrompt(false);
+    setPrEditorExitPromptShake(0);
     setPendingPrEditorCharacterCloseId(null);
     (window as any).closeCharacterEditorTab?.(externalId, true);
   }, [pendingPrEditorCharacterCloseId]);
 
   const discardPrEditorSession = useCallback(() => {
     setShowPrEditorExitPrompt(false);
+    setPrEditorExitPromptShake(0);
     setPendingPrEditorTabCloseId(null);
     setPendingPrEditorCharacterCloseId(null);
     setShowPrEditor(false);
@@ -2236,9 +2242,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
             {prEditorSessionSubmitting ? 'Enviando…' : 'Submit proposal'}
           </button>}
           {pendingPrEditorTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={confirmClosePrEditorSessionEntry}>Cerrar sin guardar</button>}
-          {pendingPrEditorTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingPrEditorTabCloseId(null); setShowPrEditorExitPrompt(false); }}>Cancelar</button>}
+          {pendingPrEditorTabCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingPrEditorTabCloseId(null); setShowPrEditorExitPrompt(false); setPrEditorExitPromptShake(0); }}>Cancelar</button>}
           {pendingPrEditorCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={confirmClosePrEditorCharacterEntry}>Cerrar sin guardar</button>}
-          {pendingPrEditorCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingPrEditorCharacterCloseId(null); setShowPrEditorExitPrompt(false); }}>Cancelar</button>}
+          {pendingPrEditorCharacterCloseId && <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingPrEditorCharacterCloseId(null); setShowPrEditorExitPrompt(false); setPrEditorExitPromptShake(0); }}>Cancelar</button>}
           {!pendingPrEditorTabCloseId && !pendingPrEditorCharacterCloseId && (Object.values(prEditorDirtyById).some(Boolean) || Object.values(prEditorCharacterEntries).some(entry => entry.dirty)) && <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={discardPrEditorSession} disabled={prEditorSessionSubmitting}>Descartar</button>}
         </div>,
         document.body,

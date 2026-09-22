@@ -345,6 +345,7 @@ export function CharacterPrEditorModal() {
       setPendingCharacterTabCloseId(null);
       setCharacterTabContextMenu(null);
       setShowUnsavedPrompt(false);
+      setUnsavedPromptShake(0);
       setCurrentId(externalId);
       setIsOpen(true);
       setLoading(true);
@@ -554,6 +555,7 @@ export function CharacterPrEditorModal() {
     window.dispatchEvent(new CustomEvent('metadea:character-editor-session-change', { detail: { action: 'close', externalId } }));
     if (externalId !== currentId) return;
     setShowUnsavedPrompt(false);
+    setUnsavedPromptShake(0);
     setPendingCharacterTabCloseId(null);
     const controller = (window as any).__metadeaPrEditorSession;
     if (remaining.length) {
@@ -1314,7 +1316,7 @@ export function CharacterPrEditorModal() {
           {pendingCharacterTabCloseId ? (
             <>
               <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => removeCharacterEditorTab(pendingCharacterTabCloseId, true)} disabled={submitting}>Cerrar sin guardar</button>
-              <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingCharacterTabCloseId(null); setShowUnsavedPrompt(false); }}>Cancelar</button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--secondary" onClick={() => { setPendingCharacterTabCloseId(null); setShowUnsavedPrompt(false); setUnsavedPromptShake(0); }}>Cancelar</button>
             </>
           ) : (
             <>

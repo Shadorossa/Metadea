@@ -1134,6 +1134,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
 
   const discardAndClose = () => {
     setShowUnsavedPrompt(false);
+    setUnsavedPromptShake(0);
     if (sessionMode) onDiscardSession?.();
     else onClose();
   };
@@ -1830,7 +1831,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
       {showUnsavedPrompt && !sessionMode && (
         <div key={unsavedPromptShake} className={`pr-unsaved-changes-toast${unsavedPromptShake ? ' pr-unsaved-changes-toast--shake' : ''}`} role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
           <span>Tienes cambios sin guardar</span>
-          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { setShowUnsavedPrompt(false); void handleSubmit(); }}>Submit proposal</button>
+          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { setShowUnsavedPrompt(false); setUnsavedPromptShake(0); void handleSubmit(); }}>Submit proposal</button>
           <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={discardAndClose}>Descartar</button>
         </div>
       )}
