@@ -3,7 +3,7 @@
     "id": "8e69b78a09c119e78e69b78a09c119e7",
     "external_id": "game:62739",
     "type": "game",
-    "title_main": "Inazuma Eleven GO: Galaxy Big Bang",
+    "title_main": "Inazuma Eleven GO Galaxy: Big Bang",
     "source": "igdb",
     "created_at": "",
     "updated_at": "",
@@ -16,7 +16,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Inazuma Eleven GO: Chrono Stones - Thunderflash",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3h2z.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h2z.jpg"
     },
     {
       "media_external_id": "game:62739",
@@ -30,7 +30,7 @@
       "media_external_id": "game:62739",
       "related_media_external_id": "game:134112",
       "relation_type": "ALTERNATIVE",
-      "type_label": "Alternative Version #0",
+      "type_label": "Group 5 #0",
       "title": "Inazuma Eleven Go Galaxy: Supernova",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s8s.jpg"
     },
@@ -41,9 +41,18 @@
       "type_label": "Sequel",
       "title": "Inazuma Eleven: Victory Road",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9nsw.jpg"
+    },
+    {
+      "media_external_id": "game:62739",
+      "related_media_external_id": "anime:102933",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven Reloaded - Soccer no Henkaku",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx102933-REEZB2GCMqkg.png"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Inazuma Eleven Go Galaxy: Supernova"
+  "saga_name": "Inazuma Eleven",
+  "story_arcs": []
 }
