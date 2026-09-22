@@ -4,12 +4,14 @@ import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
 import { search, searchGameBundles, searchGameExpandedEditions, searchGameRemasters, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 import { getT } from '../../i18n/client';
+import { isMediaTypeDisabled } from '../../lib/constants/media';
 
 // Every media type an API search can plausibly return — a saga/bundled-in
 // relation isn't guaranteed to share the current entry's own type (e.g. a
 // vnovel's saga can include a movie adaptation), so all of them are queried
 // in parallel rather than restricting to the entry's own type.
-const SEARCHABLE_TYPES: MediaType[] = ['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event'];
+const SEARCHABLE_TYPES: MediaType[] = ['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event']
+  .filter((type): type is MediaType => !isMediaTypeDisabled(type));
 
 type SearchSort = 'relevance' | 'title_asc' | 'year_desc' | 'year_asc' | 'score_desc';
 
@@ -60,6 +62,8 @@ export interface MediaSearchPopupProps {
    *  instead) — used for the Saga list, where adding several works in a row
    *  is the common case; true (default) closes immediately after one pick. */
   closeOnSelect?: boolean;
+  /** Lets the user select several search results and confirm them together. */
+  multiSelect?: boolean;
   /** Also surfaces IGDB category-3 (bundle) results — normal search hides
    *  these since a bundle isn't a playable title on its own, but the
    *  "Bundled In" picker is exactly where they belong. */
@@ -105,7 +109,7 @@ export interface MediaSearchPopupProps {
  *  transform/filter/etc. becomes the fixed element's containing block
  *  instead of the viewport, per the CSS spec, leaving whatever's above that
  *  ancestor visible over the popup. */
-export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false, igdbRelationMediaType = 'game', castPicker }: MediaSearchPopupProps) {
+export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, multiSelect = false, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false, igdbRelationMediaType = 'game', castPicker }: MediaSearchPopupProps) {
   const s = getT().search;
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
@@ -114,6 +118,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
   const [cast, setCast] = useState<Array<{ external_id: string; name: string; image_url?: string | null }>>([]);
   const [castLoading, setCastLoading] = useState(false);
   const [castError, setCastError] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<Record<string, ApiSearchResult>>({});
   const castRequestId = useRef(0);
 
   const { results, isLoading } = useDebouncedSearch<ApiSearchResult>(
@@ -163,6 +168,16 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
       }
       return;
     }
+    if (multiSelect) {
+      setSelectedMedia(current => {
+        if (current[result.externalId]) {
+          const { [result.externalId]: _removed, ...remaining } = current;
+          return remaining;
+        }
+        return { ...current, [result.externalId]: result };
+      });
+      return;
+    }
     const skeletonPromise = ensureSkeletonCatalogEntry(result);
     // Notify the caller immediately so multi-step flows (e.g. choose a work,
     // then choose one character from its cast) can mount their next panel
@@ -175,6 +190,15 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
     // usable to add several results in a row instead of forcing a retype
     // for every single pick.
     await skeletonPromise;
+  };
+
+  const confirmMediaSelection = () => {
+    const selected = Object.values(selectedMedia);
+    selected.forEach(result => {
+      onSelect(result);
+      void ensureSkeletonCatalogEntry(result);
+    });
+    onClose();
   };
 
   const sortedResults = [...results].sort(SORT_FNS[sortBy]);
@@ -275,7 +299,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             <option value="series">{s.types.series}</option>
             <option value="book">{s.types.book}</option>
             <option value="comic">{s.types.comic}</option>
-            <option value="event">{s.types.event}</option>
+            <option value="event" disabled={isMediaTypeDisabled('event')}>{s.types.event}</option>
           </select>
           <select
             className="pr-editor-search-select"
@@ -299,7 +323,8 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
               <button
                 key={r.externalId}
                 type="button"
-                className="pr-editor-search-result-card"
+                className={`pr-editor-search-result-card${selectedMedia[r.externalId] ? ' is-selected' : ''}`}
+                aria-pressed={multiSelect ? !!selectedMedia[r.externalId] : undefined}
                 onClick={() => handleSelect(r)}
               >
                 {r.coverUrl && (
@@ -313,6 +338,19 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             ))}
           </div>
         </div>
+        {multiSelect && (
+          <div className="pr-editor-search-cast-actions">
+            <span>{Object.keys(selectedMedia).length} seleccionados</span>
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--submit"
+              onClick={confirmMediaSelection}
+              disabled={Object.keys(selectedMedia).length === 0}
+            >
+              Añadir seleccionados
+            </button>
+          </div>
+        )}
         </>
         )}
       </div>

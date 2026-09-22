@@ -11,6 +11,7 @@ import { dedupeByExternalId } from '../shared/dedupe';
 import { searchCharactersDb, type CharacterEntry } from '../tauri/characters';
 import { getCustomImagesMap, wrapAssetUrl, getMediaRelations, type FavoriteCustomImage } from '../tauri';
 import { isUnifySeasonsEnabled } from '../settings/preferences';
+import { isMediaTypeDisabled } from '../constants/media';
 
 export { MissingApiKeyError };
 export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
@@ -402,7 +403,9 @@ async function searchOne(
 // matches" apart from "can't search these types at all yet".
 async function searchAll(searchQuery: string, signal: AbortSignal, page: number): Promise<SearchPage> {
   const settled = await Promise.allSettled(
-    ALL_SEARCH_TYPES.map(type => searchOne(type, searchQuery, signal, page)),
+    ALL_SEARCH_TYPES
+      .filter(type => !isMediaTypeDisabled(type))
+      .map(type => searchOne(type, searchQuery, signal, page)),
   );
 
   const results: SearchResult[] = [];

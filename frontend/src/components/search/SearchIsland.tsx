@@ -13,7 +13,7 @@ import { compareByReleaseDate, compareByReleaseDateDesc } from '../../lib/media/
 import { getT } from '../../i18n/client';
 import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconEvent, IconCharacter, IconStaff } from '../local/ui/icons';
-import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
+import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES, isMediaTypeDisabled } from '../../lib/constants/media';
 import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
@@ -686,7 +686,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                 <button
                   key={typeId}
                   type="button"
-                  disabled={typeId === 'event'}
+                  disabled={isMediaTypeDisabled(typeId)}
                   onClick={() => handleMediaTypeChange(typeId)}
                   className={`search-tab${mediaType === typeId ? ' active' : ''}`}
                 >

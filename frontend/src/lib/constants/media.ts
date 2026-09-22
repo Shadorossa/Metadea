@@ -9,6 +9,14 @@ export const ALL_MEDIA_TYPES = [
   'anime', 'manga', 'lnovel', 'game', 'vnovel', 'series', 'movie', 'book', 'comic', 'event', 'character',
 ] as const;
 
+// Central feature locks: remove a type here to re-enable it everywhere that
+// exposes a media-type selector or aggregates cross-type search results.
+export const DISABLED_MEDIA_TYPES: readonly string[] = ['event'];
+
+export function isMediaTypeDisabled(type: string): boolean {
+  return DISABLED_MEDIA_TYPES.includes(type);
+}
+
 // Search tab order (includes 'all' sentinel)
 export const SEARCH_TAB_TYPES = [
   'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event', 'character', 'staff',

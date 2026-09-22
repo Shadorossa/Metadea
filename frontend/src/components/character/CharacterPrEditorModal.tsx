@@ -450,18 +450,20 @@ export function CharacterPrEditorModal() {
     }
   };
   const addAppearance = (result: ApiSearchResult, relationType = 'SUPPORTING') => {
-    if (appearances.some(a => a.media_external_id === result.externalId)) return;
-    const next = [...appearances, {
-      media_external_id: result.externalId,
-      relation_type: relationType,
-      title: result.titleMain || result.externalId,
-      cover: result.coverUrl,
-      release_year: result.releaseYear,
-      release_month: result.releaseMonth,
-      release_day: result.releaseDay,
-    }];
-    next.sort(compareByReleaseDateThenTitle);
-    setAppearances(next);
+    setAppearances(previous => {
+      if (previous.some(a => a.media_external_id === result.externalId)) return previous;
+      const next = [...previous, {
+        media_external_id: result.externalId,
+        relation_type: relationType,
+        title: result.titleMain || result.externalId,
+        cover: result.coverUrl,
+        release_year: result.releaseYear,
+        release_month: result.releaseMonth,
+        release_day: result.releaseDay,
+      }];
+      next.sort(compareByReleaseDateThenTitle);
+      return next;
+    });
   };
 
   const handleChangePhoto = async () => {
@@ -990,7 +992,7 @@ export function CharacterPrEditorModal() {
           onSelect={result => addAppearance(result, appearanceSearchRole)}
           onClose={() => setAppearanceSearchOpen(false)}
           excludeIds={appearances.map(a => a.media_external_id)}
-          closeOnSelect={false}
+          multiSelect
         />
       )}
 
