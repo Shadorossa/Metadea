@@ -13,10 +13,10 @@ jobs:
       contents: write
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
 
@@ -26,7 +26,7 @@ jobs:
       - name: Rust Cache
         uses: swatinem/rust-cache@v2
         with:
-          work-dir: frontend/src-tauri
+          workspaces: frontend/src-tauri
 
       - name: Install dependencies
         run: |
