@@ -14,6 +14,19 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 - Every Fixed bullet states its cause: `- <summary> — Cause: <cause>`.
 - English, for end users: one short line per bullet, related items merged.
 
+## [0.7.1] - 2026-09-23
+
+### Highlights
+
+- Anime, manga and light novel search works again for everyone.
+
+### Fixed
+
+- Search found nothing on anime, manga and light novels with adult content enabled — Cause: AniList returns no results for an explicit `isAdult: null` filter; adult works are now simply added to the results.
+- Search empty with an expired or revoked AniList token — Cause: the token was sent with every search; it now retries without it.
+- "General" release calendar empty with adult content enabled — Cause: same `isAdult: null` filter.
+- Parts of the app in English for Spanish users after updating — Cause: search and the library editor used the build-time language; installs that never picked a language now keep Spanish.
+
 ## [0.7.0] - 2026-09-23
 
 ### Highlights

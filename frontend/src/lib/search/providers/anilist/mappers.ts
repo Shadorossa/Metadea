@@ -142,11 +142,8 @@ function hasAnimePrequel(media: AniListMedia): boolean {
 export function toSearchPage(ok: boolean, result: GraphQLResult<AniListSearchData> | null, mediaType: MediaType): SearchPage {
   if (!ok) {
     // Check for token expiration errors
-    if (result?.errors?.some(e =>
-      e.message?.includes('Unauthorized') ||
-      e.message?.includes('expired') ||
-      e.message?.includes('invalid')
-    )) {
+    // AniList says "Invalid token" (capital I) for an expired/revoked one.
+    if (result?.errors?.some(e => /invalid token|unauthori[sz]ed|expired/i.test(e.message ?? ''))) {
       throw new AniListSearchError('token_expired', 'AniList token has expired', 'anilist_token_expired');
     }
     // Check for other GraphQL errors

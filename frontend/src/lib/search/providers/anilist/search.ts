@@ -38,17 +38,38 @@ async function fetchAniListDoubledPage(
   page: number,
 ): Promise<SearchPage> {
   const opts = searchRequestOptions(signal);
-
-  const [a, b] = await Promise.all([
-    graphqlPost<AniListSearchData>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2 - 1), opts),
-    graphqlPost<AniListSearchData>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2), opts),
+  const fetchBoth = (o: typeof opts) => Promise.all([
+    graphqlPost<AniListSearchData>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2 - 1), o),
+    graphqlPost<AniListSearchData>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2), o),
   ]);
+
+  let [a, b] = await fetchBoth(opts);
+  // Search only reads public data: an expired or revoked AniList token
+  // ("Invalid token", HTTP 400) must not blank it — retry anonymously.
+  if (opts.token && [a, b].some(r => isRejectedToken(r.status, r.result))) {
+    [a, b] = await fetchBoth({ signal });
+  }
   const pageA = toSearchPage(a.ok, a.result, mediaType);
   const pageB = toSearchPage(b.ok, b.result, mediaType);
   return {
     results: [...pageA.results, ...pageB.results],
     hasMore: pageB.results.length > 0 ? pageB.hasMore : pageA.hasMore,
   };
+}
+
+/** AniList's answer to an expired/revoked/garbage bearer token. */
+export function isRejectedToken(status: number, result: { errors?: { message?: string }[] } | null): boolean {
+  if (status !== 400 && status !== 401) return false;
+  return !!result?.errors?.some(e => /invalid token|unauthori[sz]ed|expired/i.test(e.message ?? ''));
+}
+
+/** One search request with the user's token, retried anonymously when
+ *  AniList rejects that token (search only needs public data). */
+async function postSearch<T>(query: string, variables: Record<string, unknown>, signal: AbortSignal) {
+  const opts = searchRequestOptions(signal);
+  const first = await graphqlPost<T>(API_ENDPOINTS.ANILIST, query, variables, opts);
+  if (!opts.token || !isRejectedToken(first.status, first.result)) return first;
+  return graphqlPost<T>(API_ENDPOINTS.ANILIST, query, variables, { signal });
 }
 
 export async function searchAniList(
@@ -60,8 +81,9 @@ export async function searchAniList(
   page = 1,
 ): Promise<SearchPage> {
   // Adult content is opt-in (Settings → Actividad). Off by default: filter to
-  // isAdult: false. When enabled, omit the filter entirely (null) so both
-  // adult and non-adult results are returned.
+  // isAdult: false. When enabled, omit the variable entirely (undefined, not
+  // null — AniList matches nothing for an explicit null) so both adult and
+  // non-adult results are returned.
   const isAdult = aniListAdultVariable();
   const wantsRelations = anilistType === 'ANIME' && isUnifySeasonsEnabled();
   const query = wantsRelations
@@ -101,12 +123,7 @@ export async function searchAniListCharacters(
   signal: AbortSignal,
   page = 1,
 ): Promise<SearchPage> {
-  const { ok, result } = await graphqlPost<AniListSearchData>(
-    API_ENDPOINTS.ANILIST,
-    SEARCH_CHARACTERS_QUERY,
-    { searchQuery, page },
-    searchRequestOptions(signal),
-  );
+  const { ok, result } = await postSearch<AniListSearchData>(SEARCH_CHARACTERS_QUERY, { searchQuery, page }, signal);
 
   if (!ok) return { results: [], hasMore: false };
   const pageData = result?.data?.Page;
@@ -127,12 +144,7 @@ export async function searchAniListStaff(
   signal: AbortSignal,
   page = 1,
 ): Promise<{ results: AniListStaffSearchResult[]; hasMore: boolean }> {
-  const { ok, result } = await graphqlPost<AniListSearchData>(
-    API_ENDPOINTS.ANILIST,
-    SEARCH_STAFF_QUERY,
-    { searchQuery, page },
-    searchRequestOptions(signal),
-  );
+  const { ok, result } = await postSearch<AniListSearchData>(SEARCH_STAFF_QUERY, { searchQuery, page }, signal);
 
   if (!ok) return { results: [], hasMore: false };
   const pageData = result?.data?.Page;

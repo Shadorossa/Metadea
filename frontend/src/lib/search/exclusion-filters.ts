@@ -43,10 +43,12 @@ export function localCatalogVerdict(row: { type: string; format?: string | null;
   return 'keep';
 }
 
-/** AniList's `isAdult` query variable: null (no filter) when the user
- *  shows adult content, false otherwise. */
-export function aniListAdultVariable(showAdult: boolean = isAdultContentEnabled()): boolean | null {
-  return showAdult ? null : false;
+/** AniList's `isAdult` query variable: false to hide adult works, or
+ *  undefined (dropped from the request JSON) when the user shows them.
+ *  Never null: AniList reads an explicit `isAdult: null` as a filter that
+ *  matches nothing, so every search came back empty with adult content on. */
+export function aniListAdultVariable(showAdult: boolean = isAdultContentEnabled()): false | undefined {
+  return showAdult ? undefined : false;
 }
 
 /** Client-side twin of aniListAdultVariable for rows that carry the flag. */

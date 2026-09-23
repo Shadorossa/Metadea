@@ -21,6 +21,7 @@ import { igdbUpcomingReleases, igdbImageUrl } from '../tauri/igdb';
 import { STORAGE_KEYS } from '../storage/storage-keys';
 import type { UpcomingRelease } from '../profile/stats-calculators';
 import { monthKeyFor, readMonthFromCache, writeMonthToCache } from './upcoming-cache';
+import { aniListAdultVariable } from '../search/exclusion-filters';
 
 function fuzzyDateInt(d: Date): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
@@ -120,7 +121,8 @@ async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<U
   // this inclusive of both the 1st and the last day of the month.
   const start = fuzzyDateInt(new Date(rangeStart.getTime() - 86400000));
   const end = fuzzyDateInt(new Date(rangeEnd.getTime() + 86400000));
-  const isAdult = isAdultContentEnabled() ? null : false;
+  // undefined (omitted), never null: AniList matches nothing for isAdult: null.
+  const isAdult = aniListAdultVariable(isAdultContentEnabled());
 
   const chunkStartMs = rangeStart.getTime() - 1000;
   const chunkEndMs = rangeEnd.getTime() + 86400000; // through end of last day

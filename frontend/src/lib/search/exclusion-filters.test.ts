@@ -59,7 +59,9 @@ describe('local catalog rules', () => {
 describe('adult content', () => {
   it('maps the setting to the AniList variable and to a row check', () => {
     expect(aniListAdultVariable(false)).toBe(false);
-    expect(aniListAdultVariable(true)).toBeNull();
+    // undefined, never null: AniList matches nothing for an explicit null.
+    expect(aniListAdultVariable(true)).toBeUndefined();
+    expect(JSON.stringify({ isAdult: aniListAdultVariable(true) })).toBe('{}');
     expect(isHiddenAdult(true, false)).toBe(true);
     expect(isHiddenAdult(true, true)).toBe(false);
     expect(isHiddenAdult(false, false)).toBe(false);
