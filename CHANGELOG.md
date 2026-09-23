@@ -16,9 +16,29 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-09-24
+
+### Highlights
+
+- Interface scales proportionally on smaller screens.
+- Cleaner themes, filler as one checkbox, fixed metadata downloads.
+
 ### Improved
 
-- **Interface:** Interface scales proportionally on smaller screens (Settings › Preferences › Interface scale).
+- **Interface:** scales proportionally on smaller screens (Settings › Preferences › Interface scale).
+- **Themes:** readable text in Nebula and other themes, dark native controls, theme accents no longer overridden.
+- **Filler:** one "Watched with filler" checkbox in the editor; unchecked, totals and progress count canon episodes only.
+- **Unified seasons:** a planned season stays its own card; taste compatibility shows one entry per anime.
+- **Local:** "Duration" block restyled; no scrollbar on the game panel or the AniList users list.
+- **Discord and sharing:** others always see the work's main cover, not your custom one.
+
+### Fixed
+
+- Metadata download in Local stuck or silent — Cause: errors were swallowed and the batch overwrote its index.
+- Games listed twice in Local — Cause: stale entries restored and paths compared with different spellings.
+- Google sign-in replaced your chosen name — Cause: the server's Google-derived name overwrote the session name.
+- Media page partly in English — Cause: it used the build-time language instead of yours.
+- Synopsis cut off when opening achievements — Cause: the panel shrank it to fit.
 
 ## [0.7.1] - 2026-09-23
 
