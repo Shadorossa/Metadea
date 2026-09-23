@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 import { IconFolder, IconX } from './ui/icons';
 
 interface FolderRouteControlsProps {

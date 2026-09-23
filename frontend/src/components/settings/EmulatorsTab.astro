@@ -1,7 +1,7 @@
 ---
 import type { Translations } from "../../i18n/index";
 import '../../styles/pages/settings-emulators.css';
-import { ALL_PLATFORMS, COMPANIES } from '../../lib/settings/emulator-catalog';
+import { ALL_PLATFORMS, COMPANIES } from '../../lib/local/emulator-catalog';
 
 interface Props {
   t: Translations;
@@ -70,7 +70,7 @@ const { t } = Astro.props;
                     <select class="form-select emulator-select compact" id={`emulator-select-${platform.id}`} data-platform={platform.id}>
                       <option value="" data-i18n="settings.emulators_no_selection">{t.settings.emulators_no_selection}</option>
                     </select>
-                    <button type="button" class="exe-picker-btn" data-platform={platform.id} title="Select emulator executable">
+                    <button type="button" class="exe-picker-btn" data-platform={platform.id} title={t.settings.emulators_pick_executable}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 0 1-2.41 1.97l-5.77-1.72"/>
                         <path d="M2 12a10 10 0 0 1 19.55-3.5"/>
@@ -94,7 +94,7 @@ const { t } = Astro.props;
                       placeholder="{ROM}"
                       data-platform={platform.id}
                     />
-                    <button type="button" class="rom-folder-btn" data-platform={platform.id} title="Select ROMs folder">
+                    <button type="button" class="rom-folder-btn" data-platform={platform.id} title={t.settings.emulators_pick_rom_folder}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 0 1-2.41 1.97l-5.77-1.72"/>
                         <path d="M2 12a10 10 0 0 1 19.55-3.5"/>
@@ -120,7 +120,7 @@ const { t } = Astro.props;
 </div>
 
 <script>
-  import { COMPANIES, EMULATORS_DB } from '../../lib/settings/emulator-catalog';
+  import { COMPANIES, EMULATORS_DB } from '../../lib/local/emulator-catalog';
 
   // Only the document-level listener REGISTRATION below needs to happen
   // once — the listeners themselves stay attached across Astro's

@@ -55,7 +55,7 @@ body[data-theme="cyberneon"], html[data-theme="cyberneon"] body {
   background: transparent !important;
   color: #00f0ff !important;
   /* Botón con esquina cortada radical */
-  clip-path: polygon(0 0, 85% 0, 100% 40%, 100% 100%, 15% 100%, 0 60%) !important;
+  clip-path: polygon(0 0, 85% 0, 100% 40%, 100% 100%, 15% 100%, 0 60%);
   text-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
   font-family: inherit !important;
   transition: all 0.1s steps(4) !important;
@@ -66,7 +66,7 @@ body[data-theme="cyberneon"], html[data-theme="cyberneon"] body {
 [data-theme="cyberneon"] .search-action-btn:hover {
   background: #ff0055 !important;
   color: #020205 !important;
-  box-shadow: 0 0 15px #ff0055, 0 0 30px rgba(255, 0, 85, 0.5) !important;
+  box-shadow: 0 0 15px #ff0055, 0 0 30px rgba(255, 0, 85, 0.5);
   text-shadow: none;
   transform: translate(-1px, -1px);
 }
@@ -86,8 +86,8 @@ body[data-theme="cyberneon"], html[data-theme="cyberneon"] body {
 
 [data-theme="cyberneon"] .media-relation-card:hover {
   border-color: #00f0ff !important;
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3) !important;
-  transform: scale(1.02) !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+  transform: scale(1.02);
 }
 
 [data-theme="cyberneon"] ::-webkit-scrollbar-thumb {

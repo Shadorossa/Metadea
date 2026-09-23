@@ -189,14 +189,53 @@ pub async fn hydrate_social_profile(
     tx.commit().str_err()
 }
 
+// Every read below comes in two flavours: the original, which inlines a
+// character portrait's bytes as a base64 data URL into cover_url, and a
+// `_light` one that returns the portrait's file path instead (wrap with
+// wrapAssetUrl on the frontend — see image_storage::resolve_reference_path).
+// Media covers are remote URLs and come back untouched either way.
+fn app_data_dir(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    app_handle.path().app_data_dir().str_err()
+}
+
 #[tauri::command]
 pub async fn get_social_library(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
     social_user_id: String,
 ) -> Result<Vec<SocialLibraryItem>, String> {
-    let mut items: Vec<SocialLibraryItem> = {
-    let conn = state.conn.lock().str_err()?;
+    let mut items = {
+        let conn = state.conn.lock().str_err()?;
+        load_social_library(&conn, &social_user_id)?
+    };
+    let data_dir = app_data_dir(&app_handle)?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+    }
+    Ok(items)
+}
+
+#[tauri::command]
+pub async fn get_social_library_light(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    social_user_id: String,
+) -> Result<Vec<SocialLibraryItem>, String> {
+    let mut items = {
+        let conn = state.conn.lock().str_err()?;
+        load_social_library(&conn, &social_user_id)?
+    };
+    let data_dir = app_data_dir(&app_handle)?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_path_value(&data_dir, item.cover_url.take())?;
+    }
+    Ok(items)
+}
+
+pub(crate) fn load_social_library(
+    conn: &rusqlite::Connection,
+    social_user_id: &str,
+) -> Result<Vec<SocialLibraryItem>, String> {
     let mut stmt = conn.prepare(
         "SELECT sl.external_id, sl.rating, sl.started_at, sl.finished_at, sl.notes, sl.tags,
                 sl.status, sl.progress,
@@ -209,7 +248,7 @@ pub async fn get_social_library(
          ORDER BY sl.finished_at DESC"
     ).str_err()?;
 
-    let collected = stmt.query_map([&social_user_id], |r| {
+    let collected = stmt.query_map([social_user_id], |r| {
         let tags_json: Option<String> = r.get(5)?;
         Ok(SocialLibraryItem {
             external_id: r.get(0)?,
@@ -225,15 +264,7 @@ pub async fn get_social_library(
             media_type:  r.get(10)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
-    collected
-    };
-
-    let data_dir = app_handle.path().app_data_dir().str_err()?;
-    for item in &mut items {
-        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-    }
-
-    Ok(items)
+    Ok(collected)
 }
 
 #[tauri::command]
@@ -242,8 +273,38 @@ pub async fn get_social_activity(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     social_user_id: String,
 ) -> Result<Vec<SocialActivityItem>, String> {
-    let mut items: Vec<SocialActivityItem> = {
-    let conn = state.conn.lock().str_err()?;
+    let mut items = {
+        let conn = state.conn.lock().str_err()?;
+        load_social_activity(&conn, &social_user_id)?
+    };
+    let data_dir = app_data_dir(&app_handle)?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+    }
+    Ok(items)
+}
+
+#[tauri::command]
+pub async fn get_social_activity_light(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    social_user_id: String,
+) -> Result<Vec<SocialActivityItem>, String> {
+    let mut items = {
+        let conn = state.conn.lock().str_err()?;
+        load_social_activity(&conn, &social_user_id)?
+    };
+    let data_dir = app_data_dir(&app_handle)?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_path_value(&data_dir, item.cover_url.take())?;
+    }
+    Ok(items)
+}
+
+pub(crate) fn load_social_activity(
+    conn: &rusqlite::Connection,
+    social_user_id: &str,
+) -> Result<Vec<SocialActivityItem>, String> {
     let mut stmt = conn.prepare(
         "SELECT sa.external_id, sa.event_type, sa.media_type, sa.date, sa.timestamp,
                 sa.progress_start, sa.progress_end,
@@ -256,7 +317,7 @@ pub async fn get_social_activity(
          ORDER BY sa.timestamp DESC"
     ).str_err()?;
 
-    let collected = stmt.query_map([&social_user_id], |r| {
+    let collected = stmt.query_map([social_user_id], |r| {
         Ok(SocialActivityItem {
             external_id:    r.get(0)?,
             event_type:     r.get(1)?,
@@ -269,15 +330,7 @@ pub async fn get_social_activity(
             cover_url:      r.get(8)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
-    collected
-    };
-
-    let data_dir = app_handle.path().app_data_dir().str_err()?;
-    for item in &mut items {
-        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-    }
-
-    Ok(items)
+    Ok(collected)
 }
 
 #[tauri::command]
@@ -286,9 +339,44 @@ pub async fn get_social_monthly_history(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     social_user_id: String,
 ) -> Result<Vec<SocialMonthGroup>, String> {
+    let mut result = {
+        let conn = state.conn.lock().str_err()?;
+        load_social_monthly_history(&conn, &social_user_id)?
+    };
+    let data_dir = app_data_dir(&app_handle)?;
+    for group in &mut result {
+        for item in &mut group.items {
+            item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+        }
+    }
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn get_social_monthly_history_light(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    social_user_id: String,
+) -> Result<Vec<SocialMonthGroup>, String> {
+    let mut result = {
+        let conn = state.conn.lock().str_err()?;
+        load_social_monthly_history(&conn, &social_user_id)?
+    };
+    let data_dir = app_data_dir(&app_handle)?;
+    for group in &mut result {
+        for item in &mut group.items {
+            item.cover_url = crate::image_storage::resolve_image_path_value(&data_dir, item.cover_url.take())?;
+        }
+    }
+    Ok(result)
+}
+
+pub(crate) fn load_social_monthly_history(
+    conn: &rusqlite::Connection,
+    social_user_id: &str,
+) -> Result<Vec<SocialMonthGroup>, String> {
     struct Row { month: String, item: SocialMediaRef }
     let rows: Vec<Row> = {
-    let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT smh.month, smh.external_id,
                 COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url), mc.type
@@ -300,7 +388,7 @@ pub async fn get_social_monthly_history(
          ORDER BY smh.month DESC, smh.position"
     ).str_err()?;
 
-    let collected = stmt.query_map([&social_user_id], |r| Ok(Row {
+    let collected = stmt.query_map([social_user_id], |r| Ok(Row {
         month: r.get(0)?,
         item: SocialMediaRef {
             external_id: r.get(1)?,
@@ -318,12 +406,6 @@ pub async fn get_social_monthly_history(
             if last.month == row.month { last.items.push(row.item); continue; }
         }
         result.push(SocialMonthGroup { month: row.month, items: vec![row.item] });
-    }
-    let data_dir = app_handle.path().app_data_dir().str_err()?;
-    for group in &mut result {
-        for item in &mut group.items {
-            item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-        }
     }
     Ok(result)
 }
@@ -364,8 +446,40 @@ pub async fn get_social_list_items(
     social_user_id: String,
     list_key: String,
 ) -> Result<Vec<SocialMediaRef>, String> {
-    let mut items: Vec<SocialMediaRef> = {
-    let conn = state.conn.lock().str_err()?;
+    let mut items = {
+        let conn = state.conn.lock().str_err()?;
+        load_social_list_items(&conn, &social_user_id, &list_key)?
+    };
+    let data_dir = app_data_dir(&app_handle)?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+    }
+    Ok(items)
+}
+
+#[tauri::command]
+pub async fn get_social_list_items_light(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    social_user_id: String,
+    list_key: String,
+) -> Result<Vec<SocialMediaRef>, String> {
+    let mut items = {
+        let conn = state.conn.lock().str_err()?;
+        load_social_list_items(&conn, &social_user_id, &list_key)?
+    };
+    let data_dir = app_data_dir(&app_handle)?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_path_value(&data_dir, item.cover_url.take())?;
+    }
+    Ok(items)
+}
+
+pub(crate) fn load_social_list_items(
+    conn: &rusqlite::Connection,
+    social_user_id: &str,
+    list_key: &str,
+) -> Result<Vec<SocialMediaRef>, String> {
     let mut stmt = conn.prepare(
         "SELECT sli.external_id,
                 COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url), mc.type
@@ -385,13 +499,5 @@ pub async fn get_social_list_items(
             media_type:  r.get(3)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
-    collected
-    };
-
-    let data_dir = app_handle.path().app_data_dir().str_err()?;
-    for item in &mut items {
-        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-    }
-
-    Ok(items)
+    Ok(collected)
 }

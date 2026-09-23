@@ -2,14 +2,15 @@
 // grouped by media type, capped to 5 per type so one type with 40 entries
 // doesn't push everything else off-screen.
 import { useEffect, useState } from 'react';
-import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
-import { isInProgressStatus, getTypeLabel } from '../../lib/constants/media';
-import { wrapAssetUrl, saveLibraryEntry, getAllMediaRelations, getSagaNames } from '../../lib/tauri';
-import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
-import { typeIconMap } from '../../lib/shared/icon-strings';
-import { toSmallCover } from '../../lib/shared/small-cover';
+import { getT } from '../../i18n/runtime';
+import { getCachedLibraryAndCatalog, getCachedMediaRelations } from '../../lib/profile/library-data-cache';
+import { isInProgressStatus, getTypeLabel } from '../../lib/media/media-types';
+import { wrapAssetUrl, saveLibraryEntry, getSagaNames } from '../../lib/tauri';
+import type { LibraryEntry } from '../../lib/tauri';
+import { typeIconMap } from '../../lib/dom/icon-strings';
+import { toSmallCover } from '../../lib/media/small-cover';
 import { isAniListType, syncToAniList } from '../../lib/media/anilist-sync';
-import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
+import { isUnifySeasonsEnabled } from '../../lib/storage/preferences';
 import { unifyAnimeSeasons } from '../../lib/profile/library-grouping';
 
 const TYPE_ICON = typeIconMap(14);
@@ -51,6 +52,7 @@ interface TypeGroup {
 }
 
 export function CurrentlySection() {
+  const t = getT().home;
   const [groups, setGroups] = useState<TypeGroup[] | null>(null);
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export function CurrentlySection() {
     (async () => {
       const [{ items, catalog }, relations] = await Promise.all([
         getCachedLibraryAndCatalog(),
-        getAllMediaRelations().catch(() => []),
+        getCachedMediaRelations(),
       ]);
       if (cancelled) return;
       const catalogMap = new Map(catalog.map(c => [c.external_id, c]));
@@ -129,8 +131,14 @@ export function CurrentlySection() {
   // 'game'), which don't track a chapter/episode-style progress number.
   // Updates local state immediately, then persists + AniList-syncs in the
   // background (same convention as LocalMediaDetailPanel's markWatched).
-  function persistAndSync(updated: LibraryEntry) {
-    saveLibraryEntry(updated).catch(err => console.error('Failed to update progress:', err));
+  // `previous` is the groups snapshot from before the optimistic update: if
+  // the save fails the UI returns to it, instead of keeping a count the
+  // database never accepted.
+  function persistAndSync(updated: LibraryEntry, previous: TypeGroup[]) {
+    saveLibraryEntry(updated).catch(err => {
+      console.error('Failed to update progress:', err);
+      setGroups(previous);
+    });
     if (isAniListType(updated.type)) {
       syncToAniList({
         externalId:      updated.external_id,
@@ -206,7 +214,7 @@ export function CurrentlySection() {
         ),
       }));
 
-      for (const entry of changed) persistAndSync(entry);
+      for (const entry of changed) persistAndSync(entry, prev);
       return next;
     });
   }
@@ -238,7 +246,7 @@ export function CurrentlySection() {
                       type="button"
                       className="home-currently-progress-btn"
                       onClick={() => adjustProgress(item.linkId, -1)}
-                      aria-label="Restar"
+                      aria-label={t.progress_decrement}
                     >
                       −
                     </button>
@@ -247,7 +255,7 @@ export function CurrentlySection() {
                       type="button"
                       className="home-currently-progress-btn"
                       onClick={() => adjustProgress(item.linkId, 1)}
-                      aria-label="Sumar"
+                      aria-label={t.progress_increment}
                     >
                       +
                     </button>

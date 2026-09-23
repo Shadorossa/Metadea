@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState, memo } from 'react';
-import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
-import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
-import { typeIconMap } from '../../lib/shared/icon-strings';
+import { wrapAssetUrl, type CatalogSummary, type LibraryEntry } from '../../lib/tauri';
+import { getT } from '../../i18n/runtime';
+import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
+import { typeIconMap } from '../../lib/dom/icon-strings';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
-import { beginGlobalLoading } from '../../lib/shared/global-loading';
-import { getTypeLabel } from '../../lib/constants/media';
+import { syncActiveRatingSystemFromCachedInfo } from '../../lib/profile/user-info';
+import { filterCoverCacheCandidates } from '../../lib/profile/cover-cache';
+import { useCoverCacheBatch } from '../local/hooks/useCoverCacheBatch';
+import { beginGlobalLoading } from '../../lib/dom/global-loading';
+import { getTypeLabel } from '../../lib/media/media-types';
+import { toMediumCover } from '../../lib/media/small-cover';
 
 type SortMode = 'date' | 'rating';
 
@@ -16,20 +20,25 @@ interface Props {
   // this component's own local-only fetch entirely, and readOnly is a no-op
   // here since this tab has no edit affordances to hide in the first place.
   overrideItems?: LibraryEntry[];
-  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+  overrideCatalogMap?: Map<string, CatalogSummary>;
 }
 
 interface ReviewCardProps {
   item: LibraryEntry;
-  catalogMap: Map<string, MediaCatalogEntry>;
+  catalogMap: Map<string, CatalogSummary>;
   ratingSystem: ReturnType<typeof getActiveRatingSystem>;
   typeIcon: Record<string, string>;
+  /** Disk-cached cover (see ReviewsSection's useCoverCacheBatch) — painted
+   *  instead of the remote cover_url when set. */
+  cachedPath?: string;
 }
 
-const MemoizedReviewCard = memo(function ReviewCard({ item, catalogMap, ratingSystem, typeIcon }: ReviewCardProps) {
+const MemoizedReviewCard = memo(function ReviewCard({ item, catalogMap, ratingSystem, typeIcon, cachedPath }: ReviewCardProps) {
   const meta = catalogMap.get(item.external_id);
   const title = meta?.title_main ?? item.external_id;
-  const cover = meta?.cover_url ?? '';
+  // 44x62px thumbnail — the medium provider size is already far larger
+  // than that, no need to pull the full-size asset.
+  const cover = cachedPath ? wrapAssetUrl(cachedPath) : toMediumCover(meta?.cover_url ?? '');
   const fallback = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg,#374151,#1f2937)';
   const date = (item.updated_at ?? item.added_at ?? '').slice(0, 10);
   const ratingHtml = item.rating
@@ -73,7 +82,7 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
   const [reviewed, setReviewed] = useState<LibraryEntry[]>(
     overrideItems ? overrideItems.filter(item => item.notes && item.notes.trim().length > 0) : []
   );
-  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
+  const [catalogMap, setCatalogMap] = useState<Map<string, CatalogSummary>>(overrideCatalogMap ?? new Map());
   const [sortMode, setSortMode] = useState<SortMode>('date');
   const [filterType, setFilterType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,7 +98,7 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
       try {
         const { items, catalog: catalogEntries } = await getCachedLibraryAndCatalog();
         // Refreshes the localStorage cache read by getActiveRatingSystem() below.
-        await syncActiveRatingSystem();
+        await syncActiveRatingSystemFromCachedInfo();
         if (cancelled) return;
 
         setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
@@ -102,6 +111,11 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
   }, [overrideItems]);
 
   const types = useMemo(() => [...new Set(reviewed.map(i => i.type))], [reviewed]);
+
+  // Covers Local already cached to disk, in one exists-only IPC call — see
+  // LibrarySection for the same pattern.
+  const coverCacheIds = useMemo(() => filterCoverCacheCandidates(reviewed.map(i => i.external_id)), [reviewed]);
+  const coverCacheHits = useCoverCacheBatch(coverCacheIds);
 
   const filtered = useMemo(() => {
     let res = reviewed;
@@ -199,6 +213,7 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
               catalogMap={catalogMap}
               ratingSystem={system}
               typeIcon={TYPE_ICON}
+              cachedPath={coverCacheHits[item.external_id]}
             />
           ))}
         </div>

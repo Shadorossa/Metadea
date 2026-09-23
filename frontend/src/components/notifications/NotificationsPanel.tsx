@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import type { Translations } from '../../i18n/index';
-import { useOwnerGate } from '../../lib/github/useOwnerGate';
+import { useOwnerGate } from '../shared/hooks/useOwnerGate';
 import { isRepoOwner } from '../../lib/github/ownership';
 import { PullRequestList } from './PullRequestList';
 
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'notifications' | 'admin'>;

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
 import { listOpenProposalPulls, mergePull, closePull, type GitHubPull } from '../../lib/github/api';
-import { openUrlInBrowser } from '../../lib/github/submitCollaborativeProposal';
-import { externalIdFromFilename } from '../../lib/github/catalogPaths';
+import { openUrlInBrowser } from '../../lib/github/submit-collaborative-proposal';
+import { externalIdFromFilename } from '../../lib/github/catalog-paths';
 import { PrPreviewModal } from './PrPreviewModal';
 import { IconEye, IconExternalLink, IconCheck, IconX } from '../local/ui/icons';
 
@@ -27,7 +27,7 @@ function externalIdFromBranch(ref: string, username: string | null | undefined):
   return stem ? externalIdFromFilename(`${stem}.json`) : null;
 }
 
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 
 export function PullRequestList({ token, i18n }: Props) {
   const t = getT().notifications;

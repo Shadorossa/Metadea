@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { MediaEpisode } from '../../../lib/tauri';
 import type { SagaEntry } from '../../../lib/anilist/saga';
-import { fetchMediaEpisodes } from '../../../lib/media/mediaService';
+import { fetchMediaEpisodes } from '../../../lib/media/media-page-data';
 
 export function splitTitleAfterColon(title: string): ReactNode {
   const colonIdx = title.indexOf(':');

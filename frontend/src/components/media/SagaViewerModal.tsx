@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { ModalShell } from '../shared/ModalShell';
 import type { Translations } from '../../i18n/index';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
-import { lookupLabel } from '../../lib/media/mapper-utils';
+import { lookupLabel } from '../../lib/media/mappers/mapper-utils';
 import { motion } from 'motion/react';
-import { loadSagaChain, loadSagaArcs, loadSagaAlternativeGroups } from '../../lib/media/sagaData';
+import { loadSagaChain, loadSagaArcs, loadSagaAlternativeGroups } from '../../lib/media/saga/saga-loader';
 import type { StoryArc } from '../../lib/tauri/story-arcs';
-import { toMediumCover } from '../../lib/shared/small-cover';
+import { wrapAssetUrl } from '../../lib/tauri/bridge';
+import { toMediumCover } from '../../lib/media/small-cover';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
@@ -130,22 +132,26 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   }
 
   const modal = (
-    <motion.div
-      className="me-overlay saga-overlay"
-      onClick={onClose}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
+    <ModalShell
+      onClose={onClose}
+      label={t.saga_title}
+      overlayClassName="me-overlay saga-overlay"
+      panelClassName="saga-strip-container"
+      overlayComponent={motion.div}
+      overlayProps={{
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.18, ease: 'easeOut' },
+      }}
+      panelComponent={motion.div}
+      panelProps={{
+        initial: { opacity: 0, scale: 0.98, y: 12 },
+        animate: { opacity: 1, scale: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.98, y: 12 },
+        transition: { duration: 0.2, ease: [0.25, 0, 0.15, 1] },
+      }}
     >
-      <motion.div
-        className="saga-strip-container"
-        onClick={e => e.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.98, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.98, y: 12 }}
-        transition={{ duration: 0.2, ease: [0.25, 0, 0.15, 1] }}
-      >
         {!arcsFullyChecked ? (
           // Whether the Arcos Argumentales tab exists at all isn't decided
           // yet — holding off the header/body until it is means the tab is
@@ -342,13 +348,13 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                     onMouseLeave={() => { setHoveredArcId(null); setHoverPanelPos(null); }}
                   >
                     <div className="saga-strip-item-bg">
-                      {arc.image_base64 && <img src={arc.image_base64} alt="" />}
+                      {arc.image_base64 && <img src={wrapAssetUrl(arc.image_base64)} alt="" />}
                       <div className="saga-strip-item-overlay" />
                     </div>
 
                     <div className="saga-strip-item-cover">
                       {arc.image_base64
-                        ? <img className="cover-image-fill" src={arc.image_base64} alt="" loading="lazy" />
+                        ? <img className="cover-image-fill" src={wrapAssetUrl(arc.image_base64)} alt="" loading="lazy" />
                         : <div className="saga-strip-item-cover-fallback" />}
                     </div>
 
@@ -371,15 +377,14 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
         <button type="button" className="saga-strip-close" onClick={onClose}>
           <IconX size={20} />
         </button>
-      </motion.div>
-    </motion.div>
+    </ModalShell>
   );
 
   const hoveredArc = sagaArcs.find(a => a.id === hoveredArcId);
 
   return (
     <>
-      {createPortal(modal, document.body)}
+      {modal}
       {hoveredArc && hoverPanelPos && createPortal(
         <div className="saga-arc-hover-panel" style={{ top: hoverPanelPos.top, left: hoverPanelPos.left }}>
           {hoveredArc.items.map(item => {

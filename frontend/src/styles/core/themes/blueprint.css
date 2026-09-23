@@ -52,7 +52,7 @@ body[data-theme="blueprint"], html[data-theme="blueprint"] body {
   border: 1px dashed #64ffda !important;
   background-color: transparent !important;
   color: #64ffda !important;
-  box-shadow: none !important;
+  box-shadow: none;
   font-family: inherit !important;
   transition: all 0.15s ease !important;
 }
@@ -63,7 +63,7 @@ body[data-theme="blueprint"], html[data-theme="blueprint"] body {
   border-style: solid !important;
   background-color: rgba(100, 255, 218, 0.06) !important;
   /* Inclinación sutil estilo dibujo manual */
-  transform: rotate(-0.8deg) !important;
+  transform: rotate(-0.8deg);
 }
 
 [data-theme="blueprint"] .hof-card,
@@ -77,7 +77,7 @@ body[data-theme="blueprint"], html[data-theme="blueprint"] body {
   border-style: solid !important;
   border-color: #64ffda !important;
   /* Inclinación sutil de boceto en las cartas */
-  transform: rotate(0.4deg) scale(1.01) !important;
+  transform: rotate(0.4deg) scale(1.01);
 }
 
 [data-theme="blueprint"] ::-webkit-scrollbar-thumb {

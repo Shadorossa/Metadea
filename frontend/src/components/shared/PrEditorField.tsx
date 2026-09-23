@@ -3,8 +3,9 @@
 // labeled field wrapper with a "this differs from the original" dot, used
 // throughout both forms' diff-against-original UI.
 import type { ReactNode } from 'react';
+import { normField } from '../../lib/shared/text/string-utils';
 
-export const normField = (v: unknown) => (v === '' || v === undefined ? null : v);
+export { normField };
 
 export function ChangedDot({ show, className = 'pr-editor-changed-dot' }: { show: boolean; className?: string }) {
   return show ? <span className={className} /> : null;

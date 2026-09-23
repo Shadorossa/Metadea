@@ -119,7 +119,7 @@ body[data-theme="synthwave"], html[data-theme="synthwave"] body {
 [data-theme="synthwave"] .status-dropdown-tray {
   border-radius: var(--radius-md) !important;
   border: 1px solid rgba(255, 0, 127, 0.3) !important;
-  background-color: var(--bg-card) !important;
+  background-color: var(--bg-card);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
   transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
@@ -135,7 +135,7 @@ body[data-theme="synthwave"], html[data-theme="synthwave"] body {
 [data-theme="synthwave"] .media-relation-card:hover,
 [data-theme="synthwave"] .media-char-card:hover {
   border-color: var(--accent-border) !important;
-  transform: scale(1.03) translateY(-3px) !important;
+  transform: scale(1.03) translateY(-3px);
   box-shadow: 0 0 15px rgba(0, 240, 255, 0.3) !important;
 }
 
@@ -166,9 +166,9 @@ body[data-theme="synthwave"], html[data-theme="synthwave"] body {
    render cleanly along a clipped diagonal edge, so this drops the border
    and relies on the glow + solid fill instead. */
 [data-theme="synthwave"] .media-relation-type {
-  background: var(--bg-primary) !important;
+  background: var(--bg-primary);
   color: var(--text-muted) !important;
-  box-shadow: 0 0 5px rgba(0, 240, 255, 0.2) !important;
+  box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
 }
 
 /* Scrollbar styling */

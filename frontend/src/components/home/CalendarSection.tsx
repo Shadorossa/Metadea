@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useRef, useState, memo } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, wrapAssetUrl } from '../../lib/tauri';
-import type { MediaCatalogEntry } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
-import { ALL_MEDIA_TYPES, getTypeLabel } from '../../lib/constants/media';
+import { wrapAssetUrl } from '../../lib/tauri';
+import type { CatalogSummary } from '../../lib/tauri';
+import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
+import { getT } from '../../i18n/runtime';
+import { ALL_MEDIA_TYPES, getTypeLabel } from '../../lib/media/media-types';
 import {
   computeUpcomingPlanningReleases,
   computeCalendarMonth,
   type UpcomingRelease,
   type CalendarDay,
 } from '../../lib/profile/stats-calculators';
-import { fetchGeneralUpcomingReleases } from '../../lib/home/upcoming-general';
-import { formatMonthName } from '../../lib/shared/formatDate';
+import { fetchGeneralUpcomingReleases } from '../../lib/media/upcoming-general';
+import { formatMonthName } from '../../lib/shared/text/format-date';
 
-import { typeIconMap } from '../../lib/shared/icon-strings';
+import { typeIconMap } from '../../lib/dom/icon-strings';
 
-type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type CalendarMode = 'mine' | 'general';
 
 const POPOVER_PAGE_SIZE = 8; // 4 columns × 2 rows
@@ -164,12 +164,12 @@ export function CalendarSection() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [items, catalogEntries] = await Promise.all([
-        getAllLibraryEntries().catch(() => [] as Items),
-        getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
-      ]);
+      // Shared with CurrentlySection (same page) and the profile tabs —
+      // one library/catalog fetch per navigation instead of a fresh 5 MB
+      // copy per component, and per month-arrow click here.
+      const { items, catalog: catalogEntries } = await getCachedLibraryAndCatalog();
       if (cancelled) return;
-      const catalogMap = new Map<string, MediaCatalogEntry>(catalogEntries.map(e => [e.external_id, e]));
+      const catalogMap = new Map<string, CatalogSummary>(catalogEntries.map(e => [e.external_id, e]));
       setMineReleases(computeUpcomingPlanningReleases(items, catalogMap, startOfMonth));
       setLoading(false);
     })();
@@ -240,7 +240,7 @@ export function CalendarSection() {
             type="button"
             className="stats-calendar-month-arrow"
             onClick={() => setMonthOffset(o => o - 1)}
-            aria-label="Mes anterior"
+            aria-label={p.calendar_prev_month}
           >
             ‹
           </button>
@@ -253,7 +253,7 @@ export function CalendarSection() {
             type="button"
             className="stats-calendar-month-arrow"
             onClick={() => setMonthOffset(o => o + 1)}
-            aria-label="Mes siguiente"
+            aria-label={p.calendar_next_month}
           >
             ›
           </button>

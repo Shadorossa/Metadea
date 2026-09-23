@@ -1,6 +1,6 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/pages/home.css";
+import BaseLayout from "../layouts/BaseLayout.astro";
 import { getLang, useTranslations } from "../i18n/index";
 import { ActivityFeedSection } from "../components/home/ActivityFeedSection";
 import { CurrentlySection } from "../components/home/CurrentlySection";
@@ -80,11 +80,11 @@ const t = useTranslations(lang);
 
   <script>
     import { getAuthToken } from "../lib/tauri";
-    import { API_URL } from "../lib/config";
-    import { renderReleaseCalendar } from "../lib/home/render-calendar";
+    import { API_URL } from "../lib/api/urls";
+    import { renderReleaseCalendar } from "../components/home/mount/render-calendar";
     import { refreshGeneralActivityFeed } from "../lib/social/activity-feed";
-    import { STORAGE_KEYS } from "../lib/shared/storage-keys";
-    import { getT } from "../i18n/client";
+    import { STORAGE_KEYS } from "../lib/storage/storage-keys";
+    import { getT } from "../i18n/runtime";
 
     const ht = getT();
     const titleEl = document.getElementById("home-title");

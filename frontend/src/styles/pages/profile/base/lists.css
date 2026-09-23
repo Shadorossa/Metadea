@@ -12,7 +12,7 @@
   justify-content: center;
   border-radius: 50%;
   border: 1px solid var(--border-color);
-  background: var(--bg-card, #16161f);
+  background: var(--bg-card);
   color: var(--text-dim);
   cursor: pointer;
   padding: 0;
@@ -21,8 +21,8 @@
 
 .friend-card-unfollow:hover {
   color: #fff;
-  background: #f87171;
-  border-color: #f87171;
+  background: var(--color-error);
+  border-color: var(--color-error);
 }
 
 .friends-empty-state {
@@ -67,7 +67,7 @@
   align-items: center;
   justify-content: center;
   padding: 0.35rem 0.45rem;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-muted);
@@ -88,10 +88,10 @@
   justify-content: center;
   gap: 0.35rem;
   padding: 0.35rem 0.45rem;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: transparent;
   border: 1px solid transparent;
-  color: #ef4444;
+  color: var(--color-error-strong);
   cursor: pointer;
   font-size: 0.82rem;
   line-height: 1;
@@ -99,15 +99,15 @@
 }
 
 .list-delete-btn:hover {
-  color: #f87171;
+  color: var(--color-error);
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.25);
 }
 
 .list-delete-btn--confirm {
   background: rgba(239, 68, 68, 0.15);
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--color-error-strong);
+  color: var(--color-error-strong);
   padding: 0.35rem 0.65rem;
 }
 
@@ -434,7 +434,7 @@
 
 .list-items-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.55rem;
 }
 
@@ -445,7 +445,7 @@
   user-select: none;
   touch-action: none;
   background: transparent;
-  border: none !important;
+  border: none;
 }
 
 .list-item-card:active {
@@ -456,10 +456,10 @@
   position: relative;
   display: block;
   aspect-ratio: 2 / 3;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--bg-elevated);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15)) !important;
+  border: 1px solid var(--border-color);
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
@@ -545,7 +545,7 @@
   justify-content: center;
   padding: 0.25rem 0 0;
   background: transparent;
-  border: none !important;
+  border: none;
   user-select: none;
 }
 
@@ -571,7 +571,7 @@
 }
 
 .list-item-rank-num--top1 {
-  color: #f59e0b;
+  color: var(--color-gold);
   text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
 }
 
@@ -606,7 +606,7 @@
 
 .list-item-remove:hover {
   opacity: 1 !important;
-  color: #ef4444;
+  color: var(--color-error-strong);
 }
 
 .list-item-drag-handle {
@@ -644,8 +644,8 @@
    left behind, the same visual role the old empty-list placeholder used to play
    as a separate synthetic DOM node. */
 .list-item-card.list-item-card--ghost .list-item-cover-link {
-  border: 2px dashed var(--accent, #6366f1) !important;
-  background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent) !important;
+  border: 2px dashed var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .list-item-card.list-item-card--ghost .list-item-cover,

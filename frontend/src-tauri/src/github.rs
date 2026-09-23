@@ -25,31 +25,6 @@ pub struct TokenResponse {
     pub error_description: Option<String>,
 }
 
-// ─── DPAPI encryption helpers ─────────────────────────────────────────────────
-
-#[cfg(target_os = "windows")]
-fn encrypt_token(token: &str) -> Result<Vec<u8>, String> {
-    windows_dpapi::encrypt_data(token.as_bytes(), windows_dpapi::Scope::User)
-        .map_err(|e| format!("Encryption failed: {:?}", e))
-}
-
-#[cfg(target_os = "windows")]
-fn decrypt_token(encrypted: &[u8]) -> Result<String, String> {
-    let bytes = windows_dpapi::decrypt_data(encrypted, windows_dpapi::Scope::User)
-        .map_err(|e| format!("Decryption failed: {:?}", e))?;
-    String::from_utf8(bytes).map_err(|e| format!("Invalid UTF-8: {}", e))
-}
-
-#[cfg(not(target_os = "windows"))]
-fn encrypt_token(token: &str) -> Result<Vec<u8>, String> {
-    Ok(token.as_bytes().to_vec())
-}
-
-#[cfg(not(target_os = "windows"))]
-fn decrypt_token(encrypted: &[u8]) -> Result<String, String> {
-    String::from_utf8(encrypted.to_vec()).str_err()
-}
-
 // ─── Token commands ───────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -57,7 +32,7 @@ pub fn save_github_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     token: String,
 ) -> Result<(), String> {
-    let encrypted = crate::utils::base64_encode(&encrypt_token(&token)?);
+    let encrypted = crate::utils::encrypt_secret(&token)?;
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
     conn.execute(
@@ -84,10 +59,7 @@ pub fn get_github_token(
 
     match encrypted {
         None => Ok(None),
-        Some(b64) => {
-            let bytes = crate::utils::base64_decode(&b64)?;
-            Ok(Some(decrypt_token(&bytes)?))
-        }
+        Some(stored) => Ok(Some(crate::utils::decrypt_secret(&stored)?)),
     }
 }
 
@@ -104,10 +76,7 @@ pub fn delete_github_token(
 
 #[tauri::command]
 pub async fn request_github_device_code(client_id: String) -> Result<DeviceCodeResponse, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .str_err()?;
+    let client = crate::http::http_client();
     let res = client
         .post(GITHUB_OAUTH_DEVICE_CODE)
         .header("Accept", "application/json")
@@ -126,10 +95,7 @@ pub async fn request_github_device_token(
     client_id: String,
     device_code: String,
 ) -> Result<TokenResponse, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .str_err()?;
+    let client = crate::http::http_client();
     let res = client
         .post(GITHUB_OAUTH_ACCESS_TOKEN)
         .header("Accept", "application/json")
@@ -149,10 +115,7 @@ pub async fn request_github_device_token(
 
 #[tauri::command]
 pub async fn get_github_user_profile(token: String) -> Result<Value, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .str_err()?;
+    let client = crate::http::http_client();
 
     let mut last_err = String::new();
     for attempt in 0..3 {
@@ -160,7 +123,7 @@ pub async fn get_github_user_profile(token: String) -> Result<Value, String> {
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
         match client
-            .get(&format!("{}/user", GITHUB_API))
+            .get(format!("{}/user", GITHUB_API))
             .header("Authorization", format!("token {}", token))
             .header("User-Agent", "Metadea-App")
             .header("Accept", "application/json")

@@ -59,11 +59,8 @@ jobs:
       # been formatted, so it fails on every file. Run `cargo fmt` once as its
       # own commit, then add the check back as the first step of this job.
 
-      # Not -D warnings yet: the crate has never been linted, so a clean
-      # baseline has to be established first. This catches hard errors today
-      # and the warning count can be ratcheted down from there.
       - name: Clippy
-        run: cargo clippy --all-targets
+        run: cargo clippy --all-targets -- -D warnings
         working-directory: frontend/src-tauri
 
       - name: Test

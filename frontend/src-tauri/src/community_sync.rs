@@ -31,7 +31,7 @@ pub async fn sync_community_catalog(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<i64, String> {
-    let client = crate::igdb::get_http_client();
+    let client = crate::http::http_client();
     let resp = client
         .get(COMMUNITY_DB_URL)
         .send()
@@ -400,28 +400,22 @@ pub async fn sync_community_catalog(
                 rows.collect::<Result<Vec<_>, _>>().str_err()?
             };
 
-            if !removed_ids.is_empty() {
-                // One DELETE per table for the whole batch instead of one
-                // per table *per id* — same end result, a fraction of the
-                // round trips against the connection.
-                let placeholders = removed_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-                let ids_params = rusqlite::params_from_iter(removed_ids.iter());
-                tx.execute(&format!("DELETE FROM media_catalog WHERE external_id IN ({placeholders})"), ids_params).str_err()?;
-
-                let ids_params = rusqlite::params_from_iter(removed_ids.iter().chain(removed_ids.iter()));
-                tx.execute(
-                    &format!("DELETE FROM media_relations WHERE media_external_id IN ({placeholders}) OR related_media_external_id IN ({placeholders})"),
-                    ids_params,
-                ).str_err()?;
-
+            // One DELETE per table per chunk instead of one per table *per
+            // id* — same end result, a fraction of the round trips against
+            // the connection.
+            for chunk in removed_ids.chunks(crate::db::SQL_IN_CHUNK) {
+                let placeholders = crate::db::sql_placeholders(chunk.len());
                 for (table, column) in [
+                    ("media_catalog", "external_id"),
+                    ("media_relations", "media_external_id"),
+                    ("media_relations", "related_media_external_id"),
                     ("character_appearances", "media_external_id"),
                     ("media_staff_relation", "media_external_id"),
                     ("media_by_author", "media_external_id"),
                     ("saga_relations", "media_external_id"),
                     ("story_arc_items", "media_external_id"),
                 ] {
-                    let ids_params = rusqlite::params_from_iter(removed_ids.iter());
+                    let ids_params = rusqlite::params_from_iter(chunk.iter());
                     tx.execute(&format!("DELETE FROM {table} WHERE {column} IN ({placeholders})"), ids_params).str_err()?;
                 }
             }
@@ -472,7 +466,7 @@ pub async fn get_community_characters(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<crate::characters::CharacterEntry>, String> {
-    let client = crate::igdb::get_http_client();
+    let client = crate::http::http_client();
     let resp = client.get(COMMUNITY_DB_URL).send().await.str_err()?;
     if !resp.status().is_success() {
         return Err(format!("Failed to download community catalog: HTTP {}", resp.status()));

@@ -4,8 +4,8 @@
 // Domain logic itself lives in the sibling files — see each one for its slice
 // (auth, library, catalog, lists, tier lists, IGDB, Steam, Discord, ...).
 
-export * from './core';
-export { wrapAssetUrl } from './core';
+export * from './bridge';
+export { wrapAssetUrl } from './bridge';
 export * from './auth';
 export * from './database';
 export * from './local-library';
@@ -22,15 +22,22 @@ export * from './favorite-images';
 export * from './igdb';
 export * from './comicvine';
 export * from './metadata';
-export * from './debug';
+export * from './game-launch';
 export * from './anime-local';
 export * from './steam';
-export * from './misc-commands';
+export * from './companies';
+export * from './discord-presence';
+export * from './episodes';
+export * from './themes';
+export * from './staff';
 export * from './sync-state';
 export * from './social-profile';
 export * from './story-arcs';
 export * from './resume-position';
 export * from './comic-reader';
-export * from './share';
+export * from './share-image';
 export * from './emulators';
 export * from './backup';
+export * from './user-image';
+export * from './deep-link';
+export * from './player';

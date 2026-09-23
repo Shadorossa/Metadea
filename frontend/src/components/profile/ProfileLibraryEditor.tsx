@@ -1,17 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { MediaEditorModal } from '../media/MediaEditorModal';
-import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations, patchCachedRelations, inferProgressStatus } from '../../lib/media/mediaService';
-import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
+import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations, patchCachedRelations, inferProgressStatus } from '../../lib/media/media-page-data';
+import type { LibraryEntry, CatalogEntryLike } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import type { Translations } from '../../i18n/index';
-import type { RatingSlot } from '../../lib/settings/preferences';
+import type { RatingSlot } from '../../lib/storage/preferences';
 
 interface OpenEditorEvent extends Event {
   detail?: {
     externalId: string;
     libraryEntry?: LibraryEntry;
-    catalogEntry?: MediaCatalogEntry;
+    // The profile grid hands over its CatalogSummary row, Local its full
+    // row — either is only the placeholder render until fetchMediaData
+    // below replaces it, and the editor reads nothing outside the summary.
+    catalogEntry?: CatalogEntryLike;
     ratingSlot?: RatingSlot;
     // Which season tab to open directly on — LibraryCard's fused "Unificar
     // temporadas" cards represent season 1 (externalId above) but may be

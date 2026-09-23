@@ -1,4 +1,4 @@
-import { invoke } from './core';
+import { invoke } from './bridge';
 
 export interface EmulatorConfig {
   emulator_name: string;

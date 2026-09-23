@@ -1,7 +1,7 @@
 // Global "now reading" stand-by state -- the reading-type counterpart to
 // playback-service.ts's PlaybackState. Stored at module level (survives Astro
 // page transitions) so NowReadingBar can show the paused session and resume.
-import { createExternalStore } from '../shared/external-store';
+import { createExternalStore } from '../shared/state/external-store';
 import type { LibraryEntry } from '../tauri';
 
 export interface ReadingSessionState {
@@ -18,11 +18,9 @@ export interface ReadingSessionState {
   totalSpreads: number;
 }
 
-const sessionStore = createExternalStore<ReadingSessionState | null>(null);
-const resumeOpenStore = createExternalStore(false);
+export const sessionStore = createExternalStore<ReadingSessionState | null>(null);
+export const resumeOpenStore = createExternalStore(false);
 
-export const useReadingSession = sessionStore.use;
-export const useResumeOpen = resumeOpenStore.use;
 export const setReadingSession = sessionStore.set;
 
 export function clearReadingSession(): void {

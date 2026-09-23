@@ -1,0 +1,219 @@
+/* PrEditorSessionLayout: multi-session tab strip, panel arrows, unsaved-changes toast. Split verbatim from pr.css. */
+.pr-editor-session-layout {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 1900px);
+  height: 90vh;
+  min-height: 0;
+  gap: 0.55rem;
+}
+
+.pr-editor-session-layout--active {
+  height: min(97vh, 1100px);
+}
+
+.pr-editor-session-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  width: 100%;
+  overflow-x: auto;
+  padding: 0.2rem 0.1rem 0.45rem;
+  scrollbar-width: thin;
+}
+
+.pr-editor-session-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  max-width: min(260px, 44vw);
+  min-height: 34px;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.pr-editor-session-tab:hover {
+  color: var(--text-main);
+  border-color: var(--accent);
+}
+
+.pr-editor-session-tab--active {
+  color: var(--text-main);
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.pr-editor-session-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-session-tab-dirty {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.pr-editor-session-tab-affected {
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+
+.pr-editor-session-panel-row {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-height: 0;
+  gap: 0.65rem;
+}
+
+.pr-editor-session-layout--active .pr-editor-modal {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.pr-editor-session-arrow {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 54px;
+  flex: 0 0 42px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.pr-editor-session-arrow svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pr-editor-session-arrow:not(:disabled):hover {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
+.pr-editor-session-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+@media (max-width: 760px) {
+  .pr-editor-session-layout--active {
+    height: 98vh;
+  }
+
+  .pr-editor-session-panel-row {
+    gap: 0.3rem;
+  }
+
+  .pr-editor-session-arrow {
+    width: 30px;
+    height: 44px;
+    flex-basis: 30px;
+  }
+}
+
+.pr-unsaved-changes-toast {
+  position: fixed;
+  z-index: 15000;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.65rem 0.8rem;
+  transform: translateX(-50%);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  animation: pr-unsaved-toast-in 180ms ease-out both;
+}
+
+.pr-unsaved-changes-toast--shake {
+  animation: pr-unsaved-toast-shake 300ms ease-in-out both;
+}
+
+@keyframes pr-unsaved-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0.65rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes pr-unsaved-toast-shake {
+  0%, 100% {
+    transform: translateX(-50%);
+  }
+  25% {
+    transform: translateX(calc(-50% - 0.35rem));
+  }
+  75% {
+    transform: translateX(calc(-50% + 0.35rem));
+  }
+}
+
+.pr-unsaved-changes-toast__status {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.pr-unsaved-changes-toast__error {
+  color: var(--danger, #e17b75);
+  font-size: 0.82rem;
+}
+
+.pr-editor-session-affected {
+  color: var(--accent);
+  font-size: 0.72em;
+  font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .pr-unsaved-changes-toast {
+    flex-wrap: wrap;
+    left: 0.75rem;
+    right: 0.75rem;
+    max-width: none;
+    transform: none;
+  }
+
+  .pr-unsaved-changes-toast--shake {
+    animation-name: pr-unsaved-toast-shake-mobile;
+  }
+
+  @keyframes pr-unsaved-toast-shake-mobile {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-0.35rem); }
+    75% { transform: translateX(0.35rem); }
+  }
+}

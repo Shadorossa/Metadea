@@ -1,8 +1,8 @@
 // Pure derivations behind MediaEditorModal's version tabs and its unified
 // "general" tab aggregates — all of them functions of already-computed
 // values, none of them touching component state.
-import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
-import type { LogState } from '../../../lib/media/log-state';
+import { CONTAINS_RELATION_TYPES } from '../../../lib/media/saga/saga-relation-types';
+import type { LogState } from '../../../lib/media/editor/library-log-state';
 import type { MediaRelation } from '../../../lib/media/types';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import { extractExternalIdFromRelationUrl, isFutureDate } from './media-editor-helpers';

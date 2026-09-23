@@ -2,9 +2,9 @@
 // metadea-web, cached in localStorage — same daily-gate pattern as
 // profile-sync.ts. Home reads getCachedActivityFeed() synchronously (no
 // network wait) and this refreshes the cache in the background for next time.
-import { API_URL } from '../config';
+import { API_URL } from '../api/urls';
 import { getAuthToken } from '../tauri';
-import { STORAGE_KEYS } from '../shared/storage-keys';
+import { STORAGE_KEYS } from '../storage/storage-keys';
 
 const FETCH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 

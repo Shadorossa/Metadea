@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { igdbGetGameDetail } from '../../../lib/tauri';
-import type { StatusEntry } from '../utils/catalogGameLinking';
+import type { StatusEntry } from '../../../lib/local/catalog-game-linking';
 
 // Map IGDB platform names (from a catalog entry's shop_links_csv, e.g.
 // "steam|url,epic|url", or a live IGDB detail's store_links) to our own

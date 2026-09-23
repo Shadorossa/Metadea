@@ -67,6 +67,35 @@ pub async fn get_user_image(
     crate::image_storage::resolve_image_value(&image_data_dir(&app_handle)?, val.filter(|s| !s.is_empty()))
 }
 
+// Path flavour of get_user_image: the stored avatar/banner's absolute file
+// path (wrap with wrapAssetUrl on the frontend) instead of its bytes as a
+// base64 data URL — see image_storage::resolve_reference_path. A legacy
+// inline data URL still stored in the column comes back as-is.
+#[tauri::command]
+pub async fn get_user_image_path(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    key: String,
+) -> Result<Option<String>, String> {
+    let col = match key.as_str() {
+        "avatar" => "avatar_data",
+        "banner" => "banner_data",
+        "share_avatar" => "share_avatar_data",
+        _ => return Err(format!("Invalid key: {}", key)),
+    };
+    let val: Option<String> = {
+        let conn = state.conn.lock().str_err()?;
+        conn.query_row(
+            &format!("SELECT {} FROM user_profile WHERE id = 1", col),
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .str_err()?
+    };
+    crate::image_storage::resolve_image_path_value(&image_data_dir(&app_handle)?, val.filter(|s| !s.is_empty()))
+}
+
 #[tauri::command]
 pub async fn remove_user_image(
     state: tauri::State<'_, crate::db::MetadeaDb>,

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { steamAchievementIcon, type SteamAchievement } from '../../../lib/tauri';
-import { getT } from '../../../i18n/client';
-import { formatDateShort } from '../../../lib/shared/formatDate';
+import { getT } from '../../../i18n/runtime';
+import { formatDateShort } from '../../../lib/shared/text/format-date';
 
 interface AchievementCellProps {
   ach:   SteamAchievement;

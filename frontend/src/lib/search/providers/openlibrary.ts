@@ -1,4 +1,4 @@
-import type { SearchResult, SearchPage } from '../index';
+import type { SearchResult, SearchPage } from '../types';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
 
@@ -15,7 +15,40 @@ interface OpenLibraryBook {
 
 interface OpenLibrarySearchResponse {
   numFound?: number;
-  docs?: OpenLibraryBook[];
+  docs?: unknown[];
+}
+
+// ── Untrusted-JSON guards ─────────────────────────────────────────────────────
+// OpenLibraryBook is what search.json documents, not what each doc is
+// guaranteed to carry — a crowd-sourced record can lack even key/title. Each
+// doc is narrowed ONCE here (skipped, never thrown on) before mapBook reads it.
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function stringList(value: unknown): string[] | undefined {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : undefined;
+}
+
+function parseBook(raw: unknown): OpenLibraryBook | null {
+  if (!isRecord(raw) || typeof raw.key !== 'string' || typeof raw.title !== 'string') return null;
+  return {
+    key: raw.key,
+    title: raw.title,
+    cover_i: optionalNumber(raw.cover_i),
+    first_publish_year: optionalNumber(raw.first_publish_year),
+    ratings_average: optionalNumber(raw.ratings_average),
+    author_name: stringList(raw.author_name),
+    author_key: stringList(raw.author_key),
+    subject: stringList(raw.subject),
+  };
 }
 
 // ── Detail types ──────────────────────────────────────────────────────────────
@@ -143,8 +176,12 @@ async function searchOpenLibraryDocs(
   const offset = (page - 1) * PAGE_SIZE;
   const url = `${API_ENDPOINTS.OPENLIBRARY}/search.json?q=${encodeURIComponent(searchQuery)}&limit=${PAGE_SIZE}&offset=${offset}&fields=${fields}`;
   const data = await fetchJson<OpenLibrarySearchResponse>(url, { signal });
-  const docs = data?.docs ?? [];
-  const hasMore = offset + docs.length < (data?.numFound ?? 0);
+  const rawDocs = data?.docs;
+  const rows = Array.isArray(rawDocs) ? rawDocs : [];
+  const docs = rows.map(parseBook).filter((book): book is OpenLibraryBook => book !== null);
+  // Paging follows OpenLibrary's own row count, so a skipped malformed doc
+  // never shifts the next offset.
+  const hasMore = offset + rows.length < (data?.numFound ?? 0);
   return { docs, hasMore };
 }
 

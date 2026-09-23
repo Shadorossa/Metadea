@@ -1,14 +1,14 @@
-import { scanFolderContents, type LibraryEntry, type LocalFolderEntry, type MediaCatalogEntry } from '../../lib/tauri';
+import { scanFolderContents, type LibraryEntry, type LocalFolderEntry, type CatalogEntryLike } from '../../lib/tauri';
 import type { LocalMediaItem } from '../local/hooks/useLocalMediaEntries';
 import {
   extractEpisodeInfo, extractTitleSeason, findMatchingEpisodeFile, findMatchingFile,
   findMatchingFolder, findTaggedPathRecursive, hasMediaFiles, MEDIA_EXTENSIONS, soleMediaFile,
-} from '../local/utils/folderMatch';
-import { resolveOwnSeasonNumber, resolveSeasonExternalIds } from '../local/utils/seasonResolve';
-import { isInProgressStatus, isReadingType } from '../../lib/constants/media';
-import type { SeasonInfo } from '../local/utils/seasonResolve';
+} from '../../lib/local/folder-match';
+import { resolveOwnSeasonNumber, resolveSeasonExternalIds } from '../../lib/local/season-resolve';
+import { isInProgressStatus, isReadingType } from '../../lib/media/media-types';
+import type { SeasonInfo } from '../../lib/local/season-resolve';
 
-export function toLocalMediaItem(entry: LibraryEntry, catalog?: MediaCatalogEntry): LocalMediaItem {
+export function toLocalMediaItem(entry: LibraryEntry, catalog?: CatalogEntryLike): LocalMediaItem {
   return {
     externalId: entry.external_id,
     title: catalog?.title_main ?? entry.external_id,

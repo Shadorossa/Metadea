@@ -44,6 +44,9 @@
       "msi"
     ],
     "createUpdaterArtifacts": true,
+    "resources": [
+      "resources/libmpv-2.dll"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -56,6 +59,11 @@
     }
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["metadea"]
+      }
+    },
     "updater": {
       "active": true,
       "endpoints": [

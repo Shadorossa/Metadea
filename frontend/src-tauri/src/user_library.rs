@@ -262,6 +262,33 @@ pub async fn read_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>)
     serde_json::to_string(&map).str_err()
 }
 
+// Typed counterpart of read_monthly_history: the same {month: [external_id]}
+// map as a real object over IPC instead of a JSON string.
+pub(crate) fn load_monthly_history(
+    conn: &rusqlite::Connection,
+) -> Result<std::collections::HashMap<String, Vec<String>>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT month, external_id FROM monthly_history
+         WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
+         ORDER BY month DESC, position"
+    ).str_err()?;
+    let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+        .str_err()?;
+    let mut map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    for (month, eid) in rows.flatten() {
+        map.entry(month).or_default().push(eid);
+    }
+    Ok(map)
+}
+
+#[tauri::command]
+pub async fn read_monthly_history_typed(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<std::collections::HashMap<String, Vec<String>>, String> {
+    let conn = state.conn.lock().str_err()?;
+    load_monthly_history(&conn)
+}
+
 #[tauri::command]
 pub async fn write_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>, content: String) -> Result<(), String> {
     let map: std::collections::HashMap<String, Vec<String>> = serde_json::from_str(&content).str_err()?;
@@ -319,6 +346,121 @@ pub async fn read_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>) ->
         .map(|(date, events)| serde_json::json!({"date": date, "events": events}))
         .collect();
     serde_json::to_string(&result).str_err()
+}
+
+// Typed counterpart of read_user_journey — same shape as the JSON it
+// returns (frontend/src/lib/tauri/user-journey.ts's DayJourney/
+// UserJourneyEvent, camelCase keys, progressStart/progressEnd omitted when
+// unset), as real values over IPC instead of a string to JSON.parse.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct JourneyEvent {
+    pub external_id: String,
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub media_type: Option<String>,
+    pub timestamp: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub progress_start: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub progress_end: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct JourneyDay {
+    pub date: String,
+    pub events: Vec<JourneyEvent>,
+}
+
+pub(crate) fn load_user_journey(conn: &rusqlite::Connection) -> Result<Vec<JourneyDay>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT date, external_id, event_type, media_type, progress_start, progress_end, timestamp
+         FROM user_activity
+         WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
+         ORDER BY date DESC, timestamp"
+    ).str_err()?;
+    let rows = stmt.query_map([], |r| Ok((
+        r.get::<_, String>(0)?,
+        JourneyEvent {
+            external_id: r.get(1)?,
+            event_type: r.get(2)?,
+            media_type: r.get(3)?,
+            progress_start: r.get(4)?,
+            progress_end: r.get(5)?,
+            timestamp: r.get(6)?,
+        },
+    ))).str_err()?;
+
+    // Group by date, preserving the SQL's descending order.
+    let mut days: Vec<JourneyDay> = Vec::new();
+    for (date, event) in rows.flatten() {
+        match days.last_mut() {
+            Some(last) if last.date == date => last.events.push(event),
+            _ => days.push(JourneyDay { date, events: vec![event] }),
+        }
+    }
+    Ok(days)
+}
+
+#[cfg(test)]
+mod typed_read_tests {
+    use super::*;
+
+    #[test]
+    fn typed_journey_serializes_to_the_same_shape_as_the_string_command() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO user_activity (date, event_type, external_id, media_type, progress_start, progress_end, timestamp)
+             VALUES ('2024-02-01', 'progress', 'anime:1', 'anime', 1, 3, '2024-02-01T10:00:00Z')",
+            [],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO user_activity (date, event_type, external_id, media_type, timestamp)
+             VALUES ('2024-02-01', 'complete', 'anime:2', NULL, '2024-02-01T11:00:00Z')",
+            [],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO user_activity (date, event_type, external_id, media_type, timestamp)
+             VALUES ('2024-01-01', 'start', 'anime:1', 'anime', '2024-01-01T09:00:00Z')",
+            [],
+        ).unwrap();
+
+        let typed = serde_json::to_value(load_user_journey(&conn).unwrap()).unwrap();
+        assert_eq!(typed, serde_json::json!([
+            { "date": "2024-02-01", "events": [
+                { "externalId": "anime:1", "type": "progress", "mediaType": "anime", "timestamp": "2024-02-01T10:00:00Z", "progressStart": 1, "progressEnd": 3 },
+                { "externalId": "anime:2", "type": "complete", "mediaType": null, "timestamp": "2024-02-01T11:00:00Z" },
+            ]},
+            { "date": "2024-01-01", "events": [
+                { "externalId": "anime:1", "type": "start", "mediaType": "anime", "timestamp": "2024-01-01T09:00:00Z" },
+            ]},
+        ]));
+    }
+
+    #[test]
+    fn typed_monthly_history_and_favorites_group_like_their_string_commands() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        conn.execute("INSERT INTO monthly_history (month, external_id, position) VALUES ('2024-01', 'anime:2', 1), ('2024-01', 'anime:1', 0)", []).unwrap();
+        let history = load_monthly_history(&conn).unwrap();
+        assert_eq!(history["2024-01"], vec!["anime:1".to_string(), "anime:2".to_string()]);
+
+        conn.execute("INSERT INTO user_lists (key, name, is_fav) VALUES ('anime_fav', 'x', 1)", []).unwrap();
+        conn.execute("INSERT INTO user_list_items (list_key, external_id, position) VALUES ('anime_fav', 'anime:1', 0)", []).unwrap();
+        let favs = crate::user_lists::load_user_favorites(&conn).unwrap();
+        assert_eq!(favs["anime"], vec!["anime:1".to_string()]);
+        assert!(favs["manga"].is_empty(), "every known type is present, empty or not");
+        assert_eq!(favs.len(), 10);
+    }
+}
+
+#[tauri::command]
+pub async fn read_user_journey_typed(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<JourneyDay>, String> {
+    let conn = state.conn.lock().str_err()?;
+    load_user_journey(&conn)
 }
 
 #[tauri::command]

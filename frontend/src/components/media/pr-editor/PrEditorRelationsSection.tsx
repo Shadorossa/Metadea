@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { RelationTypeSelect } from '../RelationTypeSelect';
 import type { DragHandlers } from '../hooks/useDragReorder';
-import { groupRelationOptions } from '../../../lib/media/sagaTypes';
-import { RELATION_TYPE_RECIPROCAL } from '../../../lib/media/canonical-relations';
+import { groupRelationOptions } from '../../../lib/media/saga/saga-relation-types';
+import { RELATION_TYPE_RECIPROCAL } from '../../../lib/media/saga/canonical-relations';
 import { PrEditorMediaCard } from './PrEditorMediaCard';
 import { PrEditorAddButton } from './PrEditorAddButton';
 

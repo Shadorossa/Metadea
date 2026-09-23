@@ -7,8 +7,9 @@
 // and every provider's own synopsis HTML here is simple enough (b/i/br/a)
 // that a heavier rich-text library would be overkill.
 import { useEffect, useRef, useState } from 'react';
-import { sanitizeHtml } from '../../lib/shared/sanitize-html';
-import { useEscapeKey } from '../../lib/shared/useEscapeKey';
+import { sanitizeHtml } from '../../lib/shared/text/sanitize-html';
+import { useEscapeKey } from './hooks/useEscapeKey';
+import { getT } from '../../i18n/runtime';
 
 interface Props {
   value: string;
@@ -28,6 +29,7 @@ interface ContextMenuPos {
 }
 
 export function RichTextEditor({ value, onChange, placeholder, className }: Props) {
+  const rt = getT().rich_text;
   const editorRef = useRef<HTMLDivElement>(null);
   // Tracks the last value *this* component emitted, so the sync-from-prop
   // effect below only fires on a genuine external change (switching entries)
@@ -203,11 +205,11 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
           // would fire first and the command would have nothing to act on.
           onMouseDown={e => e.preventDefault()}
         >
-          <button type="button" onClick={() => applyCommand('bold')} title="Negrita"><b>B</b></button>
-          <button type="button" onClick={() => applyCommand('italic')} title="Cursiva"><i>I</i></button>
-          <button type="button" onClick={() => applyCommand('underline')} title="Subrayado"><u>U</u></button>
-          <button type="button" onClick={handleLink} title="Enlace">🔗</button>
-          <button type="button" onClick={applySpoiler} title="Spoiler">🙈</button>
+          <button type="button" onClick={() => applyCommand('bold')} title={rt.bold}><b>B</b></button>
+          <button type="button" onClick={() => applyCommand('italic')} title={rt.italic}><i>I</i></button>
+          <button type="button" onClick={() => applyCommand('underline')} title={rt.underline}><u>U</u></button>
+          <button type="button" onClick={handleLink} title={rt.link}>🔗</button>
+          <button type="button" onClick={applySpoiler} title={rt.spoiler}>🙈</button>
         </div>
       )}
       {contextMenuPos && (

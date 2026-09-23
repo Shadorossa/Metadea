@@ -163,7 +163,7 @@
 
 .igdb-picker-badge.bundle {
   background: rgba(234, 179, 8, 0.18);
-  color: #facc15;
+  color: var(--color-gold-soft);
   border: 1px solid rgba(234, 179, 8, 0.35);
 }
 
@@ -188,7 +188,7 @@
 }
 
 .igdb-picker-cover-placeholder {
-  background: var(--bg-surface, #1e293b);
+  background: var(--bg-elevated);
 }
 
 .igdb-picker-meta {

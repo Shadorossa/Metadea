@@ -51,7 +51,7 @@ body[data-theme="luxury"], html[data-theme="luxury"] body {
   border: 1px solid #d8b23c !important;
   background: linear-gradient(180deg, #1b1b24 0%, #0d0d12 100%) !important;
   color: #f5e6b3 !important;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
   font-family: inherit !important;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -65,7 +65,7 @@ body[data-theme="luxury"], html[data-theme="luxury"] body {
   border-color: #f5e6b3 !important;
   background: linear-gradient(180deg, #d8b23c 0%, #a6841c 100%) !important;
   color: #050508 !important;
-  box-shadow: 0 0 15px rgba(216, 178, 60, 0.4), 0 4px 10px rgba(0,0,0,0.4) !important;
+  box-shadow: 0 0 15px rgba(216, 178, 60, 0.4), 0 4px 10px rgba(0,0,0,0.4);
   font-weight: bold;
 }
 
@@ -81,7 +81,7 @@ body[data-theme="luxury"], html[data-theme="luxury"] body {
 [data-theme="luxury"] .media-relation-card:hover {
   border-color: #d8b23c !important;
   box-shadow: 0 15px 30px rgba(216, 178, 60, 0.15), 0 10px 20px rgba(0,0,0,0.6) !important;
-  transform: translateY(-4px) !important;
+  transform: translateY(-4px);
 }
 
 [data-theme="luxury"] ::-webkit-scrollbar-thumb {

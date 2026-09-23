@@ -1,8 +1,3 @@
-.pr-editor-media-group-cards--wide {
-  grid-template-columns: repeat(18, 1fr);
-  gap: 0.4rem;
-}
-
 .pr-editor-media-group-cards--twelve {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 0.45rem;
@@ -35,7 +30,7 @@
   left: 50%;
   width: calc(100% + 0.75rem);
   height: 1px;
-  background: var(--border-color, #2d2a24);
+  background: var(--border-color);
   content: '';
   pointer-events: none;
 }
@@ -60,9 +55,9 @@
   position: absolute;
   z-index: 0;
   inset: 0.25rem 0 -0.4rem;
-  border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 45%, var(--border-color, #2d2a24));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border-color));
   border-radius: 0;
-  background: color-mix(in srgb, var(--accent, #7c6af7) 9%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
   content: '';
   pointer-events: none;
 }
@@ -78,10 +73,10 @@
   height: 1.25rem;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--border-color, #2d2a24);
+  border: 1px solid var(--border-color);
   border-radius: 0;
-  background: var(--bg-elevated, #1b1917);
-  color: var(--text-main, #e3e1db);
+  background: var(--bg-elevated);
+  color: var(--text-main);
   font-size: 0.9rem;
   line-height: 1;
   opacity: 0;
@@ -114,13 +109,13 @@
 }
 
 .pr-editor-saga-timeline-item.is-grouping::after {
-  border-color: color-mix(in srgb, var(--accent, #7c6af7) 45%, var(--border-color, #2d2a24));
-  background: color-mix(in srgb, var(--accent, #7c6af7) 9%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-color));
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 
 .pr-editor-saga-timeline-item.is-group-drop-ready::after {
   border-style: solid;
-  border-color: color-mix(in srgb, var(--accent, #7c6af7) 45%, var(--border-color, #2d2a24));
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-color));
 }
 
 .pr-editor-saga-timeline-node {
@@ -130,9 +125,9 @@
   left: 50%;
   width: 0.55rem;
   height: 0.55rem;
-  border: 1px solid var(--text-muted, #a0a0b8);
+  border: 1px solid var(--text-muted);
   border-radius: 50%;
-  background: var(--bg-primary, #12110f);
+  background: var(--bg-primary);
   transform: translateX(-50%);
 }
 
@@ -142,7 +137,7 @@
   top: -1.9rem;
   left: 50%;
   min-height: 0.8rem;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   font-size: 0.65rem;
   line-height: 1;
   white-space: nowrap;
@@ -150,9 +145,9 @@
 }
 
 .pr-editor-saga-timeline-item.is-current .pr-editor-saga-timeline-node {
-  border-color: var(--accent, #7c6af7);
-  background: var(--accent, #7c6af7);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #7c6af7) 20%, transparent);
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .pr-editor-saga-timeline-item .pr-editor-media-card {
@@ -189,8 +184,8 @@
   z-index: 14000;
   min-width: 190px;
   padding: 0.25rem;
-  border: 1px solid var(--border-color, #2d2a24);
-  background: var(--bg-card, #1b1917);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
@@ -201,7 +196,7 @@
   padding: 0.55rem 0.7rem;
   border: 0;
   background: transparent;
-  color: var(--text-main, #e3e1db);
+  color: var(--text-main);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -211,8 +206,8 @@
 .pr-editor-saga-context-menu button:focus-visible,
 .pr-editor-session-tab-context-menu button:hover,
 .pr-editor-session-tab-context-menu button:focus-visible {
-  background: var(--accent-soft, rgba(124, 106, 247, 0.12));
-  color: var(--accent, #7c6af7);
+  background: var(--accent-soft);
+  color: var(--accent);
   outline: none;
 }
 
@@ -248,7 +243,7 @@
 
 .pr-editor-bundle-children-hint {
   font-size: 0.72rem;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   margin: -0.5rem 0 0.5rem;
 }
 
@@ -264,9 +259,9 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0.6rem;
-  background: var(--bg-elevated, #1b1917);
-  border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
 }
 
 .pr-editor-arc-card-reorder {
@@ -284,18 +279,18 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--text-dim, #666);
+  color: var(--text-dim);
   font-size: 0.55rem;
   line-height: 1;
   cursor: pointer;
 }
 
 .pr-editor-arc-card-move:hover:not(:disabled) {
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
 }
 
 .pr-editor-arc-card-move:disabled {
-  color: var(--border-color, #2d2a24);
+  color: var(--border-color);
   cursor: default;
 }
 
@@ -303,9 +298,9 @@
   width: 42px;
   height: 60px;
   flex-shrink: 0;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: var(--bg-primary, #12110f);
+  background: var(--bg-primary);
 }
 
 .pr-editor-arc-card-info {
@@ -319,7 +314,7 @@
 .pr-editor-arc-card-name {
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--text-main, #e3e1db);
+  color: var(--text-main);
 }
 
 .pr-editor-arc-card-items {
@@ -330,7 +325,7 @@
 
 .pr-editor-arc-card-item-chip {
   font-size: 0.68rem;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   background: rgba(124, 106, 247, 0.1);
   border: 1px solid rgba(124, 106, 247, 0.25);
   border-radius: 3px;
@@ -350,11 +345,11 @@
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.2);
   border: none;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
-  transition: color var(--anim-fast, 120ms), background var(--anim-fast, 120ms);
+  transition: color var(--anim-fast), background var(--anim-fast);
 }
 
 .pr-editor-arc-card-delete:hover {
@@ -367,9 +362,9 @@
   flex-direction: column;
   gap: 0.65rem;
   padding: 0.75rem;
-  background: var(--bg-elevated, #1b1917);
-  border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-md, 6px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
 .pr-editor-arc-editor-header {

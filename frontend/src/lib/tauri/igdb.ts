@@ -1,4 +1,4 @@
-import { invoke, tauriTry, tauriCmd } from './core';
+import { invoke, tauriTry, tauriCmd } from './bridge';
 
 export interface IgdbNamed { id: number; name: string }
 export interface IgdbImage { id: number; image_id: string }

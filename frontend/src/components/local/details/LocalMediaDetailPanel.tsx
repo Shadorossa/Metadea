@@ -1,47 +1,42 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  scanFolderContents, getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry,
+  scanFolderContents, getCatalogEntry,
   type LocalFolderEntry,
-  pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
-  getResumePosition, getReadingProgress,
 } from '../../../lib/tauri';
 import { ReaderModal } from '../../reader/ReaderModal';
 import { setReadingSession } from '../../../lib/reader/reading-session';
-import { getT } from '../../../i18n/client';
+import { getT } from '../../../i18n/runtime';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import {
   findMatchingFolder, findMatchingEpisodeFile, findMatchingFile, soleMediaFile,
   extractEpisodeInfo, extractTitleSeason, hasMediaFiles, cleanFilenameForDisplay,
-  formatEpisodeLabel, buildLocateRenamePlan, dirname, type LocateRenamePlan,
-  findTaggedPathRecursive, type TaggedMatch, MEDIA_EXTENSIONS, sanitizeForFilename,
-  encodeExternalIdForFilename, matchRelationsToFiles, type RelatedFileMatch,
-  type CandidateFileGroup, isRedundantEpisodeName, type SeasonEpisodeCounts,
-} from '../utils/folderMatch';
-import { ALL_CHAIN_RELATION_TYPES } from '../../../lib/media/sagaTypes';
-import { resolveSeasonExternalIds, resolveOwnSeasonNumber } from '../utils/seasonResolve';
-import { fetchLocalSeasonEpisodeNames } from '../../../lib/media/episode-list';
+  formatEpisodeLabel, dirname,
+  MEDIA_EXTENSIONS, isRedundantEpisodeName,
+} from '../../../lib/local/folder-match';
+import { resolveSeasonExternalIds, resolveOwnSeasonNumber } from '../../../lib/local/season-resolve';
+import { usePlaybackState } from '../hooks/usePlaybackState';
 import {
-  usePlaybackState, startQueuePlayback, pausePlayback, resumePlayback,
+  startQueuePlayback, pausePlayback, resumePlayback,
   type PlaybackQueueItem,
 } from '../../../lib/local/playback-service';
-import { formatWatchedAt, formatPlaybackTime } from '../utils/formatters';
-import { catalogReleaseTimestampMs, firstCsvUrl } from '../../../lib/media/mapper-utils';
-import { isReadingType } from '../../../lib/constants/media';
-import { formatDateLong } from '../../../lib/shared/formatDate';
-import { IconX, IconFolder, IconCheck, IconPencil, IconTrash } from '../ui/icons';
+import { formatPlaybackTime } from '../../../lib/local/formatters';
+import { catalogReleaseTimestampMs, firstCsvUrl } from '../../../lib/media/mappers/mapper-utils';
+import { isReadingType } from '../../../lib/media/media-types';
+import { formatDateLong } from '../../../lib/shared/text/format-date';
+import { useAsyncResource } from '../../shared/hooks/useAsyncResource';
+import { IconFolder, IconPencil } from '../ui/icons';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
+import { useEditionProbe } from '../hooks/useEditionProbe';
+import { useDeepTagScan } from '../hooks/useDeepTagScan';
+import { useEpisodeHistory } from '../hooks/useEpisodeHistory';
+import { useEpisodeNames } from '../hooks/useEpisodeNames';
+import { useResumeState } from '../hooks/useResumeState';
 import { NeighborsRow } from './NeighborsRow';
-import { openMediaEditor } from '../../../lib/media/openMediaEditor';
+import { openMediaEditor } from '../../../lib/media/editor/open-media-editor';
 import { MediaScreenshotsSection } from './MediaScreenshotsSection';
-
-interface ChainHistoryEntry extends EpisodeHistoryEntry {
-  seasonNum?: number | null;
-  seasonTitle?: string;
-}
-
-const EMPTY_CHAIN_HISTORY: ChainHistoryEntry[] = [];
+import { EpisodeHistoryList } from './EpisodeHistoryList';
+import { useLocateFileFlow, LocateButton, LocatePreviewModals } from './LocateFileFlow';
 
 interface LocalMediaDetailPanelProps {
   item:            LocalMediaItem;
@@ -78,14 +73,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const playback = usePlaybackState();
   const isThisPlaying = playback?.externalId === item.externalId;
   const playState: 'idle' | 'playing' | 'paused' = isThisPlaying ? playback!.status : 'idle';
-  const [history, setHistory] = useState<ChainHistoryEntry[]>([]);
-  const [historyExternalId, setHistoryExternalId] = useState(item.externalId);
-  // This panel stays mounted while the selected work changes. Don't render
-  // the previous work's history while the new chain is being fetched.
-  const currentHistory = historyExternalId === item.externalId ? history : EMPTY_CHAIN_HISTORY;
-  // Right-click on a history row — same delete-entry pattern as Profile's
-  // own activity feed (see ActivitySection.tsx).
-  const [historyMenu, setHistoryMenu] = useState<{ x: number; y: number; entry: EpisodeHistoryEntry } | null>(null);
   // A sequel useLocalMediaEntries deliberately hides from the main grid
   // until its prequel is finished still needs to be reachable from
   // *somewhere* — surfaced here instead, alongside the prequel itself, so
@@ -115,15 +102,12 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   );
   // The title gives an instant guess, then the PREQUEL chain can correct it
   // when installment numbering differs from the actual season order.
-  const [itemSeason, setItemSeason] = useState<number | null>(itemSeasonFromTitle);
-  useEffect(() => {
-    setItemSeason(itemSeasonFromTitle);
-    let cancelled = false;
-    resolveOwnSeasonNumber(item.externalId, item.title).then(resolved => {
-      if (!cancelled && resolved != null && resolved !== itemSeasonFromTitle) setItemSeason(resolved);
-    });
-    return () => { cancelled = true; };
-  }, [itemSeasonFromTitle, item.externalId, item.title]);
+  const { value: resolvedSeason, loading: seasonResolving } = useAsyncResource<number | null>(
+    () => resolveOwnSeasonNumber(item.externalId, item.title),
+    [itemSeasonFromTitle, item.externalId, item.title],
+    null,
+  );
+  const itemSeason = (!seasonResolving && resolvedSeason != null) ? resolvedSeason : itemSeasonFromTitle;
 
   const matchedFolder = useMemo(
     () => findMatchingFolder(rootEntries, candidateTitles, itemSeason, item.externalId),
@@ -141,30 +125,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // just libraryEntry.type) is what actually catches that case.
   const isMovieFormat = item.libraryEntry.type === 'movie' || item.catalogEntry?.format === 'MOVIE';
 
-  // A comic tracked against the numbered-issues run (total_count > 1, since
-  // that's what search actually surfaces — see comicvine.ts's collected-
-  // edition filter) can still be sitting on disk as a single collected-
-  // edition CBR/CBZ, not one file per issue. No local flag says so directly
-  // — the only signal available is whether an "Editions" relation (see
-  // comic-collected-editions.ts) points at a collection with exactly 1
-  // issue of its own, which is as close to "this whole run also exists as
-  // one tomo" as the data gets.
-  const [hasSingleTomoEdition, setHasSingleTomoEdition] = useState(false);
-  useEffect(() => {
-    setHasSingleTomoEdition(false);
-    if (item.libraryEntry.type !== 'comic') return;
-    let cancelled = false;
-    (async () => {
-      const relations = await getMediaRelationsForEditor(item.externalId).catch(() => []);
-      const editions = relations.filter(r => r.relation_type === 'EDITIONS');
-      for (const rel of editions) {
-        if (cancelled) return;
-        const entry = await getCatalogEntry(rel.related_media_external_id).catch(() => null);
-        if (entry?.total_count === 1) { if (!cancelled) setHasSingleTomoEdition(true); return; }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [item.externalId, item.libraryEntry.type]);
+  const hasSingleTomoEdition = useEditionProbe(item);
 
   const isReading = isReadingType(item.libraryEntry.type);
   const totalVols = item.catalogEntry?.total_count_2 ?? null;
@@ -188,28 +149,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     [isSingleEpisode, matchedFolder, rootEntries, candidateTitles, item.externalId],
   );
 
-  // Bumped after a successful "Localizar" rename to force the deep-tag scan
-  // below to re-check — a nested rename usually doesn't change anything
-  // rootEntries/matchedFolder/rootFileMatch would pick up on their own.
-  const [deepScanNonce, setDeepScanNonce] = useState(0);
-  // A "[external_id]"-tagged folder/file anywhere under rootFolder, found by
-  // a bounded recursive scan — covers a work whose folder ended up nested
-  // (e.g. two levels under the category root) instead of a direct child of
-  // it, which the root-level-only matchedFolder/rootFileMatch fast paths
-  // can't see. Only runs once normal matching has already failed, since
-  // it's a multi-round-trip scan not worth paying for on every open.
-  const [deepTagMatch, setDeepTagMatch] = useState<TaggedMatch | null>(null);
-  const [deepTagSearchComplete, setDeepTagSearchComplete] = useState(false);
-  useEffect(() => {
-    setDeepTagMatch(null);
-    if (!rootFolder || matchedFolder || rootFileMatch) { setDeepTagSearchComplete(true); return; }
-    setDeepTagSearchComplete(false);
-    let cancelled = false;
-    findTaggedPathRecursive(rootFolder, item.externalId).then(found => {
-      if (!cancelled) { setDeepTagMatch(found); setDeepTagSearchComplete(true); }
-    }).catch(() => { if (!cancelled) setDeepTagSearchComplete(true); });
-    return () => { cancelled = true; };
-  }, [rootFolder, matchedFolder, rootFileMatch, item.externalId, deepScanNonce]);
+  const { deepTagMatch, deepTagSearchComplete, rescan: rescanDeepTags } = useDeepTagScan(item, rootFolder, matchedFolder, rootFileMatch);
 
   // A deep tag match pointing at a bare file (a movie sharing a folder with
   // other works' files, tagged individually via "Localizar → archivo
@@ -222,87 +162,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return null;
   }, [matchedFolder, rootFolder, deepTagMatch]);
 
-  const fetchChainHistory = useCallback(async () => {
-    try {
-      const resolvedSeason = await resolveOwnSeasonNumber(item.externalId, item.title) ?? itemSeason;
-      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, resolvedSeason);
-      const seasonEntries = Object.entries(seasonMap);
-      if (seasonEntries.length === 0) {
-        const direct = await getEpisodeHistory(item.externalId);
-        return direct.map(h => ({ ...h, seasonNum: itemSeason, seasonTitle: item.title }));
-      }
+  const { currentHistory, historyMenu, setHistoryMenu, deleteHistoryEntry } = useEpisodeHistory(item, itemSeason, onProgressSaved);
 
-      const all = await Promise.all(
-        seasonEntries.map(async ([sStr, sInfo]) => {
-          const sNum = parseInt(sStr, 10);
-          try {
-            const list = await getEpisodeHistory(sInfo.externalId);
-            return list.map(h => ({
-              ...h,
-              seasonNum: sNum,
-              seasonTitle: sInfo.title || item.title,
-            }));
-          } catch {
-            return [];
-          }
-        })
-      );
-      const merged = all.flat();
-      merged.sort((a, b) => new Date(b.watched_at).getTime() - new Date(a.watched_at).getTime());
-      return merged;
-    } catch {
-      const direct = await getEpisodeHistory(item.externalId).catch(() => []);
-      return direct.map(h => ({ ...h, seasonNum: itemSeason, seasonTitle: item.title }));
-    }
-  }, [item.externalId, item.title, itemSeason]);
-
+  // A stale VLC-launch error shouldn't outlive the work it belonged to —
+  // cleared on the exact same triggers that refetch the chain history.
   useEffect(() => {
     setPlayError(null);
-    let cancelled = false;
-    fetchChainHistory().then(res => {
-      if (!cancelled) {
-        setHistory(res);
-        setHistoryExternalId(item.externalId);
-        setHistoryMenu(null);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [fetchChainHistory]);
-
-  useEffect(() => {
-    let cancelled = false;
-    function onEpisodeMarked() {
-      fetchChainHistory().then(res => {
-        if (!cancelled) {
-          setHistory(res);
-          setHistoryExternalId(item.externalId);
-        }
-      }).catch(() => {});
-      onProgressSaved();
-    }
-    window.addEventListener('metadea:episode-marked', onEpisodeMarked);
-    return () => {
-      cancelled = true;
-      window.removeEventListener('metadea:episode-marked', onEpisodeMarked);
-    };
-  }, [fetchChainHistory, item.externalId, onProgressSaved]);
-
-  useEffect(() => {
-    if (!historyMenu) return;
-    const close = () => setHistoryMenu(null);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [historyMenu]);
-
-  const handleDeleteHistoryEntry = async (entry: EpisodeHistoryEntry) => {
-    setHistoryMenu(null);
-    try {
-      await deleteEpisodeHistoryEntry(entry.id);
-      setHistory(prev => prev.filter(h => h.id !== entry.id));
-    } catch (err) {
-      console.error('Failed to delete episode history entry', err);
-    }
-  };
+  }, [item.externalId, item.title, itemSeason]);
 
   useEffect(() => {
     if (!folderToScan) { setSubEntries(null); setSubContainerPath(null); return; }
@@ -358,28 +224,23 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // has no season markers on any file — one that does (like Ghost in the
   // Shell's S01/S02 filenames) already disambiguates itself, and adding an
   // offset on top of that would double-count.
-  const [seasonOffset, setSeasonOffset] = useState(0);
-  useEffect(() => {
-    setSeasonOffset(0);
-    if (!subEntries || itemSeason == null || itemSeason <= 1) return;
+  const { value: seasonOffsetValue, loading: seasonOffsetLoading } = useAsyncResource<number>(async () => {
+    if (!subEntries || itemSeason == null || itemSeason <= 1) return 0;
     const anySeasonMarked = subEntries.some(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name) && extractEpisodeInfo(e.name)?.season != null);
-    if (anySeasonMarked) return;
+    if (anySeasonMarked) return 0;
 
-    let cancelled = false;
-    (async () => {
-      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
-      let total = 0;
-      for (let s = 1; s < itemSeason; s++) {
-        const info = seasonMap[s];
-        if (!info) { total = 0; break; }
-        const entry = await getCatalogEntry(info.externalId).catch(() => null);
-        if (!entry?.total_count) { total = 0; break; }
-        total += entry.total_count;
-      }
-      if (!cancelled) setSeasonOffset(total);
-    })();
-    return () => { cancelled = true; };
-  }, [subEntries, itemSeason, item.externalId, item.title]);
+    const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
+    let total = 0;
+    for (let s = 1; s < itemSeason; s++) {
+      const info = seasonMap[s];
+      if (!info) { total = 0; break; }
+      const entry = await getCatalogEntry(info.externalId).catch(() => null);
+      if (!entry?.total_count) { total = 0; break; }
+      total += entry.total_count;
+    }
+    return total;
+  }, [subEntries, itemSeason, item.externalId, item.title], 0);
+  const seasonOffset = seasonOffsetLoading ? 0 : seasonOffsetValue;
 
   const nextNumber = item.status === 'planning'
     ? 1
@@ -440,52 +301,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const nextFileEpisodeTitleRaw = (nextFile && !isBookOrNovel) ? extractEpisodeInfo(nextFile.name)?.episodeTitle ?? null : null;
   const nextFileEpisodeTitle = (nextFileEpisodeTitleRaw && !isRedundantEpisodeName(nextFileEpisodeTitleRaw, item.title)) ? nextFileEpisodeTitleRaw : null;
 
-  // Provider-sourced episode names (AniList/TMDB, via the same "Episodios"
-  // data the media page's own tab uses) for the "próximo episodio" chip and
-  // each history row — only anime/series have any concept of one. Keyed
-  // `externalId|episodeNumber` since history spans several seasons' own ids
-  // at once (see ChainHistoryEntry) while the chip only ever needs this
-  // item's own. Fetched once per unique id (fetchLocalSeasonEpisodeNames'
-  // own DB cache makes repeats across renders/other panels cheap), not once
-  // per history row.
-  const [episodeNames, setEpisodeNames] = useState<Map<string, string>>(new Map());
-  useEffect(() => {
-    if (isReading || isMovieFormat || (item.libraryEntry.type !== 'anime' && item.libraryEntry.type !== 'series')) {
-      setEpisodeNames(new Map());
-      return;
-    }
-    let cancelled = false;
-    const ids = new Set<string>([item.externalId, ...currentHistory.map(h => h.external_id)]);
-    (async () => {
-      const merged = new Map<string, string>();
-      await Promise.all([...ids].map(async id => {
-        const localMap = await fetchLocalSeasonEpisodeNames(id).catch(() => new Map<number, string>());
-        for (const [num, name] of localMap) merged.set(`${id}|${num}`, name);
-      }));
-      if (!cancelled) setEpisodeNames(merged);
-    })();
-    return () => { cancelled = true; };
-  }, [item.externalId, item.libraryEntry.type, isReading, isMovieFormat, currentHistory]);
-
-  const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    getResumePosition(item.externalId, nextNumber).then(secs => {
-      if (!cancelled) setResumeSeconds(secs);
-    }).catch(() => { if (!cancelled) setResumeSeconds(null); });
-    return () => { cancelled = true; };
-  }, [item.externalId, nextNumber, isThisPlaying]);
+  const episodeNames = useEpisodeNames(item, isReading, isMovieFormat, currentHistory);
 
   const [readerOpen, setReaderOpen] = useState(false);
-  const [readingProgress, setReadingProgress] = useState<{ pageNumber: number; totalPages: number | null } | null>(null);
-  useEffect(() => {
-    if (!isReading) return;
-    let cancelled = false;
-    getReadingProgress(item.externalId, nextNumber).then(progress => {
-      if (!cancelled) setReadingProgress(progress);
-    }).catch(() => { if (!cancelled) setReadingProgress(null); });
-    return () => { cancelled = true; };
-  }, [isReading, item.externalId, nextNumber, readerOpen]);
+  const { resumeSeconds, readingProgress } = useResumeState(item, nextNumber, isThisPlaying, isReading, readerOpen);
 
   const playContainer = deepFileMatch
     ? dirname(deepFileMatch.absPath)
@@ -504,257 +323,14 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     }));
   };
 
-  // "Localizar" — escape hatch for when automatic matching fails: the user
-  // picks the actual folder (or, for a folder shared with other distinct
-  // works, a single file) themselves, and it gets renamed to a format the
-  // matcher always recognizes afterward — no need to be a direct child of
-  // rootFolder, since findTaggedPathRecursive above searches at any depth;
-  // renaming always happens in place (same parent), never moving anything.
-  // Files aren't touched until the user reviews and confirms the exact plan.
-  const [locateMenuOpen, setLocateMenuOpen] = useState(false);
-  const locateBtnRef = useRef<HTMLButtonElement>(null);
-  // The dropdown used to be a plain CSS-positioned absolute child of the
-  // button's own wrapper — but that wrapper sits inside
-  // .local-game-detail-content, which owns its own overflow-y:auto (see
-  // local.css) to keep the banner from resizing as content streams in, and
-  // an overflow ancestor clips an absolutely-positioned descendant
-  // regardless of z-index. Same fix as AchievementCell's tooltip: render
-  // into a body-level portal with position:fixed, positioned from the
-  // button's own measured rect instead.
-  const [locateMenuPos, setLocateMenuPos] = useState<{ top: number; left: number } | null>(null);
-  useEffect(() => {
-    if (!locateMenuOpen) return;
-    const closeMenu = () => setLocateMenuOpen(false);
-    // Deferred one tick so the same click that opened the menu (which also
-    // bubbles up to document) doesn't immediately close it again.
-    const id = setTimeout(() => document.addEventListener('click', closeMenu), 0);
-    return () => { clearTimeout(id); document.removeEventListener('click', closeMenu); };
-  }, [locateMenuOpen]);
-  const [locateBusy, setLocateBusy] = useState(false);
-  const [locateError, setLocateError] = useState<string | null>(null);
-  const [locatePreview, setLocatePreview] = useState<{
-    pickedPath: string;
-    parentDir: string;
-    plan: LocateRenamePlan;
-    // Movies/OVAs/etc. this work has a *relation* to (not its own season
-    // chain — see ALL_CHAIN_RELATION_TYPES, filtered out below) found loose
-    // in a sibling folder, e.g. Ghost in the Shell's movies sitting next to
-    // its Stand Alone Complex folder under the same franchise parent. Each
-    // gets its own [external_id] tag too, so it's recognized on its own the
-    // next time its own catalog entry is opened.
-    relatedMatches: RelatedFileMatch[];
-  } | null>(null);
-  const [locateFilePreview, setLocateFilePreview] = useState<{
-    container: string;
-    oldName: string;
-    newName: string;
-  } | null>(null);
-
-  function validatePickedPath(picked: string): string | null {
-    if (!rootFolder) return null;
-    const normalizedRoot = rootFolder.replace(/\\/g, '/').replace(/\/+$/, '');
-    const normalizedPicked = picked.replace(/\\/g, '/').replace(/\/+$/, '');
-    if (normalizedPicked === normalizedRoot) {
-      setLocateError('Esa es la carpeta raíz de la categoría — elige la carpeta/archivo de esta obra en concreto, dentro de ella.');
-      return null;
-    }
-    if (!normalizedPicked.startsWith(`${normalizedRoot}/`)) {
-      setLocateError(`Debe estar dentro de "${rootFolder}".`);
-      return null;
-    }
-    return normalizedPicked;
-  }
-
-  // Fetched episode names for the "Localizar" rename flow — every distinct
-  // catalog entry seasonMap points at (its own id for each anime season, or
-  // just this work's own single id for a series), so buildLocateRenamePlan
-  // can fill in a real "- Episode Title" for a file whose own name never had
-  // one, instead of leaving it at just "SxxExx - Work Title".
-  async function fetchEpisodeNamesForSeasonMap(
-    mainExternalId: string,
-    seasonMap: Record<number, { externalId: string; title: string }>,
-  ): Promise<Record<string, Map<number, string>>> {
-    if (item.libraryEntry.type !== 'anime' && item.libraryEntry.type !== 'series') return {};
-    const ids = new Set<string>([mainExternalId, ...Object.values(seasonMap).map(s => s.externalId)]);
-    const entries = await Promise.all(
-      [...ids].map(async id => [id, await fetchLocalSeasonEpisodeNames(id, true).catch(() => new Map<number, string>())] as const),
-    );
-    return Object.fromEntries(entries);
-  }
-
-  // Each known season's own real episode total — what lets
-  // buildLocateRenamePlan slice a bare continuously-numbered folder (no
-  // per-file season marker at all) into its real seasons, and cap every
-  // season at its own real length instead of running an extras clip past
-  // it as if it were a further episode.
-  async function fetchSeasonEpisodeCounts(
-    seasonMap: Record<number, { externalId: string; title: string }>,
-  ): Promise<SeasonEpisodeCounts> {
-    const counts: SeasonEpisodeCounts = {};
-    await Promise.all(Object.entries(seasonMap).map(async ([sStr, info]) => {
-      const entry = await getCatalogEntry(info.externalId).catch(() => null);
-      if (entry?.total_count) counts[Number(sStr)] = entry.total_count;
-    }));
-    return counts;
-  }
-
-  const handleLocateFolder = async () => {
-    setLocateMenuOpen(false);
-    setLocateError(null);
-    if (!rootFolder) return;
-
-    const picked = await pickFolder().catch(() => null);
-    if (!picked) return;
-
-    const normalizedPicked = validatePickedPath(picked);
-    if (!normalizedPicked) return;
-    const parent = dirname(normalizedPicked);
-
-    setLocateBusy(true);
-    try {
-      const entries = await scanFolderContents(picked);
-      if (!hasMediaFiles(entries)) {
-        setLocateError('Esa carpeta no tiene archivos de vídeo/lectura directamente dentro.');
-        return;
-      }
-      const resolvedSeason = await resolveOwnSeasonNumber(item.externalId, item.title) ?? itemSeason;
-      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, resolvedSeason);
-      const [episodeNamesByExternalId, seasonEpisodeCounts] = await Promise.all([
-        fetchEpisodeNamesForSeasonMap(item.externalId, seasonMap),
-        fetchSeasonEpisodeCounts(seasonMap),
-      ]);
-      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, resolvedSeason, seasonMap, item.libraryEntry.type, episodeNamesByExternalId, seasonEpisodeCounts);
-      const relatedMatches = await findRelatedSiblingMatches(parent, normalizedPicked);
-      setLocatePreview({ pickedPath: normalizedPicked, parentDir: parent, plan, relatedMatches });
-    } catch (err) {
-      setLocateError(err instanceof Error ? err.message : 'No se pudo leer esa carpeta.');
-    } finally {
-      setLocateBusy(false);
-    }
-  };
-
-  // Movies/OVAs/etc. related to this work (not its own season chain) that
-  // might be sitting loose in a sibling folder next to the one just picked
-  // — e.g. picking "Koukaku Kidoutai/b. STAND Alone COMPLEX/" surfaces
-  // "Koukaku Kidoutai/a. MOVIES/"'s files too, matched by relation title.
-  // Best-effort: any failure here (relations fetch, sibling scan) just
-  // means no related matches get offered, never blocks the main plan.
-  async function findRelatedSiblingMatches(parentDir: string, excludePath: string): Promise<RelatedFileMatch[]> {
-    try {
-      const relations = await getMediaRelationsForEditor(item.externalId);
-      const candidates = relations.filter(r => !ALL_CHAIN_RELATION_TYPES.includes(r.relation_type));
-      if (candidates.length === 0) return [];
-
-      const siblings = await scanFolderContents(parentDir);
-      const groups: CandidateFileGroup[] = [];
-      for (const sib of siblings) {
-        const sibPath = `${parentDir}/${sib.name}`;
-        if (sibPath === excludePath) continue;
-        if (sib.is_dir) {
-          const inner = await scanFolderContents(sibPath).catch(() => [] as LocalFolderEntry[]);
-          groups.push({ containerPath: sibPath, entries: inner });
-        } else {
-          groups.push({ containerPath: parentDir, entries: [sib] });
-        }
-      }
-      return matchRelationsToFiles(candidates, groups);
-    } catch {
-      return [];
-    }
-  }
-
-  const handleLocateConfirm = async () => {
-    if (!locatePreview) return;
-    setLocateBusy(true);
-    setLocateError(null);
-    try {
-      for (const { entry, newName } of locatePreview.plan.fileRenames) {
-        if (entry.name === newName) continue;
-        await renamePath(`${locatePreview.pickedPath}/${entry.name}`, `${locatePreview.pickedPath}/${newName}`);
-      }
-      const newFolderPath = `${locatePreview.parentDir}/${locatePreview.plan.folderNewName}`;
-      if (newFolderPath !== locatePreview.pickedPath) {
-        await renamePath(locatePreview.pickedPath, newFolderPath);
-      }
-      for (const m of locatePreview.relatedMatches) {
-        await renamePath(`${m.containerPath}/${m.entry.name}`, `${m.containerPath}/${m.newName}`);
-      }
-      setLocatePreview(null);
-      setDeepScanNonce(n => n + 1);
+  const locate = useLocateFileFlow({
+    item, rootFolder, itemSeason, isBookOrNovel,
+    onRenamed: async () => {
+      rescanDeepTags();
       await onRootRefresh();
-    } catch (err) {
-      setLocateError(err instanceof Error ? err.message : 'Fallo al renombrar. Puede que se haya renombrado solo una parte.');
-    } finally {
-      setLocateBusy(false);
-    }
-  };
-
-  // For a folder shared by several distinct works (e.g. a movie collection,
-  // one file per film) — renames only the one file picked, leaving its
-  // siblings untouched, instead of treating the whole folder as if it were
-  // all episodes of this one work.
-  const handleLocateSingleFile = async () => {
-    setLocateMenuOpen(false);
-    setLocateError(null);
-    if (!rootFolder) return;
-
-    const picked = await pickFile().catch(() => null);
-    if (!picked) return;
-
-    const normalizedPicked = validatePickedPath(picked);
-    if (!normalizedPicked) return;
-    if (!MEDIA_EXTENSIONS.test(normalizedPicked)) {
-      setLocateError('Ese archivo no parece ser un vídeo/lectura reconocido.');
-      return;
-    }
-
-    const container = dirname(normalizedPicked);
-    const oldName = normalizedPicked.slice(container.length + 1);
-    const info = extractEpisodeInfo(oldName);
-    const episode = info ? Math.round(info.episode) : 1;
-    const tag = encodeExternalIdForFilename(item.externalId);
-    const titleSanitized = sanitizeForFilename(item.title);
-    // Prefer the provider/database title: the text before the marker can be
-    // an alternate title of the work, not the episode title.
-    let rawEpisodeTitle = '';
-    if (!isBookOrNovel) {
-      const fetchedNames = await fetchLocalSeasonEpisodeNames(item.externalId, true).catch(() => new Map<number, string>());
-      rawEpisodeTitle = fetchedNames.get(episode) ?? '';
-      if (!rawEpisodeTitle && info?.episodeTitle && !isRedundantEpisodeName(info.episodeTitle, titleSanitized)) {
-        rawEpisodeTitle = info.episodeTitle;
-      }
-    }
-    const episodeTitle = rawEpisodeTitle && !isRedundantEpisodeName(rawEpisodeTitle, titleSanitized)
-      ? sanitizeForFilename(rawEpisodeTitle)
-      : '';
-    const ext = oldName.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
-    const label = formatEpisodeLabel(itemSeason, episode, item.libraryEntry.type);
-    const parts = [label, episodeTitle, titleSanitized].filter(Boolean);
-    const newName = `${parts.join(' - ')} [${tag}]${ext}`;
-
-    setLocateFilePreview({ container, oldName, newName });
-  };
-
-  const handleLocateFileConfirm = async () => {
-    if (!locateFilePreview) return;
-    setLocateBusy(true);
-    setLocateError(null);
-    try {
-      if (locateFilePreview.oldName !== locateFilePreview.newName) {
-        await renamePath(
-          `${locateFilePreview.container}/${locateFilePreview.oldName}`,
-          `${locateFilePreview.container}/${locateFilePreview.newName}`,
-        );
-      }
-      setLocateFilePreview(null);
-      setDeepScanNonce(n => n + 1);
-      await onRootRefresh();
-    } catch (err) {
-      setLocateError(err instanceof Error ? err.message : 'Fallo al renombrar.');
-    } finally {
-      setLocateBusy(false);
-    }
-  };
+    },
+  });
+  const { locateError, locatePreview, locateFilePreview } = locate;
 
   // Builds the queue starting at nextNumber and hands it to playback-service
   // — every remaining episode this folder actually has a file for, not just
@@ -955,42 +531,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
               )}
               <div className="local-media-divider-line" />
               <div className="local-media-match-row">
-                <div className="local-media-detail-locate-wrap">
-                  <button
-                    ref={locateBtnRef}
-                    type="button"
-                    className="local-media-detail-locate-btn"
-                    onClick={() => {
-                      // "Elegir un archivo suelto" only makes sense for a
-                      // single-episode/movie/single-tomo-comic work — for
-                      // anything else there's no ambiguity to offer a choice
-                      // for, so the icon goes straight to "elegir carpeta"
-                      // instead of showing a dropdown with one option that's
-                      // never actually the right one to pick.
-                      if (!isSingleEpisode) { handleLocateFolder(); return; }
-                      if (!locateMenuOpen) {
-                        const rect = locateBtnRef.current?.getBoundingClientRect();
-                        if (rect) setLocateMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
-                      }
-                      setLocateMenuOpen(v => !v);
-                    }}
-                    disabled={locateBusy || !rootFolder}
-                    title={t.local.locate_manually}
-                  >
-                    {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
-                  </button>
-                  {isSingleEpisode && locateMenuOpen && locateMenuPos && createPortal(
-                    <div
-                      className="local-media-detail-locate-menu local-media-detail-locate-menu--portal"
-                      style={{ top: locateMenuPos.top, left: locateMenuPos.left }}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <button type="button" onClick={handleLocateFolder}>{t.local.locate_choose_folder}</button>
-                      <button type="button" onClick={handleLocateSingleFile}>{t.local.locate_choose_file}</button>
-                    </div>,
-                    document.body,
-                  )}
-                </div>
+                <LocateButton flow={locate} rootFolder={rootFolder} isSingleEpisode={isSingleEpisode} />
                 {(matchedFolder || rootFileMatch || deepTagMatch) && !isUnreleased && (
                   subLoading ? (
                     <span className="local-media-match-chip">
@@ -1070,46 +611,16 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         )}
 
         <div className={`local-media-history-screenshots-layout${currentHistory.length > 0 ? ' has-history' : ''}`}>
-          {currentHistory.length > 0 && (
-            <div className="local-media-history">
-              <p className="local-media-history-title">{t.local.history_label}</p>
-              <div className="local-media-history-feed">
-                {currentHistory.map(h => (
-                  <div
-                    key={h.id}
-                    className="local-media-history-item"
-                    onContextMenu={e => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setHistoryMenu({ x: e.pageX, y: e.pageY, entry: h });
-                    }}
-                  >
-                    <IconCheck />
-                    {isMovieFormat ? (
-                      <span>{t.local.seen_count} <strong>{h.seasonTitle || item.title}</strong></span>
-                    ) : (
-                      <span>
-                        {isReadingType(item.libraryEntry.type) ? (
-                          <>
-                            {t.media.chapter} <strong>{h.episode_number}</strong> - {h.seasonTitle || item.title}
-                          </>
-                        ) : (
-                          <>
-                            <strong>{formatEpisodeLabel(h.seasonNum ?? itemSeason, h.episode_number, item.libraryEntry.type)}</strong>
-                            {(() => {
-                              const fetchedName = episodeNames.get(`${h.external_id}|${h.episode_number}`);
-                              return fetchedName && !isRedundantEpisodeName(fetchedName, h.seasonTitle, item.title) ? <> - "{fetchedName}"</> : null;
-                            })()} - {h.seasonTitle || item.title}
-                          </>
-                        )}
-                      </span>
-                    )}
-                    <span className="local-media-history-date">{formatWatchedAt(h.watched_at)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <EpisodeHistoryList
+            item={item}
+            itemSeason={itemSeason}
+            isMovieFormat={isMovieFormat}
+            history={currentHistory}
+            episodeNames={episodeNames}
+            historyMenu={historyMenu}
+            onOpenMenu={setHistoryMenu}
+            onDeleteEntry={deleteHistoryEntry}
+          />
 
           <MediaScreenshotsSection
             key={item.externalId}
@@ -1118,111 +629,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
             achievementsLoading={false}
           />
         </div>
-
-        {historyMenu && createPortal(
-          <div
-            className="context-menu local-history-context-menu"
-            style={{ top: historyMenu.y, left: historyMenu.x }}
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="context-menu-item local-history-context-menu-item delete"
-              onClick={() => handleDeleteHistoryEntry(historyMenu.entry)}
-            >
-              <span style={{ marginRight: 6, display: 'inline-flex' }}><IconTrash /></span>
-              <span>{t.local.delete_history_entry}</span>
-            </button>
-          </div>,
-          document.body
-        )}
       </div>
 
-      {locatePreview && createPortal(
-        <div className="locate-preview-overlay" onClick={() => !locateBusy && setLocatePreview(null)}>
-          <div className="locate-preview-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="locate-preview-title">{t.local.rename_for_detection_title}</h3>
-            <p className="locate-preview-hint">
-              {t.local.rename_for_detection_hint}
-            </p>
-
-            <div className="locate-preview-list">
-              <div className="locate-preview-row locate-preview-row--folder">
-                <span className="locate-preview-old">{locatePreview.pickedPath.split(/[/\\]/).pop()}</span>
-                <span className="locate-preview-arrow">→</span>
-                <span className="locate-preview-new">{locatePreview.plan.folderNewName}</span>
-              </div>
-              {locatePreview.plan.fileRenames.map(({ entry, newName }) => (
-                <div key={entry.name} className="locate-preview-row">
-                  <span className="locate-preview-old" title={entry.name}>{entry.name}</span>
-                  <span className="locate-preview-arrow">→</span>
-                  <span className="locate-preview-new" title={newName}>{newName}</span>
-                </div>
-              ))}
-            </div>
-
-            {locatePreview.relatedMatches.length > 0 && (
-              <>
-                <p className="locate-preview-hint" style={{ marginTop: '1rem' }}>
-                  {t.local.related_works_found_hint}
-                </p>
-                <div className="locate-preview-list">
-                  {locatePreview.relatedMatches.map(m => (
-                    <div key={`${m.containerPath}/${m.entry.name}`} className="locate-preview-row locate-preview-row--related">
-                      <span className="locate-preview-old" title={m.entry.name}>{m.relatedTitle}: {m.entry.name}</span>
-                      <span className="locate-preview-arrow">→</span>
-                      <span className="locate-preview-new" title={m.newName}>{m.newName}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {locateError && <p className="local-media-play-error">{locateError}</p>}
-
-            <div className="locate-preview-actions">
-              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => setLocatePreview(null)} disabled={locateBusy}>
-                {t.local.cancel}
-              </button>
-              <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleLocateConfirm} disabled={locateBusy}>
-                {locateBusy ? t.local.renaming_ellipsis : t.local.confirm_and_rename}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
-
-      {locateFilePreview && createPortal(
-        <div className="locate-preview-overlay" onClick={() => !locateBusy && setLocateFilePreview(null)}>
-          <div className="locate-preview-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="locate-preview-title">{t.local.rename_file_title}</h3>
-            <p className="locate-preview-hint">
-              {t.local.rename_file_hint}
-            </p>
-
-            <div className="locate-preview-list">
-              <div className="locate-preview-row">
-                <span className="locate-preview-old" title={locateFilePreview.oldName}>{locateFilePreview.oldName}</span>
-                <span className="locate-preview-arrow">→</span>
-                <span className="locate-preview-new" title={locateFilePreview.newName}>{locateFilePreview.newName}</span>
-              </div>
-            </div>
-
-            {locateError && <p className="local-media-play-error">{locateError}</p>}
-
-            <div className="locate-preview-actions">
-              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => setLocateFilePreview(null)} disabled={locateBusy}>
-                {t.local.cancel}
-              </button>
-              <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleLocateFileConfirm} disabled={locateBusy}>
-                {locateBusy ? t.local.renaming_ellipsis : t.local.confirm_and_rename}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+      <LocatePreviewModals flow={locate} />
 
       {readerOpen && playPath && nextFile && (
         <ReaderModal

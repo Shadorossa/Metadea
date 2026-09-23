@@ -1,7 +1,7 @@
 // Local cache of OTHER users' downloaded profile data — see
 // src-tauri/src/social_profile.rs for the full rationale. Never touches your
 // own library/activity/lists tables.
-import { tauriTry, tauriRun } from './core';
+import { tauriTry, tauriRun } from './bridge';
 
 export interface SocialLibraryItem {
   external_id: string;
@@ -90,22 +90,27 @@ export async function hydrateSocialProfile(
   });
 }
 
-export async function getSocialLibrary(socialUserId: string): Promise<SocialLibraryItem[]> {
-  return tauriTry<SocialLibraryItem[]>('get_social_library', [], { socialUserId });
-}
-
-export async function getSocialActivity(socialUserId: string): Promise<SocialActivityItem[]> {
-  return tauriTry<SocialActivityItem[]>('get_social_activity', [], { socialUserId });
-}
-
-export async function getSocialMonthlyHistory(socialUserId: string): Promise<SocialMonthGroup[]> {
-  return tauriTry<SocialMonthGroup[]>('get_social_monthly_history', [], { socialUserId });
-}
-
 export async function getSocialLists(socialUserId: string): Promise<SocialListInfo[]> {
   return tauriTry<SocialListInfo[]>('get_social_lists', [], { socialUserId });
 }
 
-export async function getSocialListItems(socialUserId: string, listKey: string): Promise<SocialMediaRef[]> {
-  return tauriTry<SocialMediaRef[]>('get_social_list_items', [], { socialUserId, listKey });
+// `_light` commands: a character item's cover_url is the portrait's file
+// path instead of an inlined base64 data URL — callers MUST pass cover_url
+// through wrapAssetUrl() before using it as an <img src>. Media covers are
+// remote URLs and pass through unchanged.
+
+export async function getSocialLibraryLight(socialUserId: string): Promise<SocialLibraryItem[]> {
+  return tauriTry<SocialLibraryItem[]>('get_social_library_light', [], { socialUserId });
+}
+
+export async function getSocialActivityLight(socialUserId: string): Promise<SocialActivityItem[]> {
+  return tauriTry<SocialActivityItem[]>('get_social_activity_light', [], { socialUserId });
+}
+
+export async function getSocialMonthlyHistoryLight(socialUserId: string): Promise<SocialMonthGroup[]> {
+  return tauriTry<SocialMonthGroup[]>('get_social_monthly_history_light', [], { socialUserId });
+}
+
+export async function getSocialListItemsLight(socialUserId: string, listKey: string): Promise<SocialMediaRef[]> {
+  return tauriTry<SocialMediaRef[]>('get_social_list_items_light', [], { socialUserId, listKey });
 }

@@ -3,10 +3,14 @@ import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import type { Translations } from '../../../i18n/index';
 import { formatThemeEpisodes, splitTitleAfterColon } from './media-page-format';
+import { useThemePresence } from './useThemePresence';
 
 interface Props {
   theme: MediaTheme;
   themes: MediaTheme[];
+  // For the Discord "Listening" presence: the page's own title and cover.
+  mediaTitle: string;
+  mediaCover?: string | null;
   videoSrc: string | null;
   playerError: boolean;
   retryKey: number;
@@ -28,6 +32,8 @@ interface Props {
 export function ThemePlayerOverlay({
   theme: playingTheme,
   themes,
+  mediaTitle,
+  mediaCover,
   videoSrc,
   playerError,
   retryKey,
@@ -45,6 +51,7 @@ export function ThemePlayerOverlay({
   onRetry,
   onNavigateToEpisodes,
 }: Props) {
+  const presenceHandlers = useThemePresence({ theme: playingTheme, mediaTitle, cover: mediaCover });
   const currentThemeIdx = themes.findIndex(item => item.slug === playingTheme.slug);
   const prevTheme = currentThemeIdx > 0 ? themes[currentThemeIdx - 1] : null;
   const nextTheme = currentThemeIdx !== -1 && currentThemeIdx < themes.length - 1 ? themes[currentThemeIdx + 1] : null;
@@ -132,6 +139,7 @@ export function ThemePlayerOverlay({
                 autoPlay
                 preload="auto"
                 onError={onVideoError}
+                {...presenceHandlers}
               />
             )}
             {playerError && (

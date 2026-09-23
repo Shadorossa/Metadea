@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { getAllLibraryEntries, readUserJourney, getAllMediaRelations } from '../../lib/tauri';
-import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri';
-import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
-import { beginGlobalLoading } from '../../lib/shared/global-loading';
-import { getT } from '../../i18n/client';
-import { getActiveRatingSystem, syncActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
-import { ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../../lib/shared/icon-strings';
-import { getTypeLabel, getGenreLabel } from '../../lib/constants/media';
+import { getAllLibraryEntries, readUserJourneyTyped } from '../../lib/tauri';
+import type { CatalogSummary, DbMediaRelation } from '../../lib/tauri';
+import { getCachedLibraryAndCatalog, getCachedMediaRelations } from '../../lib/profile/library-data-cache';
+import { syncActiveRatingSystemFromCachedInfo } from '../../lib/profile/user-info';
+import { beginGlobalLoading } from '../../lib/dom/global-loading';
+import { getT } from '../../i18n/runtime';
+import { getActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
+import { ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../../lib/dom/icon-strings';
+import { getTypeLabel, getGenreLabel } from '../../lib/media/media-types';
 import {
   computeOverviewAggregate,
   computeTypeBreakdown,
@@ -15,7 +16,7 @@ import {
   computeCompletedByYear,
   computeActivityHeatmap,
 } from '../../lib/profile/stats-calculators';
-import { formatDateShort } from '../../lib/shared/formatDate';
+import { formatDateShort } from '../../lib/shared/text/format-date';
 
 // Not in icon-strings.ts (a "seasons"/folder-stack glyph specific to this
 // one KPI card, not reused anywhere else) — kept local instead.
@@ -25,9 +26,9 @@ type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
 interface StatsData {
   items: Items;
-  catalogMap: Map<string, MediaCatalogEntry>;
+  catalogMap: Map<string, CatalogSummary>;
   system: RatingSystem;
-  journey: Awaited<ReturnType<typeof readUserJourney>>;
+  journey: Awaited<ReturnType<typeof readUserJourneyTyped>>;
   relations: DbMediaRelation[];
 }
 
@@ -42,7 +43,7 @@ interface Props {
   // (e.g. Gintama's seasons) shows as N separate completed works instead of
   // 1, same as before this collapsing existed.
   overrideItems?: Items;
-  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+  overrideCatalogMap?: Map<string, CatalogSummary>;
   overrideJourney?: StatsData['journey'];
 }
 
@@ -61,12 +62,12 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
       try {
         const [{ items, catalog: catalogEntries }, system, journey, relations] = await Promise.all([
           getCachedLibraryAndCatalog(),
-          syncActiveRatingSystem(),
-          readUserJourney().catch(() => []),
-          getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
+          syncActiveRatingSystemFromCachedInfo(),
+          readUserJourneyTyped().catch(() => []),
+          getCachedMediaRelations(),
         ]);
         if (cancelled) return;
-        const catalogMap = new Map<string, MediaCatalogEntry>(catalogEntries.map(e => [e.external_id, e]));
+        const catalogMap = new Map<string, CatalogSummary>(catalogEntries.map(e => [e.external_id, e]));
         setData({ items, catalogMap, system, journey, relations });
       } finally {
         endLoading();

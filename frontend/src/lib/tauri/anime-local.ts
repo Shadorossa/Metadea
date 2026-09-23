@@ -1,4 +1,4 @@
-import { isTauri, invoke, tauriCmd, tauriRun } from './core';
+import { isTauri, invoke, tauriCmd, tauriRun } from './bridge';
 
 // filePaths plays as one VLC playlist, in order — lets a caller queue every
 // remaining episode in one launch instead of relaunching per episode.

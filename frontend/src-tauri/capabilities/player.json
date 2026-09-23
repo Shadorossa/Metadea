@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "player",
+  "description": "Transparent controls overlay of the built-in video player: engine events plus the player_* commands.",
+  "windows": ["player-overlay"],
+  "permissions": [
+    "core:default",
+    "allow-player-commands"
+  ]
+}

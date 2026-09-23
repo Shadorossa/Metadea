@@ -1,4 +1,4 @@
-import { isInProgressStatus } from '../constants/media';
+import { isInProgressStatus } from './media-types';
 
 // Canonical release-status vocabulary every provider mapper (AniList, TMDB,
 // IGDB) normalizes into before it reaches MediaPageData.status / gets

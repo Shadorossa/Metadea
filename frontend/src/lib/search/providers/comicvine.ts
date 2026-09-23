@@ -7,15 +7,88 @@
 // the same pattern, same underlying reason: IGDB requires a bearer token
 // browser JS can't safely hold anyway, Comic Vine just blocks browser
 // fetches outright).
-import { comicVineSearch, comicVineSearchCharacters, comicVineGetVolume, comicVineGetIssues, comicVineGetIssuesCast, isTauri, type ComicVineVolume, type ComicVineCharacterCredit, type ComicVineIssue, type ComicVineVolumeCast } from '../../tauri';
-import type { SearchResult, SearchPage, MediaType } from '../index';
+import { comicVineSearch, comicVineSearchCharacters, comicVineGetVolume, comicVineGetIssues, comicVineGetIssuesCast, type ComicVineVolume, type ComicVineCharacterCredit, type ComicVineImage, type ComicVinePublisher, type ComicVineIssue, type ComicVineVolumeCast } from '../../tauri/comicvine';
+import { isTauri } from '../../tauri/bridge';
+import type { SearchResult, SearchPage, MediaType } from '../types';
 import { MissingApiKeyError } from '../errors';
 
-function coverUrlFrom(volume: ComicVineVolume): string | null {
+// ── Untrusted-JSON guards ─────────────────────────────────────────────────────
+// ComicVineVolume/ComicVineCharacterCredit are what comicvine.rs promises, not
+// what Comic Vine's JSON is guaranteed to carry. Each search row is narrowed
+// ONCE (skipped, never thrown on, when it lacks id/name) down to just the
+// fields the mappers below read.
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null;
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+function optionalNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function imageFrom(value: unknown): ComicVineImage | null {
+  return isRecord(value) ? { medium_url: optionalString(value.medium_url), small_url: optionalString(value.small_url) } : null;
+}
+
+function publisherFrom(value: unknown): ComicVinePublisher | null {
+  return isRecord(value) ? { id: optionalNumber(value.id), name: optionalString(value.name) } : null;
+}
+
+type ComicVineVolumeRow = Pick<ComicVineVolume, 'id' | 'name' | 'image' | 'start_year' | 'publisher' | 'count_of_issues' | 'description' | 'deck'>;
+
+function parseVolumeRow(raw: unknown): ComicVineVolumeRow | null {
+  if (!isRecord(raw)) return null;
+  const id = optionalNumber(raw.id);
+  const name = optionalString(raw.name);
+  if (id === null || name === null) return null;
+  return {
+    id,
+    name,
+    image: imageFrom(raw.image),
+    // Documented as a string, but a bare number parses the same way below.
+    start_year: typeof raw.start_year === 'number' ? String(raw.start_year) : optionalString(raw.start_year),
+    publisher: publisherFrom(raw.publisher),
+    count_of_issues: optionalNumber(raw.count_of_issues),
+    description: optionalString(raw.description),
+    deck: optionalString(raw.deck),
+  };
+}
+
+type ComicVineCharacterRow = Pick<ComicVineCharacterCredit, 'id' | 'name' | 'image' | 'publisher' | 'deck' | 'description'>;
+
+function parseCharacterRow(raw: unknown): ComicVineCharacterRow | null {
+  if (!isRecord(raw)) return null;
+  const id = optionalNumber(raw.id);
+  const name = optionalString(raw.name);
+  if (id === null || name === null) return null;
+  return {
+    id,
+    name,
+    image: imageFrom(raw.image),
+    publisher: publisherFrom(raw.publisher),
+    deck: optionalString(raw.deck),
+    description: optionalString(raw.description),
+  };
+}
+
+function parseRows<T>(rows: unknown, parse: (raw: unknown) => T | null): T[] {
+  return (Array.isArray(rows) ? rows : []).flatMap(raw => {
+    const row = parse(raw);
+    return row === null ? [] : [row];
+  });
+}
+
+function coverUrlFrom(volume: ComicVineVolumeRow): string | null {
   return volume.image?.medium_url ?? volume.image?.small_url ?? null;
 }
 
-function yearFrom(volume: ComicVineVolume): number | null {
+function yearFrom(volume: Pick<ComicVineVolume, 'start_year'>): number | null {
   const y = volume.start_year ? parseInt(volume.start_year, 10) : NaN;
   return Number.isFinite(y) ? y : null;
 }
@@ -50,7 +123,7 @@ export interface VolumeIdentity {
   year: number | null;
 }
 
-export function volumeIdentity(v: ComicVineVolume): VolumeIdentity {
+export function volumeIdentity(v: Pick<ComicVineVolume, 'id' | 'name' | 'count_of_issues' | 'start_year'>): VolumeIdentity {
   return { id: v.id, name: v.name, count_of_issues: v.count_of_issues ?? null, year: yearFrom(v) };
 }
 
@@ -102,7 +175,7 @@ export function isReprintOf(v: VolumeIdentity, original: VolumeIdentity): boolea
   return false;
 }
 
-function mapVolume(volume: ComicVineVolume): SearchResult {
+function mapVolume(volume: ComicVineVolumeRow): SearchResult {
   return {
     externalId:   `comic:${volume.id}`,
     type:         'comic',
@@ -149,7 +222,7 @@ const MANGA_PUBLISHERS = new Set([
   'shonengahosha'
 ]);
 
-function isManga(v: ComicVineVolume): boolean {
+function isManga(v: ComicVineVolumeRow): boolean {
   const pubName = v.publisher?.name?.toLowerCase().trim();
   if (pubName) {
     if (MANGA_PUBLISHERS.has(pubName) || pubName.includes('manga')) {
@@ -191,7 +264,7 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
     throw new Error(message);
   }
 
-  const candidates = pageResult.volumes.filter(v => coverUrlFrom(v) && !isManga(v));
+  const candidates = parseRows(pageResult.volumes, parseVolumeRow).filter(v => coverUrlFrom(v) && !isManga(v));
 
   // Hide a collected/deluxe/omnibus reprint from the results list when the
   // "real" numbered-issues run it reprints is sitting right there in the
@@ -216,7 +289,7 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
   };
 }
 
-function isMangaCharacter(c: ComicVineCharacterCredit): boolean {
+function isMangaCharacter(c: ComicVineCharacterRow): boolean {
   const pubName = c.publisher?.name?.toLowerCase().trim();
   if (pubName) {
     if (MANGA_PUBLISHERS.has(pubName) || pubName.includes('manga')) {
@@ -258,7 +331,7 @@ export async function searchComicVineCharacters(searchQuery: string, _signal: Ab
     throw new Error(message);
   }
 
-  const results: SearchResult[] = pageResult.characters
+  const results: SearchResult[] = parseRows(pageResult.characters, parseCharacterRow)
     .filter(c => (c.image?.medium_url || c.image?.small_url) && !isMangaCharacter(c))
     .map(c => ({
       externalId: `character:co:${c.id}`,

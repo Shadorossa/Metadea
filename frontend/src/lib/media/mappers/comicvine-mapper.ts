@@ -1,0 +1,114 @@
+import type { ComicVineVolume } from '../../tauri';
+import { getT } from '../../../i18n/runtime';
+import type { MediaPageData, MediaAuthor, MediaCharacter, MediaCompany, MediaStaffMember } from '../types';
+import { unifyGenres } from '../genre-unifier';
+import { formatDateParts, parseFlexibleDate } from './mapper-utils';
+import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from '../saga/canonical-relations';
+import { canonicalizeAlwaysFinished } from '../media-status';
+import { stripHtml } from '../../shared/text/description-utils';
+
+// Comic Vine's person_credits (writer, penciler, inker, colorist, ...) is
+// the same underlying data `authors` is built from — this just re-keys the
+// already-computed authors list for the media page's own "Staff" tab (next
+// to Personajes), mirroring how AniList/TMDB share one crew list between
+// their authors pick and their full staff roster, instead of re-deriving
+// name/image/role from person_credits a second time.
+function authorsToStaff(authors: MediaAuthor[]): MediaStaffMember[] {
+  return authors.map(a => ({
+    id: `staff:${a.external_id.replace(/^author:/, '')}`,
+    name: a.name,
+    image: a.image,
+    role: a.role,
+  }));
+}
+
+export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string): MediaPageData {
+  const tm = getT().media;
+
+  const stats: MediaPageData['stats'] = [];
+  if (volume.publisher?.name) {
+    stats.push({ label: tm.stat_studio, value: volume.publisher.name });
+  }
+  if (volume.count_of_issues != null) {
+    stats.push({ label: tm.stat_issues, value: String(volume.count_of_issues) });
+  }
+
+  const description = volume.description
+    ? stripHtml(volume.description)
+    : volume.deck ?? undefined;
+
+  const characters: MediaCharacter[] = volume.character_credits.map(c => ({
+    id: `character:co:${c.id}`,
+    name: c.name,
+    image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
+  }));
+
+  const conceptNames = volume.concept_credits.map(c => c.name);
+  const { core, tags } = unifyGenres(conceptNames);
+  const genreDots    = core.join(' · ') || undefined;
+  const genreTagDots = tags.join(' · ') || undefined;
+
+  const authors: MediaAuthor[] = volume.person_credits.map(p => ({
+    external_id: `author:comicvine:${p.id}`,
+    name: p.name,
+    role: p.role ?? undefined,
+    image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
+    url: `/author?id=author:comicvine:${p.id}`,
+  }));
+  const staff = authorsToStaff(authors);
+
+  // Namespaced under "comicvine:" — ComicVine's publisher ids are an
+  // independent numbering space from IGDB/AniList/TMDB's own company ids.
+  const companies: MediaCompany[] | undefined = volume.publisher?.name
+    ? [{
+        external_id: `company:comicvine:${volume.publisher.id ?? volume.publisher.name}`,
+        name: volume.publisher.name,
+        logo_url: null,
+        role: 'publisher',
+      }]
+    : undefined;
+
+  // Prefer the real first/last issue cover dates (resolved by the Rust side
+  // with two lightweight extra requests) over start_year alone, so the badge
+  // reads like a proper "Ene 2012 - Oct 2013" range instead of just a year.
+  const startParts = parseFlexibleDate(volume.first_issue_cover_date) ?? (volume.start_year ? { year: parseInt(volume.start_year, 10) } : null);
+  const endParts = parseFlexibleDate(volume.last_issue_cover_date);
+  const startFmt = startParts ? formatDateParts(startParts) : undefined;
+  const endFmt = endParts ? formatDateParts(endParts) : undefined;
+  const dateBadge = startFmt
+    ? (endFmt && endFmt !== startFmt ? `${startFmt} - ${endFmt}` : startFmt)
+    : undefined;
+
+  return {
+    externalId,
+    type: 'comic',
+    titleMain:    volume.name,
+    titleNative:  undefined,
+    titleEnglish: undefined,
+    cover:        volume.image?.medium_url ?? volume.image?.small_url ?? undefined,
+    bannerImage:  undefined,
+    bannerColor:  'linear-gradient(135deg, #1a1a2e22, #2a1a3e44)',
+    status:       canonicalizeAlwaysFinished(),
+    statusLabel:  undefined,
+    statusClass:  '',
+    genreDots,
+    genreTagDots,
+    metaLines:    volume.publisher?.name ? [volume.publisher.name] : [],
+    dateBadge,
+    description,
+    stats,
+    characters,
+    staff,
+    relations:    [],
+    progressStatus: 'reading',
+    progressLabel:  getT().profile.status_reading,
+    authors,
+    companies,
+    totalCount:   volume.count_of_issues ?? undefined,
+    source:       'comicvine',
+    sourceUrl:    volume.site_detail_url ?? undefined,
+    releaseYear:  startParts?.year ?? undefined,
+    releaseMonth: startParts?.month ?? undefined,
+    releaseDay:   startParts?.day ?? undefined,
+  };
+}

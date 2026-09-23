@@ -28,6 +28,8 @@
     "dialog:allow-open",
     "dialog:default",
     "allow-all-commands",
+    "allow-player-commands",
+    "allow-toast-commands",
     "opener:default",
     "opener:allow-open-url",
     "notification:default"

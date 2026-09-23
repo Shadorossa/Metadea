@@ -385,6 +385,12 @@ pub async fn get_all_media_relations(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<DbMediaRelation>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_all_media_relations(&conn)
+}
+
+pub(crate) fn load_all_media_relations(
+    conn: &rusqlite::Connection,
+) -> Result<Vec<DbMediaRelation>, String> {
     let mut stmt = conn
         .prepare(
             // ORDER BY mr.rowid — same convention as get_media_relations.
@@ -424,6 +430,198 @@ pub async fn get_all_media_relations(
         .collect();
 
     Ok(rows)
+}
+
+// Scoped counterpart of get_all_media_relations: only edges touching one of
+// the given ids (as owner OR related side), so the profile's saga/bundle
+// grouping can ask for the library's own ids instead of every relation in
+// the catalog. exclude_types drops relation kinds the caller never groups
+// by — RECOMMENDATION is the big one: it fans out to ~10 edges per work and
+// no grouping/stats code reads it. Chunked over the id list so a large
+// library stays under SQLite's bound-variable cap, and run as two passes
+// per chunk (owner side, related side) rather than one `a IN (..) OR b IN
+// (..)` predicate: the planner answers that OR with a full scan of the PK
+// index, while each single-side IN is an index search (PK for the owner
+// side, idx_media_relations_related for the other). The results are merged
+// and deduplicated by (owner, related) — an edge whose both sides are in
+// the set matches from both passes — then re-sorted by rowid to keep
+// get_all_media_relations' curated order.
+pub(crate) fn load_media_relations_for_ids(
+    conn: &rusqlite::Connection,
+    external_ids: &[String],
+    exclude_types: Option<&[String]>,
+) -> Result<Vec<DbMediaRelation>, String> {
+    if external_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let excluded: Vec<String> = exclude_types
+        .unwrap_or(&[])
+        .iter()
+        .map(|t| t.trim().to_uppercase())
+        .filter(|t| !t.is_empty())
+        .collect();
+
+    let mut seen: HashSet<(String, String)> = HashSet::new();
+    let mut rows: Vec<(i64, DbMediaRelation)> = Vec::new();
+    for chunk in external_ids.chunks(crate::db::SQL_IN_CHUNK) {
+    for side in ["mr.media_external_id", "mr.related_media_external_id"] {
+        let sql = scoped_relations_sql(side, chunk.len(), excluded.len());
+        let mut stmt = conn.prepare(&sql).str_err()?;
+        let params = rusqlite::params_from_iter(chunk.iter().chain(excluded.iter()));
+        let chunk_rows = stmt
+            .query_map(params, |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    DbMediaRelation {
+                        media_external_id: row.get(1)?,
+                        related_media_external_id: row.get(2)?,
+                        relation_type: row.get(3)?,
+                        type_label: row.get(4)?,
+                        title: row.get::<_, Option<String>>(5)?.unwrap_or_default(),
+                        cover: row.get(6)?,
+                        format: None,
+                        release_day: row.get(7)?,
+                        release_month: row.get(8)?,
+                        release_year: row.get(9)?,
+                    },
+                ))
+            })
+            .str_err()?
+            .filter_map(|r| r.ok());
+        for (rowid, rel) in chunk_rows {
+            let key = (
+                rel.media_external_id.clone().unwrap_or_default(),
+                rel.related_media_external_id.clone(),
+            );
+            if seen.insert(key) {
+                rows.push((rowid, rel));
+            }
+        }
+    }
+    }
+    rows.sort_by_key(|(rowid, _)| *rowid);
+    Ok(rows.into_iter().map(|(_, rel)| rel).collect())
+}
+
+fn scoped_relations_sql(side_column: &str, id_count: usize, excluded_count: usize) -> String {
+    let ids = crate::db::sql_placeholders(id_count);
+    let exclude_clause = if excluded_count == 0 {
+        String::new()
+    } else {
+        format!(
+            " AND UPPER(mr.relation_type) NOT IN ({})",
+            crate::db::sql_placeholders(excluded_count)
+        )
+    };
+    format!(
+        "SELECT mr.rowid, mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label,
+                mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
+         FROM media_relations mr
+         JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
+         JOIN visible_media_catalog owner ON owner.external_id = mr.media_external_id
+         WHERE {side_column} IN ({ids})
+           AND UPPER(COALESCE(mc.format, '')) <> 'SUMMARY'{exclude_clause}"
+    )
+}
+
+#[cfg(test)]
+mod scoped_relation_tests {
+    use super::*;
+
+    fn seed(conn: &rusqlite::Connection) {
+        for ext in ["anime:1", "anime:2", "anime:3", "anime:4", "anime:9"] {
+            conn.execute(
+                "INSERT INTO media_catalog (id, external_id, type, title_main) VALUES (?1, ?1, 'anime', ?1)",
+                [ext],
+            ).unwrap();
+        }
+        for (a, b, kind) in [
+            ("anime:1", "anime:2", "SEQUEL"),
+            ("anime:2", "anime:1", "PREQUEL"),
+            ("anime:3", "anime:1", "RECOMMENDATION"),
+            ("anime:1", "anime:9", "RECOMMENDATION"),
+            ("anime:3", "anime:4", "SEQUEL"),
+        ] {
+            conn.execute(
+                "INSERT INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+                 VALUES (?1, ?2, ?3, ?3)",
+                rusqlite::params![a, b, kind],
+            ).unwrap();
+        }
+    }
+
+    fn pairs(rows: &[DbMediaRelation]) -> Vec<(String, String, String)> {
+        rows.iter()
+            .map(|r| (r.media_external_id.clone().unwrap(), r.related_media_external_id.clone(), r.relation_type.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn returns_edges_touching_either_side_in_curated_order_without_duplicates() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        seed(&conn);
+        let rows = load_media_relations_for_ids(&conn, &["anime:1".into()], None).unwrap();
+        assert_eq!(pairs(&rows), vec![
+            ("anime:1".into(), "anime:2".into(), "SEQUEL".into()),
+            ("anime:2".into(), "anime:1".into(), "PREQUEL".into()),
+            ("anime:3".into(), "anime:1".into(), "RECOMMENDATION".into()),
+            ("anime:1".into(), "anime:9".into(), "RECOMMENDATION".into()),
+        ]);
+        // Both sides in the set (possibly across chunks) still yields one row.
+        let mut many: Vec<String> = (0..crate::db::SQL_IN_CHUNK).map(|i| format!("pad:{i}")).collect();
+        many.insert(0, "anime:1".into());
+        many.push("anime:2".into());
+        let rows = load_media_relations_for_ids(&conn, &many, None).unwrap();
+        assert_eq!(rows.len(), 4);
+        assert!(load_media_relations_for_ids(&conn, &[], None).unwrap().is_empty());
+    }
+
+    #[test]
+    fn exclude_types_drops_those_kinds_case_insensitively() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        seed(&conn);
+        let rows = load_media_relations_for_ids(
+            &conn,
+            &["anime:1".into()],
+            Some(&["recommendation".to_string()]),
+        ).unwrap();
+        assert_eq!(pairs(&rows).len(), 2);
+        assert!(rows.iter().all(|r| r.relation_type != "RECOMMENDATION"));
+    }
+
+    #[test]
+    fn scoped_query_uses_indexes_on_both_sides_instead_of_scanning() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        seed(&conn);
+        for (side, expected_index) in [
+            ("mr.media_external_id", "sqlite_autoindex_media_relations_1"),
+            ("mr.related_media_external_id", "idx_media_relations_related"),
+        ] {
+            let sql = scoped_relations_sql(side, 3, 1);
+            let mut stmt = conn.prepare(&format!("EXPLAIN QUERY PLAN {sql}")).unwrap();
+            let plan: Vec<String> = stmt
+                .query_map(rusqlite::params!["a", "b", "c", "RECOMMENDATION"], |r| r.get::<_, String>(3))
+                .unwrap()
+                .filter_map(|r| r.ok())
+                .collect();
+            let plan = plan.join("\n");
+            assert!(!plan.contains("SCAN mr"), "{side}:\n{plan}");
+            assert!(plan.contains(&format!("SEARCH mr USING INDEX {expected_index}")), "{side}:\n{plan}");
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn get_media_relations_for_ids(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_ids: Vec<String>,
+    exclude_types: Option<Vec<String>>,
+) -> Result<Vec<DbMediaRelation>, String> {
+    let conn = state.conn.lock().str_err()?;
+    load_media_relations_for_ids(&conn, &external_ids, exclude_types.as_deref())
 }
 
 // Purely local negative cache (see migration 47 in db.rs) — lets

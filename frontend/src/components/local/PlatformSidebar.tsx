@@ -1,6 +1,6 @@
 import React from 'react';
-import { getT } from '../../i18n/client';
-import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type PlatformId } from './utils/constants';
+import { getT } from '../../i18n/runtime';
+import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type PlatformId } from '../../lib/local/platforms';
 import { IconFolder } from './ui/icons';
 
 interface PlatformSidebarProps {

@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import type { CategoryId } from '../utils/constants';
+import type { CategoryId } from '../../../lib/local/platforms';
 import type { LocalGame } from '../../../lib/tauri';
-import { readLocalUrlState, writeLocalUrlState } from '../utils/urlState';
+import { readLocalUrlState, writeLocalUrlState } from '../../../lib/local/url-state';
 import { captureLocalGridScrollAnchor, clearLocalGridScrollAnchor } from './useVirtualCardGrid';
 
 // Single source of truth for "what detail panel is open" across every Local

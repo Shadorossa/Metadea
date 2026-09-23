@@ -1,0 +1,96 @@
+/* The built-in player modal (components/player/PlayerModal.tsx): a fixed
+   full-viewport panel above every other tier — the reader sits at 500 and
+   the now-playing bars at 200 — so nothing of the page shows through. The
+   native mpv surface is positioned over `.player-stage__video` by Rust, so
+   that box only has to be black and report its rectangle. In docked
+   controls mode the shell components render below it inside this panel. */
+
+.player-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #e4e4f0;
+  overflow: hidden;
+  animation: player-modal-fade-in 150ms ease;
+}
+
+@keyframes player-modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.player-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #000;
+  user-select: none;
+}
+
+.player-stage__video {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.player-stage__loading {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(228, 228, 240, 0.45);
+}
+
+/* Docked controls: the shell laid out as a normal bar under the video. */
+.player-stage--docked .player-overlay--docked {
+  position: relative;
+  inset: auto;
+  display: block;
+  flex-shrink: 0;
+  background: #0c0c14;
+}
+
+.player-overlay--docked .player-overlay__top {
+  background: none;
+  padding: 0.6rem 1rem 0;
+}
+
+.player-overlay--docked .player-overlay__bottom {
+  padding-top: 0.5rem;
+  background: none;
+}
+
+.player-overlay--docked .player-overlay__ended {
+  position: static;
+  transform: none;
+  display: inline-block;
+  margin: 0.5rem 1rem;
+}
+
+.player-overlay--docked .player-queue {
+  position: relative;
+  width: 100%;
+  max-height: 40vh;
+  border-left: 0;
+  border-top: 1px solid var(--player-panel-border);
+}
+
+.player-overlay--docked .player-toast {
+  position: static;
+  margin: 0.5rem 1rem;
+  display: inline-flex;
+}
+
+/* Main window fullscreen: the page behind must not scroll. */
+html.player-fullscreen,
+html.player-fullscreen body {
+  overflow: hidden;
+}

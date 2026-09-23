@@ -1,29 +1,35 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { memo, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { IconEye, IconExternalLink, IconPencil, IconTrash } from '../local/ui/icons';
 
 interface Props {
   id: string;
+  // Handed to the callbacks when it differs from the displayed `id` (e.g. an
+  // episode group shows "<id> (12 eps)"). Defaults to `id`.
+  actionId?: string;
   title: string;
   cover: string | null | undefined;
   editLabel: string;
   deleteLabel: string;
   openMediaLabel: string;
   viewLabel?: string;
-  onEdit: () => void;
-  onDelete?: () => void;
-  onView?: () => void;
+  onEdit: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onView?: (id: string) => void;
   mediaPageUrl?: string;
   editDisabled?: boolean;
   blocked?: boolean;
 }
 
 // Shared card shape for catalog entries. The cover opens the editor on click;
-// its context menu contains edit, navigation, and delete actions.
-export function CatalogEntryCard({
-  id, title, cover, editLabel, deleteLabel, openMediaLabel, onEdit, onDelete,
+// its context menu contains edit, navigation, and delete actions. Memoised —
+// it is rendered over paged catalog lists, so parents pass stable, id-based
+// callbacks rather than a fresh closure per row.
+export const CatalogEntryCard = memo(function CatalogEntryCard({
+  id, actionId, title, cover, editLabel, deleteLabel, openMediaLabel, onEdit, onDelete,
   mediaPageUrl, viewLabel, onView, editDisabled, blocked,
 }: Props) {
+  const targetId = actionId ?? id;
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -81,7 +87,7 @@ export function CatalogEntryCard({
           type="button"
           role="menuitem"
           className="catalog-admin-context-menu-item"
-          onClick={() => { setMenuPosition(null); onView(); }}
+          onClick={() => { setMenuPosition(null); onView(targetId); }}
         >
           <IconEye size={15} />
           <span>{viewLabel}</span>
@@ -92,7 +98,7 @@ export function CatalogEntryCard({
         role="menuitem"
         className="catalog-admin-context-menu-item"
         disabled={editDisabled}
-        onClick={() => { setMenuPosition(null); onEdit(); }}
+        onClick={() => { setMenuPosition(null); onEdit(targetId); }}
       >
         <IconPencil size={15} />
         <span>{editLabel}</span>
@@ -112,7 +118,7 @@ export function CatalogEntryCard({
         type="button"
         role="menuitem"
         className="catalog-admin-context-menu-item catalog-admin-context-menu-item--delete"
-        onClick={() => { setMenuPosition(null); onDelete(); }}
+        onClick={() => { setMenuPosition(null); onDelete(targetId); }}
       >
         <IconTrash size={15} />
         <span>{deleteLabel}</span>
@@ -130,7 +136,7 @@ export function CatalogEntryCard({
         aria-label={`${editLabel}: ${title}`}
         title={editLabel}
         disabled={editDisabled}
-        onClick={onEdit}
+        onClick={() => onEdit(targetId)}
         onContextMenu={openContextMenu}
         onKeyDown={event => {
           if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
@@ -152,4 +158,4 @@ export function CatalogEntryCard({
     {menu}
     </>
   );
-}
+});

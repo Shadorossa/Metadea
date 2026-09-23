@@ -1,14 +1,15 @@
 // Feed de actividad reciente en Home (amigos y general) con datos en cache.
 import { useEffect, useMemo, useState, memo } from 'react';
+import { mapById } from '../../lib/shared/collections/batch';
 import { getCachedActivityFeed, getCachedGeneralActivityFeed, type ActivityFeedEntry } from '../../lib/social/activity-feed';
 import { getCatalogEntry, type MediaCatalogEntry } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
-import { typeIconMap } from '../../lib/shared/icon-strings';
-import { getTypeLabel } from '../../lib/constants/media';
+import { getT } from '../../i18n/runtime';
+import { typeIconMap } from '../../lib/dom/icon-strings';
+import { getTypeLabel } from '../../lib/media/media-types';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
-import { formatLocalDateLong } from '../../lib/shared/formatDate';
-import { toSmallCover } from '../../lib/shared/small-cover';
-import { interpolate } from '../../lib/shared/interpolate';
+import { formatLocalDateLong } from '../../lib/shared/text/format-date';
+import { toSmallCover } from '../../lib/media/small-cover';
+import { interpolate } from '../../lib/shared/text/interpolate';
 
 type FeedTab = 'friends' | 'general';
 
@@ -72,7 +73,7 @@ export function ActivityFeedSection({ title, i18n }: { title: string; i18n?: any
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all(uniqueIds.map(async id => [id, await getCatalogEntry(id).catch(() => null)] as const))
+    mapById(uniqueIds, id => getCatalogEntry(id).catch(() => null))
       .then(results => {
         if (cancelled) return;
         const map: Record<string, MediaCatalogEntry> = {};

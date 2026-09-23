@@ -72,10 +72,8 @@ pub async fn get_comic_bookmarks(
     ).str_err()?;
     let rows = stmt.query_map(rusqlite::params![external_id, episode_number], |r| r.get(0)).str_err()?;
     let mut out = Vec::new();
-    for row in rows {
-        if let Ok(page) = row {
-            out.push(page);
-        }
+    for page in rows.flatten() {
+        out.push(page);
     }
     Ok(out)
 }

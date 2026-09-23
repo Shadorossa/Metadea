@@ -1,0 +1,104 @@
+/* PrEditorGeneralSection: section groups, labeled rows, asset rows, source mapping. Split verbatim from pr.css. */
+/* Sections group related fields with breathing room between them, instead
+   of every field in the form competing for attention in one dense grid. */
+.pr-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Scoped to .pr-editor-col (General tab's two vertical stacks) - inside
+   .pr-editor-relations-grid the four sections are grid cells, not a single
+   vertical stack, so this divider-between-siblings look would misalign
+   there instead of just separating one section from the next. */
+.pr-editor-col .pr-editor-section+.pr-editor-section {
+  margin-top: 2rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.pr-editor-col .pr-editor-section+.pr-editor-section.pr-editor-section--release-progress {
+  border-top: 0;
+}
+
+.pr-editor-col .pr-editor-section+.pr-editor-section.pr-editor-section--shop-links {
+  border-top: 0;
+}
+
+.pr-editor-col .pr-editor-section+.pr-editor-section.pr-editor-section--classification {
+  border-top: 0;
+}
+
+.pr-editor-shop-links-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.pr-editor-labeled-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.pr-editor-labeled-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pr-editor-labeled-content > .pr-editor-field {
+  width: 100%;
+}
+
+.pr-editor-shop-links-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pr-editor-assets-box {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pr-editor-asset-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.pr-editor-asset-row > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.pr-editor-asset-row > .pr-editor-vertical-label {
+  color: var(--text-main);
+}
+
+.pr-editor-banner-section .pr-editor-field > label {
+  display: none;
+}
+
+.pr-editor-section-title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.pr-editor-source-mapping-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.pr-editor-source-mapping-row > span {
+  flex: 1 1 auto;
+  min-width: 10rem;
+}

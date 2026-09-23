@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { MetaResolver } from '../../../lib/media/sagaGrouping';
-import type { DragHandlers } from '../hooks/useDragReorder';
+import type { MetaResolver } from '../../../lib/media/saga/saga-grouping';
+import { SortableItem, SortableList, type SortableListActions } from '../../shared/SortableList';
 
 interface Props {
   externalId: string;
   sagaOrder: string[];
   sagaGroups: Record<string, string>;
-  draggedIndex: number | null;
-  dragHandlers: (index: number) => DragHandlers;
-  groupTargetIndex: number | null;
-  groupDropReady: boolean;
+  sortable: SortableListActions;
   onRemove: (id: string) => void;
   onUngroup: (ids: string[]) => void;
   onEditWork?: (id: string) => void;
@@ -19,9 +16,10 @@ interface Props {
 
 // Chronological saga timeline. The current work is highlighted and remains
 // fixed in the chain; other entries can still be reordered or removed.
+// Dropping after dwelling on another work (or pressing G while moving it
+// with the keyboard) groups the two as alternate versions.
 export function PrEditorSagaOrderSection({
-  externalId, sagaOrder, sagaGroups,
-  draggedIndex, dragHandlers, groupTargetIndex, groupDropReady, onRemove, onUngroup, onEditWork, resolveMeta,
+  externalId, sagaOrder, sagaGroups, sortable, onRemove, onUngroup, onEditWork, resolveMeta,
 }: Props) {
   const currentItemRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -82,71 +80,82 @@ export function PrEditorSagaOrderSection({
   }, [contextMenu]);
 
   const renderItem = (id: string, nextUnitIsGroup = false) => {
-    const index = sagaOrder.indexOf(id);
     const meta = resolveMeta(id);
     const isCurrent = id === externalId;
-    const isGroupingTarget = groupTargetIndex === index;
 
     return (
-      <div
-        key={id}
-        ref={isCurrent ? currentItemRef : undefined}
-        data-saga-timeline-item
-        data-next-group={nextUnitIsGroup || undefined}
-        className={`pr-editor-saga-timeline-item${isCurrent ? ' is-current' : ''}${isGroupingTarget ? ` is-grouping${groupDropReady ? ' is-group-drop-ready' : ''}` : ''}`}
-      >
-        <span className="pr-editor-saga-timeline-year">{meta.release_year ?? ''}</span>
-        <span className="pr-editor-saga-timeline-node" aria-label={isCurrent ? 'Obra actual' : undefined} />
-        <div
-        title={`${meta.title || id} · Mantén 1 s sobre otra obra para agrupar versiones alternativas`}
-        className={`pr-editor-media-card${isCurrent ? ' pr-editor-media-card--current' : ''}${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-        onContextMenu={event => {
-          if (!onEditWork || isCurrent) return;
-          event.preventDefault();
-          event.stopPropagation();
-          setContextMenu({ id, x: event.clientX, y: event.clientY });
-        }}
-        {...dragHandlers(index)}
-        >
-        <div className="pr-editor-media-card-cover">
-          {meta.cover
-            ? <img className="cover-image-fill" src={meta.cover} alt="" draggable={false} />
-            : <div className="pr-editor-media-card-placeholder" />}
-          <div className="pr-editor-saga-timeline-title" title={meta.title || id}>
-            {meta.title || id}
+      <SortableItem key={id} id={id}>
+        {({ handleProps, isDragging, groupState }) => (
+          <div
+            ref={isCurrent ? currentItemRef : undefined}
+            data-saga-timeline-item
+            data-next-group={nextUnitIsGroup || undefined}
+            className={`pr-editor-saga-timeline-item${isCurrent ? ' is-current' : ''}${groupState !== 'none' ? ` is-grouping${groupState === 'ready' ? ' is-group-drop-ready' : ''}` : ''}`}
+          >
+            <span className="pr-editor-saga-timeline-year">{meta.release_year ?? ''}</span>
+            <span className="pr-editor-saga-timeline-node" aria-label={isCurrent ? 'Obra actual' : undefined} />
+            <div
+              title={`${meta.title || id} · Mantén 1 s sobre otra obra para agrupar versiones alternativas`}
+              className={`pr-editor-media-card${isCurrent ? ' pr-editor-media-card--current' : ''}${isDragging ? ' pr-editor-media-card--dragging' : ''}`}
+              onContextMenu={event => {
+                if (!onEditWork || isCurrent) return;
+                event.preventDefault();
+                event.stopPropagation();
+                setContextMenu({ id, x: event.clientX, y: event.clientY });
+              }}
+              {...handleProps}
+            >
+              <div className="pr-editor-media-card-cover">
+                {meta.cover
+                  ? <img className="cover-image-fill" src={meta.cover} alt="" draggable={false} />
+                  : <div className="pr-editor-media-card-placeholder" />}
+                <div className="pr-editor-saga-timeline-title" title={meta.title || id}>
+                  {meta.title || id}
+                </div>
+                {!isCurrent && (
+                  <button type="button" className="pr-editor-media-card-remove" onClick={() => onRemove(id)}>
+                    x
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          {!isCurrent && (
-              <button type="button" className="pr-editor-media-card-remove" onClick={() => onRemove(id)}>
-                x
-              </button>
-            )}
-          </div>
-      </div>
-      </div>
+        )}
+      </SortableItem>
     );
   };
 
   return (
     <div className="pr-editor-subsection pr-editor-subsection--saga">
-      <div ref={timelineRef} className="pr-editor-saga-timeline" aria-label="Orden cronológico de la saga">
-        {timelineUnits.map((unit, unitIndex) => {
-          const nextUnitIsGroup = timelineUnits[unitIndex + 1]?.ids.length > 1;
-          return unit.ids.length > 1 ? (
-          <div key={unit.key} className="pr-editor-saga-timeline-group" aria-label="Versiones alternativas">
-            <button
-              type="button"
-              className="pr-editor-saga-timeline-ungroup"
-              title="Eliminar este conjunto de alternativas"
-              aria-label="Eliminar este conjunto de alternativas"
-              onClick={() => onUngroup(unit.ids)}
-            >
-              ×
-            </button>
-            {unit.ids.map((id, index) => renderItem(id, index === unit.ids.length - 1 && nextUnitIsGroup))}
-          </div>
-          ) : renderItem(unit.ids[0], nextUnitIsGroup);
-        })}
-      </div>
+      <SortableList
+        ids={sagaOrder}
+        onReorder={sortable.onReorder}
+        onGroup={sortable.onGroup}
+        canGroup={sortable.canGroup}
+        groupTrigger="dwell"
+        dwellMs={1000}
+        getLabel={id => resolveMeta(id).title || id}
+      >
+        <div ref={timelineRef} className="pr-editor-saga-timeline" aria-label="Orden cronológico de la saga">
+          {timelineUnits.map((unit, unitIndex) => {
+            const nextUnitIsGroup = timelineUnits[unitIndex + 1]?.ids.length > 1;
+            return unit.ids.length > 1 ? (
+            <div key={unit.key} className="pr-editor-saga-timeline-group" aria-label="Versiones alternativas">
+              <button
+                type="button"
+                className="pr-editor-saga-timeline-ungroup"
+                title="Eliminar este conjunto de alternativas"
+                aria-label="Eliminar este conjunto de alternativas"
+                onClick={() => onUngroup(unit.ids)}
+              >
+                ×
+              </button>
+              {unit.ids.map((id, index) => renderItem(id, index === unit.ids.length - 1 && nextUnitIsGroup))}
+            </div>
+            ) : renderItem(unit.ids[0], nextUnitIsGroup);
+          })}
+        </div>
+      </SortableList>
       {contextMenu && onEditWork && createPortal(
         <div
           className="pr-editor-saga-context-menu"

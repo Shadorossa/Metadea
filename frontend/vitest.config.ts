@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     environment: 'node',
     coverage: {
       provider: 'v8',
@@ -15,7 +15,18 @@ export default defineConfig({
         'src/components/media/media-page/proposal-session-merge.ts',
         'src/components/media/media-editor/media-editor-helpers.ts',
         'src/components/media/media-editor/media-editor-derived.ts',
-        'src/lib/media/sagaGrouping.ts',
+        'src/components/media/pr-editor/pr-editor-change-summary.ts',
+        'src/lib/github/proposal-diff.ts',
+        'src/lib/media/saga/saga-grouping.ts',
+        'src/lib/local/folder-match.ts',
+        'src/lib/local/season-resolve.ts',
+        'src/lib/local/catalog-game-linking.ts',
+        'src/lib/local/formatters.ts',
+        'src/lib/local/status-badge.ts',
+        'src/lib/player/queue.ts',
+        'src/lib/player/progress-rules.ts',
+        'src/lib/player/keymap.ts',
+        'src/lib/player/format-time.ts',
       ],
       thresholds: {
         lines: 80,

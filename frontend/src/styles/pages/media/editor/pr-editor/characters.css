@@ -1,0 +1,630 @@
+/* PrEditorCharactersSection and CharacterPrEditorModal: character name rows, voice actors, merges, appearance/role groups. Split verbatim from pr.css. */
+.pr-editor-char-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  grid-auto-flow: dense;
+}
+
+.pr-editor-char-row--wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 640px) {
+  .pr-editor-char-row--wide {
+    grid-column: 1;
+  }
+}
+
+.pr-editor-char-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  background: var(--bg-elevated);
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.pr-editor-char-input {
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-main) !important;
+  border-radius: 0 !important;
+  padding: 0.2rem 0.3rem !important;
+  font-size: 0.8rem !important;
+  line-height: 1.4 !important;
+  font-family: inherit !important;
+  box-shadow: none !important;
+  outline: none !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  align-self: center;
+}
+
+.pr-editor-char-row .pr-editor-char-input {
+  flex: 0 0 105px !important;
+  min-width: 75px !important;
+  max-width: 130px;
+  width: auto !important;
+  font-weight: 600 !important;
+  align-self: center;
+}
+
+.pr-editor-char-input:focus {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.pr-editor-char-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-color);
+  opacity: 0.5;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.pr-editor-char-row>.pr-editor-richtext-wrap {
+  flex: 1 1 0%;
+  min-width: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+}
+
+.pr-editor-char-richtext {
+  min-height: 0;
+  max-height: 6rem;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border-bottom: none;
+  width: 100%;
+}
+
+.pr-editor-char-richtext p {
+  margin: 0 !important;
+}
+
+.pr-editor-char-richtext small,
+.pr-editor-char-richtext sup {
+  font-size: 0.76em;
+  color: var(--text-muted);
+  font-weight: 500;
+  vertical-align: baseline;
+}
+
+.pr-editor-char-richtext::-webkit-scrollbar {
+  display: none;
+}
+
+.pr-editor-char-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pr-editor-char-remove:hover {
+  color: var(--color-error);
+}
+
+.pr-editor-va-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.55rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: relative;
+  min-width: 0;
+  transition: border-color 120ms ease;
+}
+
+.pr-editor-va-card:hover {
+  border-color: var(--accent-border);
+}
+
+.pr-editor-va-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.2rem;
+  margin-top: 0.25rem;
+  user-select: none;
+  transition: border-color 120ms ease;
+}
+
+.pr-editor-va-stepper:hover {
+  border-color: var(--accent);
+}
+
+.pr-editor-va-stepper-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+  transition: all 120ms ease;
+}
+
+.pr-editor-va-stepper-btn:hover {
+  background: var(--accent-soft);
+  color: var(--text-main);
+}
+
+.pr-editor-va-stepper-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  text-align: center;
+  flex: 1;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pr-editor-va-stepper-label:hover {
+  color: var(--text-main);
+}
+
+.pr-editor-appearance-merges {
+  margin-top: 1.1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.pr-editor-appearance-merge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 2.3rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pr-editor-appearance-merge-work {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.pr-editor-appearance-merge-label {
+  min-width: 0;
+  max-width: 15rem;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-label.is-empty {
+  color: var(--text-dim);
+}
+
+.pr-editor-appearance-merge-btn,
+.pr-editor-appearance-merge-clear {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  padding: 0.15rem 0;
+  white-space: nowrap;
+}
+
+.pr-editor-appearance-merge-btn:hover,
+.pr-editor-appearance-merge-clear:hover {
+  color: var(--text-main);
+  text-decoration: underline;
+}
+
+.pr-editor-appearance-merge-clear {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.pr-editor-character-merges {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.pr-editor-merge-cast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pr-editor-merge-info {
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.pr-editor-merge-info:hover,
+.pr-editor-merge-info:focus-visible {
+  color: var(--accent);
+}
+
+.pr-editor-merge-info:hover .info-indicator,
+.pr-editor-merge-info:focus-visible .info-indicator {
+  color: currentColor;
+}
+
+.pr-editor-character-merge-add-row {
+  gap: 0.35rem;
+}
+
+.pr-editor-merge-tooltip {
+  position: fixed;
+  z-index: 10002;
+  width: min(21rem, calc(100vw - 1.5rem));
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  max-height: calc(100vh - 1.5rem);
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.pr-editor-character-merge-list,
+.pr-editor-merge-cast-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.pr-editor-character-merge-item,
+.pr-editor-merge-cast-option {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-main);
+  text-align: left;
+}
+
+.pr-editor-character-merge-item > img,
+.pr-editor-character-merge-placeholder,
+.pr-editor-merge-cast-option > img,
+.pr-editor-merge-cast-option > .pr-editor-character-merge-placeholder {
+  width: 2.5rem;
+  height: 2.9rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  background: var(--bg-elevated);
+}
+
+.pr-editor-character-merge-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.pr-editor-character-merge-name,
+.pr-editor-merge-cast-option > span:last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.pr-editor-character-merge-name strong,
+.pr-editor-merge-cast-option strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-character-merge-name small,
+.pr-editor-merge-cast-option small,
+.pr-editor-merge-cast-header small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-character-merge-item > button,
+.pr-editor-merge-cast-header > button {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.05rem;
+}
+
+.pr-editor-character-merge-item > button:hover,
+.pr-editor-merge-cast-header > button:hover {
+  color: var(--text-main);
+}
+
+.pr-editor-character-merges-empty {
+  padding: 1rem 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.pr-editor-merge-cast-overlay {
+  z-index: 10001;
+}
+
+.pr-editor-merge-cast-modal {
+  width: min(38rem, calc(100vw - 2rem));
+  max-height: min(80vh, 48rem);
+  overflow: auto;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.55);
+}
+
+.pr-editor-merge-cast-header {
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pr-editor-merge-cast-header > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.pr-editor-merge-cast-option {
+  width: 100%;
+  cursor: pointer;
+}
+
+.pr-editor-merge-cast-option:hover {
+  border-color: var(--accent);
+  background: rgba(192, 132, 252, 0.09);
+}
+
+
+
+.pr-editor-character-appearance-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.pr-editor-character-appearance-groups--paginated {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1.25rem;
+}
+
+.pr-editor-character-appearance-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.pr-editor-character-appearance-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  border-bottom: none;
+  padding-bottom: 0 !important;
+}
+
+[data-theme] h3.pr-editor-character-appearance-title {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+.pr-editor-character-appearance-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--text-main);
+}
+
+.pr-editor-character-appearance-title > span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.pr-editor-character-appearance-group .pr-editor-media-group-cards,
+.pr-editor-media-character-role-group .pr-editor-characters-grid {
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+}
+
+.pr-editor-media-character-role-groups {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+}
+
+.pr-editor-media-character-role-group {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pr-editor-media-character-role-group .pr-editor-character-appearance-header {
+  flex: 0 0 auto;
+  margin-bottom: 0.25rem;
+}
+
+.pr-editor-media-character-role-group .pr-editor-characters-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+}
+
+.pr-editor-media-character-role-group .pr-editor-media-card {
+  min-height: 0;
+  gap: 0.2rem;
+}
+
+.pr-editor-media-character-role-group .pr-editor-media-card-cover {
+  flex: 1 1 auto;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.pr-editor-media-character-role-group .pr-editor-media-card-title {
+  height: 2.5em;
+  min-height: 2.5em;
+}
+
+.pr-editor-media-character-role-group .pr-editor-media-card-remove {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.pr-editor-media-character-role-group .pr-editor-media-card:hover .pr-editor-media-card-remove,
+.pr-editor-media-character-role-group .pr-editor-media-card:focus-within .pr-editor-media-card-remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pr-editor-character-role-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pr-editor-character-role-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pr-editor-character-role-action:hover {
+  color: var(--text-main);
+}
+
+.pr-editor-character-role-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.pr-editor-character-appearance-year {
+  margin-top: -0.25rem;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.pr-editor-character-add-btn {
+  display: block;
+  margin: 0.75rem auto 0;
+}
+
+@media (max-width: 760px) {
+  .pr-editor-character-appearance-groups:not(.pr-editor-media-character-role-groups) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Wider variant for sections that span the modal's full body width instead
+   of sharing the narrow 3-column layout (e.g. character editor's
+   Apariciones) - same card, more columns since there's room for them. */
+.pr-editor-characters-grid {
+  display: grid;
+  /* 6 made sense when this was squeezed into the left column of a 3-column
+     grid - now that Personajes is its own full-width tab, 12 fits without
+     feeling sparse. */
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+  /* Without this, a container taller than its one row of content (this used
+     to carry a fixed min-height to keep the pagination row from jumping
+     between a 1-row and a 2-row page) stretches that row to fill it, and
+     since a card's bottom control has margin-top:auto, every card's
+     role dropdown got pushed to the bottom of that stretched row - a big
+     empty gap under the name instead of sitting right below it. */
+  align-content: start;
+}

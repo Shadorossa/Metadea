@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { readRoutes, writeRoutes, pickFolder, scanFolderContents, type LocalFolderEntry } from '../../../lib/tauri';
-import type { CategoryId } from '../utils/constants';
+import type { CategoryId } from '../../../lib/local/platforms';
 
 export function useCategoryRoutes(activeCategory: CategoryId) {
   const [routes,       setRoutes]       = useState<Record<string, string>>({});

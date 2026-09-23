@@ -1,0 +1,23 @@
+---
+// The transparent `player-overlay` Tauri window that floats over the video
+// (src-tauri/src/player/window.rs) and carries every control.
+import '../styles/player-overlay.css';
+import '../styles/player-overlay-panels.css';
+import { getLang, useTranslations } from '../i18n/index';
+import { PlayerShell } from '../components/player/PlayerShell';
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{t.player.window_title} — Metadea</title>
+  </head>
+  <body class="player-overlay-body">
+    <PlayerShell client:only="react" />
+  </body>
+</html>

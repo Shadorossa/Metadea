@@ -93,6 +93,8 @@ fn row_to_character(row: &rusqlite::Row<'_>) -> rusqlite::Result<CharacterEntry>
     })
 }
 
+// Arity is dictated by the frontend `invoke("save_character", …)` contract.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn save_character(
     app_handle: tauri::AppHandle,
@@ -181,15 +183,46 @@ pub async fn get_all_characters(
 ) -> Result<Vec<CharacterEntry>, String> {
     let mut rows: Vec<CharacterEntry> = {
         let conn = state.conn.lock().str_err()?;
-        let mut stmt = conn.prepare(SELECT_CHARACTER).str_err()?;
-        let collected = stmt.query_map([], row_to_character)
-            .str_err()?
-            .filter_map(|r| r.ok())
-            .collect();
-        collected
+        load_all_characters(&conn)?
     };
     let data_dir = image_data_dir(&app_handle)?;
     for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
+    Ok(rows)
+}
+
+pub(crate) fn load_all_characters(conn: &rusqlite::Connection) -> Result<Vec<CharacterEntry>, String> {
+    let mut stmt = conn.prepare(SELECT_CHARACTER).str_err()?;
+    let collected = stmt.query_map([], row_to_character)
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(collected)
+}
+
+// Same rows as get_all_characters, but image_url is the portrait's file
+// path (or its remote URL, untouched) instead of an inlined base64 data
+// URL — see image_storage::resolve_reference_path. Callers wrap it with
+// wrapAssetUrl before using it as an <img src>.
+pub(crate) fn resolve_character_images_light(
+    data_dir: &std::path::Path,
+    rows: &mut [CharacterEntry],
+) -> Result<(), String> {
+    for row in rows {
+        row.image_url = crate::image_storage::resolve_image_path_value(data_dir, row.image_url.take())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_all_characters_light(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<CharacterEntry>, String> {
+    let mut rows: Vec<CharacterEntry> = {
+        let conn = state.conn.lock().str_err()?;
+        load_all_characters(&conn)?
+    };
+    resolve_character_images_light(&image_data_dir(&app_handle)?, &mut rows)?;
     Ok(rows)
 }
 

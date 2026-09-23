@@ -45,7 +45,7 @@
   display: flex;
   flex-direction: column;
   min-width: 190px;
-  background: var(--bg-elevated, #1b1917);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -84,8 +84,8 @@
 
 [data-theme="newspaper-dark"] .local-media-detail-locate-menu,
 [data-theme="newspaper-dark"] .locate-preview-modal {
-  border: 3px double var(--border-color) !important;
-  border-radius: 0 !important;
+  border: 3px double var(--border-color);
+  border-radius: 0;
 }
 
 
@@ -108,7 +108,7 @@
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  background: var(--bg-elevated, #1b1917);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1.5rem;
@@ -135,7 +135,7 @@
   flex-direction: column;
   gap: 0.3rem;
   padding: 0.5rem;
-  background: var(--bg-primary, #12110f);
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
 }
@@ -161,7 +161,7 @@
 }
 
 .locate-preview-old {
-  color: var(--text-dim, #666);
+  color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -169,7 +169,7 @@
 }
 
 .locate-preview-arrow {
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
   flex-shrink: 0;
 }
 
@@ -247,11 +247,11 @@
   padding: 0;
   color: var(--text-dim);
   cursor: pointer;
-  transition: color var(--anim-fast, 120ms);
+  transition: color var(--anim-fast);
 }
 
 .local-media-neighbors-arrow:hover:not(:disabled) {
-  color: var(--text-primary);
+  color: var(--text-main);
 }
 
 .local-media-neighbors-arrow:disabled {
@@ -292,8 +292,8 @@
   border-radius: var(--radius-sm);
   overflow: hidden;
   object-fit: cover;
-  background: var(--bg-primary, #12110f);
-  transition: opacity var(--anim-fast, 120ms);
+  background: var(--bg-primary);
+  transition: opacity var(--anim-fast);
 }
 
 .local-media-neighbor-link:hover .local-media-neighbor-cover {
@@ -313,8 +313,8 @@
 }
 
 [data-theme="newspaper-dark"] .local-media-neighbor-cover {
-  border: 2px double var(--border-color) !important;
-  border-radius: 0 !important;
+  border: 2px double var(--border-color);
+  border-radius: 0;
 }
 
 [data-theme="newspaper-dark"] .local-media-neighbor-link:hover .local-media-neighbor-cover {
@@ -397,7 +397,7 @@
   flex-shrink: 0;
   width: 14px;
   height: 14px;
-  color: var(--color-completed, var(--accent));
+  color: var(--color-completed);
 }
 
 /* Truncates instead of wrapping/pushing the date out of the row now that a

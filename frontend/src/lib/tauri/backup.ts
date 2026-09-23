@@ -1,4 +1,4 @@
-import { tauriCmd, invoke } from './core';
+import { tauriCmd, invoke } from './bridge';
 
 export function pickBackupFile(): Promise<string | null> {
   return tauriCmd<string | null>('pick_backup_file', null);

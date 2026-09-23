@@ -1,6 +1,6 @@
 ---
 import '../styles/pages/screenshot-toast.css';
-import { getT } from '../i18n/client';
+import { getT } from '../i18n/runtime';
 
 const t = getT();
 ---
@@ -39,7 +39,7 @@ const t = getT();
 <script>
   import { listen } from '@tauri-apps/api/event';
   import { invoke } from '@tauri-apps/api/core';
-  import { getT } from '../i18n/client';
+  import { getT } from '../i18n/runtime';
 
   type ScreenshotToastPayload = {
     work_name: string;

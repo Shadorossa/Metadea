@@ -39,18 +39,20 @@ pub(crate) fn existing_catalog_ids(
     if ids.is_empty() {
         return Ok(HashSet::new());
     }
-    let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-    let sql = format!(
-        "SELECT external_id FROM media_catalog WHERE external_id IN ({})",
-        placeholders
-    );
-    let mut stmt = tx.prepare(&sql).str_err()?;
-    let params = rusqlite::params_from_iter(ids.iter());
-    let found = stmt
-        .query_map(params, |row| row.get::<_, String>(0))
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
+    let mut found = HashSet::new();
+    for chunk in ids.chunks(crate::db::SQL_IN_CHUNK) {
+        let sql = format!(
+            "SELECT external_id FROM media_catalog WHERE external_id IN ({})",
+            crate::db::sql_placeholders(chunk.len())
+        );
+        let mut stmt = tx.prepare(&sql).str_err()?;
+        let params = rusqlite::params_from_iter(chunk.iter());
+        found.extend(
+            stmt.query_map(params, |row| row.get::<_, String>(0))
+                .str_err()?
+                .filter_map(|r| r.ok()),
+        );
+    }
     Ok(found)
 }
 
@@ -226,7 +228,7 @@ const SELECT_ALL: &str = "
 
 // Same as SELECT_ALL but excludes blocked rows (visible_media_catalog view,
 // db.rs) - used by all normal application lookups.
-const SELECT_VISIBLE: &str = "
+pub(crate) const SELECT_VISIBLE: &str = "
     SELECT id, external_id, banners_csv, blocked_at, country_code, cover_url,
            favorites_count, format, genres_csv, genres_tag_csv,
            parent_id, platforms_csv,
@@ -237,7 +239,7 @@ const SELECT_VISIBLE: &str = "
            type, created_at, updated_at, issue_source_id, episode_source_id
     FROM visible_media_catalog";
 
-fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
+pub(crate) fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
     Ok(MediaCatalogEntry {
         id:                  row.get::<_, Option<String>>(0)?.unwrap_or_default(),
         external_id:         row.get::<_, Option<String>>(1)?.unwrap_or_default(),
@@ -544,6 +546,214 @@ pub async fn get_all_catalog_entries(
     Ok(entries)
 }
 
+// ─── Scoped, narrow catalog reads for the profile's first paint ──────────────
+// get_all_catalog_entries ships every column of every visible row (synopsis,
+// banners, shop links, ...) even though the profile/home grids only ever
+// read the handful below, and only for the works the user actually owns.
+// These two commands return just that: the projection LibraryCard/
+// HofSection/CalendarSection/library-grouping/stats-calculators read, for
+// either the rows referenced by the user's own data or an explicit id list
+// (the follow-up fetch for ids those grids discover through relations, e.g.
+// a bundle parent that isn't itself in the library).
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct CatalogSummary {
+    pub id: String,
+    pub external_id: String,
+    pub r#type: String,
+    pub format: Option<String>,
+    pub status: Option<String>,
+    pub title_main: Option<String>,
+    pub title_english: Option<String>,
+    pub title_romaji: Option<String>,
+    pub title_native: Option<String>,
+    pub cover_url: Option<String>,
+    pub release_day: Option<i32>,
+    pub release_month: Option<i32>,
+    pub release_year: Option<i32>,
+    pub total_count: Option<i32>,
+    pub total_count_2: Option<i32>,
+    pub time_length: Option<i32>,
+    pub genres_csv: Option<String>,
+    pub parent_id: Option<String>,
+    pub updated_at: String,
+}
+
+const SELECT_SUMMARY: &str = "
+    SELECT id, external_id, type, format, status,
+           title_main, title_english, title_romaji, title_native, cover_url,
+           release_day, release_month, release_year,
+           total_count, total_count_2, time_length, genres_csv, parent_id, updated_at
+    FROM visible_media_catalog";
+
+fn row_to_summary(row: &rusqlite::Row<'_>) -> rusqlite::Result<CatalogSummary> {
+    Ok(CatalogSummary {
+        id:            row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+        external_id:   row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+        r#type:        row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+        format:        row.get(3)?,
+        status:        row.get(4)?,
+        title_main:    row.get(5)?,
+        title_english: row.get(6)?,
+        title_romaji:  row.get(7)?,
+        title_native:  row.get(8)?,
+        cover_url:     row.get(9)?,
+        release_day:   row.get(10)?,
+        release_month: row.get(11)?,
+        release_year:  row.get(12)?,
+        total_count:   row.get(13)?,
+        total_count_2: row.get(14)?,
+        time_length:   row.get(15)?,
+        genres_csv:    row.get(16)?,
+        parent_id:     row.get(17)?,
+        updated_at:    row.get::<_, Option<String>>(18)?.unwrap_or_default(),
+    })
+}
+
+// Every visible catalog row referenced by the user's own data: library
+// rows (optionally one user_id's), list/favourite items, monthly history
+// and the activity journey — the four tables the profile overview renders
+// cards from. One statement; the UNION dedups the id set before the join.
+pub(crate) fn load_catalog_summaries_for_library(
+    conn: &rusqlite::Connection,
+    user_id: Option<&str>,
+) -> Result<Vec<CatalogSummary>, String> {
+    let sql = format!(
+        "{SELECT_SUMMARY}
+         WHERE external_id IN (
+             SELECT external_id FROM user_library WHERE (?1 IS NULL OR user_id = ?1)
+             UNION SELECT external_id FROM user_list_items
+             UNION SELECT external_id FROM monthly_history
+             UNION SELECT external_id FROM user_activity
+         )"
+    );
+    let mut stmt = conn.prepare(&sql).str_err()?;
+    let rows = stmt
+        .query_map([user_id], row_to_summary)
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(rows)
+}
+
+// Explicit id list, chunked to stay under SQLite's bound-variable cap. Ids
+// that aren't in the visible catalog are simply absent from the result.
+pub(crate) fn load_catalog_summaries_by_ids(
+    conn: &rusqlite::Connection,
+    external_ids: &[String],
+) -> Result<Vec<CatalogSummary>, String> {
+    let mut out = Vec::with_capacity(external_ids.len());
+    for chunk in external_ids.chunks(crate::db::SQL_IN_CHUNK) {
+        let sql = format!(
+            "{SELECT_SUMMARY} WHERE external_id IN ({})",
+            crate::db::sql_placeholders(chunk.len())
+        );
+        let mut stmt = conn.prepare(&sql).str_err()?;
+        let params = rusqlite::params_from_iter(chunk.iter());
+        out.extend(stmt.query_map(params, row_to_summary).str_err()?.filter_map(|r| r.ok()));
+    }
+    Ok(out)
+}
+
+#[cfg(test)]
+mod summary_tests {
+    use super::*;
+
+    fn seed(conn: &rusqlite::Connection) {
+        for (ext, title, blocked) in [
+            ("anime:1", "In library", false),
+            ("anime:2", "In a list", false),
+            ("anime:3", "In monthly history", false),
+            ("anime:4", "In journey", false),
+            ("anime:5", "Unreferenced", false),
+            ("anime:6", "Blocked but in library", true),
+            ("anime:7", "Other user's library", false),
+        ] {
+            conn.execute(
+                "INSERT INTO media_catalog (id, external_id, type, title_main, blocked_at, synopsis)
+                 VALUES (?1, ?1, 'anime', ?2, ?3, 'a long synopsis nobody on the profile reads')",
+                rusqlite::params![ext, title, if blocked { Some("2024-01-01") } else { None }],
+            ).unwrap();
+        }
+        conn.execute("INSERT INTO user_library (external_id, type, user_id) VALUES ('anime:1', 'anime', 'local')", []).unwrap();
+        conn.execute("INSERT INTO user_library (external_id, type, user_id) VALUES ('anime:6', 'anime', 'local')", []).unwrap();
+        conn.execute("INSERT INTO user_library (external_id, type, user_id) VALUES ('anime:7', 'anime', 'someone-else')", []).unwrap();
+        conn.execute("INSERT INTO user_list_items (list_key, external_id) VALUES ('anime_fav', 'anime:2')", []).unwrap();
+        conn.execute("INSERT INTO monthly_history (month, external_id) VALUES ('2024-01', 'anime:3')", []).unwrap();
+        conn.execute(
+            "INSERT INTO user_activity (date, event_type, external_id, timestamp) VALUES ('2024-01-01', 'complete', 'anime:4', 't')",
+            [],
+        ).unwrap();
+    }
+
+    fn ids(rows: &[CatalogSummary]) -> Vec<&str> {
+        let mut v: Vec<&str> = rows.iter().map(|r| r.external_id.as_str()).collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn library_scope_returns_only_referenced_visible_rows() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        seed(&conn);
+        let all = load_catalog_summaries_for_library(&conn, None).unwrap();
+        assert_eq!(ids(&all), vec!["anime:1", "anime:2", "anime:3", "anime:4", "anime:7"]);
+        let local = load_catalog_summaries_for_library(&conn, Some("local")).unwrap();
+        assert_eq!(ids(&local), vec!["anime:1", "anime:2", "anime:3", "anime:4"]);
+        assert_eq!(local[0].r#type, "anime");
+    }
+
+    #[test]
+    fn by_ids_chunks_and_skips_unknown_or_blocked() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        seed(&conn);
+        let mut request: Vec<String> = (0..(crate::db::SQL_IN_CHUNK * 2 + 3))
+            .map(|i| format!("missing:{i}"))
+            .collect();
+        request.push("anime:5".into());
+        request.push("anime:6".into());
+        request.insert(0, "anime:1".into());
+        let rows = load_catalog_summaries_by_ids(&conn, &request).unwrap();
+        assert_eq!(ids(&rows), vec!["anime:1", "anime:5"]);
+        assert!(load_catalog_summaries_by_ids(&conn, &[]).unwrap().is_empty());
+    }
+
+    #[test]
+    fn summary_projection_matches_the_profile_columns() {
+        // The exact set the profile/home grids read — a column added here
+        // must also be added to CatalogSummary in lib/tauri/catalog.ts.
+        let value = serde_json::to_value(CatalogSummary::default()).unwrap();
+        let mut keys: Vec<&str> = value.as_object().unwrap().keys().map(String::as_str).collect();
+        keys.sort_unstable();
+        assert_eq!(keys, vec![
+            "cover_url", "external_id", "format", "genres_csv", "id", "parent_id",
+            "release_day", "release_month", "release_year", "status", "time_length",
+            "title_english", "title_main", "title_native", "title_romaji",
+            "total_count", "total_count_2", "type", "updated_at",
+        ]);
+    }
+}
+
+#[tauri::command]
+pub async fn get_catalog_entries_for_library(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    user_id: Option<String>,
+) -> Result<Vec<CatalogSummary>, String> {
+    let conn = state.conn.lock().str_err()?;
+    load_catalog_summaries_for_library(&conn, user_id.as_deref())
+}
+
+#[tauri::command]
+pub async fn get_catalog_entries_by_ids(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_ids: Vec<String>,
+) -> Result<Vec<CatalogSummary>, String> {
+    let conn = state.conn.lock().str_err()?;
+    load_catalog_summaries_by_ids(&conn, &external_ids)
+}
+
 // Settings > Catalog is the sole listing that must include blocked rows so
 // the user can reopen their collaborative entry and restore it. All regular
 // application consumers use get_all_catalog_entries above.
@@ -605,7 +815,7 @@ pub async fn get_cached_cover(
     let path = dir.join(format!("{}.webp", crate::favorite_images::sanitize_for_filename(&external_id)));
     if !path.exists() {
         let _permit = cover_download_semaphore().acquire().await.str_err()?;
-        crate::igdb::download_as_webp(crate::igdb::get_http_client(), &url, &path).await;
+        crate::igdb::download_as_webp(crate::http::http_client(), &url, &path).await;
         if !path.exists() {
             return Err("Failed to download/convert cover".into());
         }

@@ -14,7 +14,8 @@ export function moveItem<T>(list: T[], fromIndex: number, toIndex: number): T[] 
 // Drag-to-reorder for a list whose only reorder path is the drag itself.
 // Lists that also reorder from elsewhere (the saga chain, whose grouping drop
 // reorders as part of a larger update) keep their own handler and call
-// `moveItem` directly.
+// `moveItem` directly. The returned `sortable` is what SortableList-based
+// card grids consume; `dragHandlers` serves the remaining native lists.
 export function useListReorder<T>(list: T[], setList: (next: T[]) => void) {
   return useDragReorder((fromIndex, toIndex) => {
     const next = moveItem(list, fromIndex, toIndex);

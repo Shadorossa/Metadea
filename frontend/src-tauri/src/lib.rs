@@ -1,3 +1,4 @@
+mod acl_coverage;
 mod actors;
 mod auth;
 mod backup;
@@ -7,12 +8,14 @@ mod staff;
 mod comicvine;
 mod comic_reader;
 mod db;
+mod deep_link;
 mod emulators;
 mod episode_history;
 mod favorite_images;
 mod folders;
 mod game_links;
 mod github;
+mod http;
 mod anilist;
 mod igdb;
 mod image_storage;
@@ -25,7 +28,9 @@ mod media_episodes;
 mod media_events;
 mod media_relations;
 mod media_themes;
+mod migrations;
 mod platform_scanning;
+mod player;
 mod proposal_bundle;
 mod reading_progress;
 mod resume_position;
@@ -42,12 +47,20 @@ mod user_metadata;
 mod utils;
 mod discord;
 mod vestigial_cleanup;
+#[cfg(test)]
+mod ipc_size_probe;
 
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let result = tauri::Builder::default()
+        // single-instance must be the first plugin: a second launch (e.g. the
+        // OS opening a metadea:// link) hands its argv to this process, and
+        // its `deep-link` feature replays that URL through the deep-link
+        // plugin (src/deep_link.rs) before the closure focuses the window.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| deep_link::focus_main_window(app)))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_sql::Builder::default().build())
@@ -56,12 +69,27 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
-            let data_dir = app.path().app_data_dir().expect("no app data dir");
+            let data_dir = match app.path().app_data_dir() {
+                Ok(dir) => dir,
+                Err(e) => fatal_startup_error(app.handle(), &format!("Could not resolve the app data directory: {e}")),
+            };
             std::fs::create_dir_all(&data_dir).ok();
-            backup::apply_pending_restore(&data_dir).expect("failed to apply pending restore");
+            // A restore that cannot be applied must not brick the app: keep
+            // starting on the existing data and forget the marker so it is
+            // not retried forever.
+            if let Err(e) = backup::apply_pending_restore(&data_dir) {
+                eprintln!("Pending restore could not be applied, continuing with the current data: {e}");
+                backup::discard_pending_restore(&data_dir);
+            }
 
-            let metadea_db = db::MetadeaDb::open(&data_dir.join("metadea.db"))
-                .expect("failed to open metadea.db");
+            let db_path = data_dir.join("metadea.db");
+            let metadea_db = match db::MetadeaDb::open(&db_path) {
+                Ok(db) => db,
+                Err(e) => fatal_startup_error(
+                    app.handle(),
+                    &format!("Could not open the database at {}:\n\n{e}", db_path.display()),
+                ),
+            };
             db::seed_fav_lists(&metadea_db);
 
             // Dev-only: imports catalog/**.json proposal files sitting next to
@@ -86,9 +114,11 @@ pub fn run() {
 
             app.manage(metadea_db);
             app.manage(folders::ScreenshotToastState::default());
+            app.manage(player::PlayerEngineState::default());
             let discord = discord::DiscordState::new();
             discord.start_background();
             app.manage(discord);
+            deep_link::install(app.handle());
 
             if let Some(window) = app.get_webview_window("main") {
                 if let Some(icon) = app.default_window_icon() {
@@ -124,6 +154,8 @@ pub fn run() {
             folders::open_external_url,
             folders::play_file_with_vlc,
             folders::screenshot_toast_ready,
+            folders::show_episode_watched_toast,
+            folders::episode_toast_action,
             folders::get_local_screenshots,
             backup::export_backup,
             backup::prepare_restore,
@@ -174,7 +206,11 @@ pub fn run() {
             user_library::write_monthly_history,
             user_library::read_user_journey,
             user_library::write_user_journey,
+            user_library::read_monthly_history_typed,
+            user_library::read_user_journey_typed,
             user_lists::read_user_favorites,
+            user_lists::read_user_favorites_typed,
+            user_lists::get_list_items_full_light,
             user_lists::write_user_favorites,
             user_lists::get_all_user_lists,
             user_lists::get_list_items,
@@ -211,6 +247,8 @@ pub fn run() {
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
             media_catalog::get_all_catalog_entries_for_editor,
+            media_catalog::get_catalog_entries_for_library,
+            media_catalog::get_catalog_entries_by_ids,
             media_catalog::search_catalog,
             media_catalog::get_cached_cover,
             media_catalog::get_cached_covers_batch,
@@ -225,6 +263,8 @@ pub fn run() {
             sagas::delete_saga,
             story_arcs::get_story_arcs_for_media,
             story_arcs::get_story_arcs_for_media_batch,
+            story_arcs::get_story_arcs_for_media_light,
+            story_arcs::get_story_arcs_for_media_batch_light,
             story_arcs::save_story_arc,
             story_arcs::reorder_story_arcs,
             story_arcs::delete_story_arc,
@@ -235,6 +275,7 @@ pub fn run() {
             media_relations::get_base_edition_candidates_for_redirect,
             media_relations::get_deleted_relations,
             media_relations::get_all_media_relations,
+            media_relations::get_media_relations_for_ids,
             media_relations::get_anilist_pre_sequel_checked,
             media_relations::mark_anilist_pre_sequel_checked,
             media_authors::save_media_authors,
@@ -248,6 +289,7 @@ pub fn run() {
             characters::save_character,
             characters::get_character,
             characters::get_all_characters,
+            characters::get_all_characters_light,
             characters::search_characters_db,
             characters::delete_character,
             characters::set_character_reaction,
@@ -273,6 +315,7 @@ pub fn run() {
             favorite_images::delete_favorite_custom_image,
             user_metadata::save_user_image,
             user_metadata::get_user_image,
+            user_metadata::get_user_image_path,
             user_metadata::remove_user_image,
             user_metadata::save_user_info,
             user_metadata::get_user_info,
@@ -282,6 +325,10 @@ pub fn run() {
             social_profile::get_social_monthly_history,
             social_profile::get_social_lists,
             social_profile::get_social_list_items,
+            social_profile::get_social_library_light,
+            social_profile::get_social_activity_light,
+            social_profile::get_social_monthly_history_light,
+            social_profile::get_social_list_items_light,
             steam::steam_achievements_download,
             steam::steam_achievement_icon,
             steam::steam_get_owned_games,
@@ -299,6 +346,7 @@ pub fn run() {
             anilist::get_anilist_user_profile,
             discord::update_presence,
             discord::reset_presence,
+            deep_link::get_pending_deep_link,
             tier_lists::create_tier_list,
             tier_lists::get_all_tier_lists,
             tier_lists::get_tier_list,
@@ -314,7 +362,46 @@ pub fn run() {
             sync_state::set_sync_state,
             emulators::read_emulators_config,
             emulators::write_emulators_config,
+            player::player_engine_available,
+            player::player_open,
+            player::player_toggle_pause,
+            player::player_set_pause,
+            player::player_seek,
+            player::player_next,
+            player::player_prev,
+            player::player_play_index,
+            player::player_set_track,
+            player::player_set_volume,
+            player::player_set_mute,
+            player::player_set_speed,
+            player::player_set_sub_delay,
+            player::player_screenshot,
+            player::player_get_status,
+            player::player_get_session,
+            player::player_stop_close,
+            player::player_set_video_bounds,
+            player::player_set_fullscreen,
+            player::player_is_fullscreen,
+            player::player_focus_overlay,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .run(tauri::generate_context!());
+    if let Err(e) = result {
+        eprintln!("Metadea could not start: {e}");
+        std::process::exit(1);
+    }
+}
+
+// Startup failures the app cannot recover from (no data dir, unreadable
+// database): tell the user in a native dialog instead of a bare panic, then
+// exit cleanly. The dialog plugin is registered before `setup` runs, so it
+// is available here.
+fn fatal_startup_error(app: &tauri::AppHandle, message: &str) -> ! {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+    eprintln!("{message}");
+    app.dialog()
+        .message(message)
+        .title("Metadea could not start")
+        .kind(MessageDialogKind::Error)
+        .blocking_show();
+    std::process::exit(1)
 }

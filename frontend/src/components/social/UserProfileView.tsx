@@ -20,22 +20,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { getPublicProfile, followUser, unfollowUser, type PublicProfile } from '../../lib/social/users';
 import {
   getUserInfo,
-  hydrateSocialProfile, getSocialLibrary, getSocialActivity, getSocialLists, getSocialListItems,
-  getSocialMonthlyHistory, getAllCharacters, getAllMediaRelations, getSagaNames,
-  type LibraryEntry, type MediaCatalogEntry, type CharacterEntry, type DbMediaRelation,
+  hydrateSocialProfile, getSocialLibraryLight, getSocialActivityLight, getSocialLists, getSocialListItemsLight,
+  getSocialMonthlyHistoryLight, getAllCharactersLight, getCatalogEntriesByIds, getSagaNames,
+  type LibraryEntry, type CatalogSummary, type CharacterEntry, type DbMediaRelation,
   type DayJourney, type UserJourneyEvent, type ListInfo, type ListItemFull,
 } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
-import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
+import { getT } from '../../i18n/runtime';
+import { loadScopedMediaRelations } from '../../lib/profile/relations-scope';
 import { toLibraryEntry } from '../../lib/social/social-library-mapping';
 import { getNonEditionItems, getItemMinutes } from '../../lib/profile/stats-calculators';
 import { buildMonthlyHistoryHtml, initMonthlyHistoryListeners } from '../../lib/profile/monthly';
 import { syncActiveRatingSystem, formatAverageScore } from '../../lib/media/rating-utils';
-import { pad } from '../../lib/profile/utils';
+import { pad } from '../../lib/profile/media-type-label';
 import {
   ICON_PROFILE_OVERVIEW, ICON_PROFILE_LIBRARY, ICON_PROFILE_FAVORITES,
   ICON_PROFILE_STATS, ICON_PROFILE_REVIEWS, ICON_PROFILE_LISTS,
-} from '../../lib/shared/icon-strings';
+} from '../../lib/dom/icon-strings';
 import { HofSection } from '../profile/HofSection';
 import { FavoritesSection } from '../profile/FavoritesSection';
 import { LibrarySection } from '../profile/LibrarySection';
@@ -94,7 +94,7 @@ async function hydrateIfStale(userId: string, profile: PublicProfile): Promise<v
 
 // Flattens the social activity cache (already event-shaped, each carrying
 // its own `date`) into the same day-grouped DayJourney[] structure
-// ActivitySection/StatsSection expect from readUserJourney().
+// ActivitySection/StatsSection expect from readUserJourneyTyped().
 function toDayJourney(activity: Array<{
   external_id: string; event_type: string; media_type: string | null;
   date: string | null; timestamp: string; progress_start: number | null; progress_end: number | null;
@@ -121,7 +121,7 @@ function toDayJourney(activity: Array<{
 
 interface ProfileData {
   items: LibraryEntry[];
-  catalogMap: Map<string, MediaCatalogEntry>;
+  catalogMap: Map<string, CatalogSummary>;
   characterMap: Map<string, CharacterEntry>;
   sagaRelations: DbMediaRelation[];
   sagaNames: Record<string, string>;
@@ -131,7 +131,7 @@ interface ProfileData {
   monthlyHistory: Record<string, string[]>;
 }
 
-function MonthlyHistory({ history, items, catalogMap }: { history: Record<string, string[]>; items: LibraryEntry[]; catalogMap: Map<string, MediaCatalogEntry> }) {
+function MonthlyHistory({ history, items, catalogMap }: { history: Record<string, string[]>; items: LibraryEntry[]; catalogMap: Map<string, CatalogSummary> }) {
   const html = useMemo(() => buildMonthlyHistoryHtml(history, items, catalogMap), [history, items, catalogMap]);
   return (
     <div
@@ -303,28 +303,37 @@ export function UserProfileView() {
       await hydrateIfStale(userId, p);
       if (cancelled) return;
 
-      const [
-        socialLibrary, socialActivity, socialLists, socialMonthly,
-        { catalog: catalogEntries }, characters, sagaRelations,
-      ] = await Promise.all([
-        getSocialLibrary(userId).catch(() => []),
-        getSocialActivity(userId).catch(() => []),
+      const [socialLibrary, socialActivity, socialLists, socialMonthly, characters] = await Promise.all([
+        getSocialLibraryLight(userId).catch(() => []),
+        getSocialActivityLight(userId).catch(() => []),
         getSocialLists(userId).catch(() => []),
-        getSocialMonthlyHistory(userId).catch(() => []),
-        getCachedLibraryAndCatalog(),
-        getAllCharacters().catch(() => []),
-        getAllMediaRelations().catch(() => []),
+        getSocialMonthlyHistoryLight(userId).catch(() => []),
+        getAllCharactersLight().catch(() => []),
       ]);
       if (cancelled) return;
 
       const items = socialLibrary.map(toLibraryEntry);
-      const catalogMap = new Map(catalogEntries.map(e => [e.external_id, e]));
-      const characterMap = new Map(characters.map(c => [c.external_id, c]));
-      const sagaNames = await getSagaNames(items.map(i => i.external_id)).catch(() => ({} as Record<string, string>));
-      if (cancelled) return;
-
       const monthlyHistory: Record<string, string[]> = {};
       for (const group of socialMonthly) monthlyHistory[group.month] = group.items.map(i => i.external_id);
+
+      // The viewer's own catalog resolves title/cover for THIS profile's
+      // rows — fetched for exactly the ids it renders (library, monthly
+      // history, activity) rather than the whole table; unknown ids are
+      // simply absent and fall back to their bare external_id as before.
+      // The relations set is scoped the same way (see relations-scope.ts).
+      const renderedIds = [...new Set([
+        ...items.map(i => i.external_id),
+        ...socialMonthly.flatMap(group => group.items.map(i => i.external_id)),
+        ...socialActivity.map(a => a.external_id),
+      ])];
+      const [catalogEntries, sagaRelations, sagaNames] = await Promise.all([
+        getCatalogEntriesByIds(renderedIds).catch(() => [] as CatalogSummary[]),
+        loadScopedMediaRelations(renderedIds),
+        getSagaNames(items.map(i => i.external_id)).catch(() => ({} as Record<string, string>)),
+      ]);
+      if (cancelled) return;
+      const catalogMap = new Map(catalogEntries.map(e => [e.external_id, e]));
+      const characterMap = new Map(characters.map(c => [c.external_id, c]));
 
       setData({
         items, catalogMap, characterMap, sagaRelations, sagaNames,
@@ -347,7 +356,7 @@ export function UserProfileView() {
 
   const fetchListItems = useMemo(() => async (listKey: string): Promise<ListItemFull[]> => {
     if (!userId) return [];
-    const refs = await getSocialListItems(userId, listKey).catch(() => []);
+    const refs = await getSocialListItemsLight(userId, listKey).catch(() => []);
     return refs.map((r, i) => ({
       external_id: r.external_id, position: i, library_id: null, status: null, rating: null,
       progress: 0, progress_2: 0, is_favorite: false, is_platinum: false,

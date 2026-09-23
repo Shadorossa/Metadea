@@ -1063,7 +1063,7 @@
   align-items: center;
   justify-content: center;
   transition: all var(--anim-fast);
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .library-sort-btn:hover {
@@ -1229,7 +1229,7 @@
   align-items: center;
   gap: 0.4rem;
   transition: color var(--anim-fast);
-  box-shadow: none !important;
+  box-shadow: none;
   white-space: nowrap;
   flex-shrink: 0;
 }

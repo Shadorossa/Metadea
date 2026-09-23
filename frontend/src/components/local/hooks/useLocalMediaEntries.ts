@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, getAllMediaRelations, type LibraryEntry, type MediaCatalogEntry, type DbMediaRelation } from '../../../lib/tauri';
-import { isInProgressStatus } from '../../../lib/constants/media';
-import { LOCAL_CATEGORY_BY_MEDIA_TYPE, type CategoryId } from '../utils/constants';
+import { getAllLibraryEntries, getAllCatalogEntries, getMediaRelationsForIds, type LibraryEntry, type MediaCatalogEntry, type DbMediaRelation } from '../../../lib/tauri';
+import { isInProgressStatus } from '../../../lib/media/media-types';
+import { LOCAL_CATEGORY_BY_MEDIA_TYPE, type CategoryId } from '../../../lib/local/platforms';
 
 // Maps a local-tab category to the media_catalog/library `type` column —
 // only categories listed here get their WHOLE tab replaced by the status-
@@ -18,17 +18,8 @@ export const LOCAL_MEDIA_TYPE_BY_CATEGORY: Partial<Record<CategoryId, string>> =
     .map(([mediaType, category]) => [category, mediaType]),
 ) as Partial<Record<CategoryId, string>>;
 
-export interface LocalMediaItem {
-  externalId:   string;
-  title:        string;
-  titleRomaji:  string | null;
-  titleNative:  string | null;
-  cover:        string | null;
-  status:       string;
-  progress:     number;
-  libraryEntry: LibraryEntry;
-  catalogEntry: MediaCatalogEntry | undefined;
-}
+export type { LocalMediaItem } from '../../../lib/local/local-media-item';
+import type { LocalMediaItem } from '../../../lib/local/local-media-item';
 
 export interface LocalMediaRaw {
   entries:   LibraryEntry[];
@@ -36,9 +27,13 @@ export interface LocalMediaRaw {
   relations: DbMediaRelation[];
 }
 
-// Fetches the whole library/catalog/relations set once — every media
-// category's grid is just a different filter over the exact same three
-// tables. Called once from LocalLibrary itself (which stays mounted for as
+// Fetches the whole library/catalog set once, plus the relations owned by
+// (or pointing at) the library's own rows — the only ones the PREQUEL
+// lookup below ever reads. Every media category's grid is just a different
+// filter over the exact same three tables. The catalog stays the full row
+// set: the detail panels read columns (banners_csv, shop_links_csv,
+// synopsis) that the profile's CatalogSummary projection leaves out.
+// Called once from LocalLibrary itself (which stays mounted for as
 // long as the Local page is open) rather than from LocalMediaSection (which
 // unmounts whenever the user steps out to "Videojuegos" and back), so
 // switching between categories — including via videojuegos — never re-hits
@@ -51,10 +46,11 @@ export function useLocalMediaData() {
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
 
+    const entriesPromise = getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
     return Promise.all([
-      getAllLibraryEntries().catch(() => []),
+      entriesPromise,
       getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
-      getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
+      entriesPromise.then(entries => getMediaRelationsForIds(entries.map(e => e.external_id))).catch(() => [] as DbMediaRelation[]),
     ]).then(([entries, catalog, relations]) => {
       if (cancelledRef.current) return;
       setRaw({ entries, catalog, relations });

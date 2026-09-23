@@ -215,5 +215,21 @@ commands.allow = [
   "read_emulators_config",
   "write_emulators_config",
   "remove_local_game",
-  "get_hidden_local_games"
+  "get_hidden_local_games",
+  "get_catalog_entries_for_library",
+  "get_catalog_entries_by_ids",
+  "get_media_relations_for_ids",
+  "get_all_characters_light",
+  "get_user_image_path",
+  "get_list_items_full_light",
+  "get_social_library_light",
+  "get_social_activity_light",
+  "get_social_monthly_history_light",
+  "get_social_list_items_light",
+  "get_story_arcs_for_media_light",
+  "get_story_arcs_for_media_batch_light",
+  "read_user_favorites_typed",
+  "read_monthly_history_typed",
+  "read_user_journey_typed",
+  "get_pending_deep_link"
 ]

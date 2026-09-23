@@ -217,7 +217,7 @@
   width: clamp(24px, 3vw, 32px);
   height: clamp(32px, 4.5vw, 44px);
   object-fit: cover;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
   background: var(--bg-elevated);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);

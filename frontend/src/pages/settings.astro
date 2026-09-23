@@ -1,6 +1,6 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/pages/settings.css";
+import BaseLayout from "../layouts/BaseLayout.astro";
 import { getLang, useTranslations } from "../i18n/index";
 import pkg from "../../package.json";
 import {
@@ -10,12 +10,12 @@ import {
   ICON_SETTINGS_NOVEDADES,
   ICON_SETTINGS_ADMIN,
   ICON_SETTINGS_PREFERENCES,
-} from "../lib/shared/icon-strings";
+} from "../lib/dom/icon-strings";
 import ProfileTab from "../components/settings/ProfileTab.astro";
 import PreferencesTab from "../components/settings/PreferencesTab.astro";
 import EnvironmentTab from "../components/settings/EnvironmentTab.astro";
 import ConnectionsTab from "../components/settings/ConnectionsTab.astro";
-import NovedadesTab from "../components/settings/NovedadesTab.astro";
+import NovedadesTab from "../components/settings/WhatsNewTab.astro";
 import EmulatorsTab from "../components/settings/EmulatorsTab.astro";
 import HelpModals from "../components/settings/HelpModals.astro";
 import BackupRestoreTab from "../components/settings/BackupRestoreTab.astro";
@@ -111,29 +111,29 @@ const version = pkg.version;
 
 <script>
   import { getAuthToken, clearAuthToken } from "../lib/tauri";
-  import { decodeJwtPayload } from "../lib/profile/utils";
-  import { initAvatar, initShareAvatar } from "../lib/settings/avatar";
-  import { initBanner } from "../lib/settings/banner";
-  import { initThemePicker } from "../lib/settings/theme";
-  import { initEnvironment } from "../lib/settings/environment";
-  import { initEmulators } from "../lib/settings/emulators";
-  import { initFontPicker } from "../lib/settings/fonts";
-  import { initGitHubAuth } from "../lib/settings/github";
-  import { initAniListAuth } from "../lib/settings/anilist";
-  import { initAniListImportUI } from "../lib/settings/anilist-import-ui";
-  import { initDisplayName } from "../lib/settings/display-name";
-  import { initRatingSystem } from "../lib/settings/rating-system";
-  import { initCustomColor } from "../lib/settings/custom-color";
-  import { initActivitySettings } from "../lib/settings/activity";
-  import { initDualRating } from "../lib/settings/dual-rating";
-  import { initLanguageSwitcher } from "../lib/settings/language";
-  import { initBio } from "../lib/settings/bio";
-  import { initUpdater } from "../lib/settings/updater";
-  import { initCommunityCatalogSync } from "../lib/settings/community-catalog";
-  import { initFixCharacterIds } from "../lib/settings/fix-character-ids";
-  import { initSettingsTabs } from "../lib/settings/tabs";
-  import { getT } from "../i18n/client";
-  import { initBackupRestore } from "../lib/settings/backup-restore";
+  import { decodeJwtPayload } from "../lib/profile/media-type-label";
+  import { initAvatar, initShareAvatar } from "../components/settings/mount/avatar";
+  import { initBanner } from "../components/settings/mount/banner";
+  import { initThemePicker } from "../components/settings/mount/theme";
+  import { initEnvironment } from "../components/settings/mount/environment";
+  import { initEmulators } from "../components/settings/mount/emulators";
+  import { initFontPicker } from "../components/settings/mount/fonts";
+  import { initGitHubAuth } from "../components/settings/mount/github";
+  import { initAniListAuth } from "../components/settings/mount/anilist";
+  import { initAniListImportUI } from "../components/settings/mount/anilist-import-ui";
+  import { initDisplayName } from "../components/settings/mount/display-name";
+  import { initRatingSystem } from "../components/settings/mount/rating-system";
+  import { initCustomColor } from "../components/settings/mount/custom-color";
+  import { initActivitySettings } from "../components/settings/mount/activity";
+  import { initDualRating } from "../components/settings/mount/dual-rating";
+  import { initLanguageSwitcher } from "../components/settings/mount/language";
+  import { initBio } from "../components/settings/mount/bio";
+  import { initUpdater } from "../components/settings/mount/updater";
+  import { initCommunityCatalogSync } from "../components/settings/mount/community-catalog";
+  import { initFixCharacterIds } from "../components/settings/mount/fix-character-ids";
+  import { initSettingsTabs } from "../components/settings/mount/tabs";
+  import { getT } from "../i18n/runtime";
+  import { initBackupRestore } from "../components/settings/mount/backup-restore";
 
   function showToast(msg?: string) {
     const clientT = getT();

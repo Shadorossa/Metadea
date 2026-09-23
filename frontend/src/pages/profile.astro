@@ -1,7 +1,7 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/pages/profile.css';
 import '../styles/pages/media.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
 import { getLang, useTranslations } from '../i18n/index';
 import { ProfileLibraryEditor } from '../components/profile/ProfileLibraryEditor';
 import {
@@ -12,13 +12,13 @@ import {
   ICON_PROFILE_REVIEWS,
   ICON_PROFILE_LISTS,
   ICON_PROFILE_FRIENDS,
-} from '../lib/shared/icon-strings';
+} from '../lib/dom/icon-strings';
 
 const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
 ---
 
-<BaseLayout title="Perfil — Metadea" lang={lang} activePage="profile">
+<BaseLayout title={`${t.nav.dropdown_profile} — Metadea`} lang={lang} activePage="profile">
   <main class="profile-page">
 
     <div class="profile-banner">
@@ -103,7 +103,7 @@ const t    = useTranslations(lang);
         })();
       </script>
       <script>
-        import { getT } from '../i18n/client';
+        import { getT } from '../i18n/runtime';
         function updateProfileTabTooltips() {
           const p = getT().profile;
           const tabTitles: Record<string, string> = {
@@ -143,19 +143,29 @@ const t    = useTranslations(lang);
 </BaseLayout>
 
 <script>
-  import { getAuthToken, getAllLibraryEntries, getAllCatalogEntries, getLibraryEntry } from '../lib/tauri';
-  import { decodeJwtPayload } from '../lib/profile/utils';
-  import { renderOverview } from '../lib/profile/render-overview';
-  import { renderLibrary } from '../lib/profile/render-library';
-  import { renderFavorites } from '../lib/profile/render-favorites';
-  import { renderStats } from '../lib/profile/render-stats';
-  import { renderReviews } from '../lib/profile/render-reviews';
-  import { renderLists }   from '../lib/profile/render-lists';
-  import { renderFriends } from '../lib/profile/render-friends';
+  import { getAuthToken, getAllLibraryEntries, getLibraryEntry, type CatalogSummary } from '../lib/tauri';
+  import { decodeJwtPayload } from '../lib/profile/media-type-label';
+  import { renderOverview, prefetchOverviewData } from '../components/profile/mount/render-overview';
+  import { renderLibrary } from '../components/profile/mount/render-library';
+  import { renderFavorites } from '../components/profile/mount/render-favorites';
+  import { renderStats } from '../components/profile/mount/render-stats';
+  import { renderReviews } from '../components/profile/mount/render-reviews';
+  import { renderLists }   from '../components/profile/mount/render-lists';
+  import { renderFriends } from '../components/profile/mount/render-friends';
   import { getImage } from '../lib/storage/images';
-  import { getFontFile } from '../lib/settings/fonts';
-  import { STORAGE_KEYS } from '../lib/shared/storage-keys';
-  import { getCachedLibraryAndCatalog } from '../lib/profile/library-data-cache';
+  import { getFontFile } from '../components/settings/mount/fonts';
+  import { STORAGE_KEYS } from '../lib/storage/storage-keys';
+  import { getCachedLibraryAndCatalog, getCachedMediaRelations } from '../lib/profile/library-data-cache';
+  import { getCachedUserInfo } from '../lib/profile/user-info';
+
+  // The early-paint caches read by the inline script at the top of this
+  // page hold base64 images — rewriting them on every visit when nothing
+  // changed is a needless multi-hundred-KB localStorage write each time.
+  function writeCacheIfChanged(key: string, value: string) {
+    try {
+      if (localStorage.getItem(key) !== value) localStorage.setItem(key, value);
+    } catch {}
+  }
 
   (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
 
@@ -170,7 +180,7 @@ const t    = useTranslations(lang);
   }
 
   let cachedItems: Awaited<ReturnType<typeof getAllLibraryEntries>> = [];
-  let cachedCatalog: Awaited<ReturnType<typeof getAllCatalogEntries>> = [];
+  let cachedCatalog: CatalogSummary[] = [];
   let activeTab: Tab = getTabFromHash();
   let initGeneration = 0;
   let cleanupProfileInit: (() => void) | null = null;
@@ -247,14 +257,28 @@ const t    = useTranslations(lang);
     const payload  = decodeJwtPayload(session.token);
     const avatar   = payload.avatar as string | null;
 
+    // The library/catalog bundle is by far the largest payload on this page
+    // and nothing in the banner work below depends on it — start it (and,
+    // for the overview, every other round trip that tab needs) right here
+    // so it all travels in the same first round trip as the user-info/image
+    // lookups instead of only after they've come back. Render order below
+    // is unchanged: the banner still paints first, then the active tab.
+    const libraryPromise = getCachedLibraryAndCatalog();
+    if (activeTab === 'overview') {
+      prefetchOverviewData(libraryPromise.then(bundle => bundle.catalog));
+    } else if (activeTab === 'library' || activeTab === 'stats') {
+      void getCachedMediaRelations();
+    }
+
     // A custom display name set in Settings > Apariencia takes priority over
     // the raw username picked at login — fetched here (not just below for the
     // font) so every use of "the user's name" on this page reflects it,
     // not just the login-time username. Runs in parallel with the banner/
     // avatar image lookups below since none of these three depend on each
-    // other's result.
+    // other's result. Shared (getCachedUserInfo) with every tab's own
+    // rating-system sync and the Lists tab, which used to each re-fetch it.
     const [userInfo, customBanner, customAvatar] = await Promise.all([
-      import('../lib/tauri').then(m => m.getUserInfo()).catch(() => ({} as Record<string, unknown>)),
+      getCachedUserInfo(),
       getImage(STORAGE_KEYS.profileBannerCustom),
       getImage(STORAGE_KEYS.profileAvatarCustom),
     ]);
@@ -271,16 +295,16 @@ const t    = useTranslations(lang);
         bannerEl.style.backgroundPosition = 'center';
         bannerEl.classList.add('has-custom-bg');
       }
-      try { localStorage.setItem('profile_banner_cache', customBanner); } catch {}
+      writeCacheIfChanged('profile_banner_cache', customBanner);
     }
 
     // Custom avatar takes priority over Google avatar
     const avatarSrc = customAvatar || avatar;
     if (avatarSrc) {
-      try { localStorage.setItem('profile_avatar_cache', avatarSrc); } catch {}
+      writeCacheIfChanged('profile_avatar_cache', avatarSrc);
     }
     if (username) {
-      try { localStorage.setItem('profile_username_cache', username); } catch {}
+      writeCacheIfChanged('profile_username_cache', username);
     }
 
     const bannerContent = document.getElementById('banner-content');
@@ -290,7 +314,7 @@ const t    = useTranslations(lang);
         : `<div class="profile-avatar-placeholder">${(username[0] ?? '?').toUpperCase()}</div>`;
 
       const fontId = (userInfo.font as string | undefined) ?? 'inter';
-      localStorage.setItem('profile_font_cache', fontId);
+      writeCacheIfChanged('profile_font_cache', fontId);
       const fontSrc = getFontFile(fontId);
       const fontFamily = `pf-${fontId}`;
       if (fontSrc) {
@@ -309,7 +333,7 @@ const t    = useTranslations(lang);
       }
     }
 
-    ({ items: cachedItems, catalog: cachedCatalog } = await getCachedLibraryAndCatalog());
+    ({ items: cachedItems, catalog: cachedCatalog } = await libraryPromise);
     if (generation !== initGeneration) return;
 
     // Only render the active tab on initial load; lazy-load others on demand.

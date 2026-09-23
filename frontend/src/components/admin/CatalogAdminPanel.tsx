@@ -1,264 +1,53 @@
-import { useEffect, useMemo, useState, useDeferredValue } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Translations } from '../../i18n/index';
-import { useOwnerGate } from '../../lib/github/useOwnerGate';
+import { useOwnerGate } from '../shared/hooks/useOwnerGate';
 import { isRepoOwner } from '../../lib/github/ownership';
-import {
-  getAllCatalogEntriesForEditor, deleteCatalogEntry, getCatalogEntry, getCatalogEntryForEditor, saveCatalogEntry,
-  getAllSagas, getCommunitySagas, deleteSaga, type MediaCatalogEntry, type SagaListEntry,
-} from '../../lib/tauri/catalog';
-import { getAllCharacters, deleteCharacter, getCommunityCharacters, type CharacterEntry } from '../../lib/tauri/characters';
-import {
-  getAllMediaEpisodesGrouped, deleteAllMediaEpisodes, type MediaEpisodeGroup,
-} from '../../lib/tauri/misc-commands';
-import {
-  listDatabaseFiles, getFileAtRef, deleteFileFromMain, externalIdFromDatabaseFilename,
-  type GitHubDirEntry,
-} from '../../lib/github/api';
-import { hydrateBundleIntoLocalCatalog, hydrateSagaChainFromGithub } from '../../lib/github/bundle-sync';
-import type { ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
-import { fetchMediaData } from '../../lib/media/mediaService';
 import { PrEditorModal } from '../media/PrEditorModal';
-import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
-import { generateCustomCharacterId } from '../../lib/character/customCharacter';
-import { AdminAddSearch } from './AdminAddSearch';
-import { CatalogEntryCard } from './CatalogEntryCard';
-import { searchAnimeAndSeries, type SearchResult as ApiSearchResult } from '../../lib/search';
-import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
-import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
-import { DIFF_FIELDS } from '../../lib/media/constants';
-import { getT } from '../../i18n/client';
-import { Pagination } from '../media/Pagination';
-import { SagaViewerModal } from '../media/SagaViewerModal';
-import { findCatalogDuplicateCandidateIds } from '../../lib/admin/catalog-duplicate-candidates';
+import { useAdminPaging } from './useAdminPaging';
+import { useGithubCatalogFiles } from './useGithubCatalogFiles';
+import type { CatalogInfoMap, EditorRequest, Entity, Source } from './admin-panel-types';
+import { MediaTab } from './tabs/MediaTab';
+import { SagasTab } from './tabs/SagasTab';
+import { CharactersTab } from './tabs/CharactersTab';
+import { GithubFilesTab } from './tabs/GithubFilesTab';
+import { EpisodesTab } from './tabs/EpisodesTab';
+import { AddWorkTab } from './tabs/AddWorkTab';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
 }
 
-type Source = 'local' | 'github' | 'add';
-type Entity = 'media' | 'saga' | 'character' | 'episodes';
-// Fifteen columns × three rows keeps each catalog page compact.
-const ADMIN_PAGE_SIZE = 45;
-
+// Tab chrome + the shared editor mount. Each tab under ./tabs owns its own
+// data and stays mounted while hidden (rendering nothing), so queries and
+// loaded lists survive switching between tabs and every local list starts
+// loading right away, without waiting for the owner gate.
 export function CatalogAdminPanel({ i18n }: Props) {
   const gate = useOwnerGate();
   const t = i18n.admin;
-  const pe = getT().pr_editor;
 
   const [source, setSource] = useState<Source>('local');
   const [entity, setEntity] = useState<Entity>('media');
-  const [pages, setPages] = useState<Record<string, number>>({});
-
-  // Local catalog state
-  const [query, setQuery] = useState('');
-  const [duplicatesOnly, setDuplicatesOnly] = useState(false);
-  const [entries, setEntries] = useState<MediaCatalogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deleteTarget, setDeleteTarget] = useState<MediaCatalogEntry | null>(null);
-
-  // Sagas use the shared cover-card style and the same viewer as media pages.
-  const [sagaQuery, setSagaQuery] = useState('');
-  const [sagas, setSagas] = useState<SagaListEntry[]>([]);
-  const [sagaLoading, setSagaLoading] = useState(true);
-  const [sagaDeleteTarget, setSagaDeleteTarget] = useState<SagaListEntry | null>(null);
-  const [sagaViewerExternalId, setSagaViewerExternalId] = useState<string | null>(null);
-
-  // GitHub's own sagas (read-only peek at the community database.db, not the
-  // local one) — fetched on demand, same reasoning as githubCharacters below.
-  const [githubSagas, setGithubSagas] = useState<SagaListEntry[]>([]);
-  const [githubSagasLoading, setGithubSagasLoading] = useState(false);
-  const [githubSagasError, setGithubSagasError] = useState(false);
-
-  // Characters state
-  const [characterQuery, setCharacterQuery] = useState('');
-  const [characters, setCharacters] = useState<CharacterEntry[]>([]);
-  const [characterLoading, setCharacterLoading] = useState(true);
-  const [characterDeleteTarget, setCharacterDeleteTarget] = useState<CharacterEntry | null>(null);
-  const [characterSearchOpen, setCharacterSearchOpen] = useState(false);
-
-  // GitHub's own characters (read-only peek at the community database.db,
-  // not the local one) — fetched on demand, not on mount, since it's a
-  // network download rather than a local IPC read.
-  const [githubCharacters, setGithubCharacters] = useState<CharacterEntry[]>([]);
-  const [githubCharactersLoading, setGithubCharactersLoading] = useState(false);
-  const [githubCharactersError, setGithubCharactersError] = useState(false);
-
-  // GitHub catalog/ state
-  const [githubQuery, setGithubQuery] = useState('');
-  const [githubFiles, setGithubFiles] = useState<GitHubDirEntry[]>([]);
-  const [githubLoading, setGithubLoading] = useState(true);
-  const [githubDeleteTarget, setGithubDeleteTarget] = useState<GitHubDirEntry | null>(null);
-  const [githubActionError, setGithubActionError] = useState<string | null>(null);
-  const [githubBusy, setGithubBusy] = useState(false);
-  // GitHub's file listing only has raw filenames (no title, no cover) — most
-  // merged entries are already synced into the local catalog (see
-  // sync_community_catalog), so this maps external_id → title/cover from the
-  // *full* local catalog (independent of the local tab's own search query)
-  // to show something more useful than the id twice.
-  const [catalogInfoMap, setCatalogInfoMap] = useState<Record<string, { title?: string; cover?: string; blocked?: boolean }>>({});
-
-  // "Add work" state
-  const [addBusy, setAddBusy] = useState(false);
-
-  // Episodes state
-  const [episodeQuery, setEpisodeQuery] = useState('');
-  const [episodeMediaTypeFilter, setEpisodeMediaTypeFilter] = useState<'all' | 'anime' | 'series'>('all');
-  const [episodeGroups, setEpisodeGroups] = useState<MediaEpisodeGroup[]>([]);
-  const [episodesLoading, setEpisodesLoading] = useState(false);
-  const [episodesDeleteTarget, setEpisodesDeleteTarget] = useState<MediaEpisodeGroup | null>(null);
-
-  // One-off backfill sweep (see catalog-backfill.ts) for rows missing the
-  // fields added this session (country_code, release_end_*, title_english).
-  const [backfillRunning, setBackfillRunning] = useState(false);
-  const [backfillProgress, setBackfillProgress] = useState<BackfillProgress | null>(null);
-  const [backfillResults, setBackfillResults] = useState<BackfillEntryResult[] | null>(null);
-
-  const runBackfill = async () => {
-    if (backfillRunning) return;
-    setBackfillRunning(true);
-    setBackfillResults(null);
-    setBackfillProgress(null);
-    try {
-      const results = await backfillMissingCatalogFields(p => setBackfillProgress(p));
-      setBackfillResults(results);
-      loadEntries();
-    } finally {
-      setBackfillRunning(false);
-    }
-  };
-
-  // Editor state, shared across all three sources — every edit (whether it
-  // started from the local catalog, an already-merged GitHub entry, or a
-  // brand-new "Add work" pick) goes through PrEditorModal's default
-  // 'proposal' mode: a branch + PR, same as any other contribution, since
-  // every change here is meant to reach the shared catalog for every user,
-  // not just stay on this machine.
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingInitialTab, setEditingInitialTab] = useState<'general' | 'cast' | 'relations'>('general');
-  const [editingInitialRelationsSubtab, setEditingInitialRelationsSubtab] = useState<'episodes' | undefined>();
-  // Field names present locally but absent from the GitHub bundle that was
-  // actually opened — passed to PrEditorModal so it can dim them. Cleared
-  // whenever the editor is opened from anywhere other than the GitHub tab
-  // (local entries, "Add work"), where the concept doesn't apply.
-  const [editingNonGithubFields, setEditingNonGithubFields] = useState<Set<string> | undefined>(undefined);
+  // The top bar's search area — tabs portal their own controls into it.
+  const [searchSlot, setSearchSlot] = useState<HTMLDivElement | null>(null);
+  const [catalogInfoMap, setCatalogInfoMap] = useState<CatalogInfoMap>({});
+  const [editing, setEditing] = useState<EditorRequest | null>(null);
+  // Bumped after an editor save / a backfill sweep so the tabs re-read.
+  const [savedCount, setSavedCount] = useState(0);
+  const [backfillCount, setBackfillCount] = useState(0);
+  const paging = useAdminPaging();
 
   const isOwner = gate.state === 'owner';
   const isRepoCreator = isRepoOwner(gate.username);
-  const token = gate.token;
+  const ready = gate.state !== 'loading';
 
-  // Loads the *whole* local catalog once — filtering as the user types
-  // happens client-side (see visibleEntries below) instead of re-querying
-  // over IPC on every keystroke, which was causing the list (and every
-  // cover image in it) to reload/flicker on each character typed.
-  const loadEntries = async () => {
-    setLoading(true);
-    try {
-      const all = await getAllCatalogEntriesForEditor();
-      setEntries(all);
-      const map: Record<string, { title?: string; cover?: string; blocked?: boolean }> = {};
-      for (const entry of all) {
-        map[entry.external_id] = {
-          title: entry.title_main ?? undefined,
-          cover: entry.cover_url ?? undefined,
-          blocked: !!entry.blocked_at,
-        };
-      }
-      setCatalogInfoMap(map);
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to load entries:', err);
-      setEntries([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadGithubFiles = async () => {
-    if (!token) return;
-    setGithubLoading(true);
-    try {
-      setGithubFiles(await listDatabaseFiles(token));
-    } catch (err: any) {
-      // 404 means that type's catalog/ folder doesn't exist yet — not an error worth logging
-      if (!String(err?.message ?? err).includes('Not Found')) {
-        console.error('[CatalogAdminPanel] Failed to list GitHub database files:', err);
-      }
-      setGithubFiles([]);
-    } finally {
-      setGithubLoading(false);
-    }
-  };
-
-  const loadSagas = async () => {
-    setSagaLoading(true);
-    try {
-      setSagas(await getAllSagas());
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to load sagas:', err);
-      setSagas([]);
-    } finally {
-      setSagaLoading(false);
-    }
-  };
-
-  const loadCharacters = async () => {
-    setCharacterLoading(true);
-    try {
-      setCharacters(await getAllCharacters());
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to load characters:', err);
-      setCharacters([]);
-    } finally {
-      setCharacterLoading(false);
-    }
-  };
-
-  const loadEpisodeGroups = async () => {
-    setEpisodesLoading(true);
-    try {
-      setEpisodeGroups(await getAllMediaEpisodesGrouped());
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to load episode groups:', err);
-      setEpisodeGroups([]);
-    } finally {
-      setEpisodesLoading(false);
-    }
-  };
-
-  const openEpisodeEditor = (externalId: string) => {
-    setEditingNonGithubFields(undefined);
-    setEditingInitialTab('relations');
-    setEditingInitialRelationsSubtab('episodes');
-    setEditingId(externalId);
-  };
-
-  const confirmDeleteAllEpisodes = async () => {
-    if (!episodesDeleteTarget) return;
-    try {
-      await deleteAllMediaEpisodes(episodesDeleteTarget.external_id);
-      setEpisodeGroups(prev => prev.filter(g => g.external_id !== episodesDeleteTarget.external_id));
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to delete all episodes:', err);
-    } finally {
-      setEpisodesDeleteTarget(null);
-    }
-  };
-
-  // Local catalog data loads for everyone — only the GitHub tab (direct
-  // repo file browsing/deletion, not the fork+PR flow every edit already
-  // goes through) needs real write access to the repo.
-  useEffect(() => {
-    loadEntries();
-    loadSagas();
-    loadCharacters();
-    loadEpisodeGroups();
-     
-  }, []);
-
-  useEffect(() => {
-    if (!isOwner) return;
-    loadGithubFiles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOwner]);
+  const github = useGithubCatalogFiles({
+    token: gate.token,
+    isOwner,
+    isRepoCreator,
+    openEditor: setEditing,
+    openErrorMessage: t.github_open_error,
+    deleteErrorMessage: t.github_delete_error,
+  });
 
   // Safety net for the source-toggle buttons below (which already hide
   // "GitHub"/"Add work" without write access) — if access is ever lost
@@ -271,871 +60,136 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   }, [isOwner, gate.state, source]);
 
-  // Fetched on demand, the first time this tab combination is actually visited.
+  const { resetPages } = paging;
   useEffect(() => {
-    if (!isOwner || entity !== 'character' || source !== 'github') return;
-    if (githubCharacters.length > 0 || githubCharactersLoading) return;
-    setGithubCharactersLoading(true);
-    setGithubCharactersError(false);
-    getCommunityCharacters()
-      .then(setGithubCharacters)
-      .catch(err => {
-        console.error('[CatalogAdminPanel] Failed to load GitHub characters:', err);
-        setGithubCharactersError(true);
-      })
-      .finally(() => setGithubCharactersLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOwner, entity, source]);
+    resetPages();
+  }, [source, entity, resetPages]);
 
-  useEffect(() => {
-    if (!isOwner || entity !== 'saga' || source !== 'github') return;
-    if (githubSagas.length > 0 || githubSagasLoading) return;
-    setGithubSagasLoading(true);
-    setGithubSagasError(false);
-    getCommunitySagas()
-      .then(setGithubSagas)
-      .catch(err => {
-        console.error('[CatalogAdminPanel] Failed to load GitHub sagas:', err);
-        setGithubSagasError(true);
-      })
-      .finally(() => setGithubSagasLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOwner, entity, source]);
+  const handleEditorClose = useCallback(() => setEditing(null), []);
+  const { reload: reloadGithubFiles } = github;
+  const handleEditorSaved = useCallback(() => {
+    setSavedCount(count => count + 1);
+    reloadGithubFiles();
+  }, [reloadGithubFiles]);
+  const handleBackfillCompleted = useCallback(() => setBackfillCount(count => count + 1), []);
 
-  // Deferred so fast typing doesn't force a full re-filter/re-render of a
-  // (potentially large) catalog on every single keystroke — the input itself
-  // stays instantly responsive, the list just settles a beat behind it.
-  // Both declared unconditionally, above the owner-gate early returns below
-  // (Rules of Hooks — every hook must run on every render).
-  const deferredQuery = useDeferredValue(query);
-  const deferredGithubQuery = useDeferredValue(githubQuery);
-  const deferredSagaQuery = useDeferredValue(sagaQuery);
-  const deferredCharacterQuery = useDeferredValue(characterQuery);
-  const deferredEpisodeQuery = useDeferredValue(episodeQuery);
-
-  const duplicateCandidateIds = useMemo(() => findCatalogDuplicateCandidateIds(entries), [entries]);
-
-  // Search the visible catalog locally, then optionally narrow it down to
-  // possible duplicates. The duplicate filter is strictly for manual review.
-  const visibleEntries = (() => {
-    const q = deferredQuery.trim().toLowerCase();
-    return entries.filter(e =>
-      (!q
-        || e.external_id.toLowerCase().includes(q)
-        || e.title_main?.toLowerCase().includes(q)
-        || e.title_english?.toLowerCase().includes(q)
-        || e.title_romaji?.toLowerCase().includes(q)
-        || e.title_native?.toLowerCase().includes(q))
-      && (!duplicatesOnly || duplicateCandidateIds.has(e.external_id))
-    );
-  })();
-
-  const visibleSagas = (() => {
-    const list = source === 'github' ? githubSagas : sagas;
-    const q = deferredSagaQuery.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(s =>
-      s.name.toLowerCase().includes(q) || s.anchor_title?.toLowerCase().includes(q)
-    );
-  })();
-
-  const visibleCharacters = (() => {
-    const list = source === 'github' ? githubCharacters : characters;
-    const q = deferredCharacterQuery.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(c => c.name.toLowerCase().includes(q));
-  })();
-
-  const { results: rawEpisodeShowResults, isLoading: isSearchingEpisodeShows } = useDebouncedSearch<ApiSearchResult>(
-    episodeQuery,
-    async (q, signal) => {
-      if (entity !== 'episodes') return [];
-      return searchAnimeAndSeries(q, episodeMediaTypeFilter, signal);
-    },
-    [entity, episodeMediaTypeFilter],
+  const sourceButton = (value: Source, label: string) => (
+    <button
+      type="button"
+      className={`catalog-admin-source-btn${source === value ? ' active' : ''}`}
+      onClick={() => setSource(value)}
+    >
+      {label}
+    </button>
   );
-
-  const deduplicatedEpisodeShows = dedupeByKey(rawEpisodeShowResults, r => r.externalId);
-
-  const visibleEpisodeGroups = (() => {
-    const q = deferredEpisodeQuery.trim().toLowerCase();
-    if (!q) return episodeGroups;
-    return episodeGroups.filter(g => {
-      const title = catalogInfoMap[g.external_id]?.title || g.sample_name || '';
-      return g.external_id.toLowerCase().includes(q) || title.toLowerCase().includes(q);
-    });
-  })();
-
-  const visibleGithubFiles = githubFiles.filter(f => {
-    const q = deferredGithubQuery.trim().toLowerCase();
-    if (!q) return true;
-    const title = catalogInfoMap[externalIdFromDatabaseFilename(f.name)]?.title;
-    return f.name.toLowerCase().includes(q) || !!title?.toLowerCase().includes(q);
-  });
-
-  const pageItems = <T,>(key: string, items: T[]) => {
-    const totalPages = Math.max(1, Math.ceil(items.length / ADMIN_PAGE_SIZE));
-    const currentPage = Math.min(Math.max(pages[key] ?? 1, 1), totalPages);
-    return {
-      currentPage,
-      totalPages,
-      items: items.slice((currentPage - 1) * ADMIN_PAGE_SIZE, currentPage * ADMIN_PAGE_SIZE),
-    };
-  };
-  const renderPagination = (key: string, totalPages: number, currentPage: number) => (
-    <Pagination
-      currentPage={currentPage}
-      totalPages={totalPages}
-      onChange={page => setPages(previous => ({ ...previous, [key]: page }))}
-    />
+  const entityButton = (value: Entity, label: string) => (
+    <button
+      type="button"
+      className={`catalog-admin-source-btn${entity === value ? ' active' : ''}`}
+      onClick={() => setEntity(value)}
+    >
+      {label}
+    </button>
   );
-
-  const pagedEntries = pageItems('local-media', visibleEntries);
-  const pagedGithubFiles = pageItems('github-media', visibleGithubFiles);
-  const pagedSagas = pageItems(`sagas-${source}`, visibleSagas);
-  const pagedCharacters = pageItems(`characters-${source}`, visibleCharacters);
-  const pagedEpisodeShows = pageItems('episode-search', deduplicatedEpisodeShows);
-  const pagedEpisodeGroups = pageItems('episode-groups', visibleEpisodeGroups);
-  const pagedBackfillResults = pageItems('backfill-results', backfillResults ?? []);
-
-  useEffect(() => {
-    setPages({});
-  }, [
-    source,
-    entity,
-    deferredQuery,
-    duplicatesOnly,
-    deferredGithubQuery,
-    deferredSagaQuery,
-    deferredCharacterQuery,
-    deferredEpisodeQuery,
-  ]);
-
-  if (gate.state === 'loading') return null;
-
-  const confirmDeleteLocal = async () => {
-    if (!deleteTarget) return;
-    try {
-      await deleteCatalogEntry(deleteTarget.external_id);
-      setEntries(prev => prev.filter(e => e.external_id !== deleteTarget.external_id));
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to delete entry:', err);
-    } finally {
-      setDeleteTarget(null);
-    }
-  };
-
-  const confirmDeleteSaga = async () => {
-    if (!sagaDeleteTarget) return;
-    try {
-      await deleteSaga(sagaDeleteTarget.id);
-      setSagas(prev => prev.filter(s => s.id !== sagaDeleteTarget.id));
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to delete saga:', err);
-    } finally {
-      setSagaDeleteTarget(null);
-    }
-  };
-
-  const confirmDeleteCharacter = async () => {
-    if (!characterDeleteTarget) return;
-    try {
-      await deleteCharacter(characterDeleteTarget.external_id);
-      setCharacters(prev => prev.filter(c => c.external_id !== characterDeleteTarget.external_id));
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to delete character:', err);
-    } finally {
-      setCharacterDeleteTarget(null);
-    }
-  };
-
-  const openGithubEntry = async (file: GitHubDirEntry, initialTab: 'general' | 'cast' | 'relations' = 'general') => {
-    if (!token || githubBusy) return;
-    setGithubActionError(null);
-    setGithubBusy(true);
-    try {
-      const { content } = await getFileAtRef(token, file.path, 'main');
-      const bundle = JSON.parse(content) as ProposalBundle;
-      // Imports the merged entry into the local DB so the rich editor has
-      // something to show/edit — the actual save still goes out as a new
-      // proposal PR (see the shared PrEditorModal below), not a direct
-      // overwrite of this file. Saga data is now split one-file-per-member
-      // upstream, so the rest of the chain (if any) needs hydrating too —
-      // otherwise the editor would only see this one entry instead of the
-      // whole saga, like it did back when everything lived in one file.
-      // hydrateBundleIntoLocalCatalog now also live-enriches this (and every
-      // saga member below) when core content is still missing — see its own
-      // doc comment in bundle-sync.ts.
-      await hydrateBundleIntoLocalCatalog(bundle);
-      await hydrateSagaChainFromGithub(token, bundle.media_catalog.external_id).catch(err =>
-        console.error('[CatalogAdminPanel] Failed to hydrate saga chain:', err));
-
-      // Diffed against DIFF_FIELDS (the same list the editor's own "changed"
-      // dots use) — a field the bundle never mentioned at all, but the local
-      // row now has a real value for (from before this open, or from the
-      // enrichment fetch above), is data that exists locally without being
-      // on GitHub yet.
-      const finalEntry = await getCatalogEntryForEditor(bundle.media_catalog.external_id).catch(() => null);
-      const bundleFields = bundle.media_catalog;
-      const localOnly = new Set<string>();
-      if (finalEntry) {
-        for (const [field] of DIFF_FIELDS) {
-          const inBundle = bundleFields[field] !== undefined;
-          const hasLocalValue = finalEntry[field];
-          if (!inBundle && hasLocalValue) localOnly.add(field);
-        }
-      }
-      setEditingNonGithubFields(localOnly);
-      setEditingInitialTab(initialTab);
-      setEditingId(bundle.media_catalog.external_id);
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to open GitHub entry:', err);
-      setGithubActionError(t.github_open_error);
-    } finally {
-      setGithubBusy(false);
-    }
-  };
-
-  const confirmDeleteGithub = async () => {
-    if (!isRepoCreator || !githubDeleteTarget || !token) return;
-    setGithubActionError(null);
-    try {
-      const { sha } = await getFileAtRef(token, githubDeleteTarget.path, 'main');
-      await deleteFileFromMain(token, githubDeleteTarget.path, sha, `Delete ${githubDeleteTarget.path} via Metadea admin panel`);
-      setGithubFiles(prev => prev.filter(f => f.path !== githubDeleteTarget.path));
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to delete GitHub entry:', err);
-      setGithubActionError(t.github_delete_error);
-    } finally {
-      setGithubDeleteTarget(null);
-    }
-  };
-
-  const handleEditorClose = () => {
-    setEditingId(null);
-    setEditingNonGithubFields(undefined);
-    setEditingInitialTab('general');
-    setEditingInitialRelationsSubtab(undefined);
-  };
-
-  const handleEditorSaved = () => {
-    loadEntries();
-    loadGithubFiles();
-    loadSagas();
-  };
 
   return (
     <div className="catalog-admin-panel">
-      <h1 className="catalog-admin-title">{t.title}</h1>
-
-      <div className="catalog-admin-top-bar">
-        <div className="catalog-admin-source-toggle">
-          <button
-            type="button"
-            className={`catalog-admin-source-btn${source === 'local' ? ' active' : ''}`}
-            onClick={() => setSource('local')}
-          >
-            {t.source_local}
-          </button>
-          {isOwner && (
-            <>
-              <button
-                type="button"
-                className={`catalog-admin-source-btn${source === 'github' ? ' active' : ''}`}
-                onClick={() => setSource('github')}
-              >
-                {t.source_github}
-              </button>
-              <button
-                type="button"
-                className={`catalog-admin-source-btn${source === 'add' ? ' active' : ''}`}
-                onClick={() => setSource('add')}
-              >
-                {t.source_add}
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="catalog-admin-source-toggle">
-          <button
-            type="button"
-            className={`catalog-admin-source-btn${entity === 'media' ? ' active' : ''}`}
-            onClick={() => setEntity('media')}
-          >
-            {t.entity_media}
-          </button>
-          <button
-            type="button"
-            className={`catalog-admin-source-btn${entity === 'saga' ? ' active' : ''}`}
-            onClick={() => setEntity('saga')}
-          >
-            {t.entity_saga}
-          </button>
-          <button
-            type="button"
-            className={`catalog-admin-source-btn${entity === 'character' ? ' active' : ''}`}
-            onClick={() => setEntity('character')}
-          >
-            {t.entity_character}
-          </button>
-          {source === 'local' && (
-            <button
-              type="button"
-              className={`catalog-admin-source-btn${entity === 'episodes' ? ' active' : ''}`}
-              onClick={() => setEntity('episodes')}
-            >
-              {t.entity_episodes}
-            </button>
-          )}
-        </div>
-
-        <div className="catalog-admin-search-wrapper">
-          {entity === 'episodes' && source === 'local' && (
-            <>
-              <input
-                type="text"
-                className="catalog-admin-search"
-                placeholder={t.search_placeholder}
-                value={episodeQuery}
-                onChange={e => setEpisodeQuery(e.target.value)}
-              />
-              <select
-                className="catalog-admin-type-select"
-                value={episodeMediaTypeFilter}
-                onChange={e => setEpisodeMediaTypeFilter(e.target.value as 'all' | 'anime' | 'series')}
-              >
-                <option value="all">Todos (Anime / Series)</option>
-                <option value="anime">Anime</option>
-                <option value="series">Series</option>
-              </select>
-            </>
-          )}
-
-          {entity === 'saga' && (
-            <input
-              type="text"
-              className="catalog-admin-search"
-              placeholder={t.search_placeholder}
-              value={sagaQuery}
-              onChange={e => setSagaQuery(e.target.value)}
-            />
-          )}
-
-          {entity === 'character' && source !== 'add' && (
-            <input
-              type="text"
-              className="catalog-admin-search"
-              placeholder={t.search_placeholder}
-              value={characterQuery}
-              onChange={e => setCharacterQuery(e.target.value)}
-            />
-          )}
-
-          {entity === 'media' && source === 'local' && (
-            <>
-              <input
-                type="text"
-                className="catalog-admin-search"
-                placeholder={t.search_placeholder}
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-              />
-              <button
-                type="button"
-                className={`catalog-admin-source-btn catalog-admin-duplicate-filter${duplicatesOnly ? ' active' : ''}`}
-                aria-pressed={duplicatesOnly}
-                title={t.duplicate_filter_hint}
-                disabled={duplicateCandidateIds.size === 0 && !duplicatesOnly}
-                onClick={() => setDuplicatesOnly(current => !current)}
-              >
-                {t.duplicate_filter_button.replace('{count}', String(duplicateCandidateIds.size))}
-              </button>
-            </>
-          )}
-
-          {entity === 'media' && source === 'github' && isOwner && (
-            <input
-              type="text"
-              className="catalog-admin-search"
-              placeholder={t.search_placeholder}
-              value={githubQuery}
-              onChange={e => setGithubQuery(e.target.value)}
-            />
-          )}
-        </div>
-      </div>
-
-      {source === 'github' && githubActionError && (
-        <p className="catalog-admin-status catalog-admin-status--error" role="alert">{githubActionError}</p>
-      )}
-
-      {entity === 'episodes' && source === 'local' && (
+      {ready && (
         <>
-          {/* Selecting Edit opens the media entry directly at Relations > Episodes. */}
-              {episodeQuery.trim() ? (
-                <>
-                  {isSearchingEpisodeShows && <p className="catalog-admin-status">{t.loading}</p>}
-                  {!isSearchingEpisodeShows && deduplicatedEpisodeShows.length === 0 && (
-                    <p className="catalog-admin-status">{t.no_entries}</p>
-                  )}
-                  {!isSearchingEpisodeShows && deduplicatedEpisodeShows.length > 0 && (
-                    <>
-                    <div className="pr-editor-search-grid">
-                      {pagedEpisodeShows.items.map(show => (
-                        <CatalogEntryCard
-                          key={show.externalId}
-                          id={show.externalId}
-                          title={show.titleMain || '—'}
-                          cover={show.coverUrl}
-                          editLabel={t.edit_button}
-                          deleteLabel={t.delete_button}
-                          openMediaLabel={t.open_media_page}
-                          mediaPageUrl={catalogInfoMap[show.externalId]?.blocked
-                            ? undefined
-                            : `/media?id=${encodeURIComponent(show.externalId)}`}
-                          onEdit={() => openEpisodeEditor(show.externalId)}
-                          onDelete={() => setEpisodesDeleteTarget({
-                            external_id: show.externalId,
-                            episode_count: 0,
-                            sample_name: show.titleMain,
-                            sample_cover: show.coverUrl ?? null,
-                          })}
-                        />
-                      ))}
-                    </div>
-                    {renderPagination('episode-search', pagedEpisodeShows.totalPages, pagedEpisodeShows.currentPage)}
-                    </>
-                  )}
-                </>
-              ) : (
-                /* When query is empty, show titles that already have cached episodes in local DB */
-                <>
-                  {episodesLoading && <p className="catalog-admin-status">{t.loading}</p>}
-                  {!episodesLoading && visibleEpisodeGroups.length === 0 && (
-                    <p className="catalog-admin-status">{t.no_episodes}</p>
-                  )}
+          <h1 className="catalog-admin-title">{t.title}</h1>
 
-                  {!episodesLoading && visibleEpisodeGroups.length > 0 && (
-                    <>
-                    <div className="pr-editor-search-grid">
-                      {pagedEpisodeGroups.items.map(group => {
-                        const info = catalogInfoMap[group.external_id];
-                        const title = info?.title || group.sample_name || group.external_id;
-                        const cover = info?.cover || group.sample_cover;
-                        const countText = `${group.episode_count} eps`;
-                        return (
-                          <CatalogEntryCard
-                            key={group.external_id}
-                            id={`${group.external_id} (${countText})`}
-                            title={title}
-                            cover={cover}
-                            editLabel={t.edit_button}
-                            deleteLabel={t.delete_button}
-                            openMediaLabel={t.open_media_page}
-                            mediaPageUrl={info?.blocked ? undefined : `/media?id=${encodeURIComponent(group.external_id)}`}
-                            onEdit={() => openEpisodeEditor(group.external_id)}
-                            onDelete={() => setEpisodesDeleteTarget(group)}
-                          />
-                        );
-                      })}
-                    </div>
-                    {renderPagination('episode-groups', pagedEpisodeGroups.totalPages, pagedEpisodeGroups.currentPage)}
-                    </>
-                  )}
+          <div className="catalog-admin-top-bar">
+            <div className="catalog-admin-source-toggle">
+              {sourceButton('local', t.source_local)}
+              {isOwner && (
+                <>
+                  {sourceButton('github', t.source_github)}
+                  {sourceButton('add', t.source_add)}
                 </>
               )}
-        </>
-      )}
-
-      {entity === 'saga' && (
-        <>
-          {source === 'github' && <p className="catalog-admin-hint">{t.github_hint}</p>}
-
-          {(source === 'github' ? githubSagasLoading : sagaLoading) && <p className="catalog-admin-status">{t.loading}</p>}
-          {source === 'github' && githubSagasError && <p className="catalog-admin-status">{t.github_open_error}</p>}
-          {!(source === 'github' ? githubSagasLoading : sagaLoading) && visibleSagas.length === 0 && (
-            <p className="catalog-admin-status">{t.no_sagas}</p>
-          )}
-
-          {!(source === 'github' ? githubSagasLoading : sagaLoading) && visibleSagas.length > 0 && (
-            <>
-            <div className="pr-editor-search-grid">
-              {pagedSagas.items.map(saga => {
-                const sagaFile = source === 'github'
-                  ? githubFiles.find(file => externalIdFromDatabaseFilename(file.name) === saga.id)
-                    ?? saga.members
-                      .map(member => githubFiles.find(file => externalIdFromDatabaseFilename(file.name) === member.external_id))
-                      .find((file): file is GitHubDirEntry => !!file)
-                  : undefined;
-                return (
-                  <CatalogEntryCard
-                    key={saga.id}
-                    id={saga.id}
-                    title={`${saga.name || saga.anchor_title || saga.id} (${saga.members.length})`}
-                    cover={saga.anchor_cover || saga.members[0]?.cover}
-                    editLabel={t.edit_button}
-                    deleteLabel={t.delete_button}
-                    openMediaLabel={t.open_media_page}
-                    viewLabel={t.view_saga}
-                    onView={() => setSagaViewerExternalId(saga.id)}
-                    onEdit={() => {
-                      if (source === 'github') {
-                        if (sagaFile) openGithubEntry(sagaFile, 'relations');
-                      } else {
-                        setEditingNonGithubFields(undefined);
-                        setEditingInitialTab('relations');
-                        setEditingInitialRelationsSubtab(undefined);
-                        setEditingId(saga.id);
-                      }
-                    }}
-                    onDelete={source === 'github' ? undefined : () => setSagaDeleteTarget(saga)}
-                    editDisabled={source === 'github' && (!sagaFile || githubBusy)}
-                  />
-                );
-              })}
             </div>
-            {renderPagination(`sagas-${source}`, pagedSagas.totalPages, pagedSagas.currentPage)}
-            </>
-          )}
-        </>
-      )}
 
-      {entity === 'character' && source !== 'add' && (
-        <>
-          {source === 'github' && <p className="catalog-admin-hint">{t.github_hint}</p>}
-
-          {(source === 'github' ? githubCharactersLoading : characterLoading) && <p className="catalog-admin-status">{t.loading}</p>}
-          {source === 'github' && githubCharactersError && <p className="catalog-admin-status">{t.github_open_error}</p>}
-          {!(source === 'github' ? githubCharactersLoading : characterLoading) && visibleCharacters.length === 0 && (
-            <p className="catalog-admin-status">{t.no_characters}</p>
-          )}
-
-          {!(source === 'github' ? githubCharactersLoading : characterLoading) && visibleCharacters.length > 0 && (
-            <>
-            <div className="pr-editor-search-grid">
-              {pagedCharacters.items.map(character => (
-                <CatalogEntryCard
-                  key={character.external_id}
-                  id={character.external_id}
-                  title={character.name || character.external_id}
-                  cover={character.image_url}
-                  editLabel={t.edit_button}
-                  deleteLabel={t.delete_button}
-                  openMediaLabel={t.open_media_page}
-                  onEdit={() => (window as any).openCharacterEditor?.(character.external_id)}
-                  onDelete={source === 'github' ? undefined : () => setCharacterDeleteTarget(character)}
-                />
-              ))}
+            <div className="catalog-admin-source-toggle">
+              {entityButton('media', t.entity_media)}
+              {entityButton('saga', t.entity_saga)}
+              {entityButton('character', t.entity_character)}
+              {source === 'local' && entityButton('episodes', t.entity_episodes)}
             </div>
-            {renderPagination(`characters-${source}`, pagedCharacters.totalPages, pagedCharacters.currentPage)}
-            </>
-          )}
-        </>
-      )}
 
-      {entity === 'character' && source === 'add' && isOwner && (
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" className="catalog-admin-source-btn" onClick={() => setCharacterSearchOpen(true)}>
-            {t.add_character_button}
-          </button>
-          <button
-            type="button"
-            className="catalog-admin-source-btn"
-            title={getT().character.non_anilist_character_title}
-            onClick={() => (window as any).openCharacterEditor?.(generateCustomCharacterId())}
-          >
-            + Crear personaje custom
-          </button>
-        </div>
-      )}
-
-      {entity === 'media' && source === 'local' && (
-        <>
-          {loading && <p className="catalog-admin-status">{t.loading}</p>}
-          {!loading && visibleEntries.length === 0 && (
-            <p className="catalog-admin-status">
-              {duplicatesOnly ? t.no_duplicate_candidates : t.no_entries}
-            </p>
-          )}
-
-          {!loading && visibleEntries.length > 0 && (
-            <>
-            <div className="pr-editor-search-grid">
-              {pagedEntries.items.map(entry => (
-                <CatalogEntryCard
-                  key={entry.external_id}
-                  id={entry.external_id}
-                  title={entry.title_main || entry.external_id}
-                  cover={entry.cover_url}
-                  blocked={!!entry.blocked_at}
-                  editLabel={t.edit_button}
-                  deleteLabel={t.delete_button}
-                  openMediaLabel={t.open_media_page}
-                  mediaPageUrl={entry.blocked_at ? undefined : `/media?id=${encodeURIComponent(entry.external_id)}`}
-                  onEdit={() => {
-                    setEditingNonGithubFields(undefined);
-                    setEditingInitialTab('general');
-                    setEditingInitialRelationsSubtab(undefined);
-                    setEditingId(entry.external_id);
-                  }}
-                  onDelete={() => setDeleteTarget(entry)}
-                />
-              ))}
-            </div>
-            {renderPagination('local-media', pagedEntries.totalPages, pagedEntries.currentPage)}
-            </>
-          )}
-        </>
-      )}
-
-      {entity === 'media' && source === 'github' && isOwner && (
-        <>
-          <p className="catalog-admin-hint">{t.github_hint}</p>
-
-          <div className="catalog-backfill">
-            <button
-              type="button"
-              className="catalog-admin-source-btn"
-              onClick={runBackfill}
-              disabled={backfillRunning}
-            >
-              {backfillRunning ? 'Revisando catálogo…' : 'Revisar cambios de catálogo'}
-            </button>
-            {backfillRunning && backfillProgress && (
-              <p className="catalog-admin-status">
-                {backfillProgress.done} / {backfillProgress.total} — {backfillProgress.current}
-              </p>
-            )}
-            {!backfillRunning && backfillResults && (
-              <>
-              <div className="catalog-backfill-results">
-                {backfillResults.length === 0 ? (
-                  <p className="catalog-admin-status">{pe.backfill_nothing_to_update}</p>
-                ) : (
-                  pagedBackfillResults.items.map(entry => (
-                    <div key={entry.externalId} className="catalog-backfill-entry">
-                      <p className="catalog-backfill-entry-title">{entry.titleMain}</p>
-                      <div className="catalog-backfill-fields">
-                        {entry.fields.map(f => (
-                          <span
-                            key={f.field}
-                            className={`catalog-backfill-field${f.changed ? ' catalog-backfill-field--changed' : ''}`}
-                          >
-                            {f.label}: {f.after == null || f.after === '' ? '—' : String(f.after)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              {renderPagination('backfill-results', pagedBackfillResults.totalPages, pagedBackfillResults.currentPage)}
-              </>
-            )}
+            <div className="catalog-admin-search-wrapper" ref={setSearchSlot} />
           </div>
 
-          {githubLoading && <p className="catalog-admin-status">{t.loading}</p>}
-          {!githubLoading && visibleGithubFiles.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
-
-          {!githubLoading && visibleGithubFiles.length > 0 && (
-            <>
-            <div className="pr-editor-search-grid">
-              {pagedGithubFiles.items.map(file => {
-                const fileExternalId = externalIdFromDatabaseFilename(file.name);
-                const info = catalogInfoMap[fileExternalId];
-                return (
-                  <CatalogEntryCard
-                    key={file.path}
-                    id={fileExternalId}
-                    title={info?.title || fileExternalId}
-                    cover={info?.cover}
-                    blocked={!!info?.blocked}
-                    editLabel={t.edit_button}
-                    deleteLabel={t.delete_button}
-                    openMediaLabel={t.open_media_page}
-                    mediaPageUrl={info?.blocked ? undefined : `/media?id=${encodeURIComponent(fileExternalId)}`}
-                    editDisabled={githubBusy}
-                    onEdit={() => openGithubEntry(file)}
-                    onDelete={isRepoCreator ? () => setGithubDeleteTarget(file) : undefined}
-                  />
-                );
-              })}
-            </div>
-            {renderPagination('github-media', pagedGithubFiles.totalPages, pagedGithubFiles.currentPage)}
-            </>
+          {source === 'github' && github.actionError && (
+            <p className="catalog-admin-status catalog-admin-status--error" role="alert">{github.actionError}</p>
           )}
         </>
       )}
 
-      {entity === 'media' && source === 'add' && isOwner && (
-        <>
-          {addBusy && <p className="catalog-admin-status">{t.add_fetching}</p>}
-          <AdminAddSearch
-            onSelect={async ({ externalId, title, coverUrl }) => {
-              if (addBusy) return;
-              // Only fetch/persist anything when this id has never been
-              // cataloged before — an existing row may carry curated edits
-              // (e.g. a manually-corrected release date) that a live refetch
-              // must never reset back to whatever the API currently says.
-              const existing = await getCatalogEntry(externalId).catch(() => null);
-              if (!existing) {
-                setAddBusy(true);
-                try {
-                  // Same live fetch+map+persist every normal media page does on
-                  // first visit (fetchMediaData → provider mapper →
-                  // persistToCatalog) — gets synopsis/dates/genres/platforms/
-                  // authors/etc, not just title+cover, before opening the editor.
-                  const full = await fetchMediaData(externalId).catch(() => null);
-                  if (!full) {
-                    const now = new Date().toISOString();
-                    await saveCatalogEntry({
-                      id: '',
-                      external_id: externalId,
-                      type: externalId.split(':')[0],
-                      format: null,
-                      source: externalId.startsWith('game:') || externalId.startsWith('vnovel:') ? 'igdb'
-                        : externalId.startsWith('anime:') || externalId.startsWith('manga:') || externalId.startsWith('lnovel:') ? 'anilist'
-                        : externalId.startsWith('movie:') || externalId.startsWith('series:') ? 'tmdb'
-                        : externalId.startsWith('book:') ? 'openlibrary'
-                        : externalId.startsWith('comic:') ? 'comicvine'
-                        : null,
-                      title_main: title,
-                      title_romaji: null,
-                      title_native: null,
-                      cover_url: coverUrl,
-                      release_year: null,
-                      release_month: null,
-                      release_day: null,
-                      score_global: null,
-                      created_at: now,
-                      updated_at: now,
-                    }).catch(console.error);
-                  }
-                } finally {
-                  setAddBusy(false);
-                }
-              }
-              setEditingNonGithubFields(undefined);
-              setEditingInitialTab('general');
-              setEditingInitialRelationsSubtab(undefined);
-              setEditingId(externalId);
-            }}
-          />
-        </>
+      <EpisodesTab
+        t={t}
+        active={ready && entity === 'episodes' && source === 'local'}
+        searchSlot={searchSlot}
+        paging={paging}
+        catalogInfoMap={catalogInfoMap}
+        openEditor={setEditing}
+      />
+
+      <SagasTab
+        i18n={i18n}
+        active={ready && entity === 'saga'}
+        source={source}
+        isOwner={isOwner}
+        searchSlot={searchSlot}
+        paging={paging}
+        reloadToken={savedCount}
+        github={github}
+        openEditor={setEditing}
+      />
+
+      <CharactersTab
+        t={t}
+        active={ready && entity === 'character'}
+        source={source}
+        isOwner={isOwner}
+        searchSlot={searchSlot}
+        paging={paging}
+      />
+
+      <MediaTab
+        t={t}
+        active={ready && entity === 'media' && source === 'local'}
+        searchSlot={searchSlot}
+        paging={paging}
+        reloadToken={savedCount + backfillCount}
+        openEditor={setEditing}
+        onCatalogLoaded={setCatalogInfoMap}
+      />
+
+      {isOwner && (
+        <GithubFilesTab
+          t={t}
+          active={entity === 'media' && source === 'github'}
+          isRepoCreator={isRepoCreator}
+          searchSlot={searchSlot}
+          paging={paging}
+          github={github}
+          catalogInfoMap={catalogInfoMap}
+          onBackfillCompleted={handleBackfillCompleted}
+        />
       )}
 
-      {editingId && (
+      {isOwner && entity === 'media' && source === 'add' && (
+        <AddWorkTab t={t} openEditor={setEditing} />
+      )}
+
+      {editing && (
         <PrEditorModal
-          externalId={editingId}
-          initialTab={editingInitialTab}
-          initialRelationsSubtab={editingInitialRelationsSubtab}
+          externalId={editing.externalId}
+          initialTab={editing.initialTab ?? 'general'}
+          initialRelationsSubtab={editing.initialRelationsSubtab}
           onClose={handleEditorClose}
           onSaved={handleEditorSaved}
-          nonGithubFields={editingNonGithubFields}
-        />
-      )}
-
-      {deleteTarget && (
-        <div className="me-overlay" onClick={() => setDeleteTarget(null)}>
-          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
-            <p>{t.delete_confirm.replace('{title}', deleteTarget.title_main || deleteTarget.external_id)}</p>
-            <div className="catalog-admin-confirm-actions">
-              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setDeleteTarget(null)}>
-                {t.cancel_button}
-              </button>
-              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteLocal}>
-                {t.delete_button}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {githubDeleteTarget && (
-        <div className="me-overlay" onClick={() => setGithubDeleteTarget(null)}>
-          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
-            <p>{t.delete_confirm.replace('{title}', externalIdFromDatabaseFilename(githubDeleteTarget.name))}</p>
-            <div className="catalog-admin-confirm-actions">
-              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setGithubDeleteTarget(null)}>
-                {t.cancel_button}
-              </button>
-              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteGithub}>
-                {t.delete_button}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {sagaDeleteTarget && (
-        <div className="me-overlay" onClick={() => setSagaDeleteTarget(null)}>
-          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
-            <p>{t.delete_confirm.replace('{title}', sagaDeleteTarget.name || sagaDeleteTarget.anchor_title || sagaDeleteTarget.id)}</p>
-            <div className="catalog-admin-confirm-actions">
-              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setSagaDeleteTarget(null)}>
-                {t.cancel_button}
-              </button>
-              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteSaga}>
-                {t.delete_button}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {sagaViewerExternalId && (
-        <SagaViewerModal
-          externalId={sagaViewerExternalId}
-          i18n={i18n.media}
-          onClose={() => setSagaViewerExternalId(null)}
-        />
-      )}
-
-      {characterDeleteTarget && (
-        <div className="me-overlay" onClick={() => setCharacterDeleteTarget(null)}>
-          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
-            <p>{t.delete_confirm.replace('{title}', characterDeleteTarget.name || characterDeleteTarget.external_id)}</p>
-            <div className="catalog-admin-confirm-actions">
-              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setCharacterDeleteTarget(null)}>
-                {t.cancel_button}
-              </button>
-              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteCharacter}>
-                {t.delete_button}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {episodesDeleteTarget && (
-        <div className="me-overlay" onClick={() => setEpisodesDeleteTarget(null)}>
-          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
-            <p>
-              {t.delete_all_episodes_confirm
-                .replace('{title}', catalogInfoMap[episodesDeleteTarget.external_id]?.title || episodesDeleteTarget.sample_name || episodesDeleteTarget.external_id)
-                .replace('{count}', String(episodesDeleteTarget.episode_count))}
-            </p>
-            <div className="catalog-admin-confirm-actions">
-              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setEpisodesDeleteTarget(null)}>
-                {t.cancel_button}
-              </button>
-              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteAllEpisodes}>
-                {t.delete_button}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {characterSearchOpen && (
-        <CharacterSearchPopup
-          onSelect={result => {
-            setCharacterSearchOpen(false);
-            (window as any).openCharacterEditor?.(result.externalId);
-          }}
-          onClose={() => setCharacterSearchOpen(false)}
-          excludeIds={characters.map(c => c.external_id)}
+          nonGithubFields={editing.nonGithubFields}
         />
       )}
     </div>

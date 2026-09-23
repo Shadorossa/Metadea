@@ -1,4 +1,4 @@
-import { showToast } from '../shared/toast';
+import { showToast } from '../dom/toast';
 
 /**
  * Client-side sliding-window rate limiter — queues calls so they never

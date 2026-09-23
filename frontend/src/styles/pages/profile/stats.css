@@ -145,7 +145,7 @@
 }
 
 .stats-bar-outer.completed::-webkit-progress-value {
-  background: #10b981;
+  background: var(--color-success);
 }
 
 .stats-bar-outer.in_progress::-webkit-progress-value {
@@ -157,11 +157,11 @@
 }
 
 .stats-bar-outer.paused::-webkit-progress-value {
-  background: #f59e0b;
+  background: var(--color-gold);
 }
 
 .stats-bar-outer.dropped::-webkit-progress-value {
-  background: #ef4444;
+  background: var(--color-error-strong);
 }
 
 .stats-bar-outer--time::-webkit-progress-value {
@@ -200,8 +200,8 @@
 }
 
 .fav-card:hover .fav-crown-btn {
-  opacity: 1 !important;
-  pointer-events: auto !important;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 

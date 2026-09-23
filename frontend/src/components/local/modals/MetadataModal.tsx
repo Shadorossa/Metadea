@@ -1,5 +1,6 @@
 import React from 'react';
-import { getT } from '../../../i18n/client';
+import { getT } from '../../../i18n/runtime';
+import { ModalShell } from '../../shared/ModalShell';
 
 export interface MetaProgress {
   total:       number;
@@ -16,9 +17,20 @@ interface MetadataModalProps {
 export function MetadataModal({ progress, onCancel }: MetadataModalProps) {
   const t = getT();
   const pct = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+  // A progress dialog for an in-flight batch: neither the backdrop nor
+  // Escape aborts it (same as before) — only the Cancel button, which the
+  // shell focuses on open so a keyboard user can reach it.
   return (
-    <div className="meta-modal-overlay">
-      <div className="meta-modal">
+    <ModalShell
+      onClose={onCancel}
+      label={t.local.updating_metadata}
+      overlayClassName="meta-modal-overlay"
+      panelClassName="meta-modal"
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      portal={false}
+      stopPanelPropagation={false}
+    >
         <h3 className="meta-modal-title">{t.local.updating_metadata}</h3>
         <p className="meta-modal-subtitle">{progress.currentName || 'Iniciando…'}</p>
         <div className="meta-modal-bar-track">
@@ -26,7 +38,6 @@ export function MetadataModal({ progress, onCancel }: MetadataModalProps) {
         </div>
         <p className="meta-modal-count">{progress.current} / {progress.total}</p>
         <button type="button" className="meta-modal-cancel" onClick={onCancel}>{t.local.cancel}</button>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

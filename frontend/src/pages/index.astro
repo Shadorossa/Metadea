@@ -8,7 +8,7 @@ import '../styles/pages/entry.css';
     <script>
       import { initTauriDatabase } from '../lib/tauri/database';
       import { getAuthToken } from '../lib/tauri/auth';
-      import { STORAGE_KEYS } from '../lib/shared/storage-keys';
+      import { STORAGE_KEYS } from '../lib/storage/storage-keys';
 
       // localStorage alone isn't enough here: it lives in the WebView2
       // profile folder, separate from the SQLite DB file — restoring only

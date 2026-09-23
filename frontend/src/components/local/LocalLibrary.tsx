@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import type { Translations } from '../../i18n/index';
 import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'motion/react';
 import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, deleteLibraryEntry, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 import { IconGame, IconVNovel, IconAnime, IconManga, IconNovel, IconBook, IconComic, IconSeries, IconMovie } from '../local/ui/icons';
 
-import { CATEGORIES, LAUNCHER_ORDER, type CategoryId, type PlatformId } from './utils/constants';
+import { CATEGORIES, LAUNCHER_ORDER, LOCAL_CATEGORY_TO_SEARCH_TYPE, type CategoryId, type PlatformId } from '../../lib/local/platforms';
 import { useLocalGames }        from './hooks/useLocalGames';
 import { useMetadataCache }     from './hooks/useMetadataCache';
 import { useCoverCacheBatch }   from './hooks/useCoverCacheBatch';
@@ -13,16 +14,16 @@ import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
 import { usePendingLaunchers }  from './hooks/usePendingLaunchers';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
-import { isInProgressStatus } from '../../lib/constants/media';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, matchGameStatusByName, type StatusEntry } from './utils/catalogGameLinking';
-import { normalizeForMatch } from './utils/folderMatch';
-import { readLocalUrlState } from './utils/urlState';
+import { isInProgressStatus } from '../../lib/media/media-types';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, matchGameStatusByName, type StatusEntry } from '../../lib/local/catalog-game-linking';
+import { normalizeForMatch } from '../../lib/local/folder-match';
+import { readLocalUrlState } from '../../lib/local/url-state';
 import {
   useLocalPanelSelection, resolveCatalogSelection, resolveGameSelection,
   resolvePendingSelection, resolvePendingLaunchGame,
 } from './hooks/useLocalPanelSelection';
 import { useEvenPanelWidth } from './hooks/useEvenPanelWidth';
-import { useNavSlot } from '../../lib/shared/useNavSlot';
+import { useNavSlot } from '../shared/hooks/useNavSlot';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameDetailPanel }  from './details/GameDetailPanel';
@@ -33,7 +34,10 @@ import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
 import { GamesGrid } from './GamesGrid';
 
-export default function LocalLibrary() {
+// ssrLocal: the page's own server-side `t.local` (local.astro has the request
+// language via useTranslations) — used for the strings rendered before mount
+// so SSR markup and the first client render agree without a Spanish literal.
+export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['local'] } = {}) {
   const t = getT();
   // Starts at the hardcoded default (matching what the server renders — see
   // the navSlot hydration-mismatch comment just below for why this can't
@@ -509,17 +513,6 @@ export default function LocalLibrary() {
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
 
-const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.types> = {
-  'videojuegos':  'game',
-  'visual-novel': 'vnovel',
-  'anime':        'anime',
-  'manga':        'manga',
-  'light-novel':  'lnovel',
-  'books':        'book',
-  'comics':       'comic',
-  'series':       'series',
-  'movies':       'movie',
-};
 
   const CATEGORY_ICONS: Record<CategoryId, React.ReactElement> = {
     'videojuegos': <IconGame />,
@@ -558,7 +551,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
       <input
         type="text"
         className="local-tab-search"
-        placeholder="Buscar…"
+        placeholder={t.local.search_ph}
         value={filterName}
         onChange={e => setFilterName(e.target.value)}
       />
@@ -634,6 +627,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 onDeleteLibraryItem={handleDeleteLibraryItem}
                 onRefreshScan={activeCategory === 'visual-novel' ? loadGames : undefined}
                 sectionRefs={activeCategory === 'visual-novel' ? sectionRefs : undefined}
+                ssrLocal={ssrLocal}
               />
             ) : (
               /* ── Games view (Videojuegos only — LOCAL_MEDIA_TYPE_BY_CATEGORY
@@ -646,6 +640,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 onClearRoute={() => clearRoute('videojuegos')}
                 onRefreshScan={loadGames}
                 isMounted={isMounted}
+                ssrLocal={ssrLocal}
                 currentlyEntries={sectionsReady ? currentlyEntries : []}
                 coverCache={coverCache}
                 coverCacheHits={coverCacheHits}

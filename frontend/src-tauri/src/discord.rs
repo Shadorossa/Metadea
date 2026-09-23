@@ -67,19 +67,35 @@ fn ensure_connected(guard: &mut Option<DiscordIpcClient>) -> Result<(), String> 
     Ok(())
 }
 
-fn apply_activity(
-    client: &mut DiscordIpcClient,
-    details: &str,
-    state: &str,
-    large_img: &str,
-    large_txt: &str,
-    small_img: &str,
-    small_txt: &str,
+/// Everything a single Rich Presence update carries. Empty strings mean
+/// "omit that field" (Discord rejects empty details/state/assets).
+struct ActivityPayload<'a> {
+    details: &'a str,
+    state: &'a str,
+    large_img: &'a str,
+    large_txt: &'a str,
+    small_img: &'a str,
+    small_txt: &'a str,
     start_time: Option<u64>,
     end_time: Option<u64>,
-) -> bool {
+    /// "playing" (default) | "watching" | "listening" - Discord's activity
+    /// type, which decides the "Playing X" / "Watching X" header.
+    activity_type: Option<activity::ActivityType>,
+}
+
+fn parse_activity_type(raw: Option<&str>) -> Option<activity::ActivityType> {
+    match raw {
+        Some("watching") => Some(activity::ActivityType::Watching),
+        Some("listening") => Some(activity::ActivityType::Listening),
+        Some("playing") => Some(activity::ActivityType::Playing),
+        _ => None,
+    }
+}
+
+fn apply_activity(client: &mut DiscordIpcClient, payload: &ActivityPayload<'_>) -> bool {
+    let ActivityPayload { details, state, large_img, large_txt, small_img, small_txt, start_time, end_time, ref activity_type } = *payload;
     let mut assets = activity::Assets::new();
-    
+
     if !large_img.is_empty() {
         assets = assets.large_image(large_img).large_text(large_txt);
     }
@@ -95,6 +111,9 @@ fn apply_activity(
     let mut payload = activity::Activity::new()
         .assets(assets)
         .buttons(vec![download_button]);
+    if let Some(kind) = activity_type {
+        payload = payload.activity_type(kind.clone());
+    }
 
     if let Some(start) = start_time {
         let mut ts = activity::Timestamps::new().start(start as i64);
@@ -115,20 +134,10 @@ fn apply_activity(
 }
 
 
-fn send_activity(
-    guard: &mut Option<DiscordIpcClient>,
-    details: &str,
-    state: &str,
-    large_img: &str,
-    large_txt: &str,
-    small_img: &str,
-    small_txt: &str,
-    start_time: Option<u64>,
-    end_time: Option<u64>,
-) -> Result<(), String> {
+fn send_activity(guard: &mut Option<DiscordIpcClient>, payload: &ActivityPayload<'_>) -> Result<(), String> {
     if guard.is_some() {
         if let Some(client) = guard.as_mut() {
-            if apply_activity(client, details, state, large_img, large_txt, small_img, small_txt, start_time, end_time) {
+            if apply_activity(client, payload) {
                 return Ok(());
             }
         }
@@ -138,7 +147,7 @@ fn send_activity(
     }
     ensure_connected(guard)?;
     if let Some(client) = guard.as_mut() {
-        if apply_activity(client, details, state, large_img, large_txt, small_img, small_txt, start_time, end_time) {
+        if apply_activity(client, payload) {
             return Ok(());
         }
     }
@@ -148,6 +157,8 @@ fn send_activity(
     Err("set_activity failed".into())
 }
 
+// Arity is dictated by the frontend `invoke("update_presence", …)` contract.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub fn update_presence(
     discord: tauri::State<'_, DiscordState>,
@@ -159,18 +170,26 @@ pub fn update_presence(
     small_text: Option<String>,
     start_time: Option<u64>,
     end_time: Option<u64>,
+    activity_type: Option<String>,
 ) -> Result<(), String> {
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
+    let large_img = large_image.unwrap_or_else(|| "metadea".to_string());
+    let large_txt = large_text.unwrap_or_else(|| "Metadea".to_string());
+    let small_img = small_image.unwrap_or_default();
+    let small_txt = small_text.unwrap_or_default();
     send_activity(
         &mut guard,
-        &details,
-        &state,
-        &large_image.unwrap_or_else(|| "metadea".to_string()),
-        &large_text.unwrap_or_else(|| "Metadea".to_string()),
-        &small_image.unwrap_or_default(),
-        &small_text.unwrap_or_default(),
-        start_time,
-        end_time,
+        &ActivityPayload {
+            details: &details,
+            state: &state,
+            large_img: &large_img,
+            large_txt: &large_txt,
+            small_img: &small_img,
+            small_txt: &small_txt,
+            start_time,
+            end_time,
+            activity_type: parse_activity_type(activity_type.as_deref()),
+        },
     )
 }
 
@@ -179,14 +198,17 @@ pub fn reset_presence(discord: tauri::State<'_, DiscordState>) -> Result<(), Str
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
     send_activity(
         &mut guard,
-        DEFAULT_DETAILS,
-        DEFAULT_STATE,
-        "metadea",
-        "Metadea",
-        "",
-        "",
-        None,
-        None,
+        &ActivityPayload {
+            details: DEFAULT_DETAILS,
+            state: DEFAULT_STATE,
+            large_img: "metadea",
+            large_txt: "Metadea",
+            small_img: "",
+            small_txt: "",
+            start_time: None,
+            end_time: None,
+            activity_type: None,
+        },
     )
 }
 

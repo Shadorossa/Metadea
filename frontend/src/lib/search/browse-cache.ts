@@ -8,7 +8,7 @@
 // media-cache.ts, kept separate since the cache key/shape here is a whole
 // results page (type+page+filters), not one media entry.
 import type { SearchPage } from './index';
-import { sessionCacheGet, sessionCacheSet } from '../shared/session-ttl-cache';
+import { sessionCacheGet, sessionCacheSet } from '../shared/state/session-ttl-cache';
 
 const CACHE_PREFIX = 'search_browse_cache_v1:';
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 min

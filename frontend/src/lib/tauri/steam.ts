@@ -1,4 +1,4 @@
-import { tauriCmd, tauriRun, tauriTry } from './core';
+import { tauriCmd, tauriRun, tauriTry } from './bridge';
 import type { SteamOwnedGame } from './local-library';
 
 function steamLang(): string {

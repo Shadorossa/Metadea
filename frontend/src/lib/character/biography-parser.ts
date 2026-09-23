@@ -1,4 +1,4 @@
-import { sanitizeStatValue, escapeHtml } from '../shared/sanitize-html';
+import { sanitizeStatValue, escapeHtml } from '../shared/text/sanitize-html';
 
 export interface ParsedCharacteristic {
   label: string;

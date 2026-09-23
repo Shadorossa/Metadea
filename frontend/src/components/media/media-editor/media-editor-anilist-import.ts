@@ -1,5 +1,5 @@
 import type { Dispatch } from 'react';
-import type { EntryAction, UiAction, LogState } from '../../../lib/media/log-state';
+import type { EntryAction, UiAction, LogState } from '../../../lib/media/editor/library-log-state';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import { fetchAniListLogData } from '../../../lib/media/anilist-sync';
 

@@ -1,5 +1,5 @@
-import { readStoredJson, writeStoredJson } from './core';
-import { STORAGE_KEYS } from '../shared/storage-keys';
+import { readStoredJson, writeStoredJson, isTauri, invoke } from './bridge';
+import { STORAGE_KEYS } from '../storage/storage-keys';
 
 export interface UserJourneyEvent {
   externalId:     string;
@@ -17,6 +17,16 @@ export interface DayJourney {
 
 export async function readUserJourney(): Promise<DayJourney[]> {
   return readStoredJson<DayJourney[]>('read_user_journey', STORAGE_KEYS.userJourney, []);
+}
+
+/** Typed counterpart of readUserJourney: the same DayJourney[] as real
+ *  values over IPC instead of a JSON string parsed here (see
+ *  read_user_journey_typed in user_library.rs — identical key names,
+ *  progressStart/progressEnd omitted when unset). Outside Tauri it falls
+ *  back to readUserJourney's localStorage path. */
+export async function readUserJourneyTyped(): Promise<DayJourney[]> {
+  if (!isTauri()) return readUserJourney();
+  return invoke<DayJourney[]>('read_user_journey_typed');
 }
 
 export async function writeUserJourney(journey: DayJourney[]): Promise<void> {

@@ -1,0 +1,294 @@
+/* `player-overlay` window (pages/player-overlay.astro): a transparent
+   WebView floating over the native video. Everything is painted on demand;
+   the page background must stay transparent or it hides the video. */
+
+:root {
+  --player-fg: #f2f2f8;
+  --player-fg-muted: rgba(242, 242, 248, 0.65);
+  --player-accent: #c084fc;
+  --player-panel: rgba(12, 12, 20, 0.86);
+  --player-panel-border: rgba(255, 255, 255, 0.1);
+  --player-scrim: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
+  --player-radius: 10px;
+  --player-anim: 180ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body.player-overlay-body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  color: var(--player-fg);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+}
+
+.player-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  user-select: none;
+}
+
+.player-overlay--idle {
+  cursor: none;
+}
+
+/* ── Invisible click surface (play/pause, double-click fullscreen) ─────── */
+.player-overlay__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: inherit;
+}
+
+.player-overlay__stage:focus-visible {
+  outline: 2px solid var(--player-accent);
+  outline-offset: -2px;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────── */
+.player-overlay__top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
+  transition: opacity var(--player-anim), transform var(--player-anim);
+}
+
+.player-overlay__heading {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ── Bottom controls ──────────────────────────────────────────────────── */
+.player-overlay__bottom {
+  position: relative;
+  z-index: 2;
+  grid-row: 3;
+  padding: 2.25rem 1rem 0.75rem;
+  background: var(--player-scrim);
+  transition: opacity var(--player-anim), transform var(--player-anim);
+}
+
+.player-overlay--idle .player-overlay__top,
+.player-overlay--idle .player-overlay__bottom {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.player-overlay--idle .player-overlay__top {
+  transform: translateY(-6px);
+}
+
+.player-overlay--idle .player-overlay__bottom {
+  transform: translateY(6px);
+}
+
+.player-controls__row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.player-controls__spacer {
+  flex: 1;
+}
+
+.player-controls__clock {
+  margin-left: 0.5rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--player-fg);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.player-controls__badge {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(192, 132, 252, 0.2);
+  border: 1px solid rgba(192, 132, 252, 0.4);
+  font-size: 0.75rem;
+  color: var(--player-fg);
+}
+
+.player-controls__menu-anchor {
+  position: relative;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.player-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: var(--player-radius);
+  background: transparent;
+  color: var(--player-fg);
+  cursor: pointer;
+  transition: background var(--player-anim), color var(--player-anim);
+}
+
+.player-icon-btn:hover:not(:disabled),
+.player-icon-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.player-icon-btn:focus-visible {
+  outline: 2px solid var(--player-accent);
+  outline-offset: 1px;
+}
+
+.player-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.player-icon-btn--primary {
+  min-width: 44px;
+  height: 44px;
+}
+
+.player-icon-btn--active {
+  color: var(--player-accent);
+}
+
+.player-icon-btn--text span {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Seek bar ─────────────────────────────────────────────────────────── */
+.player-seek {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.player-seek__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  transition: height var(--player-anim);
+}
+
+.player-seek:hover .player-seek__track {
+  height: 6px;
+}
+
+.player-seek__fill {
+  height: 100%;
+  width: calc(var(--player-seek-fraction, 0) * 100%);
+  background: var(--player-accent);
+}
+
+.player-seek__input {
+  position: relative;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.player-seek__input:disabled {
+  cursor: default;
+}
+
+.player-seek__input::-webkit-slider-runnable-track {
+  height: 20px;
+  background: transparent;
+}
+
+.player-seek__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--player-accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity var(--player-anim);
+}
+
+.player-seek:hover .player-seek__input::-webkit-slider-thumb,
+.player-seek__input:focus-visible::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.player-seek__input:focus-visible {
+  outline: none;
+}
+
+.player-seek__tooltip {
+  position: absolute;
+  bottom: 100%;
+  transform: translate(-50%, -4px);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: var(--player-panel);
+  border: 1px solid var(--player-panel-border);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Volume ───────────────────────────────────────────────────────────── */
+.player-volume {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.player-volume__input {
+  width: 0;
+  opacity: 0;
+  margin: 0;
+  accent-color: var(--player-accent);
+  transition: width var(--player-anim), opacity var(--player-anim);
+}
+
+.player-volume:hover .player-volume__input,
+.player-volume:focus-within .player-volume__input {
+  width: 90px;
+  opacity: 1;
+}
+

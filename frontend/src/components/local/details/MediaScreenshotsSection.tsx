@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getLocalScreenshots, steamGetScreenshots, wrapAssetUrl, type LocalScreenshot, type SteamAchievement } from '../../../lib/tauri';
-import { getT } from '../../../i18n/client';
+import { getT } from '../../../i18n/runtime';
 import { AchievementCell } from './AchievementCell';
 
 const SCREENSHOT_ROWS_PER_PAGE = 3;

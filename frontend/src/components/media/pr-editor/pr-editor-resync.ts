@@ -1,13 +1,30 @@
-// Pure merge helpers for handleResync, split out of PrEditorModal.tsx. Kept
-// as functions the component calls from inside its own setState updaters
-// (not returning a final state directly) so a resync always merges against
-// the latest entry/editableRelations, not a stale closure snapshot.
+// Pure merge helpers for handleResync, split out of PrEditorModal.tsx. The
+// reducer's 'resync' action (pr-editor-state.ts) applies applyResyncToDraft
+// to the latest draft, so a resync always merges against the current
+// entry/editableRelations, never a stale closure snapshot.
 import type { MediaCatalogEntry } from '../../../lib/tauri/catalog';
 import type { DbMediaCharacter } from '../../../lib/tauri/characters';
 import type { MediaPageData } from '../../../lib/media/types';
-import { CANONICAL_RELATION_LABELS } from '../../../lib/media/canonical-relations';
-import { setField } from '../../../lib/shared/object-utils';
-import type { BundledRelation, EditableRelation } from '../PrEditorModal';
+import { CANONICAL_RELATION_LABELS } from '../../../lib/media/saga/canonical-relations';
+import { mapMediaDataToCatalogEntry } from '../../../lib/media/mappers/catalog-mapper';
+import { setField } from '../../../lib/shared/collections/object-utils';
+import type { BundledRelation, EditableRelation } from '../../../lib/media/editor/pr-editor-types';
+import type { PrEditorDraft } from './pr-editor-state';
+
+// Only fills fields currently empty — a live re-fetch must never overwrite a
+// manual edit. Characters are taken from the live data only when the draft
+// has none; relations/recommendations only gain ids not already present.
+export function applyResyncToDraft(draft: PrEditorDraft, liveData: MediaPageData, externalId: string): PrEditorDraft {
+  const partialFromLive = mapMediaDataToCatalogEntry(liveData, externalId);
+  const newCharacters = buildResyncCharacters(liveData, draft.characters.length > 0);
+  return {
+    ...draft,
+    entry: draft.entry ? mergeResyncFields(draft.entry, partialFromLive) : draft.entry,
+    characters: newCharacters ?? draft.characters,
+    editableRelations: appendResyncRelations(draft.editableRelations, liveData, externalId),
+    recommendations: appendResyncRecommendations(draft.recommendations, liveData),
+  };
+}
 
 // Only fills fields currently empty — a live re-fetch must never overwrite a manual edit.
 export const RESYNC_FIELDS: (keyof MediaCatalogEntry)[] = [

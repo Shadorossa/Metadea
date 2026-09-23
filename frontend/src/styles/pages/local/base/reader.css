@@ -46,13 +46,13 @@
   white-space: nowrap;
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--text-main, #fff);
+  color: var(--text-main);
 }
 
 .comic-reader-page-count {
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
-  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -66,15 +66,15 @@
   justify-content: center;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-sm, 4px);
-  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 120ms ease;
 }
 
 .comic-reader-header-btn:hover,
 .comic-reader-close:hover {
-  color: var(--text-main, #fff);
+  color: var(--text-main);
   border-color: var(--accent);
 }
 
@@ -97,7 +97,7 @@
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   opacity: 0;
@@ -127,13 +127,13 @@
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+  color: var(--text-muted);
   text-align: center;
   padding: 2rem;
 }
 
 .comic-reader-state--error {
-  color: #f87171;
+  color: var(--color-error);
 }
 
 .comic-reader-error-detail {
@@ -245,7 +245,7 @@ html.comic-reader-active body::-webkit-scrollbar {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   padding: 6px;
   min-width: 200px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
@@ -262,7 +262,7 @@ html.comic-reader-active body::-webkit-scrollbar {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  color: var(--text-muted);
   padding: 4px 8px 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 4px;
@@ -275,10 +275,10 @@ html.comic-reader-active body::-webkit-scrollbar {
   width: 100%;
   padding: 8px 10px;
   font-size: 0.84rem;
-  color: var(--text-main, #fff);
+  color: var(--text-main);
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
   transition: background 120ms ease, color 120ms ease;

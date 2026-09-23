@@ -10,7 +10,8 @@
 import { useEffect, useRef, useState, createElement, type PointerEvent as ReactPointerEvent } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { wrapAssetUrl } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
+import { ModalShell } from './ModalShell';
 
 // Fallback bounds while the image's natural size hasn't loaded yet.
 const DEFAULT_MIN_ZOOM = 100;
@@ -250,9 +251,17 @@ function ImageCropModal({ opts, onResolve }: Props) {
     });
   };
 
+  // Already mounted in its own root under document.body (see
+  // openImageCropModal below), so no second portal is needed.
   return (
-    <div className="img-crop-overlay" onClick={e => { if (e.target === e.currentTarget) close({ action: 'cancelled' }); }}>
-      <div className="img-crop-modal">
+    <ModalShell
+      onClose={() => close({ action: 'cancelled' })}
+      label={opts.title}
+      overlayClassName="img-crop-overlay"
+      panelClassName="img-crop-modal"
+      portal={false}
+      stopPanelPropagation={false}
+    >
         <h3 className="img-crop-title">{opts.title}</h3>
         <input
           ref={urlInputRef}
@@ -331,8 +340,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
 

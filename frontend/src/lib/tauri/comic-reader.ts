@@ -1,4 +1,4 @@
-import { tauriCmd, tauriRun } from './core';
+import { tauriCmd, tauriRun } from './bridge';
 
 export interface ComicPages {
   pages: string[];

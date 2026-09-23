@@ -9,11 +9,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { search as searchMedia, type SearchResult } from '../../lib/search';
 import { searchAniListStaff, fetchAniListStaffDetail, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import { searchUsers, type UserSearchResult } from '../../lib/social/users';
-import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
-import { getT } from '../../i18n/client';
-import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
-import { toSmallCover } from '../../lib/shared/small-cover';
-import { useEscapeKey } from '../../lib/shared/useEscapeKey';
+import { ALL_MEDIA_TYPES } from '../../lib/media/media-types';
+import { getT } from '../../i18n/runtime';
+import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
+import { toSmallCover } from '../../lib/media/small-cover';
+import { useEscapeKey } from '../shared/hooks/useEscapeKey';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;

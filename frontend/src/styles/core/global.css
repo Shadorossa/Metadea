@@ -30,6 +30,12 @@
   --anim-base: 220ms;
 
   --color-error: #f87171;
+  --color-error-strong: #ef4444;
+  --color-error-soft: #ff8585;
+  --color-success: #10b981;
+  --color-success-soft: #4ade80;
+  --color-gold: #f59e0b;
+  --color-gold-soft: #fbbf24;
   --color-on-light: #1a1a1a;
 
   /* Status colors for library and media */
@@ -168,7 +174,7 @@ body {
 }
 
 ::view-transition-new(page-content) {
-  animation: page-in 280ms var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)) both;
+  animation: page-in 280ms var(--anim-ease) both;
 }
 
 
@@ -193,7 +199,7 @@ body {
 
 /* Utility classes — prefer these over writing inline animations in page CSS */
 .animate-fade-in {
-  animation: fade-in 0.25s var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)) both;
+  animation: fade-in 0.25s var(--anim-ease) both;
 }
 
 /* Film grain */

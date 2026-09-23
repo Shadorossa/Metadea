@@ -1,5 +1,5 @@
 import { REPO_OWNER, REPO_NAME } from './ownership';
-import { MEDIA_CATALOG_FOLDERS, catalogRootPath, externalIdFromFilename } from './catalogPaths';
+import { MEDIA_CATALOG_FOLDERS, catalogRootPath, externalIdFromFilename } from './catalog-paths';
 
 export interface GitHubPull {
   number: number;
@@ -184,4 +184,9 @@ export async function closePull(token: string, number: number): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ state: 'closed' }),
   });
+}
+
+export interface GitHubUserProfile {
+  login: string;
+  avatar_url?: string;
 }

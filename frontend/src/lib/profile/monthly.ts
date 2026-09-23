@@ -1,5 +1,5 @@
 import { HOF_GRADIENTS } from './hof';
-import { formatMonthLabel } from './utils';
+import { formatMonthLabel } from './media-type-label';
 import { wrapAssetUrl } from '../tauri';
 import type { getAllLibraryEntries } from '../tauri';
 
@@ -8,7 +8,11 @@ type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 export function buildMonthlyHistoryHtml(
   history: Record<string, string[]>,
   libraryEntries: Items,
-  catalogMap: Map<string, any>
+  catalogMap: Map<string, any>,
+  // Disk-cached cover paths (see lib/profile/cover-cache.ts) — preferred
+  // over the remote cover_url when present; wrapAssetUrl turns them into a
+  // loadable asset:// src.
+  coverPathById?: ReadonlyMap<string, string>,
 ): string {
   const sortedKeys = Object.keys(history).sort((a, b) => b.localeCompare(a));
 
@@ -34,7 +38,7 @@ export function buildMonthlyHistoryHtml(
     const mainItem = itemIds[0];
     const item  = mainItem ? libMap.get(mainItem) : null;
     const meta  = mainItem ? catalogMap.get(mainItem) : null;
-    const cover = meta?.cover_url ?? '';
+    const cover = (mainItem ? coverPathById?.get(mainItem) : undefined) ?? meta?.cover_url ?? '';
     const bg    = HOF_GRADIENTS[item?.type ?? 'game'] ?? 'linear-gradient(160deg, #374151, #1f2937)';
 
     const card = `<div class="mh-card" style="${cover ? '' : `background:${bg}`}" title="${monthLabel}">

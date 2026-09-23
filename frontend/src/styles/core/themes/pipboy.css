@@ -112,7 +112,7 @@ html[data-theme="pipboy"]::after {
   background-color: var(--accent-soft) !important;
   color: var(--text-main) !important;
   border-color: var(--text-main) !important;
-  box-shadow: 0 0 8px var(--accent-glow) !important;
+  box-shadow: 0 0 8px var(--accent-glow);
 }
 
 /* Selected/Active Terminal Tab */
@@ -136,7 +136,7 @@ html[data-theme="pipboy"]::after {
 [data-theme="pipboy"] .status-dropdown-tray {
   border-radius: 0px !important;
   border: 1px dashed var(--border-color) !important;
-  background-color: var(--bg-card) !important;
+  background-color: var(--bg-card);
   transition: all 0.2s ease !important;
   box-shadow: none !important;
 }
@@ -152,7 +152,7 @@ html[data-theme="pipboy"]::after {
 [data-theme="pipboy"] .media-relation-card:hover,
 [data-theme="pipboy"] .media-char-card:hover {
   border: 1px solid var(--accent) !important;
-  background-color: var(--bg-elevated) !important;
+  background-color: var(--bg-elevated);
   box-shadow: 0 0 10px rgba(29, 255, 115, 0.2) !important;
 }
 
@@ -174,7 +174,7 @@ html[data-theme="pipboy"]::after {
    render cleanly along a clipped diagonal edge, so this is a solid fill
    instead of the outlined terminal-box look used elsewhere in this theme. */
 [data-theme="pipboy"] .media-relation-type {
-  background: var(--accent) !important;
+  background: var(--accent);
   color: var(--bg-primary) !important;
   font-family: 'Consolas', 'Courier New', Courier, monospace !important;
 }

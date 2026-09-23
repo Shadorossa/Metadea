@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Translations } from '../../../i18n/index';
-import { createDefaultLog, createEmptyVersionEntry, type EntryAction, type LogState } from '../../../lib/media/log-state';
-import { seriesSeasonExternalId } from '../../../lib/media/mapper-utils';
+import { createDefaultLog, createEmptyVersionEntry, type EntryAction, type LogState } from '../../../lib/media/editor/library-log-state';
+import { seriesSeasonExternalId } from '../../../lib/media/mappers/mapper-utils';
 import type { MediaSeasonInfo } from '../../../lib/media/types';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import { editionTabLabel, formatSeasonTabLabel } from './media-editor-helpers';

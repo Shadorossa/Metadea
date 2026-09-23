@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import { ModalShell } from '../shared/ModalShell';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import * as pdfjsLib from 'pdfjs-dist';
 import {
@@ -18,11 +18,11 @@ import { markChapterRead } from '../../lib/reader/reading-service';
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 }
-import { useClosingTransition } from '../../lib/shared/useClosingTransition';
-import { toMediumCover } from '../../lib/shared/small-cover';
-import { setReadingPresence, clearReadingPresence } from '../../lib/discord/presence-manager';
+import { useClosingTransition } from '../shared/hooks/useClosingTransition';
+import { toMediumCover } from '../../lib/media/small-cover';
+import { setReadingPresence, clearReadingPresence } from '../../lib/local/discord-presence';
 import { IconX } from '../local/ui/icons';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 
 interface Props {
   externalId:    string;
@@ -423,6 +423,9 @@ export function ReaderModal({
     }
   }, [spreadIndex, loadState, spreads, pages, isPdf]);
 
+  // Unix seconds the session opened — Discord's elapsed counter; page turns
+  // must not reset it.
+  const readingStartRef = useRef(Math.floor(Date.now() / 1000));
   useEffect(() => {
     if (loadState !== 'ready') return;
     const coverUrl = cover && cover.startsWith('http') ? toMediumCover(cover) : undefined;
@@ -431,6 +434,7 @@ export function ReaderModal({
         title,
         pageLabel,
         coverUrl,
+        startTime: readingStartRef.current,
       });
     }, 800);
     return () => clearTimeout(timer);
@@ -449,19 +453,19 @@ export function ReaderModal({
     try {
       const added = await toggleComicBookmark(externalId, episodeNumber, pageNum);
       setBookmarks(prev => added ? [...prev, pageNum].sort((a, b) => a - b) : prev.filter(p => p !== pageNum));
-      showToast(added ? `Marcador añadido en pág. ${pageNum}` : `Marcador quitado de pág. ${pageNum}`);
+      showToast((added ? t.bookmark_added : t.bookmark_removed).replace('{page}', String(pageNum)));
     } catch {
-      showToast('Error al modificar marcador');
+      showToast(t.bookmark_error);
     }
   };
 
   const handleSavePage = async (pagePath: string, pageNum: number) => {
     try {
-      showToast(`Guardando página ${pageNum}...`);
+      showToast(t.saving_page.replace('{page}', String(pageNum)));
       await saveComicPageAsPng(pagePath, title, pageNum);
-      showToast(`Página ${pageNum} guardada como PNG en Imágenes`);
+      showToast(t.page_saved.replace('{page}', String(pageNum)));
     } catch {
-      showToast('Error al guardar la página');
+      showToast(t.save_page_error);
     }
   };
 
@@ -513,8 +517,21 @@ export function ReaderModal({
     else if (clickX > rect.width * 0.55) goNext();
   };
 
-  return createPortal(
-    <div className={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}`}>
+  // The reader is its own full-screen surface, so the shell renders the
+  // dialog panel with no overlay around it. Escape stays with the handler
+  // above (context menu, then fullscreen, then close) and clicks are left
+  // alone (the context menu closes on a window click), so the shell only
+  // adds the dialog role, the Tab trap, scroll lock and focus restore.
+  return (
+    <ModalShell
+      overlay={false}
+      onClose={handleClose}
+      label={title}
+      panelClassName={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}`}
+      closeOnEscape={false}
+      closeOnBackdrop={false}
+      stopPanelPropagation={false}
+    >
       <div className="comic-reader-header">
         <span className="comic-reader-title" title={title}>{title}</span>
         {loadState === 'ready' && (
@@ -607,7 +624,7 @@ export function ReaderModal({
                     key={idx}
                     className="comic-reader-page"
                     src={wrapAssetUrl(pages[idx])}
-                    alt={`Página ${idx + 1}`}
+                    alt={t.page_alt.replace('{page}', String(idx + 1))}
                     draggable={false}
                     decoding="sync"
                     loading="eager"
@@ -728,7 +745,6 @@ export function ReaderModal({
           <span>{toastMsg}</span>
         </div>
       )}
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }

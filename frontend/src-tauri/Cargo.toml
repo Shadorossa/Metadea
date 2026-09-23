@@ -37,13 +37,23 @@ tokio = { version = "1", features = ["time", "rt", "sync"] }
 sysinfo = "0.32"
 tauri-plugin-process = "2"
 tauri-plugin-notification = "2"
+# `metadea://` URL scheme (src/deep_link.rs). single-instance's `deep-link`
+# feature forwards a second launch's argv to the deep-link plugin so the
+# already-running window receives the URL instead of a new process.
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 discord-rich-presence = "0.2"
 unrar = "0.5"
 zip = { version = "2.2", default-features = false, features = ["deflate"] }
+# libmpv is loaded at runtime (see src/player/libmpv_ffi.rs) so that a
+# missing DLL degrades to "engine unavailable" instead of a failed build.
+libloading = "0.8"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
 windows-dpapi = "0.1.0"
+# Native child HWND that hosts the embedded mpv video surface (src/player/video_host.rs).
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

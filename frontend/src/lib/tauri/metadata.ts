@@ -1,4 +1,4 @@
-import { isTauri, invoke, tauriCmd } from './core';
+import { isTauri, invoke, tauriCmd } from './bridge';
 
 export interface MetaEntry {
   cover_path?:  string;

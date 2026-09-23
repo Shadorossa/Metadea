@@ -1,19 +1,12 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
+import { ModalShell } from '../shared/ModalShell';
 import { Check, ImagePlus, Mic2, Tags, X } from 'lucide-react';
-import { fetchFandomCharacter, type FandomCharacterData } from '../../lib/character/fandomImporter';
-import { correlateVoiceActors } from '../../lib/character/voiceActorResolver';
-import { getT } from '../../i18n/client';
+import { fetchFandomCharacter, type FandomCharacterData } from '../../lib/character/fandom-importer';
+import { correlateVoiceActors } from '../../lib/character/voice-actor-resolver';
+import { getT } from '../../i18n/runtime';
 
-export interface SelectedImportFields {
-  name: boolean;
-  nativeName: boolean;
-  image: boolean;
-  aliases: boolean;
-  characteristics: boolean;
-  biography: boolean;
-  voiceActors: boolean;
-}
+export type { SelectedImportFields } from '../../lib/character/fandom-import-apply';
+import type { SelectedImportFields } from '../../lib/character/fandom-import-apply';
 
 export interface FandomImportModalProps {
   isOpen: boolean;
@@ -90,13 +83,18 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
     </label>
   );
   const linkedVoiceActorCount = data?.voiceActors.filter(actor => actor.matchedFrom === 'db' || actor.matchedFrom === 'anilist' || actor.matchedFrom === 'tmdb').length ?? 0;
-  const modalContent = (
-    <div className="pr-editor-search-popup" onClick={event => { event.stopPropagation(); onClose(); }}>
-      <div
-        className="pr-editor-search-popup-content pr-editor-search-popup-content--wide"
-        onClick={e => e.stopPropagation()}
-        style={{ position: 'relative', padding: 0, paddingRight: '4.5rem', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'row', alignItems: 'stretch' }}
-      >
+  // The backdrop click stops bubbling so it doesn't also reach the character
+  // editor's overlay underneath (this popup is portaled, but React events
+  // still bubble through portals).
+  return (
+    <ModalShell
+      onClose={onClose}
+      label={t.import_fandom_title}
+      overlayClassName="pr-editor-search-popup"
+      overlayProps={{ onClick: event => event.stopPropagation() }}
+      panelClassName="pr-editor-search-popup-content pr-editor-search-popup-content--wide"
+      panelProps={{ style: { position: 'relative', padding: 0, paddingRight: '4.5rem', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'row', alignItems: 'stretch' } }}
+    >
         <div style={{ flex: 1, minWidth: 0, padding: '1.5rem', maxHeight: '85vh', overflowY: 'auto' }}>
         {/* Cabecera del modal */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color, #2d2a24)', paddingBottom: '0.75rem' }}>
@@ -150,8 +148,8 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                   <button
                     type="button"
                     onClick={() => setImagePickerOpen(true)}
-                    title="Elegir imagen de la wiki"
-                    aria-label="Elegir imagen de la wiki"
+                    title={t.import_fandom_pick_image}
+                    aria-label={t.import_fandom_pick_image}
                     onMouseEnter={() => setImageHovered(true)}
                     onMouseLeave={() => setImageHovered(false)}
                     onFocus={() => setImageHovered(true)}
@@ -307,20 +305,19 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
         )}
 
         {imagePickerOpen && data && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Seleccionar imagen de Fandom"
-            onClick={() => setImagePickerOpen(false)}
-            style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', padding: '1.5rem', background: 'rgba(0,0,0,0.72)' }}
+          // Nested shell rendered in place (same fixed-position DOM spot as
+          // before) so it sits above this modal on the stack: Escape and the
+          // Tab trap go to the picker while it's open.
+          <ModalShell
+            portal={false}
+            onClose={() => setImagePickerOpen(false)}
+            label={t.import_fandom_image_picker_title}
+            overlayProps={{ style: { position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', padding: '1.5rem', background: 'rgba(0,0,0,0.72)' } }}
+            panelProps={{ style: { width: 'min(760px, 100%)', maxHeight: '80vh', overflowY: 'auto', padding: '1.25rem', background: 'var(--bg-card, #1b1b1b)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)' } }}
           >
-            <div
-              onClick={event => event.stopPropagation()}
-              style={{ width: 'min(760px, 100%)', maxHeight: '80vh', overflowY: 'auto', padding: '1.25rem', background: 'var(--bg-card, #1b1b1b)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)' }}
-            >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                <strong>Imágenes de {data.name}</strong>
-                <button type="button" onClick={() => setImagePickerOpen(false)} aria-label="Cerrar selector de imágenes" title="Cerrar" className="fandom-import-close-btn">
+                <strong>{t.import_fandom_images_of.replace('{name}', data.name)}</strong>
+                <button type="button" onClick={() => setImagePickerOpen(false)} aria-label={t.import_fandom_close_image_picker} title={t.import_fandom_close_image_picker} className="fandom-import-close-btn">
                   <X size={18} />
                 </button>
               </div>
@@ -334,20 +331,16 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                       setImagePickerOpen(false);
                     }}
                     title={option.title}
-                    aria-label={`Usar imagen ${option.title}`}
+                    aria-label={t.import_fandom_use_image.replace('{title}', option.title)}
                     style={{ padding: '0.3rem', background: option.url === data.imageUrl ? 'var(--accent-soft)' : 'transparent', border: `1px solid ${option.url === data.imageUrl ? 'var(--accent)' : 'var(--border-color)'}`, borderRadius: 'var(--radius-sm, 4px)', cursor: 'pointer' }}
                   >
                     <img src={option.previewUrl} alt={option.title} loading="lazy" style={{ display: 'block', width: '100%', height: '150px', objectFit: 'contain' }} />
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
+          </ModalShell>
         )}
       </div>
-    </div>
-    </div>
+    </ModalShell>
   );
-
-  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { type LogState, type EntryAction } from '../../../lib/media/log-state';
+import { type LogState, type EntryAction } from '../../../lib/media/editor/library-log-state';
 import type { SeasonMeta } from './media-editor-load';
 
 export function MediaEditorStatusRow({

@@ -123,9 +123,9 @@ Estos comandos existen **hoy** y pasan hoy. Esa es la diferencia con la versión
 
 ```bash
 cd frontend
-npm run lint        # eslint — 0 errores (455 warnings en trinquete, ver 1.2)
+npm run lint        # eslint — 0 errores (warnings en trinquete, ver 1.2)
 npm run typecheck   # astro sync && tsc --noEmit
-npm run test        # vitest run — 90 tests
+npm run test        # vitest run — unitarios junto a cada módulo + tests/ transversales
 npm run build       # astro build
 ```
 
@@ -144,10 +144,10 @@ No perseguimos un porcentaje global — sería mentira en una app con esta propo
 UI. Se exige cobertura en los módulos **puros**, que son los que se rompen en silencio:
 
 - Helpers y derivaciones (`media-editor-helpers.ts`, `media-editor-derived.ts`,
-  `media-page-format.tsx`, `sagaGrouping.ts`)
+  `media-page-format.tsx`, `saga/saga-grouping.ts`)
 - Reconstrucción de sagas / union-find
-- Parsers y normalizadores (`biography-parser.ts`, `fandomImporter.ts`, `folderMatch.ts`)
-- Integridad de i18n (`src/i18n/locales.test.ts`)
+- Parsers y normalizadores (`biography-parser.ts`, `fandom-importer.ts`, `lib/local/folder-match.ts`)
+- Integridad de i18n (`tests/i18n-parity.test.ts`)
 - En Rust: `build_emulator_args`, `natural_cmp`, `safe_zip_path`, `extract_episode_label`
 
 El umbral configurado en `vitest.config.ts` se aplica solo a esa lista, y esa lista
@@ -160,7 +160,7 @@ prefijo; la expectativa inicial era incorrecta.
 
 ### 1.2 Trinquete, no amnistía
 
-ESLint entra con 0 errores y 455 warnings. Los warnings **no** se silencian con
+ESLint entró con 0 errores y 455 warnings (382 al escribir esto). Los warnings **no** se silencian con
 `eslint-disable`; se van eliminando por categorías y la regla sube a `error` cuando su
 contador llega a cero.
 
@@ -341,14 +341,16 @@ resultado posible.
 
 | | |
 |---|---|
-| Tests | 90, en 4 archivos |
-| ESLint | 0 errores, 455 warnings (en trinquete) |
+| Tests | 494 JS en 23 archivos + 88 Rust |
+| ESLint | 0 errores, 382 warnings (en trinquete) |
+| `as any` | 13 (eran 51); `(window as any)` 0 (eran 38) |
 | Typecheck | limpio |
 | Build | correcto |
-| Archivos > 200 líneas | 123 de 406 (30,3%) |
-| Archivos > 1000 líneas | 19 |
-| Claves i18n | 1.114 × 8 locales, paridad verificada por test |
-| Clippy / rustfmt | sin línea base — `cargo fmt` pendiente en un commit propio |
+| Archivos > 200 líneas | 139 de 515 (27,0%) — el conteo sube porque los archivos grandes se partieron en muchos pequeños |
+| Archivos > 1000 líneas | 14 (eran 19); los mayores ahora son Rust (`igdb.rs`, `folders.rs`, `migrations/mod.rs`) y `character.astro` |
+| `lib/` → `components/` | 0 importaciones (eran 13); `lib/` sin React |
+| Claves i18n | paridad y placeholders verificados por test en las 8 locales; tipo `Translations` aplicado a cada locale |
+| Clippy | 0 errores, 49 warnings; `cargo fmt` pendiente en un commit propio |
 
 Esta tabla se actualiza cuando cambie. Si lleva meses sin tocarse, o nadie está
 trabajando en el proyecto o las reglas han vuelto a ser decorativas.

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { getT } from '../../../i18n/client';
+import { getT } from '../../../i18n/runtime';
+import type { Translations } from '../../../i18n/index';
 
 export type MetaType = 'basic' | 'achievements';
 
@@ -8,9 +9,10 @@ interface MetaTypeSelectorProps {
   onCancel:  () => void;
 }
 
-const OPTIONS: { id: MetaType; label: string; desc: string }[] = [
-  { id: 'basic',        label: 'Básico',          desc: 'Portada, banner, géneros, sinopsis, fecha de lanzamiento y editor' },
-  { id: 'achievements', label: 'Logros de Steam',  desc: 'Iconos y textos de todos los logros del juego (requiere API key de Steam)' },
+type LocalKey = keyof Translations['local'];
+const OPTIONS: { id: MetaType; labelKey: LocalKey; descKey: LocalKey }[] = [
+  { id: 'basic',        labelKey: 'meta_basic_label',        descKey: 'meta_basic_desc' },
+  { id: 'achievements', labelKey: 'meta_achievements_label', descKey: 'meta_achievements_desc' },
 ];
 
 export function MetaTypeSelector({ onConfirm, onCancel }: MetaTypeSelectorProps) {
@@ -31,7 +33,7 @@ export function MetaTypeSelector({ onConfirm, onCancel }: MetaTypeSelectorProps)
         <h3 className="meta-modal-title">{t.local.meta_selector_title}</h3>
         <p className="meta-modal-subtitle">{t.local.meta_selector_subtitle}</p>
         <div className="meta-type-list">
-          {OPTIONS.map(({ id, label, desc }) => (
+          {OPTIONS.map(({ id, labelKey, descKey }) => (
             <button
               key={id}
               type="button"
@@ -46,8 +48,8 @@ export function MetaTypeSelector({ onConfirm, onCancel }: MetaTypeSelectorProps)
                 )}
               </span>
               <span className="meta-type-text">
-                <span className="meta-type-label">{label}</span>
-                <span className="meta-type-desc">{desc}</span>
+                <span className="meta-type-label">{t.local[labelKey]}</span>
+                <span className="meta-type-desc">{t.local[descKey]}</span>
               </span>
             </button>
           ))}
@@ -60,7 +62,7 @@ export function MetaTypeSelector({ onConfirm, onCancel }: MetaTypeSelectorProps)
             disabled={selected.size === 0}
             onClick={() => onConfirm(Array.from(selected))}
           >
-            Descargar
+            {t.local.meta_download}
           </button>
         </div>
       </div>

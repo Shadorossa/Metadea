@@ -1,0 +1,168 @@
+/* Rich-text field: editable area, floating toolbar, context menu. Split verbatim from pr.css. */
+.pr-editor-richtext-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.pr-editor-richtext {
+  width: 100%;
+  min-height: 6.5rem;
+  /* No fixed height/overflow - grows with its content instead of scrolling
+     internally, so the field always shows fully from the top. */
+  color: var(--text-main);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding-top: 4px;
+  outline: none;
+  cursor: text;
+}
+
+.pr-editor-richtext:focus {
+  border-color: var(--accent) !important;
+}
+
+.pr-editor-richtext p {
+  margin: 0 0 0.5em;
+}
+
+/* Explicit instead of relying on the browser's own UA defaults for these -
+   makes bold/italic/underline/link formatting applied via the toolbar
+   clearly visible against this dark theme instead of a barely-there
+   default. Link styling matches .media-description-text a, the same tags'
+   real read-only rendering on the actual media page. */
+.pr-editor-richtext b,
+.pr-editor-richtext strong {
+  font-weight: 700;
+}
+
+.pr-editor-richtext i,
+.pr-editor-richtext em {
+  font-style: italic;
+}
+
+.pr-editor-richtext u {
+  text-decoration: underline;
+}
+
+/* Spoiler-marked text stays visible while editing - the transparent-until-
+   hover treatment (character.css's own .markdown_spoiler, used on the
+   published character page) would make it impossible to read or fix your
+   own spoiler text here. A subtle background + dashed underline flags it
+   as spoiler-wrapped without hiding it. */
+.pr-editor-richtext .markdown_spoiler {
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px dashed var(--text-dim);
+  border-radius: 3px;
+  padding: 0 2px;
+  color: inherit;
+}
+
+.pr-editor-richtext a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.pr-editor-richtext:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.pr-editor-richtext-toolbar {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  gap: 0.15rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+}
+
+.pr-editor-richtext-toolbar button {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background var(--anim-fast);
+}
+
+.pr-editor-richtext-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent);
+}
+
+/* Right-click format menu - a Discord-style vertical dropdown instead of
+   the toolbar's row of icon-only buttons, since this one opens at an
+   arbitrary click point rather than always right above a selection, and
+   benefits from a label next to each icon for a menu someone might not
+   have used before. */
+.pr-editor-richtext-ctxmenu {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 20;
+}
+
+.pr-editor-richtext-ctxmenu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--anim-fast);
+}
+
+.pr-editor-richtext-ctxmenu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent);
+}
+
+/* The classic Word-style boxed letter (B/I/U) instead of just relying on
+   the button's own bold/italic/underline styling to read as a format
+   icon - a plain bold "B" next to the word "Negrita" doesn't parse as an
+   icon at a glance the way a small boxed glyph does. */
+.pr-editor-richtext-ctxmenu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 0.72rem;
+  font-style: normal;
+  text-decoration: none;
+}
+
+.pr-editor-richtext-ctxmenu-sep {
+  height: 1px;
+  margin: 0.3rem 0.2rem;
+  background: var(--border-color);
+}

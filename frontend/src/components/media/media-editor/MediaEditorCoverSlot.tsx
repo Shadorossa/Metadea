@@ -1,5 +1,5 @@
 import React from 'react';
-import { toLargeCover } from '../../../lib/shared/small-cover';
+import { toLargeCover } from '../../../lib/media/small-cover';
 import { setCoverPreference } from '../../../lib/media/cover-preferences';
 import type { CoverCandidate } from './media-editor-load';
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import { getT } from '../../../i18n/client';
-import type { SortMode } from '../utils/catalogGameLinking';
+import { getT } from '../../../i18n/runtime';
+import type { SortMode } from '../../../lib/local/catalog-game-linking';
 
 // The launcher/platform section's own sort dropdown — identical in
 // Videojuegos' grid and in the media sections' platform rows, which each

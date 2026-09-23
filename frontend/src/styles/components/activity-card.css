@@ -26,7 +26,7 @@
   padding: 0.5rem 0.65rem;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
   min-height: 52px;
 }
@@ -47,19 +47,19 @@
   flex-shrink: 0;
   width: 40px;
   height: 52px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
 }
 
 .act-card-cover-fallback {
   width: 32px;
   height: 44px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
   color: var(--text-muted);
   font-size: 0.6rem;
   font-weight: 600;

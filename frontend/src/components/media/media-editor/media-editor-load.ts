@@ -5,11 +5,11 @@
 import { getLibraryEntry, getCatalogEntry } from '../../../lib/tauri';
 import type { LibraryEntry } from '../../../lib/tauri';
 import { igdbGetLocalizedCovers } from '../../../lib/tauri/igdb';
-import { getApiSportsEventMatches } from '../../../lib/tauri/misc-commands';
+import { getApiSportsEventMatches } from '../../../lib/tauri/episodes';
 import { fetchApiSportsSeasonMatches } from '../../../lib/search/providers/apisports';
-import { isSeriesSeasonSyntheticId, seriesSeasonExternalId } from '../../../lib/media/mapper-utils';
-import { parseDelimitedString } from '../../../lib/shared/string-utils';
-import { createEmptyVersionEntry, type EntryAction } from '../../../lib/media/log-state';
+import { isSeriesSeasonSyntheticId, seriesSeasonExternalId } from '../../../lib/media/mappers/mapper-utils';
+import { parseDelimitedString } from '../../../lib/shared/text/string-utils';
+import { createEmptyVersionEntry, type EntryAction } from '../../../lib/media/editor/library-log-state';
 import type { MediaPageData, MediaSeasonInfo } from '../../../lib/media/types';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import { extractExternalIdFromRelationUrl } from './media-editor-helpers';

@@ -314,7 +314,7 @@
   width: clamp(24px, 4vw, 32px);
   height: clamp(32px, 5.5vw, 44px);
   object-fit: cover;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
@@ -440,7 +440,7 @@
   font-size: clamp(0.75rem, 0.9vw, 0.9rem);
   line-height: 1;
   cursor: pointer;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   transition: color 0.15s, background 0.15s;
 }
 
@@ -640,7 +640,7 @@
 .calendar-day.has-cover .calendar-day-num {
   z-index: 2;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 1), 0 2px 8px rgba(0, 0, 0, 1);
-  color: #fff !important;
+  color: #fff;
 }
 
 .calendar-day.other-month {
@@ -659,7 +659,7 @@
      .calendar-day rule above: this must never implicitly reset the
      inline background-image a has-cover cell sets, which today's cell is
      just as likely to be as any other day. */
-  background-color: rgba(var(--accent-rgb, 139, 92, 246), 0.1);
+  background-color: rgba(var(--accent-rgb), 0.1);
 }
 
 .calendar-day-event-dot {

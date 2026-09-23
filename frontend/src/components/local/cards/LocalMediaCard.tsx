@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { IconFolder } from '../ui/icons';
 import { getCachedCover, wrapAssetUrl, type LocalGame } from '../../../lib/tauri';
-import { toMediumCover } from '../../../lib/shared/small-cover';
-import { isReadingType } from '../../../lib/constants/media';
+import { toMediumCover } from '../../../lib/media/small-cover';
+import { isReadingType } from '../../../lib/media/media-types';
 import { MediaCardShell } from './MediaCardShell';
 
 interface LocalMediaCardProps {

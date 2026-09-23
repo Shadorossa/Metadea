@@ -5,9 +5,9 @@
 .context-menu {
   position: absolute;
   z-index: 9999;
-  background: var(--bg-primary, #0c0820);
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
   padding: 0.25rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
 }
@@ -20,7 +20,7 @@
   padding: 0.5rem 0.75rem;
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: 0.78rem;
   font-weight: 500;
@@ -36,7 +36,7 @@
 
 .context-menu-item.delete:hover {
   background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  color: var(--color-error-strong);
 }
 
 /* Shared image treatment for cover-sized media */
@@ -266,7 +266,7 @@
 }
 
 .section-label--tab:hover {
-  color: var(--text);
+  color: var(--text-main);
 }
 
 .section-label--tab.active {
@@ -421,8 +421,8 @@
    dragged over the picker — distinct from .dragging above, which is the
    pointer-based pan-to-reposition state instead. */
 .img-crop-viewport--drag-over {
-  border-color: var(--accent, #7c6af7);
-  box-shadow: inset 0 0 0 2px var(--accent, #7c6af7);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 /* A plain <img> (not a background-image div) — CSS background-image set
@@ -565,7 +565,7 @@
 }
 
 .local-sort-select option {
-  background: var(--bg-primary, #0c0820);
+  background: var(--bg-primary);
   color: var(--text-main);
 }
 .rating-system-btn,

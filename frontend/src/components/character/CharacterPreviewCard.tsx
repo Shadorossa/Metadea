@@ -8,27 +8,19 @@
 // real character yet. Provider-backed fields are fetched and merged by
 // PrPreviewModal; this component only renders the supplied preview state.
 import { useEffect, useState } from 'react';
-import { getT } from '../../i18n/client';
+export type { CharacterPreviewChangeKind, CharacterPreviewAppearance, CharacterPreviewChanges } from '../../lib/github/proposal-diff';
+import type { CharacterPreviewChangeKind, CharacterPreviewAppearance, CharacterPreviewChanges } from '../../lib/github/proposal-diff';
+import { mapById } from '../../lib/shared/collections/batch';
+import { getT } from '../../i18n/runtime';
 import { parseCharacterBiography } from '../../lib/character/biography-parser';
-import { parseStatSectionLabel, StatSectionTracker } from '../../lib/shared/stat-sections';
-import { sanitizeHtml, sanitizeStatValue } from '../../lib/shared/sanitize-html';
+import { parseStatSectionLabel, StatSectionTracker } from '../../lib/media/stat-sections';
+import { sanitizeHtml, sanitizeStatValue } from '../../lib/shared/text/sanitize-html';
 import { getCatalogEntry, type MediaCatalogEntry } from '../../lib/tauri/catalog';
 import type { CharacterEntry } from '../../lib/tauri/characters';
-import type { CharacterProposalActor, CharacterProposalAppearance } from '../../lib/github/submitCollaborativeProposal';
+import type { CharacterProposalActor, CharacterProposalAppearance } from '../../lib/github/submit-collaborative-proposal';
 
-export type CharacterPreviewChangeKind = 'added' | 'updated' | 'removed';
 
-export interface CharacterPreviewAppearance extends CharacterProposalAppearance {
-  title?: string;
-  cover?: string | null;
-}
 
-export interface CharacterPreviewChanges {
-  fields: Record<string, CharacterPreviewChangeKind>;
-  appearances: Record<string, CharacterPreviewChangeKind>;
-  actors: Record<string, CharacterPreviewChangeKind>;
-  merges: Record<string, CharacterPreviewChangeKind>;
-}
 
 interface Props {
   character: CharacterEntry;
@@ -71,6 +63,7 @@ function formatStatValue(rawValue: string) {
 }
 
 function CharacterStatItem({ label, value }: { label: string; value: string }) {
+  const t = getT().character;
   const values = parseStatItems(value);
   const [activeIndex, setActiveIndex] = useState(0);
   useEffect(() => setActiveIndex(0), [value]);
@@ -87,7 +80,7 @@ function CharacterStatItem({ label, value }: { label: string; value: string }) {
         <div className="media-stat-value">
           {values.length > 1 ? (
             <div className="media-stat-carousel">
-              <button type="button" className="media-stat-carousel-btn media-stat-carousel-prev" title="Anterior" aria-label="Anterior" onClick={() => move(-1)}>‹</button>
+              <button type="button" className="media-stat-carousel-btn media-stat-carousel-prev" title={t.pagination_prev} aria-label={t.pagination_prev} onClick={() => move(-1)}>‹</button>
               <div className="media-stat-carousel-items">
                 {values.map((item, index) => (
                   <div
@@ -100,7 +93,7 @@ function CharacterStatItem({ label, value }: { label: string; value: string }) {
                   </div>
                 ))}
               </div>
-              <button type="button" className="media-stat-carousel-btn media-stat-carousel-next" title="Siguiente" aria-label="Siguiente" onClick={() => move(1)}>›</button>
+              <button type="button" className="media-stat-carousel-btn media-stat-carousel-next" title={t.pagination_next} aria-label={t.pagination_next} onClick={() => move(1)}>›</button>
             </div>
           ) : formatStatValue(values[0])}
         </div>
@@ -173,7 +166,7 @@ export function CharacterPreviewCard({ character, appearances, actors = [], merg
   const [appearanceMeta, setAppearanceMeta] = useState<Record<string, MediaCatalogEntry | null>>({});
   useEffect(() => {
     let cancelled = false;
-    Promise.all(appearances.map(a => getCatalogEntry(a.media_external_id).then(e => [a.media_external_id, e] as const).catch(() => [a.media_external_id, null] as const)))
+    mapById(appearances.map(a => a.media_external_id), id => getCatalogEntry(id).catch(() => null))
       .then(results => { if (!cancelled) setAppearanceMeta(Object.fromEntries(results)); });
     return () => { cancelled = true; };
   }, [appearances]);

@@ -1,7 +1,7 @@
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
-import { resolveAniListType } from '../media/anilist-mapper';
-import { topoSortByPrecedes } from '../media/sagaGrouping';
+import { resolveAniListType } from '../media/mappers/anilist-mapper';
+import { topoSortByPrecedes } from '../media/saga/saga-grouping';
 
 export interface SagaEntry {
   externalId: string;

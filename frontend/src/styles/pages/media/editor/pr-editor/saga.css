@@ -1,0 +1,24 @@
+/* PrEditorSagaOrderSection: saga name row. Split verbatim from pr.css. */
+.pr-editor-saga-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.pr-editor-saga-name-row label {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pr-editor-saga-name-input {
+  flex: 0 1 200px;
+  max-width: 200px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgba(124, 106, 247, 0.3);
+  font-size: 0.75rem;
+  text-align: center;
+}

@@ -1,13 +1,15 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useRef, useState, type DragEvent, type HTMLAttributes, type RefCallback } from 'react';
+import type { SortableListActions } from '../../shared/SortableList';
 
-export interface DragHandlers {
-  draggable: true;
-  onDragStart: (e: DragEvent) => void;
-  onDragOver: (e: DragEvent) => void;
-  onDragLeave: (e: DragEvent) => void;
-  onDrop: (e: DragEvent) => void;
-  onDragEnd: () => void;
-}
+// Props a card spreads on its root to become draggable. Either the native
+// HTML5 handlers this hook builds, or the dnd-kit handle props SortableItem
+// hands out (ref + aria attributes + pointer/keyboard listeners + transform
+// style) — PrEditorMediaCard takes both through this one type.
+export type DragHandlers = HTMLAttributes<HTMLElement> & { ref?: RefCallback<HTMLElement> };
+
+// `dragHandlers(index)` as consumers receive it; `sortable` rides along for
+// call sites that reach this hook only through that function.
+export type DragHandlersFactory = ((index: number) => DragHandlers) & { sortable?: SortableListActions };
 
 interface DragReorderOptions {
   /** When supplied, holding over another item delays the decision until drop:
@@ -26,8 +28,11 @@ interface DragReorderOptions {
 // data-{attr}-index attribute to read and no document.elementFromPoint()
 // scan (itself a layout-forcing call) running on every raw pointer move.
 //
-// Used by the saga-order list and the relations lists in PrEditorModal.tsx,
-// which used to each pass their own dataset attribute name into this hook.
+// Still used natively by the editable-relations and issues lists. The saga
+// chain and the relation card grids render through the shared SortableList
+// instead (keyboard-reorderable); they take the same reorder/group callbacks
+// as `sortable`, which also rides on `dragHandlers` because
+// usePrEditorDraftActions hand-picks the saga's fields.
 export function useDragReorder(onReorder: (fromIndex: number, toIndex: number) => void, options: DragReorderOptions = {}) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dwellTargetIndex, setDwellTargetIndex] = useState<number | null>(null);
@@ -46,7 +51,9 @@ export function useDragReorder(onReorder: (fromIndex: number, toIndex: number) =
     setDwellReady(false);
   };
 
-  const dragHandlers = (index: number): DragHandlers => ({
+  const sortable: SortableListActions = { onReorder, onGroup: options.onDwellDrop, canGroup: options.canDwellOver };
+
+  const dragHandlers = Object.assign((index: number): DragHandlers => ({
     draggable: true,
     onDragStart: (e: DragEvent) => {
       // Let clicks on nested controls (remove button, inputs, selects) behave
@@ -117,7 +124,7 @@ export function useDragReorder(onReorder: (fromIndex: number, toIndex: number) =
       clearDwell();
       setDraggedIndex(null);
     },
-  });
+  }), { sortable });
 
-  return { draggedIndex, dragHandlers, dwellTargetIndex, dwellReady };
+  return { draggedIndex, dragHandlers, dwellTargetIndex, dwellReady, sortable };
 }

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { typeLabel } from '../../lib/profile/utils';
+import { typeLabel } from '../../lib/profile/media-type-label';
 import { wrapAssetUrl } from '../../lib/tauri';
-import type { getAllLibraryEntries, MediaCatalogEntry, CharacterEntry, FavoriteCustomImage } from '../../lib/tauri';
-import { ICON_CROWN, ICON_PERSON } from '../../lib/shared/icon-strings';
-import type { getT } from '../../i18n/client';
+import type { getAllLibraryEntries, CatalogSummary, CharacterEntry, FavoriteCustomImage } from '../../lib/tauri';
+import { ICON_CROWN, ICON_PERSON } from '../../lib/dom/icon-strings';
+import type { getT } from '../../i18n/runtime';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -101,11 +101,14 @@ function HofCard({ rank, cover, label, type }: HofCardProps) {
 
 interface Props {
   items: Items;
-  catalogMap: Map<string, MediaCatalogEntry>;
+  catalogMap: Map<string, CatalogSummary>;
   p: P;
   charFavIds?: string[];
   characterMap?: Map<string, CharacterEntry>;
   customImageMap?: Map<string, FavoriteCustomImage>;
+  /** Disk-cached cover paths (lib/profile/cover-cache.ts) — used over the
+   *  remote cover_url when present, same as Local's grids. */
+  coverPathById?: ReadonlyMap<string, string>;
 }
 
 export function HofSection({
@@ -115,6 +118,7 @@ export function HofSection({
   charFavIds = [],
   characterMap = new Map(),
   customImageMap = new Map(),
+  coverPathById,
 }: Props) {
   const [view, setView] = useState<'works' | 'chars'>('works');
 
@@ -123,7 +127,7 @@ export function HofSection({
     const meta  = catalogMap.get(item.external_id);
     const title = meta?.title_main ?? item.external_id;
     const bg    = HOF_GRADIENTS[item.type] ?? DEFAULT_GRADIENT;
-    const cover = coverStyle(meta?.cover_url ?? '', customImageMap.get(item.external_id), bg);
+    const cover = coverStyle(coverPathById?.get(item.external_id) ?? meta?.cover_url ?? '', customImageMap.get(item.external_id), bg);
     return { rank: i + 1, cover, label: title, type: item.type };
   });
 

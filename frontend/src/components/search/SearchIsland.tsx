@@ -1,6 +1,5 @@
-import { useState, useCallback, useRef, useEffect, useMemo, memo, type ReactElement } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Database } from 'lucide-react';
 import { search, topRated, type MediaType, type SearchResult, type SeasonId, type SearchFilters, MissingApiKeyError } from '../../lib/search/index';
 import type { ApiSportsDiscipline } from '../../lib/search/providers/apisports';
 import { getCachedBrowsePage, setCachedBrowsePage } from '../../lib/search/browse-cache';
@@ -8,43 +7,24 @@ import { filterValidAnimeCovers } from '../../lib/search/cover-filter';
 import { ANILIST_GENRES } from '../../lib/search/providers/anilist';
 import { IGDB_GENRES } from '../../lib/search/providers/igdb';
 import { TMDB_MOVIE_GENRE_NAMES, TMDB_TV_GENRE_NAMES } from '../../lib/search/providers/tmdb';
-import { prefetchMediaData } from '../../lib/media/mediaService';
-import { compareByReleaseDate, compareByReleaseDateDesc } from '../../lib/media/mapper-utils';
-import { getT } from '../../i18n/client';
+import {
+  getResultsGridColumns, getUrlSearchParams, loadPersistedSearchState, type PersistedSearchState, type SearchStatus,
+} from '../../lib/search/search-island-state';
+import { compareByReleaseDate, compareByReleaseDateDesc } from '../../lib/media/mappers/mapper-utils';
+import { getT } from '../../i18n/runtime';
 import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconEvent, IconCharacter, IconStaff } from '../local/ui/icons';
-import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES, isMediaTypeDisabled } from '../../lib/constants/media';
-import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
-import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
-import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
-import { toSmallCover } from '../../lib/shared/small-cover';
-import { useDebouncedCallback } from '../../lib/shared/useDebouncedCallback';
-import { interpolate } from '../../lib/shared/interpolate';
-import { useNavSlot } from '../../lib/shared/useNavSlot';
+import { SEARCH_TAB_TYPES, isMediaTypeDisabled } from '../../lib/media/media-types';
+import { isUnifySeasonsEnabled } from '../../lib/storage/preferences';
+import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
+import { useDebouncedCallback } from '../shared/hooks/useDebouncedCallback';
+import { interpolate } from '../../lib/shared/text/interpolate';
+import { useNavSlot } from '../shared/hooks/useNavSlot';
+import { SearchResultCard } from './SearchResultCard';
+import { EventDisciplinePicker } from './EventDisciplinePicker';
+import { SearchFilterBar, type SearchDropdown, type SearchSortDirection, type SearchSortField } from './SearchFilterBar';
 
 type SearchTranslations = Translations['search'];
-
-function EventDisciplineIcon({ discipline }: { discipline: ApiSportsDiscipline | '' }) {
-  if (discipline === 'football') {
-    return (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="m9.2 8.4 2.8-1.7 2.8 1.7-.9 3.2h-3.8zM9.2 8.4 6 7.1m8.8 1.3L18 7.1m-8.8 4.5-2.1 3.2m8-3.2 2.1 3.2m-8.3 0L8 19m8.2-3.2L16 19m-4-4.1v6.1" />
-      </svg>
-    );
-  }
-
-  if (discipline === 'basketball') {
-    return (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 3v18M3 12h18M5.7 5.7c3.4 3.2 3.4 9.4 0 12.6m12.6-12.6c-3.4 3.2-3.4 9.4 0 12.6" />
-      </svg>
-    );
-  }
-
-  return <Database size={15} strokeWidth={1.8} aria-hidden="true" />;
-}
 
 // ── Tab icons ────────────────────────────────────────────────────────────────
 
@@ -65,16 +45,6 @@ const TAB_ICONS: Record<MediaType, ReactElement> = {
 };
 
 const MEDIA_TYPE_IDS = SEARCH_TAB_TYPES as unknown as MediaType[];
-
-type SearchStatus = 'idle' | 'loading' | 'done' | 'error' | 'missing-keys';
-
-const SEASON_ORDER: SeasonId[] = ['WINTER', 'SPRING', 'SUMMER', 'FALL'];
-const SEASON_LABELS = (i18n: SearchTranslations): Record<SeasonId, string> => ({
-  WINTER: i18n.season_winter,
-  SPRING: i18n.season_spring,
-  SUMMER: i18n.season_summer,
-  FALL: i18n.season_fall,
-});
 
 // Every provider caps a single page at (or under) this — see each provider
 // file in lib/search/providers. Below this count, there's nothing left to
@@ -112,77 +82,17 @@ const GENRE_OPTIONS: Partial<Record<MediaType, string[]>> = {
   series: TMDB_TV_GENRE_NAMES,
 };
 
+// The persisted payload includes the full results array (loadPersistedSearchState's
+// callers restore it, and quick search's "Ver todos" hands results off through
+// the same key), so serialising it on every results change — several times in
+// a row during an auto-chained anime fetch — is the expensive part. Writes are
+// coalesced behind this delay and flushed on unmount / pagehide instead.
+const PERSIST_DEBOUNCE_MS = 300;
+
 interface Props {
   initialQuery?: string;
   initialType?: MediaType;
   i18n: SearchTranslations;
-}
-
-// Restores the last search when landing on /search with no ?q (the navbar's
-// search link is a bare href, so clicking back into a media page's detail
-// view and returning here would otherwise always reset). sessionStorage
-// (not localStorage) so it naturally clears per-tab; Home/Profile also clear
-// it explicitly on visit so it doesn't outlive an actual change of section.
-interface PersistedSearchState {
-  query: string;
-  mediaType: MediaType;
-  eventDiscipline?: ApiSportsDiscipline | '';
-  eventSeasonsUnified?: boolean;
-  results: SearchResult[];
-  status: SearchStatus;
-  page: number;
-  hasMore: boolean;
-  sortField: 'releaseDate' | 'scoreGlobal';
-  sortDirection: 'asc' | 'desc';
-}
-
-function loadPersistedSearchState(): PersistedSearchState | null {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEYS.searchState);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedSearchState;
-    return parsed.query ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-// search.astro reads ?q=/?type= via Astro.url.searchParams, but this page is
-// statically prerendered (no `output: 'server'`) — that query string is
-// always empty at build time, so initialQuery/initialType (and the SSR'd
-// markup built from them) never reflect the real runtime URL. Reading
-// window.location.search directly during the initial render (e.g. via a
-// lazy useState initializer) would fix that, but it makes the very first
-// client render diverge from the server-rendered HTML, which is a React
-// hydration-mismatch error, not just cosmetically wrong markup — so this is
-// read in a mount effect instead (after hydration), matching SSR on the
-// first render and correcting it a tick later, same as the existing
-// persisted-search-state restore just below it.
-function getUrlSearchParams(): { query: string; mediaType: MediaType; eventDiscipline: ApiSportsDiscipline | '' } | null {
-  const params = new URLSearchParams(window.location.search);
-  const q = params.get('q');
-  if (!q) return null;
-  const rawType = params.get('type');
-  const mediaType: MediaType = rawType && (MEDIA_TYPE_IDS as string[]).includes(rawType) ? rawType as MediaType : 'all';
-  const rawDiscipline = params.get('discipline');
-  const eventDiscipline: ApiSportsDiscipline | '' = rawDiscipline === 'football' || rawDiscipline === 'basketball' ? rawDiscipline : '';
-  return { query: q, mediaType, eventDiscipline };
-}
-
-// Mirrors .results-grid's own breakpoints (search.css) so Todos' per-type
-// sections can cap themselves to exactly one row — row height there is
-// fluid (each card's height is proportional to its own 1fr width, which
-// changes with the column count), so a fixed CSS max-height can't do this
-// on its own the way it could for a fixed-height row.
-const RESULTS_GRID_BREAKPOINTS: Array<[minWidth: number, columns: number]> = [
-  [1280, 12], [1024, 10], [768, 8], [640, 7], [480, 6],
-];
-function getResultsGridColumns(): number {
-  const w = window.innerWidth;
-  for (const [minWidth, columns] of RESULTS_GRID_BREAKPOINTS) {
-    if (w >= minWidth) return columns;
-  }
-  return 5;
 }
 
 export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
@@ -191,18 +101,17 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const [query, setQuery]         = useState(initialQuery);
   const [mediaType, setMediaType] = useState<MediaType>(initialType);
   const [eventDiscipline, setEventDiscipline] = useState<ApiSportsDiscipline | ''>('');
-  const [isEventDisciplineOpen, setIsEventDisciplineOpen] = useState(false);
   const [results, setResults]     = useState<SearchResult[]>([]);
   const [status, setStatus]       = useState<SearchStatus>(initialQuery ? 'loading' : 'idle');
   const [missingProviders, setMissingProviders] = useState<string[]>([]);
   const [page, setPage]           = useState(1);
   const [hasMore, setHasMore]     = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [sortField, setSortField] = useState<'releaseDate' | 'scoreGlobal'>('releaseDate');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField, setSortField] = useState<SearchSortField>('releaseDate');
+  const [sortDirection, setSortDirection] = useState<SearchSortDirection>('desc');
   // Only one of the three toolbar dropdowns (sort / season+year / genre) open
   // at a time — opening one closes whichever else was open.
-  const [openDropdown, setOpenDropdown] = useState<'sort' | 'season' | 'genre' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<SearchDropdown | null>(null);
   // Draft values edited inside the panels — only take effect (a real 100-
   // result re-search with these as query parameters, not a client-side
   // narrowing of whatever page was already loaded) once "Aplicar" is
@@ -229,24 +138,6 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
   }, [openDropdown]);
-
-  useEffect(() => {
-    if (!isEventDisciplineOpen) return;
-    const onDocumentClick = (event: MouseEvent) => {
-      if (!(event.target as HTMLElement).closest('.search-event-discipline-wrap')) {
-        setIsEventDisciplineOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsEventDisciplineOpen(false);
-    };
-    document.addEventListener('click', onDocumentClick);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('click', onDocumentClick);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [isEventDisciplineOpen]);
 
   // Starts at the smallest breakpoint's column count (matching SSR/first
   // paint, avoiding a hydration mismatch) and corrects to the real value
@@ -474,19 +365,48 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Latest not-yet-written snapshot + its pending timer. The object (not its
+  // JSON) is held so the serialisation itself only happens once per flush.
+  const pendingPersistRef = useRef<PersistedSearchState | null>(null);
+  const persistTimerRef = useRef<number | null>(null);
+
+  const flushPersist = useCallback(() => {
+    if (persistTimerRef.current !== null) {
+      window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    const pending = pendingPersistRef.current;
+    if (!pending) return;
+    pendingPersistRef.current = null;
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.searchState, JSON.stringify(pending));
+    } catch {
+      // sessionStorage unavailable (private mode, quota) — search still works, just won't survive a round trip.
+    }
+  }, []);
+
   useEffect(() => {
     if (skipNextPersistRef.current) {
       skipNextPersistRef.current = false;
       return;
     }
-    try {
-      sessionStorage.setItem(STORAGE_KEYS.searchState, JSON.stringify({
-        query, mediaType, eventDiscipline, eventSeasonsUnified: isUnifySeasonsEnabled(), results, status, page, hasMore, sortField, sortDirection,
-      }));
-    } catch {
-      // sessionStorage unavailable (private mode, quota) — search still works, just won't survive a round trip.
-    }
-  }, [query, mediaType, eventDiscipline, results, status, page, hasMore, sortField, sortDirection]);
+    pendingPersistRef.current = {
+      query, mediaType, eventDiscipline, eventSeasonsUnified: isUnifySeasonsEnabled(), results, status, page, hasMore, sortField, sortDirection,
+    };
+    if (persistTimerRef.current !== null) window.clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = window.setTimeout(flushPersist, PERSIST_DEBOUNCE_MS);
+  }, [query, mediaType, eventDiscipline, results, status, page, hasMore, sortField, sortDirection, flushPersist]);
+
+  // Whatever is still pending when the island goes away (ClientRouter swap,
+  // reload, tab close) is written immediately, so a navigation right after
+  // the last change restores exactly what the synchronous write used to.
+  useEffect(() => {
+    window.addEventListener('pagehide', flushPersist);
+    return () => {
+      window.removeEventListener('pagehide', flushPersist);
+      flushPersist();
+    };
+  }, [flushPersist]);
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
@@ -566,7 +486,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     }
   };
 
-  const toggleSort = (field: 'releaseDate' | 'scoreGlobal') => {
+  const toggleSort = (field: SearchSortField) => {
     if (sortField === field) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
@@ -719,45 +639,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           </div>
 
           {mediaType === 'event' && (
-            <div className="search-event-discipline-wrap">
-              <button
-                type="button"
-                className="search-event-discipline-trigger"
-                onClick={() => setIsEventDisciplineOpen(open => !open)}
-                aria-label={eventDiscipline ? i18n[eventDiscipline === 'football' ? 'event_football' : 'event_basketball'] : i18n.event_local_only}
-                aria-expanded={isEventDisciplineOpen}
-                aria-haspopup="true"
-                title={eventDiscipline ? i18n[eventDiscipline === 'football' ? 'event_football' : 'event_basketball'] : i18n.event_local_only}
-              >
-                <EventDisciplineIcon discipline={eventDiscipline} />
-                <ChevronDown size={9} strokeWidth={2} aria-hidden="true" />
-              </button>
-              {isEventDisciplineOpen && (
-                <div className="search-event-discipline-menu" role="group" aria-label={i18n.event_discipline}>
-                  {(['', 'football', 'basketball'] as const).map(discipline => {
-                    const label = discipline === ''
-                      ? i18n.event_local_only
-                      : i18n[discipline === 'football' ? 'event_football' : 'event_basketball'];
-                    return (
-                      <button
-                        key={discipline || 'local'}
-                        type="button"
-                        className={`search-event-discipline-option${eventDiscipline === discipline ? ' active' : ''}`}
-                        onClick={() => {
-                          handleEventDisciplineChange(discipline);
-                          setIsEventDisciplineOpen(false);
-                        }}
-                        aria-label={label}
-                        aria-pressed={eventDiscipline === discipline}
-                        title={label}
-                      >
-                        <EventDisciplineIcon discipline={discipline} />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <EventDisciplinePicker eventDiscipline={eventDiscipline} onChange={handleEventDisciplineChange} i18n={i18n} />
           )}
 
           <button
@@ -779,174 +661,25 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           {/* Barra de filtros: orden, temporada+año y género — cada uno un
               cuadrado que despliega su propio panel debajo. */}
           {isMounted && (
-            <div className="search-toolbar">
-              {/* Ordenar: un único cuadrado, Fecha y Nota lado a lado en el panel */}
-              <div className="search-filter-wrap">
-                <button
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
-                  className={`search-filter-btn${openDropdown === 'sort' ? ' active' : ''}`}
-                  title={i18n.sort_date}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 6h18M6 12h12M10 18h4"/>
-                  </svg>
-                </button>
-                {openDropdown === 'sort' && (
-                  <div className="search-filter-panel search-filter-panel--row">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('releaseDate')}
-                      className={`search-sort-btn${sortField === 'releaseDate' ? ' active' : ''}`}
-                      title={i18n.sort_date}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                        {sortField === 'releaseDate' ? (
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            {sortDirection === 'desc' ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
-                          </svg>
-                        ) : (
-                          <span style={{ width: '10px' }} />
-                        )}
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => toggleSort('scoreGlobal')}
-                      className={`search-sort-btn${sortField === 'scoreGlobal' ? ' active' : ''}`}
-                      title={i18n.sort_rating}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                        </svg>
-                        {sortField === 'scoreGlobal' ? (
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            {sortDirection === 'desc' ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
-                          </svg>
-                        ) : (
-                          <span style={{ width: '10px' }} />
-                        )}
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Temporada (trimestre) + año — un select y el año a su derecha */}
-              <div className="search-filter-wrap">
-                <button
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'season' ? null : 'season')}
-                  className={`search-filter-btn${openDropdown === 'season' ? ' active' : ''}${appliedFilters.season || appliedFilters.year ? ' has-value' : ''}`}
-                  title={i18n.filter_season_year}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                  </svg>
-                </button>
-                {openDropdown === 'season' && (
-                  <div className="search-filter-panel">
-                    <div className="search-filter-panel--row">
-                      <select
-                        className="search-filter-select"
-                        value={seasonFilter}
-                        onChange={e => changeSeasonFilter(e.target.value as SeasonId | '')}
-                      >
-                        <option value="">{i18n.filter_all}</option>
-                        {SEASON_ORDER.map(s => (
-                          <option key={s} value={s}>{SEASON_LABELS(i18n)[s]}</option>
-                        ))}
-                      </select>
-                      <div className="search-filter-year-group">
-                        <button
-                          type="button"
-                          className="search-filter-year-step"
-                          onClick={() => stepYearFilter(-1)}
-                          aria-label="-1"
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          className="search-filter-year-input"
-                          placeholder={String(new Date().getFullYear())}
-                          value={yearFilter}
-                          onChange={e => setYearFilter(e.target.value)}
-                          onBlur={() => changeYearFilter(yearFilter)}
-                          onKeyDown={e => e.key === 'Enter' && changeYearFilter(yearFilter)}
-                        />
-                        <button
-                          type="button"
-                          className="search-filter-year-step"
-                          onClick={() => stepYearFilter(1)}
-                          aria-label="+1"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        className="search-filter-clear-x"
-                        onClick={clearFilters}
-                        title={i18n.filter_clear}
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Género — lista con checkboxes, selección múltiple. Solo se
-                  ofrece para tipos cuyo proveedor de verdad soporta filtrar
-                  por género server-side (ver GENRE_OPTIONS). */}
-              {availableGenres.length > 0 && (
-                <div className="search-filter-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setOpenDropdown(openDropdown === 'genre' ? null : 'genre')}
-                    className={`search-filter-btn${openDropdown === 'genre' ? ' active' : ''}${appliedFilters.genres?.length ? ' has-value' : ''}`}
-                    title={i18n.filter_genre}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z"/>
-                      <circle cx="7.5" cy="7.5" r="1"/>
-                    </svg>
-                  </button>
-                  {openDropdown === 'genre' && (
-                    <div className="search-filter-panel search-filter-panel--genres">
-                      <ul className="search-filter-genre-list">
-                        {availableGenres.map(g => (
-                          <li key={g}>
-                            <label className="search-filter-genre-item">
-                              <input
-                                type="checkbox"
-                                checked={genreFilters.includes(g)}
-                                onChange={() => toggleGenreFilter(g)}
-                              />
-                              {g}
-                            </label>
-                          </li>
-                        ))}
-                      </ul>
-                      {(genreFilters.length > 0) && (
-                        <div className="search-filter-panel-actions">
-                          <button type="button" className="search-filter-clear" onClick={clearFilters}>
-                            {i18n.filter_clear}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <SearchFilterBar
+              i18n={i18n}
+              openDropdown={openDropdown}
+              onOpenDropdownChange={setOpenDropdown}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onToggleSort={toggleSort}
+              seasonFilter={seasonFilter}
+              onSeasonChange={changeSeasonFilter}
+              yearFilter={yearFilter}
+              onYearDraftChange={setYearFilter}
+              onYearCommit={changeYearFilter}
+              onYearStep={stepYearFilter}
+              genreFilters={genreFilters}
+              availableGenres={availableGenres}
+              onToggleGenre={toggleGenreFilter}
+              appliedFilters={appliedFilters}
+              onClearFilters={clearFilters}
+            />
           )}
         </div>
 
@@ -994,7 +727,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         {deduped.length > 0 && (
           mediaType !== 'all' ? (
             <div className="results-grid animate-fade-in">
-              {deduped.map(result => <MemoizedMediaCard key={result.externalId} result={result} />)}
+              {deduped.map(result => <SearchResultCard key={result.externalId} result={result} />)}
             </div>
           ) : (
             <div className="results-by-type animate-fade-in">
@@ -1011,7 +744,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                     </button>
                   </h3>
                   <div className="results-grid">
-                    {byType.get(t)!.slice(0, gridColumns).map(result => <MemoizedMediaCard key={result.externalId} result={result} />)}
+                    {byType.get(t)!.slice(0, gridColumns).map(result => <SearchResultCard key={result.externalId} result={result} />)}
                   </div>
                 </div>
               ))}
@@ -1042,70 +775,3 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     </div>
   );
 }
-
-const MemoizedMediaCard = memo(function MediaCard({ result }: { result: SearchResult }) {
-  const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
-  const [isLandscape, setIsLandscape] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  function handleCoverLoad(e: React.SyntheticEvent<HTMLImageElement>) {
-    const img = e.currentTarget;
-    if (img.naturalWidth > img.naturalHeight) setIsLandscape(true);
-  }
-
-  function handleMouseEnter() {
-    if (hasDetail && result.type !== 'character' && result.type !== 'staff') prefetchMediaData(result.externalId);
-  }
-
-  async function handleClick() {
-    if (hasDetail) {
-      const { navigate } = await import('astro:transitions/client');
-      if (result.type === 'character') {
-        const rawId = result.externalId.replace('character:', '');
-        navigate(`/character?id=${rawId}`);
-        return;
-      }
-      if (result.type === 'staff') {
-        navigate(`/author?id=${result.externalId}`);
-        return;
-      }
-      if (result.authorNames?.length) {
-        sessionStorage.setItem(`book_authors:${result.externalId}`, JSON.stringify(result.authorNames));
-      }
-      navigate(`/media?id=${result.externalId}`);
-    }
-  }
-
-  return (
-    <div
-      className={`group flex flex-col card-cursor${hasDetail ? ' card-clickable' : ''}`}
-      onClick={handleClick}
-      onMouseEnter={handleMouseEnter}
-      role={hasDetail ? 'button' : undefined}
-      tabIndex={hasDetail ? 0 : undefined}
-      onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}
-    >
-      <div className="card-media-base mb-1.5">
-        {result.coverUrl && !loadFailed && !isLandscape ? (
-          <img
-            src={toSmallCover(result.coverUrl)}
-            alt={result.titleMain}
-            className="card-media-img"
-            loading="lazy"
-            onLoad={handleCoverLoad}
-            onError={() => setLoadFailed(true)}
-          />
-        ) : (
-          <div className="card-media-placeholder" />
-        )}
-        {result.scoreGlobal !== null && (
-          <div className="card-rating-badge">{formatAverageScore(result.scoreGlobal, getActiveRatingSystem())}</div>
-        )}
-      </div>
-      <p className="card-title">{result.titleMain}</p>
-      {result.releaseYear && (
-        <p className="card-year">{result.releaseYear}</p>
-      )}
-    </div>
-  );
-});

@@ -1,0 +1,31 @@
+// Built-in video player: libmpv (library only, no mpv UI) drives decoding
+// and rendering into a native child window of the `player` Tauri window,
+// while every control the user sees lives in React (see
+// frontend/src/components/player). Split by concern:
+//
+// - libmpv_ffi:     runtime loading of libmpv + the handful of C entry points used
+// - mpv_api:        the trait the engine talks to (mocked in tests), event types
+// - status:         PlayerStatus and the property-change accumulator behind it
+// - event_loop:     the event thread: throttled status emission, track changes
+// - engine:         session state, the client lifecycle, playback commands
+// - screenshot_names: F12 capture naming, mirrored from folders/screenshots.rs
+// - video_host:     the native HWND mpv draws into (Windows) / no-op elsewhere
+// - window:         the overlay window + keeping surface/overlay aligned to the
+//                   video rect the `/player` route reports inside the main window
+// - commands:       the #[tauri::command] surface the frontend invokes
+
+mod commands;
+mod engine;
+#[cfg(test)]
+mod engine_tests;
+mod error;
+mod event_loop;
+mod libmpv_ffi;
+mod mpv_api;
+mod screenshot_names;
+mod status;
+mod video_host;
+mod window;
+
+pub use commands::*;
+pub use engine::PlayerEngineState;

@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { getAuthToken, readUserJourney, writeUserJourney } from '../../lib/tauri';
-import type { DayJourney, UserJourneyEvent, MediaCatalogEntry } from '../../lib/tauri';
-import { typeIconMap } from '../../lib/shared/icon-strings';
+import { getAuthToken, readUserJourneyTyped, writeUserJourney } from '../../lib/tauri';
+import type { DayJourney, UserJourneyEvent, CatalogSummary } from '../../lib/tauri';
+import { typeIconMap } from '../../lib/dom/icon-strings';
 import { IconTrash } from '../local/ui/icons';
-import { getTypeLabel } from '../../lib/constants/media';
+import { getTypeLabel } from '../../lib/media/media-types';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
-import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
-import type { getT } from '../../i18n/client';
-import { formatLocalDateLong } from '../../lib/shared/formatDate';
-import { toSmallCover } from '../../lib/shared/small-cover';
-import { interpolate } from '../../lib/shared/interpolate';
-import { decodeJwtPayload } from '../../lib/shared/encoding-utils';
+import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
+import type { getT } from '../../i18n/runtime';
+import { formatLocalDateLong } from '../../lib/shared/text/format-date';
+import { toSmallCover } from '../../lib/media/small-cover';
+import { interpolate } from '../../lib/shared/text/interpolate';
+import { decodeJwtPayload } from '../../lib/shared/text/encoding-utils';
 import { removeCachedGeneralActivity, refreshGeneralActivityFeed } from '../../lib/social/activity-feed';
 
 type P = ReturnType<typeof getT>['profile'];
@@ -24,10 +24,10 @@ interface ActivityEvent extends UserJourneyEvent {
 const TYPE_ICON = typeIconMap(12);
 
 interface Props {
-  catalogMap: Map<string, MediaCatalogEntry>;
+  catalogMap: Map<string, CatalogSummary>;
   p: P;
   // Someone else's profile (UserProfileView) has no local journey to read
-  // via readUserJourney — it passes the social_user_activity cache,
+  // via readUserJourneyTyped — it passes the social_user_activity cache,
   // reshaped into the same DayJourney[] grouping, instead. readOnly hides
   // the delete-event context menu (there's no local journey entry to
   // remove — this isn't the viewer's own data).
@@ -52,7 +52,7 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
       return;
     }
     let cancelled = false;
-    readUserJourney().then(res => { if (!cancelled) setJourney(Array.isArray(res) ? res : []); });
+    readUserJourneyTyped().then(res => { if (!cancelled) setJourney(Array.isArray(res) ? res : []); });
     return () => { cancelled = true; };
   }, [overrideJourney]);
 
@@ -85,7 +85,7 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
   }, [journey]);
 
   const handleDelete = async (event: ActivityEvent) => {
-    const current = await readUserJourney();
+    const current = await readUserJourneyTyped();
     const updated = current.map((day): DayJourney => {
       if (day.date === event.date) {
         day.events = (day.events || []).filter(evt =>

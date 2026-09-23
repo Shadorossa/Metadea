@@ -68,12 +68,12 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 [data-theme="newspaper-dark"] .pr-list-item {
   border-left: 3px double var(--accent) !important;
-  background: linear-gradient(110deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 58%), var(--bg-card) !important;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 58%), var(--bg-card);
 }
 
 [data-theme="newspaper-dark"] .pr-list-item:hover {
   border-color: var(--accent) !important;
-  background: linear-gradient(110deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%), var(--bg-card) !important;
+  background: linear-gradient(110deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%), var(--bg-card);
 }
 
 [data-theme="newspaper-dark"] .pr-list-item-title {
@@ -87,21 +87,21 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .list-item-card {
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 [data-theme="newspaper-dark"] .list-item-rank-bar {
-  border: none !important;
-  background: transparent !important;
+  border: none;
+  background: transparent;
 }
 
 [data-theme="newspaper-dark"] .list-item-rank-num {
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-weight: 700 !important;
   color: var(--text-main) !important;
-  text-shadow: none !important;
+  text-shadow: none;
 }
 
 /* Plain icon, no box at all — unlike the double-border treatment above,
@@ -109,23 +109,23 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    its own drop-shadow (a `filter`, not a box-shadow) killed to lose the
    modern glassy look every other themed element already lost. */
 [data-theme="newspaper-dark"] .nav-icon-btn {
-  border: none !important;
-  filter: none !important;
+  border: none;
+  filter: none;
 }
 
 /* The profile photo itself, not a framed section — no double-border box
    or background behind it like the rest of the theme's controls get. */
 [data-theme="newspaper-dark"] .avatar-preview-wrap {
-  border: none !important;
-  background: none !important;
-  box-shadow: none !important;
+  border: none;
+  background: none;
+  box-shadow: none;
 }
 
 /* Plain icon, no double-border box like every other themed button gets —
    these live inside the sort dropdown's own small panel, not a standalone
    toolbar button. */
 [data-theme="newspaper-dark"] .search-sort-btn {
-  border: none !important;
+  border: none;
   background: none !important;
 }
 
@@ -152,20 +152,20 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 /* Vintage rating pill badge */
 [data-theme="newspaper-dark"] .rating-pill {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background: var(--bg-secondary) !important;
-  box-shadow: none !important;
+  border-radius: 0px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  box-shadow: none;
 }
 
 [data-theme="newspaper-dark"] .rating-pill-val {
   color: var(--text-main) !important;
-  font-family: var(--font-heading, Georgia, serif);
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
 [data-theme="newspaper-dark"] .rating-pill-max {
   color: var(--text-muted) !important;
-  opacity: 0.8 !important;
+  opacity: 0.8;
 }
 
 /* Hover/Active states simulate vintage ink press highlight */
@@ -173,7 +173,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .list-btn:hover,
 [data-theme="newspaper-dark"] .google-btn:hover,
 [data-theme="newspaper-dark"] .hof-btn:hover {
-  background: var(--text-main) !important;
+  background: var(--text-main);
   color: var(--bg-primary) !important;
   border-color: var(--text-main) !important;
 }
@@ -185,7 +185,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 /* Library subpages-by-type tab bar */
 [data-theme="newspaper-dark"] .library-type-tab {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
 [data-theme="newspaper-dark"] .search-tab:hover {
@@ -201,8 +201,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .search-tab.active::after {
-  background: var(--text-main) !important;
-  height: 2px !important;
+  background: var(--text-main);
+  height: 2px;
 }
 
 [data-theme="newspaper-dark"] .theme-card.active .theme-card-preview,
@@ -213,19 +213,18 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .settings-tab {
-  border: none !important;
-  border-radius: 0px !important;
-  box-shadow: none !important;
+  border: none;
+  box-shadow: none;
   background: transparent !important;
-  padding: 0.5rem 1rem !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
+  padding: 0.5rem 1rem;
+  font-family: 'Georgia', 'Times New Roman', serif;
   color: var(--text-muted) !important;
 }
 
 [data-theme="newspaper-dark"] .settings-tab:hover {
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
-  border: none !important;
+  border: none;
 }
 
 [data-theme="newspaper-dark"] .settings-tab.active {
@@ -244,14 +243,14 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .catalog-admin-source-btn,
 [data-theme="newspaper-dark"] .reviews-type-btn,
 [data-theme="newspaper-dark"] .reviews-sort-btn {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
+  border-radius: 0px;
+  border: 1px solid var(--border-color);
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-style: italic;
-  box-shadow: none !important;
+  box-shadow: none;
   background: transparent !important;
   color: var(--text-muted) !important;
-  transition: all 0.2s ease !important;
+  transition: all 0.2s ease;
 }
 
 [data-theme="newspaper-dark"] .catalog-admin-source-btn:hover,
@@ -259,7 +258,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .reviews-sort-btn:hover {
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
-  border-color: var(--text-main) !important;
+  border-color: var(--text-main);
 }
 
 [data-theme="newspaper-dark"] .catalog-admin-source-btn.active,
@@ -315,7 +314,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   align-items: center;
   gap: 0.75rem;
   border-bottom: none !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .library-section-title::after {
@@ -328,36 +327,36 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 /* Avoid duplicate bottom border with section divider */
 [data-theme="newspaper-dark"] .local-launcher-title {
   border-bottom: none !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .local-sort-select {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
 /* Check badges style */
 [data-theme="newspaper-dark"] .card-rating-badge,
 [data-theme="newspaper-dark"] .theme-card-check {
-  border-radius: 0px !important;
-  border: 1px solid var(--text-main) !important;
-  background: var(--bg-primary) !important;
+  border-radius: 0px;
+  border: 1px solid var(--text-main);
+  background: var(--bg-primary);
 }
 
 /* Standalone bundle favorite toggle (media page cover) — square vintage
    badge instead of the default circular glass button, matching every other
    overlay badge in this theme. */
 [data-theme="newspaper-dark"] .media-cover-favorite-btn {
-  border-radius: 0px !important;
-  border: none !important;
+  border-radius: 0px;
+  border: none;
   background: var(--bg-primary) !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
+  backdrop-filter: none;
+  box-shadow: none;
   color: var(--text-main) !important;
-  transition: background-color 0.15s, color 0.15s !important;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 [data-theme="newspaper-dark"] .media-cover-favorite-btn:hover {
-  transform: translateX(-50%) !important;
+  transform: translateX(-50%);
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
 }
@@ -369,21 +368,19 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .auth-modal-box {
-  border-radius: 0px !important;
-  border: 6px double var(--text-main) !important;
+  border: 6px double var(--text-main);
 }
 
 /* Square shape for media author avatars */
 [data-theme="newspaper-dark"] .media-author-avatar,
 [data-theme="newspaper-dark"] .media-author-avatar--placeholder {
-  border-radius: 0px !important;
+  border-radius: 0px;
 }
 
 /* Role and relation type badges */
 [data-theme="newspaper-dark"] .media-char-role {
-  border-radius: 0px !important;
-  border: 1px dashed var(--border-color) !important;
-  background: transparent !important;
+  border: 1px dashed var(--border-color);
+  background: transparent;
   color: var(--text-muted) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
@@ -392,7 +389,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    — a border doesn't render cleanly along a clipped diagonal edge, so this
    uses a solid fill instead of the dashed-border look above. */
 [data-theme="newspaper-dark"] .media-relation-type {
-  background: var(--bg-elevated) !important;
+  background: var(--bg-elevated);
   color: var(--text-muted) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
@@ -400,37 +397,37 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .media-relation-card:hover,
 [data-theme="newspaper-dark"] .library-card:hover {
   border-color: var(--text-main) !important;
-  transform: translateY(-2px) !important;
+  transform: translateY(-2px);
 }
 
 /* The in-progress library play action follows the same paper-button palette
    and hover lift as its card, while remaining an unobtrusive overlay. */
 [data-theme="newspaper-dark"] .library-card-resume {
-  border: 3px double var(--border-color) !important;
-  border-radius: 0 !important;
+  border: 3px double var(--border-color);
+  border-radius: 0;
   background: var(--bg-primary) !important;
   color: var(--text-main) !important;
-  box-shadow: none !important;
-  transition: all 0.2s ease !important;
+  box-shadow: none;
+  transition: all 0.2s ease;
 }
 
 [data-theme="newspaper-dark"] .library-card-cell:hover .library-card-resume,
 [data-theme="newspaper-dark"] .library-card-resume:focus-visible {
-  border-color: var(--text-main) !important;
+  border-color: var(--text-main);
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
-  transform: translateY(calc(-50% - 2px)) !important;
+  transform: translateY(calc(-50% - 2px));
 }
 
 /* Translucent backgrounds for related and character cards */
 [data-theme="newspaper-dark"] .media-relation-card,
 [data-theme="newspaper-dark"] .media-char-card {
-  background-color: rgba(28, 26, 23, 0.45) !important;
+  background-color: rgba(28, 26, 23, 0.45);
 }
 
 [data-theme="newspaper-dark"] .media-relation-card:hover,
 [data-theme="newspaper-dark"] .media-char-card:hover {
-  background-color: rgba(28, 26, 23, 0.65) !important;
+  background-color: rgba(28, 26, 23, 0.65);
 }
 
 /* Store link logos (Xbox/Epic/PlayStation/...) are flattened to solid white
@@ -447,8 +444,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 /* Vintage style for monthly history cards */
 [data-theme="newspaper-dark"] .mh-card {
-  border: 1px solid var(--border-color) !important;
-  border-radius: 0px !important;
+  border: 1px solid var(--border-color);
   filter: sepia(0.2) contrast(1.05);
 }
 
@@ -475,23 +471,22 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    a bordered box, matching the vintage "underlined field" look used
    elsewhere in this theme (no box, just a rule under the value). */
 [data-theme="newspaper-dark"] .rel-type-select-trigger {
-  border-radius: 0px !important;
-  border: none !important;
-  border-bottom: 1px solid var(--border-color) !important;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
   background-color: transparent !important;
   color: var(--text-main) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
-  box-shadow: none !important;
-  height: 28px !important;
+  box-shadow: none;
+  height: 28px;
   line-height: 1 !important;
-  padding-left: 2px !important;
-  padding-right: 2px !important;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-trigger:hover {
   background-color: transparent !important;
   color: var(--text-main) !important;
-  border-bottom-color: var(--text-main) !important;
+  border-bottom-color: var(--text-main);
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-trigger:hover .rel-type-select-chevron {
@@ -503,10 +498,9 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    underlined/flat aesthetic (see media.css's .pr-editor-block-btn for the
    shared base rule this overrides). */
 [data-theme="newspaper-dark"] .pr-editor-block-btn {
-  border-radius: 0 !important;
-  border: 2px solid #b91c1c !important;
+  border: 2px solid #b91c1c;
   background: transparent !important;
-  color: #dc2626 !important;
+  color: var(--color-error-strong) !important;
 }
 
 [data-theme="newspaper-dark"] .pr-editor-block-btn:hover,
@@ -516,46 +510,44 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-chevron {
-  color: var(--text-main) !important;
+  color: var(--text-main);
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-panel {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  background: var(--bg-elevated) !important;
-  box-shadow: none !important;
-  padding: 0 !important;
+  border: 3px double var(--border-color);
+  background: var(--bg-elevated);
+  box-shadow: none;
+  padding: 0;
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-group + .rel-type-select-group {
-  border-top: 3px double var(--border-color) !important;
+  border-top: 3px double var(--border-color);
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-group-header {
   font-family: 'Georgia', 'Times New Roman', serif !important;
-  color: var(--text-dim) !important;
+  color: var(--text-dim);
 }
 
 /* Dashed dividers between entries (last one dropped) so the open list reads
    like a little printed table of contents rather than a plain floating box. */
 [data-theme="newspaper-dark"] .rel-type-select-option {
-  border-radius: 0px !important;
   color: var(--text-main) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
-  border: none !important;
-  border-bottom: 1px dashed var(--border-color) !important;
+  border: none;
+  border-bottom: 1px dashed var(--border-color);
   background: transparent !important;
-  padding: 7px 12px !important;
-  text-align: left !important;
-  cursor: pointer !important;
+  padding: 7px 12px;
+  text-align: left;
+  cursor: pointer;
   outline: none !important;
-  display: block !important;
-  width: 100% !important;
-  transition: background-color 0.15s, color 0.15s !important;
+  display: block;
+  width: 100%;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-option:last-child {
-  border-bottom: none !important;
+  border-bottom: none;
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-option:hover {
@@ -635,12 +627,12 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    otherwise borderless icon buttons; just the pencil glyph on hover-tint
    fits its plain letterhead look better. */
 [data-theme="newspaper-dark"] .char-edit-btn-header {
-  border: none !important;
+  border: none;
   background: transparent !important;
 }
 
 [data-theme="newspaper-dark"] .char-edit-btn-header:hover {
-  color: var(--accent) !important;
+  color: var(--accent);
 }
 
 /* Ensure card titles and UI links never have unwanted text underlines */
@@ -661,29 +653,28 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 /* Library bundle group badge (+X) in newspaper-dark */
 [data-theme="newspaper-dark"] .library-card-group-badge {
-  position: absolute !important;
-  top: 50% !important;
-  right: 0.4rem !important;
-  transform: translateY(-50%) !important;
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background: var(--bg-card) !important;
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  transform: translateY(-50%);
+  border-radius: 0px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
   color: var(--text-main) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-weight: bold !important;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 [data-theme="newspaper-dark"] .library-card-stack-extra-item {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: none !important;
+  border-radius: 0px;
+  border: 1px solid var(--border-color);
+  box-shadow: none;
 }
 
 /* Navbar quick-search overlay — same vintage double-border/serif treatment
    as the rest of this theme's inputs and card-like boxes. */
 [data-theme="newspaper-dark"] .quick-search-input {
-  border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   box-shadow: none !important;
@@ -695,9 +686,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .quick-search-section {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  box-shadow: none !important;
+  border: 3px double var(--border-color);
+  box-shadow: none;
 }
 
 /* The generic h2/h3 rule above underlines only the title's own text width —
@@ -706,19 +696,19 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    fills the rest" trick .library-section-title already uses elsewhere in
    this theme. */
 [data-theme="newspaper-dark"] .quick-search-section-header {
-  border-bottom: none !important;
-  padding-bottom: 0 !important;
+  border-bottom: none;
+  padding-bottom: 0;
   gap: 0.75rem;
 }
 
 [data-theme="newspaper-dark"] .quick-search-section-title {
-  display: flex !important;
-  align-items: baseline !important;
+  display: flex;
+  align-items: baseline;
   flex: 1;
   min-width: 0;
   white-space: nowrap;
   border-bottom: none !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-style: italic;
 }
@@ -739,16 +729,16 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .quick-search-result:hover {
-  background: var(--text-main) !important;
+  background: var(--text-main);
 }
 
 [data-theme="newspaper-dark"] .quick-search-result:hover .quick-search-result-title,
 [data-theme="newspaper-dark"] .quick-search-result:hover .quick-search-result-sub {
-  color: var(--bg-primary) !important;
+  color: var(--bg-primary);
 }
 
 [data-theme="newspaper-dark"] .quick-search-result-cover {
-  border-radius: 0px !important;
+  border-radius: 0px;
 }
 
 [data-theme="newspaper-dark"] .quick-search-view-all {
@@ -766,18 +756,18 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    generic h3 underline continues across to the month label instead of
    stopping right after the title's own text. */
 [data-theme="newspaper-dark"] .stats-calendar-header {
-  border-bottom: none !important;
-  padding-bottom: 0 !important;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .stats-calendar-header .home-card-title {
-  display: flex !important;
-  align-items: baseline !important;
+  display: flex;
+  align-items: baseline;
   flex: 1;
   min-width: 0;
   white-space: nowrap;
   border-bottom: none !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .stats-calendar-header .home-card-title::after {
@@ -791,25 +781,25 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .stats-calendar-month {
-  margin-left: 0.75rem !important;
+  margin-left: 0.75rem;
 }
 
 /* Home "Actividad reciente" header — same trick, with the friends/general
    toggle moved onto the title row so it sits to the right of the line
    instead of centered underneath it (see ActivityFeedSection.tsx). */
 [data-theme="newspaper-dark"] .home-activity-header {
-  border-bottom: none !important;
-  padding-bottom: 0 !important;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .home-activity-title {
-  display: flex !important;
-  align-items: baseline !important;
+  display: flex;
+  align-items: baseline;
   flex: 1;
   min-width: 0;
   white-space: nowrap;
   border-bottom: none !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .home-activity-title::after {
@@ -834,13 +824,9 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   font-style: italic;
 }
 
-[data-theme="newspaper-dark"] .home-calendar-toggle-btn {
-  border-radius: 0px !important;
-}
-
 [data-theme="newspaper-dark"] .home-calendar-toggle-btn:hover {
-  background: var(--text-main) !important;
-  color: var(--bg-primary) !important;
+  background: var(--text-main);
+  color: var(--bg-primary);
   border-color: var(--text-main) !important;
 }
 
@@ -871,17 +857,16 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .calendar-day {
-  border-radius: 0px !important;
+  border-radius: 0px;
 }
 
 [data-theme="newspaper-dark"] .calendar-day-popover {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  box-shadow: none !important;
+  border: 3px double var(--border-color);
+  box-shadow: none;
 }
 
 [data-theme="newspaper-dark"] .calendar-popover-cover {
-  border-radius: 0px !important;
+  border-radius: 0px;
 }
 
 [data-theme="newspaper-dark"] .calendar-popover-title {
@@ -893,7 +878,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    (Te siguen/Sigues) reuses the identical toggle treatment. */
 [data-theme="newspaper-dark"] .home-activity-tab:hover,
 [data-theme="newspaper-dark"] .friends-tab:hover {
-  color: var(--text-main) !important;
+  color: var(--text-main);
 }
 
 [data-theme="newspaper-dark"] .home-activity-tab.active,
@@ -909,24 +894,18 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    above (this theme's covers/context boxes are always square, never
    rounded, and hover inverts to an ink-press block). */
 [data-theme="newspaper-dark"] .act-card {
-  border-radius: 0px !important;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 [data-theme="newspaper-dark"] .act-card:hover {
-  background-color: var(--text-main) !important;
-  border-color: var(--text-main) !important;
+  background-color: var(--text-main);
+  border-color: var(--text-main);
 }
 
 [data-theme="newspaper-dark"] .act-card:hover .act-card-text,
 [data-theme="newspaper-dark"] .act-card:hover .act-card-meta,
 [data-theme="newspaper-dark"] .act-card:hover .act-card-bold-title {
-  color: var(--bg-primary) !important;
-}
-
-[data-theme="newspaper-dark"] .act-card-cover,
-[data-theme="newspaper-dark"] .act-card-cover-fallback {
-  border-radius: 0px !important;
+  color: var(--bg-primary);
 }
 
 [data-theme="newspaper-dark"] .act-empty,
@@ -947,7 +926,6 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   font-style: italic;
 }
 
-[data-theme="newspaper-dark"] .home-calendar-toggle-btn,
 [data-theme="newspaper-dark"] .home-calendar-type-tab,
 [data-theme="newspaper-dark"] .calendar-popover-type-tab,
 [data-theme="newspaper-dark"] .calendar-day {
@@ -956,7 +934,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 [data-theme="newspaper-dark"] .home-calendar-toggle-btn {
   font-size: 0.65rem !important;
-  padding: 0.25rem 0.6rem !important;
+  padding: 0.25rem 0.6rem;
 }
 
 [data-theme="newspaper-dark"] .home-calendar-type-tab {
@@ -971,10 +949,10 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    search headers), so the ::after just fills the rest of the title's own
    row instead. */
 [data-theme="newspaper-dark"] .stats-block-title {
-  display: flex !important;
-  align-items: baseline !important;
+  display: flex;
+  align-items: baseline;
   border-bottom: none !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .stats-block-title::after {
@@ -993,11 +971,11 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    so it reads as a line flanking a centered title rather than a title
    sitting above a line. */
 [data-theme="newspaper-dark"] .settings-section-title {
-  display: flex !important;
-  align-items: center !important;
+  display: flex;
+  align-items: center;
   gap: 0.75rem;
   border-bottom: none !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .settings-section-title::before,
@@ -1014,7 +992,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    sit below the full-width title instead of flanking it on the right. */
 [data-theme="newspaper-dark"] .results-type-title {
   border-bottom: none !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 
 [data-theme="newspaper-dark"] .results-type-title::after {
@@ -1029,11 +1007,11 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
    theme, and italic serif for the episode/timestamp line to read as a
    caption rather than plain UI chrome. */
 [data-theme="newspaper-dark"] .now-playing-btn {
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 
 [data-theme="newspaper-dark"] .now-playing-cover {
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid var(--border-color);
 }
 
 [data-theme="newspaper-dark"] .now-playing-episode {
@@ -1042,26 +1020,22 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 /* List settings and type selector */
 [data-theme="newspaper-dark"] .list-settings-dropdown {
-  border-radius: 0 !important;
   border: 2px solid var(--border-color) !important;
   background: var(--bg-elevated) !important;
 }
 
 [data-theme="newspaper-dark"] .list-settings-type-btn {
-  border-radius: 0 !important;
   border: 1px solid var(--border-color) !important;
   background: var(--bg-primary) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
 
 [data-theme="newspaper-dark"] .list-settings-type-dropdown {
-  border-radius: 0 !important;
   border: 2px solid var(--border-color) !important;
   background: var(--bg-elevated) !important;
 }
 
 [data-theme="newspaper-dark"] .list-settings-type-option {
-  border-radius: 0 !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-size: 0.74rem !important;
   color: var(--text-muted) !important;
@@ -1077,20 +1051,11 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .list-settings-type-btn--disabled {
-  opacity: 0.35 !important;
+  opacity: 0.35;
 }
 
 [data-theme="newspaper-dark"] .list-settings-item-title {
   font-family: 'Georgia', 'Times New Roman', serif !important;
-}
-
-[data-theme="newspaper-dark"] .lists-filter-selector {
-  border-radius: 0 !important;
-  border: 1px solid var(--border-color) !important;
-}
-
-[data-theme="newspaper-dark"] .lists-filter-btn {
-  border-radius: 0 !important;
 }
 
 [data-theme="newspaper-dark"] .lists-filter-btn--active {
@@ -1102,7 +1067,6 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .list-detail-title-input,
 [data-theme="newspaper-dark"] .list-detail-desc-input {
   font-family: 'Georgia', 'Times New Roman', serif !important;
-  border-radius: 0px !important;
   background: rgba(166, 154, 125, 0.05) !important;
   border: 1px solid rgba(166, 154, 125, 0.22) !important;
   color: var(--text-main) !important;
@@ -1123,7 +1087,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .list-detail-title--editable:hover {
-  background: rgba(166, 154, 125, 0.04) !important;
+  background: rgba(166, 154, 125, 0.04);
   border-color: rgba(166, 154, 125, 0.22) !important;
   border-bottom: 2px solid var(--text-main) !important;
 }
@@ -1131,19 +1095,19 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .list-detail-desc--editable,
 [data-theme="newspaper-dark"] .list-detail-desc-add {
   margin: 0 !important;
-  padding: 0.2rem 0.45rem !important;
+  padding: 0.2rem 0.45rem;
 }
 
 [data-theme="newspaper-dark"] .list-detail-desc--editable:hover,
 [data-theme="newspaper-dark"] .list-detail-desc-add:hover {
-  background: rgba(166, 154, 125, 0.04) !important;
-  border-color: rgba(166, 154, 125, 0.22) !important;
+  background: rgba(166, 154, 125, 0.04);
+  border-color: rgba(166, 154, 125, 0.22);
 }
 
 [data-theme="newspaper-dark"] .list-detail-desc-input {
-  margin: 0 !important;
+  margin: 0;
   padding: 0.2rem 0.45rem !important;
-  display: block !important;
+  display: block;
 }
 
 [data-theme="newspaper-dark"] .list-detail-desc-input:focus {
@@ -1152,41 +1116,31 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .list-detail-desc-input::placeholder {
-  color: var(--text-dim) !important;
-  font-style: italic !important;
+  color: var(--text-dim);
+  font-style: italic;
 }
 
 [data-theme="newspaper-dark"] .char-avatar-edit-btn,
 [data-theme="newspaper-dark"] .fav-edit-image-btn {
-  border-radius: 0px !important;
+  border-radius: 0px;
   background: #1c1a17 !important;
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid var(--border-color);
   color: var(--text-main) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 [data-theme="newspaper-dark"] .char-avatar-edit-btn:hover,
 [data-theme="newspaper-dark"] .fav-edit-image-btn:hover {
   background: #282521 !important;
-  border-color: var(--accent) !important;
+  border-color: var(--accent);
   color: var(--accent) !important;
 }
 
-[data-theme="newspaper-dark"] .pr-editor-char-photo-wrap {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-}
-
-[data-theme="newspaper-dark"] .pr-editor-char-photo-wrap:hover,
-[data-theme="newspaper-dark"] .pr-editor-char-photo-wrap:focus-visible {
-  border-color: var(--accent) !important;
-}
-
 [data-theme="newspaper-dark"] .pr-editor-photo-hover-overlay {
-  background: rgba(22, 20, 18, 0.85) !important;
-  backdrop-filter: none !important;
-  color: var(--text-main) !important;
+  background: rgba(22, 20, 18, 0.85);
+  backdrop-filter: none;
+  color: var(--text-main);
 }
 
 [data-theme="newspaper-dark"] .pr-editor-photo-hover-overlay svg {
@@ -1194,15 +1148,14 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .theme-player-modal {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  background: var(--bg-elevated) !important;
-  box-shadow: none !important;
+  border: 3px double var(--border-color);
+  background: var(--bg-elevated);
+  box-shadow: none;
 }
 
 [data-theme="newspaper-dark"] .theme-player-info {
-  background: var(--bg-elevated) !important;
-  border-top: 1px solid var(--border-color) !important;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-color);
 }
 
 [data-theme="newspaper-dark"] .theme-player-title {
@@ -1221,20 +1174,20 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   border: 1px solid var(--border-color) !important;
   background: var(--bg-elevated) !important;
   color: var(--text-main) !important;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 [data-theme="newspaper-dark"] .theme-player-nav:hover:not(:disabled) {
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
   border-color: var(--text-main) !important;
-  transform: none !important;
+  transform: none;
 }
 
 [data-theme="newspaper-dark"] .theme-player-close {
-  border-radius: 0px !important;
+  border-radius: 0px;
   background: var(--bg-primary) !important;
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid var(--border-color);
   color: var(--text-main) !important;
 }
 
@@ -1244,23 +1197,22 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .theme-player-episodes {
-  border-radius: 0px !important;
   background: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid var(--border-color);
   color: var(--text-main) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-style: italic !important;
   font-weight: 700 !important;
   letter-spacing: 0.02em;
-  box-shadow: none !important;
-  transition: all 0.2s ease !important;
+  box-shadow: none;
+  transition: all 0.2s ease;
 }
 
 [data-theme="newspaper-dark"] .theme-player-episodes--interactive:hover {
-  background: var(--text-main) !important;
-  color: var(--bg-primary) !important;
-  border-color: var(--text-main) !important;
-  transform: none !important;
+  background: var(--text-main);
+  color: var(--bg-primary);
+  border-color: var(--text-main);
+  transform: none;
 }
 
 /* Scrollbars */
@@ -1271,22 +1223,22 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 [data-theme="newspaper-dark"]::-webkit-scrollbar-track,
 [data-theme="newspaper-dark"] *::-webkit-scrollbar-track {
-  background: var(--bg-primary, #12110f) !important;
+  background: var(--bg-primary) !important;
 }
 [data-theme="newspaper-dark"]::-webkit-scrollbar-thumb,
 [data-theme="newspaper-dark"] *::-webkit-scrollbar-thumb {
   background: #353028 !important;
-  border: 1px solid var(--border-color, #4a4237) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: 0px !important;
 }
 [data-theme="newspaper-dark"]::-webkit-scrollbar-thumb:hover,
 [data-theme="newspaper-dark"] *::-webkit-scrollbar-thumb:hover {
-  background: var(--accent, #a69a7d) !important;
+  background: var(--accent) !important;
 }
 [data-theme="newspaper-dark"],
 [data-theme="newspaper-dark"] * {
   scrollbar-width: thin;
-  scrollbar-color: #353028 var(--bg-primary, #12110f);
+  scrollbar-color: #353028 var(--bg-primary);
 }
 
 /* Story Arc Episode Popover & Trigger */
@@ -1299,72 +1251,67 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-popover {
-  background: var(--bg-card, #282521) !important;
-  border: 1px solid var(--border-color, #4a4237) !important;
-  border-radius: 0px !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8) !important;
+  background: var(--bg-card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-range-row {
-  background: var(--bg-elevated, #1c1a17) !important;
-  border-bottom: 1px solid var(--border-color, #4a4237) !important;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-color);
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-range-label {
-  color: var(--text-muted, #9c8f80) !important;
+  color: var(--text-muted) !important;
   font-style: italic !important;
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-select {
-  background: var(--bg-primary, #12110f) !important;
-  border: 1px solid var(--border-color, #4a4237) !important;
-  border-radius: 0px !important;
-  color: var(--text-main, #f5f2eb) !important;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main);
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-select option {
-  background: var(--bg-primary, #12110f) !important;
-  color: var(--text-main, #f5f2eb) !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-main) !important;
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-clear-btn {
-  background: var(--bg-elevated, #1c1a17) !important;
-  border: 1px solid var(--border-color, #4a4237) !important;
-  border-radius: 0px !important;
-  color: var(--text-muted, #9c8f80) !important;
+  background: var(--bg-elevated) !important;
+  color: var(--text-muted) !important;
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-clear-btn:hover {
   background: rgba(239, 68, 68, 0.15) !important;
-  border-color: #ef4444 !important;
-  color: #ef4444 !important;
+  border-color: var(--color-error-strong);
+  color: var(--color-error-strong) !important;
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-item {
-  border-radius: 0px !important;
+  border-radius: 0px;
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-item:hover {
-  background: rgba(166, 154, 125, 0.08) !important;
+  background: rgba(166, 154, 125, 0.08);
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-item.is-selected {
-  background: rgba(166, 154, 125, 0.16) !important;
-  border-color: var(--accent, #a69a7d) !important;
+  background: rgba(166, 154, 125, 0.16);
+  border-color: var(--accent);
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-thumb {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color, #4a4237) !important;
+  border-radius: 0px;
+  border: 1px solid var(--border-color);
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-trigger {
-  border-radius: 0px !important;
-  border-color: var(--border-color, #4a4237) !important;
+  border-radius: 0px;
+  border-color: var(--border-color);
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-season-num {
-  color: var(--accent, #a69a7d) !important;
+  color: var(--accent) !important;
 }
 
 [data-theme="newspaper-dark"] .pr-editor-arc-ep-sub {
@@ -1377,55 +1324,55 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .pr-list-reject-btn,
 [data-theme="newspaper-dark"] .pr-action-confirm-cancel {
   min-height: 2.2rem;
-  border: 3px double var(--border-color, #4a4237) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  border: 3px double var(--border-color);
+  border-radius: 0;
+  box-shadow: none;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-weight: 700;
   letter-spacing: 0.025em;
-  text-transform: capitalize !important;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease !important;
+  text-transform: capitalize;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
 [data-theme="newspaper-dark"] .pr-list-accept-btn {
-  background: var(--accent, #a69a7d) !important;
-  border-color: #c8b995 !important;
+  background: var(--accent) !important;
+  border-color: #c8b995;
   color: #171510 !important;
 }
 
 [data-theme="newspaper-dark"] .pr-list-accept-btn:hover:not(:disabled) {
   background: #b9ad8e !important;
-  border-color: #ded1ad !important;
-  filter: none !important;
+  border-color: #ded1ad;
+  filter: none;
 }
 
 [data-theme="newspaper-dark"] .pr-list-reject-btn {
   background: #28211e !important;
-  border-color: #725a50 !important;
+  border-color: #725a50;
   color: #d2aaa0 !important;
 }
 
 [data-theme="newspaper-dark"] .pr-list-reject-btn:hover:not(:disabled) {
   background: #382925 !important;
-  border-color: #a47a6e !important;
+  border-color: #a47a6e;
   color: #f0c8bb !important;
-  filter: none !important;
+  filter: none;
 }
 
 [data-theme="newspaper-dark"] .pr-action-confirm-cancel {
   background: transparent !important;
-  color: var(--text-muted, #9c8f80) !important;
+  color: var(--text-muted) !important;
 }
 
 [data-theme="newspaper-dark"] .pr-action-confirm-cancel:hover {
-  background: var(--bg-elevated, #1c1a17) !important;
-  border-color: var(--accent, #a69a7d) !important;
-  color: var(--text-main, #f5f2eb) !important;
+  background: var(--bg-elevated) !important;
+  border-color: var(--accent);
+  color: var(--text-main) !important;
 }
 
 [data-theme="newspaper-dark"] .pr-list-accept-btn:disabled,
 [data-theme="newspaper-dark"] .pr-list-reject-btn:disabled {
-  filter: none !important;
+  filter: none;
   opacity: 0.5;
 }
 

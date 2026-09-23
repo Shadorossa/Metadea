@@ -1,10 +1,51 @@
-import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../index';
-import { SEASON_MONTHS } from '../index';
-import { isAdultContentEnabled, isUnifySeasonsEnabled } from '../../settings/preferences';
+import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../types';
+import { SEASON_MONTHS } from '../types';
+import { isAdultContentEnabled, isUnifySeasonsEnabled } from '../../storage/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { graphqlPost, type GraphQLResult } from '../../api/client';
 import { AniListSearchError } from '../errors';
 import { getAniListToken } from '../../tauri/auth';
+
+// ── Untrusted-JSON guards ─────────────────────────────────────────────────────
+// The typed response shapes below are a compile-time promise only — the JSON
+// AniList actually sends can be anything. Each search mapper narrows its row
+// ONCE through a parse*Row guard and is written assertion-free from there; a
+// row that fails the guard is skipped rather than allowed to throw mid-page.
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null;
+}
+
+function rowsOf(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+function optionalNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+interface AniListFuzzyDate { year: number | null; month: number | null; day: number | null }
+
+function fuzzyDate(value: unknown): AniListFuzzyDate | null {
+  if (!isRecord(value)) return null;
+  return { year: optionalNumber(value.year), month: optionalNumber(value.month), day: optionalNumber(value.day) };
+}
+
+// Page.pageInfo.hasNextPage, read defensively — anything but a literal true
+// (missing pageInfo, a null, a string) means "no more pages".
+function hasNextPageOf(page: UnknownRecord): boolean {
+  return isRecord(page.pageInfo) && page.pageInfo.hasNextPage === true;
+}
 
 // AniList's own fixed genre list (GenreCollection) — stable for years, not
 // worth a dedicated request to re-fetch on every mount just for a filter's
@@ -206,7 +247,7 @@ async function fetchRemainingEdges<E>(
   perPage: number,
   fetchPage: (page: number) => Promise<PagedEdges<E> | null>,
 ): Promise<E[]> {
-  if (!firstPage.pageInfo.hasNextPage) return [];
+  if (!firstPage.pageInfo?.hasNextPage) return [];
 
   const total = firstPage.pageInfo.total;
   const totalPages = total ? Math.ceil(total / perPage) : Infinity;
@@ -216,8 +257,8 @@ async function fetchRemainingEdges<E>(
   while (page <= totalPages) {
     const next = await fetchPage(page);
     if (!next) break;
-    extra.push(...next.edges);
-    if (!next.pageInfo.hasNextPage) break;
+    if (Array.isArray(next.edges)) extra.push(...next.edges);
+    if (!next.pageInfo?.hasNextPage) break;
     page++;
     if (page <= totalPages) await delay(150);
   }
@@ -270,22 +311,48 @@ export async function fetchAniListStreamingEpisodes(id: number): Promise<{ title
   return data?.Media?.streamingEpisodes ?? null;
 }
 
+// The narrowed row shape every search mapper works from — only the fields
+// actually read, each already validated by parseAniListMedia.
 interface AniListMedia {
   id: number;
   format: string | null;
   title: { romaji: string | null; native: string | null };
   coverImage: { large: string | null } | null;
-  startDate: { year: number | null; month: number | null; day: number | null } | null;
+  startDate: AniListFuzzyDate | null;
   averageScore: number | null;
-  genres: string[] | null;
+  genres: string[];
   // Only present on the *_ANIME query variants below (see RELATIONS_FIELD) —
   // used solely to detect "this result is a later season" for
   // isUnifySeasonsEnabled(), never for manga/lnovel search.
-  relations?: { edges: Array<{ relationType: string; node: { id: number; type: string } }> };
+  relations?: { edges: Array<{ relationType: string | null; node: { type: string | null } }> };
 }
 
-interface AniListResponse {
-  data?: { Page?: { pageInfo?: { hasNextPage: boolean }; media?: AniListMedia[] } };
+// Only the envelope is typed; the rows inside Page stay `unknown` until a
+// parse*Row guard has looked at each one.
+interface AniListSearchData { Page?: unknown }
+
+function parseAniListMedia(raw: unknown): AniListMedia | null {
+  if (!isRecord(raw) || !isRecord(raw.title)) return null;
+  const id = optionalNumber(raw.id);
+  if (id === null) return null;
+  const relationEdges = isRecord(raw.relations) ? rowsOf(raw.relations.edges) : null;
+  return {
+    id,
+    format: optionalString(raw.format),
+    title: { romaji: optionalString(raw.title.romaji), native: optionalString(raw.title.native) },
+    coverImage: isRecord(raw.coverImage) ? { large: optionalString(raw.coverImage.large) } : null,
+    startDate: fuzzyDate(raw.startDate),
+    averageScore: optionalNumber(raw.averageScore),
+    genres: stringList(raw.genres),
+    relations: relationEdges
+      ? {
+        edges: relationEdges.filter(isRecord).map(edge => ({
+          relationType: optionalString(edge.relationType),
+          node: { type: isRecord(edge.node) ? optionalString(edge.node.type) : null },
+        })),
+      }
+      : undefined,
+  };
 }
 
 const SEARCH_QUERY = `
@@ -415,7 +482,7 @@ function mapAniListMediaToResult(media: AniListMedia, mediaType: MediaType): Sea
     releaseMonth: media.startDate?.month ?? null,
     releaseDay: media.startDate?.day ?? null,
     scoreGlobal: media.averageScore ? media.averageScore / 10 : null,
-    genres: media.genres ?? [],
+    genres: media.genres,
   };
 }
 
@@ -429,7 +496,7 @@ function hasAnimePrequel(media: AniListMedia): boolean {
 
 // Shared by searchAniList and topRatedAniList — both hit the same Page.media
 // shape, just with a different sort/no search term.
-function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']> | null, mediaType: MediaType): SearchPage {
+function toSearchPage(ok: boolean, result: GraphQLResult<AniListSearchData> | null, mediaType: MediaType): SearchPage {
   if (!ok) {
     // Check for token expiration errors
     if (result?.errors?.some(e =>
@@ -446,7 +513,7 @@ function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']
     throw new AniListSearchError('network_error', 'Failed to reach AniList', 'anilist_network_error');
   }
   const pageData = result?.data?.Page;
-  if (!pageData) {
+  if (!isRecord(pageData)) {
     // Check if there were errors even though ok was true (edge case)
     if (result?.errors?.length) {
       throw new AniListSearchError('unknown', result.errors[0].message, 'anilist_search_failed');
@@ -464,15 +531,18 @@ function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']
   // separate hit — so a later season (has its own PREQUEL back to an anime)
   // is dropped here. Off by default, and never applied to manga/lnovel,
   // which has no such per-season splitting to begin with.
+  const rows = rowsOf(pageData.media)
+    .map(parseAniListMedia)
+    .filter((m): m is AniListMedia => m !== null);
   const media = mediaType === 'manga'
-    ? (pageData.media ?? []).filter(m => m.format !== 'NOVEL')
+    ? rows.filter(m => m.format !== 'NOVEL')
     : mediaType === 'anime' && isUnifySeasonsEnabled()
-    ? (pageData.media ?? []).filter(m => !hasAnimePrequel(m))
-    : (pageData.media ?? []);
+    ? rows.filter(m => !hasAnimePrequel(m))
+    : rows;
 
   return {
     results: media.map(m => mapAniListMediaToResult(m, mediaType)),
-    hasMore: pageData.pageInfo?.hasNextPage ?? false,
+    hasMore: hasNextPageOf(pageData),
   };
 }
 
@@ -495,8 +565,8 @@ async function fetchAniListDoubledPage(
   const opts = token ? { signal, token } : { signal };
 
   const [a, b] = await Promise.all([
-    graphqlPost<AniListResponse['data']>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2 - 1), opts),
-    graphqlPost<AniListResponse['data']>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2), opts),
+    graphqlPost<AniListSearchData>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2 - 1), opts),
+    graphqlPost<AniListSearchData>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2), opts),
   ]);
   const pageA = toSearchPage(a.ok, a.result, mediaType);
   const pageB = toSearchPage(b.ok, b.result, mediaType);
@@ -557,8 +627,20 @@ interface AniListCharacterSearch {
   image: { large: string | null } | null;
 }
 
-interface AniListCharResponse {
-  data?: { Page?: { pageInfo?: { hasNextPage: boolean }; characters?: AniListCharacterSearch[] } };
+function parseAniListCharacterRow(raw: unknown): AniListCharacterSearch | null {
+  if (!isRecord(raw) || !isRecord(raw.name)) return null;
+  const id = optionalNumber(raw.id);
+  const full = optionalString(raw.name.full);
+  if (id === null || full === null) return null;
+  return {
+    id,
+    name: {
+      full,
+      native: optionalString(raw.name.native),
+      alternative: Array.isArray(raw.name.alternative) ? stringList(raw.name.alternative) : null,
+    },
+    image: isRecord(raw.image) ? { large: optionalString(raw.image.large) } : null,
+  };
 }
 
 const SEARCH_CHARACTERS_QUERY = `
@@ -582,7 +664,7 @@ export async function searchAniListCharacters(
   const token = getAniListToken();
   const opts = token ? { signal, token } : { signal };
 
-  const { ok, result } = await graphqlPost<AniListCharResponse['data']>(
+  const { ok, result } = await graphqlPost<AniListSearchData>(
     API_ENDPOINTS.ANILIST,
     SEARCH_CHARACTERS_QUERY,
     { searchQuery, page },
@@ -591,9 +673,11 @@ export async function searchAniListCharacters(
 
   if (!ok) return { results: [], hasMore: false };
   const pageData = result?.data?.Page;
-  if (!pageData) return { results: [], hasMore: false };
+  if (!isRecord(pageData)) return { results: [], hasMore: false };
 
-  const chars = pageData.characters ?? [];
+  const chars = rowsOf(pageData.characters)
+    .map(parseAniListCharacterRow)
+    .filter((char): char is AniListCharacterSearch => char !== null);
   const results: SearchResult[] = chars.map(char => ({
     externalId: `character:a:${char.id}`,
     type: 'character' as MediaType,
@@ -609,7 +693,7 @@ export async function searchAniListCharacters(
     scoreGlobal: null,
     genres: [],
   }));
-  return { results, hasMore: pageData.pageInfo?.hasNextPage ?? false };
+  return { results, hasMore: hasNextPageOf(pageData) };
 }
 
 export interface AniListStaffSearchResult {
@@ -619,12 +703,21 @@ export interface AniListStaffSearchResult {
   image: string | null;
 }
 
-interface AniListStaffSearchResponse {
-  data?: {
-    Page?: {
-      pageInfo?: { hasNextPage: boolean };
-      staff?: Array<{ id: number; name: { full: string; native: string | null }; image: { large: string | null } | null }>;
-    };
+interface AniListStaffSearchRow {
+  id: number;
+  name: { full: string; native: string | null };
+  image: { large: string | null } | null;
+}
+
+function parseAniListStaffRow(raw: unknown): AniListStaffSearchRow | null {
+  if (!isRecord(raw) || !isRecord(raw.name)) return null;
+  const id = optionalNumber(raw.id);
+  const full = optionalString(raw.name.full);
+  if (id === null || full === null) return null;
+  return {
+    id,
+    name: { full, native: optionalString(raw.name.native) },
+    image: isRecord(raw.image) ? { large: optionalString(raw.image.large) } : null,
   };
 }
 
@@ -652,7 +745,7 @@ export async function searchAniListStaff(
   const token = getAniListToken();
   const opts = token ? { signal, token } : { signal };
 
-  const { ok, result } = await graphqlPost<AniListStaffSearchResponse['data']>(
+  const { ok, result } = await graphqlPost<AniListSearchData>(
     API_ENDPOINTS.ANILIST,
     SEARCH_STAFF_QUERY,
     { searchQuery, page },
@@ -661,12 +754,14 @@ export async function searchAniListStaff(
 
   if (!ok) return { results: [], hasMore: false };
   const pageData = result?.data?.Page;
-  if (!pageData) return { results: [], hasMore: false };
+  if (!isRecord(pageData)) return { results: [], hasMore: false };
 
-  const staff = pageData.staff ?? [];
+  const staff = rowsOf(pageData.staff)
+    .map(parseAniListStaffRow)
+    .filter((s): s is AniListStaffSearchRow => s !== null);
   return {
     results: staff.map(s => ({ id: s.id, name: s.name.full, nameNative: s.name.native, image: s.image?.large ?? null })),
-    hasMore: pageData.pageInfo?.hasNextPage ?? false,
+    hasMore: hasNextPageOf(pageData),
   };
 }
 
@@ -820,6 +915,15 @@ const DETAIL_CHARACTER_QUERY = `
   }
 `;
 
+// The type:id key consumers use as this appearance's external_id — null for
+// an edge whose node is missing either half (skipped, not thrown on).
+function characterMediaEdgeKey(edge: unknown): string | null {
+  if (!isRecord(edge) || !isRecord(edge.node)) return null;
+  const type = optionalString(edge.node.type);
+  const mediaId = optionalNumber(edge.node.id);
+  return type !== null && mediaId !== null ? `${type.toLowerCase()}:${mediaId}` : null;
+}
+
 export async function fetchAniListCharacterDetail(id: number): Promise<AniListCharacterDetail | null> {
   // Page 1 also carries the character's own profile fields, so it has to be
   // fetched (and awaited) on its own before the remaining pages can be fanned
@@ -828,7 +932,13 @@ export async function fetchAniListCharacterDetail(id: number): Promise<AniListCh
   const character = firstData?.Character ?? null;
   if (!character) return null;
 
-  const extraEdges = await fetchRemainingEdges(character.media, 50, page =>
+  // A response whose media connection is missing or malformed is treated as
+  // "no appearances" rather than allowed to throw on pageInfo/edges reads.
+  const firstMediaPage: AniListCharacterDetailPage['media'] = isRecord(character.media) && Array.isArray(character.media.edges)
+    ? character.media
+    : { pageInfo: { hasNextPage: false, total: null }, edges: [] };
+
+  const extraEdges = await fetchRemainingEdges(firstMediaPage, 50, page =>
     anilistPost<{ Character: AniListCharacterDetailPage }>(DETAIL_CHARACTER_QUERY, { id, mediaPage: page })
       .then(data => data?.Character?.media ?? null),
   );
@@ -839,13 +949,13 @@ export async function fetchAniListCharacterDetail(id: number): Promise<AniListCh
   // duplicate "appearances" entries for every downstream reader
   // (character.astro, CharacterPrEditorModal.tsx).
   const seenMedia = new Set<string>();
-  const allEdges = [...character.media.edges, ...extraEdges].filter(edge => {
-    const key = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
-    if (seenMedia.has(key)) return false;
+  const allEdges = [...firstMediaPage.edges, ...extraEdges].filter(edge => {
+    const key = characterMediaEdgeKey(edge);
+    if (key === null || seenMedia.has(key)) return false;
     seenMedia.add(key);
     return true;
   });
-  character.media.edges = allEdges;
+  character.media = { pageInfo: firstMediaPage.pageInfo, edges: allEdges };
   return character;
 }
 

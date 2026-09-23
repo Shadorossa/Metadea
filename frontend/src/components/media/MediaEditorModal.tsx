@@ -1,9 +1,9 @@
 import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { ModalShell } from '../shared/ModalShell';
 import type { LibraryEntry } from '../../lib/tauri';
-import { getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, syncFavorites, saveImageFile } from '../../lib/tauri';
+import { getLibraryEntry, deleteLibraryEntry, readMonthlyHistoryTyped, syncFavorites, saveImageFile } from '../../lib/tauri';
 import { getActiveRatingSystem } from '../../lib/media/rating-utils';
-import { generateShareImage } from '../../lib/media/share-image';
+import { generateShareImage } from '../../lib/media/editor/share-image';
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
 import { syncToAniList, fetchAniListLogData, isAniListType } from '../../lib/media/anilist-sync';
@@ -16,13 +16,13 @@ import {
 import {
   type LogState,
   createDefaultLog, entryInit, entryReducer, uiReducer, createEmptyVersionEntry,
-} from '../../lib/media/log-state';
-import { pickAggregateStatus } from '../../lib/constants/media';
+} from '../../lib/media/editor/library-log-state';
+import { pickAggregateStatus } from '../../lib/media/media-types';
 import { motion } from 'motion/react';
-import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnifySeasonsEnabled, type RatingSlot } from '../../lib/settings/preferences';
-import { loadSagaChain } from '../../lib/media/sagaData';
+import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnifySeasonsEnabled, type RatingSlot } from '../../lib/storage/preferences';
+import { loadSagaChain } from '../../lib/media/saga/saga-loader';
 import type { SagaEntry } from '../../lib/anilist/saga';
-import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mapper-utils';
+import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mappers/mapper-utils';
 import { getCoverPreference } from '../../lib/media/cover-preferences';
 import { getProgressConfig, isFutureDate } from './media-editor/media-editor-helpers';
 import { HeaderField, HoursField, NumberField } from './media-editor/MediaEditorFields';
@@ -282,7 +282,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     // the IPC reads below hydrate the individual version fields in place.
     dispatchUi({ type: 'SET_LOADING', value: false });
 
-    readMonthlyHistory()
+    readMonthlyHistoryTyped()
       .then(history => {
         let foundKey: string | null = null;
         for (const [key, ids] of Object.entries(history)) {
@@ -670,23 +670,27 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     }
   }, [activeLogDisplay.title, activeLogDisplay.cover, activeLogDisplay.year, activeLog.rating]);
 
-  const modal = (
-    <motion.div
-      className="me-overlay"
-      onClick={onClose}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
+  return (
+    <ModalShell
+      onClose={onClose}
+      label={activeLogDisplay.title}
+      overlayClassName="me-overlay"
+      panelClassName="me-modal"
+      overlayComponent={motion.div}
+      overlayProps={{
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.18, ease: 'easeOut' },
+      }}
+      panelComponent={motion.div}
+      panelProps={{
+        initial: { opacity: 0, scale: 0.97, y: 14 },
+        animate: { opacity: 1, scale: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.97, y: 14 },
+        transition: { duration: 0.22, ease: [0.25, 0, 0.15, 1] },
+      }}
     >
-      <motion.div
-        className="me-modal"
-        onClick={e => e.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.97, y: 14 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.97, y: 14 }}
-        transition={{ duration: 0.22, ease: [0.25, 0, 0.15, 1] }}
-      >
 
         {/* Header */}
         <div className="me-header">
@@ -956,11 +960,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
             </div>
           </div>
         )}
-      </motion.div>
-    </motion.div>
+    </ModalShell>
   );
-
-  return typeof document !== 'undefined'
-    ? createPortal(modal, document.body)
-    : null;
 }

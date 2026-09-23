@@ -186,6 +186,13 @@ pub fn apply_pending_restore(data_dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Drops a restore marker `apply_pending_restore` could not honour, so the
+/// same broken restore is not retried (and does not block startup) on every
+/// later launch. The staged directory, if any, is left for the user.
+pub(crate) fn discard_pending_restore(data_dir: &Path) {
+    let _ = fs::remove_file(data_dir.join(MARKER_NAME));
+}
+
 #[tauri::command]
 pub async fn export_backup(app_handle: tauri::AppHandle, destination_path: String) -> Result<String, String> {
     let data_dir = app_data_dir(&app_handle)?;

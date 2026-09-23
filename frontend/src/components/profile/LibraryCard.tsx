@@ -4,17 +4,17 @@ import {
   BookImage, BookMarked, BookOpen, BookText, Clapperboard, Gamepad2,
   MessageSquareText, Tv, type LucideIcon,
 } from 'lucide-react';
-import { getCatalogEntry, type MediaCatalogEntry, type LibraryEntry, type DbMediaRelation } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
+import { getCatalogEntry, wrapAssetUrl, type CatalogSummary, type LibraryEntry, type DbMediaRelation } from '../../lib/tauri';
+import { getT } from '../../i18n/runtime';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
-import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled, isCompletedMangaIssueCoverEnabled } from '../../lib/settings/preferences';
-import { CALENDAR_ICON } from '../../lib/shared/icon-strings';
-import { formatDateNumeric } from '../../lib/shared/formatDate';
+import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled, isCompletedMangaIssueCoverEnabled } from '../../lib/storage/preferences';
+import { CALENDAR_ICON } from '../../lib/dom/icon-strings';
+import { formatDateNumeric } from '../../lib/shared/text/format-date';
 import { averageRating, latestInProgressMember } from '../../lib/profile/library-grouping';
-import { toMediumCover, toSmallCover } from '../../lib/shared/small-cover';
-import { stripSeasonSuffix } from '../../lib/media/mapper-utils';
-import { isInProgressStatus, pickAggregateStatus } from '../../lib/constants/media';
-import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../local/utils/constants';
+import { toMediumCover, toSmallCover } from '../../lib/media/small-cover';
+import { stripSeasonSuffix } from '../../lib/media/mappers/mapper-utils';
+import { isInProgressStatus, pickAggregateStatus } from '../../lib/media/media-types';
+import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../../lib/local/platforms';
 
 const LIBRARY_MEDIA_ICONS: Record<string, LucideIcon> = {
   game: Gamepad2,
@@ -30,7 +30,7 @@ const LIBRARY_MEDIA_ICONS: Record<string, LucideIcon> = {
 function nextReadingIssueCover(
   item: LibraryEntry,
   issueRelations: DbMediaRelation[],
-  catalogEntry?: MediaCatalogEntry,
+  catalogEntry?: CatalogSummary,
 ): string | null {
   const type = item.type.split('_')[0];
   if (type !== 'manga' && type !== 'comic') return null;
@@ -97,10 +97,10 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, mediaExternalId, catalogMap, p, readOnly, ratingSlot = 'rating', showResumeAction, playableResumeIds, issueRelations }: {
+export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, mediaExternalId, catalogMap, p, readOnly, ratingSlot = 'rating', showResumeAction, playableResumeIds, issueRelations, cachedCoverPath }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
-  bundleMeta?: MediaCatalogEntry;
+  bundleMeta?: CatalogSummary;
   /** Saga's assigned name, shown instead of the earliest work's title. */
   titleOverride?: string;
   /** Saga-chain merge (see refineSagaGroups) — aggregate stats without swapping the cover. */
@@ -113,7 +113,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   /** Unified event leagues retain individual season logs, while the card
    *  opens the competition container where those seasons can be explored. */
   mediaExternalId?: string;
-  catalogMap: Map<string, MediaCatalogEntry>;
+  catalogMap: Map<string, CatalogSummary>;
   p: ReturnType<typeof getT>['profile'];
   /** Someone else's profile (LibrarySection, fed via UserProfileView) — `item` is a synthesized
    * LibraryEntry that doesn't really exist in the viewer's own library, so
@@ -130,6 +130,11 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   playableResumeIds?: ReadonlySet<string>;
   /** Cached Comic Vine issue relations for this work, used for a display-only reading cover. */
   issueRelations?: DbMediaRelation[];
+  /** This work's own cover as already cached to disk by Local (see
+   *  LibrarySection's useCoverCacheBatch) — painted instead of the remote
+   *  cover_url when set. Only applies to the plain single-work cover; issue,
+   *  bundle and unified-season covers keep their own sources. */
+  cachedCoverPath?: string;
 }) => {
   const meta = catalogMap.get(item.external_id);
   const rawTitle = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
@@ -200,7 +205,9 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   const readingIssueCover = nextReadingIssueCover(item, issueRelations ?? [], meta);
   const cover = readingIssueCover
     ? toSmallCover(readingIssueCover)
-    : toMediumCover(dynamicCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
+    : !dynamicCover && !bundleMeta && cachedCoverPath
+      ? wrapAssetUrl(cachedCoverPath)
+      : toMediumCover(dynamicCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
 
   // Same "which season is actually active" pick as inProgressCover above —
   // the card's own `item` is always the earliest-release season (see
@@ -325,7 +332,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
       {/* stack-extra is a sibling of .library-card, not a child — the card needs
           overflow:hidden permanently (clips its blurred bg), so the flyout escapes via the wrapper instead. */}
       <div className="library-card" data-id={item.external_id} onClick={openEditor}>
-        {cover && <div className="library-card-bg"><img className="library-card-bg-img" src={cover} alt="" /></div>}
+        {cover && <div className="library-card-bg"><img className="library-card-bg-img" src={cover} alt="" loading="lazy" decoding="async" /></div>}
         {showGroupUi && (
           <span className="library-card-group-badge" title={`${p.library_group_editions_hint}: ${groupedTitles.join(', ')}`}>
             <span className="library-card-group-badge-count">+{grouped.length}</span>

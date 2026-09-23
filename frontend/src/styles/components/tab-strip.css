@@ -1,0 +1,26 @@
+/* Tab strip pieces shared byte-for-byte by the local library tabs
+   (pages/local/base/layout.css, .local-tab*) and the search page tabs
+   (pages/search.css, .search-tab*). Only declaration blocks that were
+   identical in both files live here; each page keeps its own base
+   .local-tab / .search-tab rules and the media-query overrides whose
+   non-!important declarations depend on following those base rules. */
+.local-tab-icon,
+.search-tab-icon {
+  opacity: 1;
+  pointer-events: auto;
+  will-change: opacity;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 1799px) {
+  .local-tab-icon,
+  .search-tab-icon {
+    opacity: 1 !important;
+    pointer-events: auto;
+  }
+
+  .local-tab.active::after,
+  .search-tab.active::after {
+    width: clamp(1rem, 80%, 1.2rem) !important;
+  }
+}

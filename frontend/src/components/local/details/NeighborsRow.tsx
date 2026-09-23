@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { IconFolder, IconChevronLeft, IconChevronRight } from '../ui/icons';
 import type { NeighborInfo } from '../hooks/useMediaNeighbors';
-import { bundleChildLabel, hasBundleAddon } from '../../../lib/media/bundleLabels';
+import { bundleChildLabel, hasBundleAddon } from '../../../lib/media/editions/bundle-labels';
+import { getT } from '../../../i18n/runtime';
 
 // Beyond this many, the row would overflow its own layout (an 8-part bundle
 // like Umineko's episodes) — paged 3-at-a-time with arrows instead of
@@ -34,6 +35,7 @@ interface NeighborsRowProps {
 // still need to check that themselves for their own has-neighbors layout
 // class (see each panel's local-media-info-row).
 export function NeighborsRow({ prequel, sequel, bundleChildren, onOpen }: NeighborsRowProps) {
+  const t = getT();
   // Reset to page 0 whenever the underlying bundle changes (a different
   // work opened) — a stale page from a previous, longer bundle would
   // otherwise render out of range instead of just clamping back below.
@@ -63,7 +65,7 @@ export function NeighborsRow({ prequel, sequel, bundleChildren, onOpen }: Neighb
             className="local-media-neighbors-arrow"
             disabled={clampedPage === 0}
             onClick={() => setPage(clampedPage - 1)}
-            aria-label="Partes anteriores"
+            aria-label={t.local.neighbors_prev_parts}
           >
             <IconChevronLeft size={16} strokeWidth={2} />
           </button>
@@ -79,7 +81,7 @@ export function NeighborsRow({ prequel, sequel, bundleChildren, onOpen }: Neighb
             className="local-media-neighbors-arrow"
             disabled={clampedPage === totalPages - 1}
             onClick={() => setPage(clampedPage + 1)}
-            aria-label="Siguientes partes"
+            aria-label={t.local.neighbors_next_parts}
           >
             <IconChevronRight size={16} strokeWidth={2} />
           </button>
@@ -91,8 +93,8 @@ export function NeighborsRow({ prequel, sequel, bundleChildren, onOpen }: Neighb
   return (
     <div className="local-media-neighbors-row">
       <div className="local-media-neighbors-grid">
-        {prequel && <NeighborButton neighbor={prequel} label="Precuela" onOpen={onOpen} />}
-        {sequel && <NeighborButton neighbor={sequel} label="Secuela" onOpen={onOpen} />}
+        {prequel && <NeighborButton neighbor={prequel} label={t.media.relations.PREQUEL} onOpen={onOpen} />}
+        {sequel && <NeighborButton neighbor={sequel} label={t.media.relations.SEQUEL} onOpen={onOpen} />}
       </div>
     </div>
   );

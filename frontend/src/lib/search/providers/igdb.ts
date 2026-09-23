@@ -1,9 +1,80 @@
-import { API_URL } from '../../config';
-import { igdbSearch, igdbImageUrl, isTauri, readEnvConfig, type EnvConfig } from '../../tauri';
-import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../index';
+import { API_URL } from '../../api/urls';
+import { igdbSearch, igdbImageUrl } from '../../tauri/igdb';
+import { isTauri } from '../../tauri/bridge';
+import { readEnvConfig, type EnvConfig } from '../../tauri/env';
+import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../types';
 import { cleanEditionTitle } from '../../media/title-utils';
-import { unixToDateParts } from '../../media/mapper-utils';
+import { unixToDateParts } from '../../media/mappers/mapper-utils';
 import { MissingApiKeyError } from '../errors';
+
+// ── Untrusted-JSON guards ─────────────────────────────────────────────────────
+// igdbSearch's IgdbGame[] is a compile-time promise only — the JSON igdb.rs
+// forwards is whatever IGDB sent. Each row is narrowed ONCE by parseIgdbGame
+// (skipped, not thrown on, when it lacks the id/name every result needs) and
+// mapped assertion-free from there.
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+// Only the IgdbGame fields a search result reads.
+interface IgdbSearchRow {
+  id: number;
+  name: string;
+  cover?: { image_id: string };
+  first_release_date?: number;
+  rating?: number;
+  category?: number;
+  genres?: { name: string }[];
+}
+
+function parseIgdbGame(raw: unknown): IgdbSearchRow | null {
+  if (!isRecord(raw)) return null;
+  const id = optionalNumber(raw.id);
+  if (id === undefined || typeof raw.name !== 'string') return null;
+  const coverImageId = isRecord(raw.cover) && typeof raw.cover.image_id === 'string' ? raw.cover.image_id : undefined;
+  return {
+    id,
+    name: raw.name,
+    cover: coverImageId ? { image_id: coverImageId } : undefined,
+    first_release_date: optionalNumber(raw.first_release_date),
+    rating: optionalNumber(raw.rating),
+    category: optionalNumber(raw.category),
+    genres: Array.isArray(raw.genres)
+      ? raw.genres.flatMap(genre => (isRecord(genre) && typeof genre.name === 'string' ? [{ name: genre.name }] : []))
+      : undefined,
+  };
+}
+
+function parseIgdbGames(rows: unknown): IgdbSearchRow[] {
+  return (Array.isArray(rows) ? rows : []).map(parseIgdbGame).filter((game): game is IgdbSearchRow => game !== null);
+}
+
+function mapIgdbGame(game: IgdbSearchRow, mediaType: MediaType, format: string): SearchResult {
+  const dateParts = game.first_release_date ? unixToDateParts(game.first_release_date) : null;
+  const coverUrl = game.cover?.image_id ? igdbImageUrl(game.cover.image_id, 'cover_big') : null;
+  return {
+    externalId:   `${mediaType}:${game.id}`,
+    type:         mediaType,
+    format,
+    source:       'igdb',
+    titleMain:    cleanEditionTitle(game.name),
+    titleRomaji:  null,
+    titleNative:  null,
+    coverUrl,
+    releaseYear:  dateParts?.year ?? null,
+    releaseMonth: dateParts?.month ?? null,
+    releaseDay:   dateParts?.day ?? null,
+    scoreGlobal:  game.rating != null ? Math.round(game.rating) / 10 : null,
+    genres:       game.genres?.map(genre => genre.name) ?? [],
+  };
+}
 
 // Mirrors igdb_genre_id in igdb.rs (same source, IGDB's own stable genre
 // taxonomy) — keep both lists in sync by hand if it ever changes. Rust maps
@@ -32,7 +103,7 @@ export async function searchGames(
   const response = await fetch(url, { signal });
   if (!response.ok) return { results: [], hasMore: false };
   const data = await response.json() as { results?: SearchResult[]; hasMore?: boolean };
-  return { results: data.results ?? [], hasMore: data.hasMore ?? false };
+  return { results: Array.isArray(data.results) ? data.results : [], hasMore: data.hasMore === true };
 }
 
 // Shared by searchGameBundles/searchGameExpandedEditions/searchGameRemasters —
@@ -63,25 +134,9 @@ async function searchGamesByCategories(
       return { results: [], hasMore: false };
     }
 
-    const results = pageResult.games.map(g => {
-      const dateParts = g.first_release_date ? unixToDateParts(g.first_release_date) : null;
-      const coverUrl = g.cover?.image_id ? igdbImageUrl(g.cover.image_id, 'cover_big') : null;
-      return {
-        externalId:   `${mediaType}:${g.id}`,
-        type:         mediaType,
-        format:       format || (g.category === 8 ? 'REMAKE' : g.category === 9 ? 'REMASTER' : 'GAME'),
-        source:       'igdb' as const,
-        titleMain:    cleanEditionTitle(g.name),
-        titleRomaji:  null,
-        titleNative:  null,
-        coverUrl,
-        releaseYear:  dateParts?.year ?? null,
-        releaseMonth: dateParts?.month ?? null,
-        releaseDay:   dateParts?.day ?? null,
-        scoreGlobal:  g.rating != null ? Math.round(g.rating) / 10 : null,
-        genres:       g.genres?.map(genre => genre.name) ?? [],
-      };
-    });
+    const results = parseIgdbGames(pageResult.games).map(game =>
+      mapIgdbGame(game, mediaType, format || (game.category === 8 ? 'REMAKE' : game.category === 9 ? 'REMASTER' : 'GAME')),
+    );
 
     return { results, hasMore: pageResult.hasMore };
   }
@@ -90,7 +145,7 @@ async function searchGamesByCategories(
   const response = await fetch(url, { signal });
   if (!response.ok) return { results: [], hasMore: false };
   const data = await response.json() as { results?: SearchResult[]; hasMore?: boolean };
-  return { results: data.results ?? [], hasMore: data.hasMore ?? false };
+  return { results: Array.isArray(data.results) ? data.results : [], hasMore: data.hasMore === true };
 }
 
 // IGDB category 3 (bundle) — the "Bundled In" relation picker.
@@ -131,29 +186,8 @@ async function searchGamesLocal(
     throw new Error(typeof e === 'string' ? e : 'IGDB error');
   }
 
-  const results = pageResult.games.map(g => {
-    const dateParts = g.first_release_date ? unixToDateParts(g.first_release_date) : null;
-
-    const coverUrl = g.cover?.image_id
-      ? igdbImageUrl(g.cover.image_id, 'cover_big')
-      : null;
-
-    return {
-      externalId:   `${mediaType}:${g.id}`,
-      type:         mediaType as MediaType,
-      format:       mediaType === 'vnovel' ? 'VISUAL_NOVEL' : 'GAME',
-      source:       'igdb' as const,
-      titleMain:    cleanEditionTitle(g.name),
-      titleRomaji:  null,
-      titleNative:  null,
-      coverUrl,
-      releaseYear:  dateParts?.year ?? null,
-      releaseMonth: dateParts?.month ?? null,
-      releaseDay:   dateParts?.day ?? null,
-      scoreGlobal:  g.rating != null ? Math.round(g.rating) / 10 : null,
-      genres:       g.genres?.map(genre => genre.name) ?? [],
-    };
-  });
+  const format = mediaType === 'vnovel' ? 'VISUAL_NOVEL' : 'GAME';
+  const results = parseIgdbGames(pageResult.games).map(game => mapIgdbGame(game, mediaType, format));
 
   return { results, hasMore: pageResult.hasMore };
 }

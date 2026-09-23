@@ -118,8 +118,8 @@
 }
 
 .now-playing-btn--close:hover {
-  color: #ef4444;
-  border-color: color-mix(in srgb, #ef4444 35%, transparent);
+  color: var(--color-error-strong);
+  border-color: color-mix(in srgb, var(--color-error-strong) 35%, transparent);
 }
 
 @media (max-width: 560px) {

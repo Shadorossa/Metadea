@@ -8,6 +8,52 @@ pub fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
     STANDARD.decode(input).map_err(|e| e.to_string())
 }
 
+// ─── Secret storage ───────────────────────────────────────────────────────────
+// Every secret persisted in the local database (OAuth tokens, API keys)
+// goes through Windows DPAPI in user scope and is stored as base64; on
+// other platforms only the base64 layer applies.
+
+#[cfg(target_os = "windows")]
+fn protect(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    windows_dpapi::encrypt_data(bytes, windows_dpapi::Scope::User)
+        .map_err(|e| format!("Encryption failed: {:?}", e))
+}
+
+#[cfg(target_os = "windows")]
+fn unprotect(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    windows_dpapi::decrypt_data(bytes, windows_dpapi::Scope::User)
+        .map_err(|e| format!("Decryption failed: {:?}", e))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn protect(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    Ok(bytes.to_vec())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn unprotect(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    Ok(bytes.to_vec())
+}
+
+pub(crate) fn encrypt_secret(secret: &str) -> Result<String, String> {
+    Ok(base64_encode(&protect(secret.as_bytes())?))
+}
+
+pub(crate) fn decrypt_secret(stored: &str) -> Result<String, String> {
+    let bytes = unprotect(&base64_decode(stored)?)?;
+    String::from_utf8(bytes).map_err(|e| format!("Invalid UTF-8: {}", e))
+}
+
+/// Read side for values that existing installs wrote in plaintext before
+/// they were routed through `encrypt_secret` (the app_auth token and the
+/// app_env API keys): a stored value that does not decrypt is taken as-is.
+/// Every write path encrypts, so such a row is upgraded the next time it is
+/// saved. On Windows a plaintext value that happens to be valid base64 still
+/// fails DPAPI's blob check, so it cannot be mistaken for an encrypted one.
+pub(crate) fn decrypt_secret_or_plaintext(stored: &str) -> String {
+    decrypt_secret(stored).unwrap_or_else(|_| stored.to_string())
+}
+
 /// Rebuilds an archive entry's path so it can only ever land inside the
 /// destination directory: absolute paths, drive prefixes and `..` components
 /// are rejected outright rather than normalised away.

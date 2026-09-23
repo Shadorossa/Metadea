@@ -1,4 +1,6 @@
 ---
+import '../styles/pages/welcome.css';
+import '../styles/pages/settings.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getLang, useTranslations } from '../i18n/index';
 import ProfileTab from '../components/settings/ProfileTab.astro';
@@ -7,8 +9,6 @@ import EnvironmentTab from '../components/settings/EnvironmentTab.astro';
 import EmulatorsTab from '../components/settings/EmulatorsTab.astro';
 import ConnectionsTab from '../components/settings/ConnectionsTab.astro';
 import HelpModals from '../components/settings/HelpModals.astro';
-import '../styles/pages/welcome.css';
-import '../styles/pages/settings.css';
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -135,25 +135,25 @@ const w = t.onboarding;
 
 <script>
   import { getAuthToken } from '../lib/tauri';
-  import { decodeJwtPayload } from '../lib/profile/utils';
-  import { STORAGE_KEYS } from '../lib/shared/storage-keys';
-  import { getT } from '../i18n/client';
-  import { initAvatar, initShareAvatar } from '../lib/settings/avatar';
-  import { initBanner } from '../lib/settings/banner';
-  import { initThemePicker } from '../lib/settings/theme';
-  import { initEnvironment } from '../lib/settings/environment';
-  import { initEmulators } from '../lib/settings/emulators';
-  import { initGitHubAuth } from '../lib/settings/github';
-  import { initAniListAuth } from '../lib/settings/anilist';
-  import { initAniListImportUI } from '../lib/settings/anilist-import-ui';
-  import { initDisplayName } from '../lib/settings/display-name';
-  import { initFontPicker } from '../lib/settings/fonts';
-  import { initRatingSystem } from '../lib/settings/rating-system';
-  import { initCustomColor } from '../lib/settings/custom-color';
-  import { initActivitySettings } from '../lib/settings/activity';
-  import { initDualRating } from '../lib/settings/dual-rating';
-  import { initLanguageSwitcher } from '../lib/settings/language';
-  import { initBio } from '../lib/settings/bio';
+  import { decodeJwtPayload } from '../lib/profile/media-type-label';
+  import { STORAGE_KEYS } from '../lib/storage/storage-keys';
+  import { getT } from '../i18n/runtime';
+  import { initAvatar, initShareAvatar } from '../components/settings/mount/avatar';
+  import { initBanner } from '../components/settings/mount/banner';
+  import { initThemePicker } from '../components/settings/mount/theme';
+  import { initEnvironment } from '../components/settings/mount/environment';
+  import { initEmulators } from '../components/settings/mount/emulators';
+  import { initGitHubAuth } from '../components/settings/mount/github';
+  import { initAniListAuth } from '../components/settings/mount/anilist';
+  import { initAniListImportUI } from '../components/settings/mount/anilist-import-ui';
+  import { initDisplayName } from '../components/settings/mount/display-name';
+  import { initFontPicker } from '../components/settings/mount/fonts';
+  import { initRatingSystem } from '../components/settings/mount/rating-system';
+  import { initCustomColor } from '../components/settings/mount/custom-color';
+  import { initActivitySettings } from '../components/settings/mount/activity';
+  import { initDualRating } from '../components/settings/mount/dual-rating';
+  import { initLanguageSwitcher } from '../components/settings/mount/language';
+  import { initBio } from '../components/settings/mount/bio';
 
   let initializedRoot: HTMLElement | null = null;
 

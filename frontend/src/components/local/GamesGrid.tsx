@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
+import type { Translations } from '../../i18n/index';
 import { motion } from 'motion/react';
 import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
-import { displayNameFor, type StatusEntry, type SortMode, sortEntries, entryKey } from './utils/catalogGameLinking';
-import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, type PlatformId } from './utils/constants';
+import { displayNameFor, type StatusEntry, type SortMode, sortEntries, entryKey } from '../../lib/local/catalog-game-linking';
+import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, type PlatformId } from '../../lib/local/platforms';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
@@ -33,6 +34,8 @@ interface GamesGridProps {
   onClearRoute:  () => void;
   onRefreshScan: () => void;
   isMounted:     boolean;
+  // Server-rendered `t.local` from local.astro — see LocalLibrary.
+  ssrLocal?:     Translations['local'];
   // currentlyEntries mixes in catalog-tracked "pendiente" entries too (see
   // LocalLibrary's buildCatalogStatusEntries) — there's no Pausado/
   // Abandonado equivalent: an installed game with that status stays in its
@@ -80,13 +83,14 @@ interface GamesGridProps {
 // state; this only needs the already-resolved data and a handful of
 // callbacks.
 export function GamesGrid({
-  gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
+  gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted, ssrLocal,
   currentlyEntries, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
   pendingByLauncher, gameStatusMatch, catalogMapById, onRemoveGame,
   onDeleteLibraryItem,
 }: GamesGridProps) {
   const t = getT();
+  const local = isMounted ? t.local : (ssrLocal ?? t.local);
   // One shared sort preference across every launcher section (Steam,
   // Nintendo, ...) rather than a separate one per platform — simpler to
   // reason about, and there's no real case for browsing one platform
@@ -138,7 +142,7 @@ export function GamesGrid({
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <FolderRouteControls rootFolder={rootFolder} onSetRoute={onSetRoute} onClearRoute={onClearRoute} />
-          <button type="button" className="local-refresh-btn" onClick={onRefreshScan} disabled={gamesState === 'loading'} title={isMounted ? (gamesState === 'loading' ? t.local.scanning : t.local.scan_again) : (gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo')}>
+          <button type="button" className="local-refresh-btn" onClick={onRefreshScan} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? local.scanning : local.scan_again}>
             <IconRefresh />
           </button>
         </div>

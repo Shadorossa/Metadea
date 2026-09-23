@@ -1,4 +1,4 @@
-import { isTauri, invoke, tauriCmd, tauriRun } from './core';
+import { isTauri, invoke, tauriCmd, tauriRun } from './bridge';
 
 export interface CharacterEntry {
   id:           string;
@@ -29,7 +29,7 @@ export interface CharacterAppearance {
   cover?:              string | null;
 }
 
-// getAllCharacters() is fetched fresh by several profile tabs (Lists,
+// getAllCharactersLight() is fetched fresh by several profile tabs (Lists,
 // Favorites) and modals every time they mount — cache it the same way
 // favorite-images.ts caches getAllFavoriteCustomImages(), invalidated by
 // this file's own mutators so callers never see stale data.
@@ -68,13 +68,17 @@ export async function getCharacter(externalId: string): Promise<CharacterEntry |
   return tauriCmd<CharacterEntry | null>('get_character', null, { externalId });
 }
 
-// Fetch all cached characters (e.g. for profile Favorites/Lists tabs).
-// Cached at module level — see invalidateCharactersCache above.
-export async function getAllCharacters(forceRefresh = false): Promise<CharacterEntry[]> {
+/** Every locally cached character (profile Favorites/Lists tabs, the
+ *  overview's Hall of Fame, the admin list). image_url is the portrait's
+ *  absolute file path (or its remote URL, untouched) instead of an inlined
+ *  base64 data URL — callers MUST pass it through wrapAssetUrl() before
+ *  using it as an <img src>. Cached at module level — see
+ *  invalidateCharactersCache above. */
+export async function getAllCharactersLight(forceRefresh = false): Promise<CharacterEntry[]> {
   if (cachedCharacters && !forceRefresh) return cachedCharacters;
   if (charactersCachePromise && !forceRefresh) return charactersCachePromise;
 
-  charactersCachePromise = tauriCmd<CharacterEntry[]>('get_all_characters', []).then(list => {
+  charactersCachePromise = tauriCmd<CharacterEntry[]>('get_all_characters_light', []).then(list => {
     cachedCharacters = list;
     charactersCachePromise = null;
     return list;

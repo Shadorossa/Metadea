@@ -3,7 +3,7 @@
 // and modal-closing that follow it stay in the component.
 import { saveLibraryEntry, writeMonthlyHistory, syncFavorites } from '../../../lib/tauri';
 import type { LibraryEntry } from '../../../lib/tauri';
-import { createDefaultLog, type LogState } from '../../../lib/media/log-state';
+import { createDefaultLog, type LogState } from '../../../lib/media/editor/library-log-state';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 
 export interface SaveMediaEditorLogsParams {

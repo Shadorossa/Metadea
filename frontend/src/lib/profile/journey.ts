@@ -1,4 +1,4 @@
-import { readUserJourney, writeUserJourney, type LibraryEntry } from '../tauri';
+import { readUserJourneyTyped, writeUserJourney, type LibraryEntry } from '../tauri';
 
 function getCleanDate(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
@@ -16,7 +16,7 @@ export async function logJourneyEvent(
     // Activity is a completion history, not a progress log. Strip legacy
     // start/progress rows whenever the journey is next written so they can no
     // longer reappear locally or be uploaded to the social feed.
-    const journey = (await readUserJourney())
+    const journey = (await readUserJourneyTyped())
       .map(day => ({ ...day, events: (day.events || []).filter(event => event.type === 'complete') }))
       .filter(day => day.events.length > 0);
     const externalId = entry.external_id;

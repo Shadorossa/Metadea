@@ -1,4 +1,4 @@
-import { tauriTry, tauriRun, invoke } from './core';
+import { tauriTry, tauriRun, invoke } from './bridge';
 
 export interface ListInfo {
   key:         string;
@@ -60,8 +60,13 @@ export async function getListItems(listKey: string): Promise<string[]> {
   return tauriTry<string[]>('get_list_items', [], { listKey });
 }
 
-export async function getListItemsFull(listKey: string): Promise<ListItemFull[]> {
-  return tauriTry<ListItemFull[]>('get_list_items_full', [], { listKey });
+/** A list's items with their library/catalog columns joined in. A
+ *  character item's cover_url is its portrait's file path instead of an
+ *  inlined base64 data URL — callers MUST pass cover_url through
+ *  wrapAssetUrl() before using it as an <img src> (media covers are remote
+ *  URLs and pass through unchanged). */
+export async function getListItemsFullLight(listKey: string): Promise<ListItemFull[]> {
+  return tauriTry<ListItemFull[]>('get_list_items_full_light', [], { listKey });
 }
 
 export async function createUserList(username: string, name: string, description: string, listType?: string): Promise<string> {

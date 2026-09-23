@@ -1,5 +1,5 @@
-import { invoke, tauriCmd, tauriRun, isTauri } from './core';
-import { getPreferredCover } from '../media/cover-preferences';
+import { invoke, tauriCmd, tauriRun, isTauri } from './bridge';
+import { getPreferredCover, getCoverPreference, readCoverPreferences } from '../media/cover-preferences';
 
 export interface MediaCatalogEntry {
   id:                   string;
@@ -102,16 +102,112 @@ export async function updateCatalogTotalCount(externalId: string, totalCount: nu
   return tauriRun('update_catalog_total_count', { externalId, totalCount });
 }
 
+// Same result as mapping getPreferredCover over every row, but the cover
+// preferences blob is read/parsed once for the whole list and rows without
+// a preference (the overwhelming majority) are returned as-is instead of
+// being spread into a fresh object each — this runs over the full ~5k-row
+// catalog on every profile/home/local load.
+export function applyCoverPreferences<T extends { external_id: string; cover_url?: string | null }>(entries: T[]): T[] {
+  const preferences = readCoverPreferences();
+  return entries.map(entry => {
+    const preferred = getCoverPreference(entry.external_id, preferences);
+    if (preferred) return { ...entry, cover_url: preferred };
+    // getPreferredCover normalizes a falsy cover_url to null; only pay for
+    // the spread in that (rare) case.
+    return entry.cover_url || entry.cover_url === null ? entry : { ...entry, cover_url: null };
+  });
+}
+
+/** The narrow projection of a catalog row the profile/home grids actually
+ *  read (LibraryCard, HofSection, CalendarSection, library-grouping,
+ *  stats-calculators) — see CatalogSummary in media_catalog.rs. Structurally
+ *  a subset of MediaCatalogEntry, so a `Map<string, CatalogSummary>` can be
+ *  passed wherever only these fields are read. */
+export interface CatalogSummary {
+  id:             string;
+  external_id:    string;
+  type:           string;
+  format:         string | null;
+  status:         string | null;
+  title_main:     string | null;
+  title_english:  string | null;
+  title_romaji:   string | null;
+  title_native:   string | null;
+  cover_url:      string | null;
+  release_day:    number | null;
+  release_month:  number | null;
+  release_year:   number | null;
+  total_count:    number | null;
+  total_count_2:  number | null;
+  time_length:    number | null;
+  genres_csv:     string | null;
+  parent_id:      string | null;
+  updated_at:     string;
+}
+
+/** Either a full media_catalog row or its CatalogSummary projection — the
+ *  parameter type for readers that only need the common columns and can
+ *  treat every other one as optional (the library editor's placeholder
+ *  render, Local's item shape). Both MediaCatalogEntry and CatalogSummary
+ *  are assignable to it. */
+export type CatalogEntryLike = Pick<MediaCatalogEntry, 'external_id' | 'type'> & Partial<MediaCatalogEntry>;
+
+/** The CatalogSummary projection of a full row — for the one place a
+ *  profile map built from summaries takes a freshly re-fetched full entry
+ *  (LibrarySection's in-progress resync). */
+export function toCatalogSummary(entry: MediaCatalogEntry): CatalogSummary {
+  return {
+    id:            entry.id,
+    external_id:   entry.external_id,
+    type:          entry.type,
+    format:        entry.format ?? null,
+    status:        entry.status ?? null,
+    title_main:    entry.title_main ?? null,
+    title_english: entry.title_english ?? null,
+    title_romaji:  entry.title_romaji ?? null,
+    title_native:  entry.title_native ?? null,
+    cover_url:     entry.cover_url ?? null,
+    release_day:   entry.release_day ?? null,
+    release_month: entry.release_month ?? null,
+    release_year:  entry.release_year ?? null,
+    total_count:   entry.total_count ?? null,
+    total_count_2: entry.total_count_2 ?? null,
+    time_length:   entry.time_length ?? null,
+    genres_csv:    entry.genres_csv ?? null,
+    parent_id:     entry.parent_id ?? null,
+    updated_at:    entry.updated_at,
+  };
+}
+
+/** Scoped replacement for getAllCatalogEntries on the profile/home first
+ *  paint: only the visible rows referenced by the user's own library
+ *  (optionally one userId's rows), lists/favourites, monthly history and
+ *  activity journey, in the CatalogSummary projection. Ids those views
+ *  discover afterwards through relations (e.g. a bundle parent that isn't
+ *  in the library) go through getCatalogEntriesByIds. */
+export async function getCatalogEntriesForLibrary(userId?: string | null): Promise<CatalogSummary[]> {
+  const entries = await tauriCmd<CatalogSummary[]>('get_catalog_entries_for_library', [], { userId: userId ?? null });
+  return applyCoverPreferences(entries);
+}
+
+/** CatalogSummary rows for an explicit id list (chunked on the Rust side, so
+ *  any length is fine). Unknown or blocked ids are simply absent. */
+export async function getCatalogEntriesByIds(externalIds: string[]): Promise<CatalogSummary[]> {
+  if (externalIds.length === 0) return [];
+  const entries = await tauriCmd<CatalogSummary[]>('get_catalog_entries_by_ids', [], { externalIds });
+  return applyCoverPreferences(entries);
+}
+
 export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
   const entries = await tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries', []);
-  return entries.map(entry => ({ ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) }));
+  return applyCoverPreferences(entries);
 }
 
 // Settings > Catalog is the only list where blocked works are visible, so
 // they can be reopened in the collaborative editor and restored.
 export async function getAllCatalogEntriesForEditor(): Promise<MediaCatalogEntry[]> {
   const entries = await tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries_for_editor', []);
-  return entries.map(entry => ({ ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) }));
+  return applyCoverPreferences(entries);
 }
 
 // The regular lookup intentionally hides blocked catalog rows. Only the
@@ -223,12 +319,24 @@ export interface DbMediaRelation {
   release_year?: number | null;
 }
 
+// Fired after any relations write below so the Profile/Home shared cache of
+// scoped relations (lib/profile/library-data-cache.ts) drops its copy
+// — same idea as library.ts's notifyLibraryChanged, but deliberately a
+// separate event: 'refresh-profile-library' also makes every mounted
+// profile tab re-fetch and re-render, which a relation edit on a media page
+// has no business triggering.
+function notifyMediaRelationsChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('media-relations-changed'));
+}
+
 export async function saveMediaRelations(mediaExternalId: string, relations: DbMediaRelation[]): Promise<void> {
-  return tauriRun('save_media_relations', { mediaExternalId, relations });
+  await tauriRun('save_media_relations', { mediaExternalId, relations });
+  notifyMediaRelationsChanged();
 }
 
 export async function replaceIssueRelations(mediaExternalId: string, relations: DbMediaRelation[]): Promise<void> {
-  return tauriRun('replace_issue_relations', { mediaExternalId, relations });
+  await tauriRun('replace_issue_relations', { mediaExternalId, relations });
+  notifyMediaRelationsChanged();
 }
 
 export async function getMediaRelations(mediaExternalId: string): Promise<DbMediaRelation[]> {
@@ -259,11 +367,17 @@ export async function getDeletedRelations(mediaExternalId: string): Promise<stri
   return tauriCmd<string[]>('get_deleted_relations', [], { mediaExternalId });
 }
 
-// Bulk fetch across every media — used by the library grid's saga grouping,
-// which needs the whole SEQUEL/PREQUEL graph up front instead of one
-// getMediaRelations() round trip per library item.
-export async function getAllMediaRelations(): Promise<DbMediaRelation[]> {
-  return tauriCmd<DbMediaRelation[]>('get_all_media_relations', []);
+/** Scoped replacement for the old catalog-wide get_all_media_relations:
+ *  only relations where the owner OR the related side is one of externalIds
+ *  (typically the library's own ids), same row shape and curated order.
+ *  excludeTypes drops relation kinds the caller never groups by — pass
+ *  ['RECOMMENDATION'] for the profile's saga/bundle grouping, which is by
+ *  far the largest fan-out. Callers that need the whole franchise graph
+ *  around those ids (not just their direct edges) go through
+ *  lib/profile/relations-scope.ts's loadScopedMediaRelations. */
+export async function getMediaRelationsForIds(externalIds: string[], excludeTypes?: string[]): Promise<DbMediaRelation[]> {
+  if (externalIds.length === 0) return [];
+  return tauriCmd<DbMediaRelation[]>('get_media_relations_for_ids', [], { externalIds, excludeTypes: excludeTypes ?? null });
 }
 
 // Purely local negative cache (anilist_pre_sequel table) — see
@@ -334,5 +448,7 @@ export async function saveAuthorProfileAndRelations(author: DbMediaAuthor, relat
 // into their local media_catalog. Returns how many new rows were imported.
 export async function syncCommunityCatalog(): Promise<number> {
   if (!isTauri()) return 0;
-  return invoke<number>('sync_community_catalog');
+  const imported = await invoke<number>('sync_community_catalog');
+  notifyMediaRelationsChanged();
+  return imported;
 }

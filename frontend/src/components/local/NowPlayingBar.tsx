@@ -1,19 +1,29 @@
-import { usePlaybackState, pausePlayback, resumePlayback, skipToNext, stopPlayback } from '../../lib/local/playback-service';
+import { pausePlayback, resumePlayback, skipToNext, stopPlayback } from '../../lib/local/playback-service';
+import { usePlaybackState } from './hooks/usePlaybackState';
 import { AnimatePresence } from 'motion/react';
 import { stopGameProcess, wrapAssetUrl } from '../../lib/tauri';
-import { toSmallCover } from '../../lib/shared/small-cover';
-import { isReadingType } from '../../lib/constants/media';
-import { formatPlaybackTime } from './utils/formatters';
+import { toSmallCover } from '../../lib/media/small-cover';
+import { isReadingType } from '../../lib/media/media-types';
+import { formatPlaybackTime } from '../../lib/local/formatters';
 import { NowMediaBar } from '../shared/NowMediaBar';
 import { IconX } from './ui/icons';
-import { getT } from '../../i18n/client';
-import { clearGamePresence, useGamePresence } from '../../lib/discord/presence-manager';
+import { getT } from '../../i18n/runtime';
+import { clearGamePresence } from '../../lib/local/discord-presence';
+import { useGamePresence } from '../shared/hooks/useGamePresence';
 import { useEffect, useState } from 'react';
+import { useExternalStore } from '../shared/hooks/useExternalStore';
+import { playerModalStore } from '../../lib/player/player-modal-state';
+import { PlayerModal } from '../player/PlayerModal';
 
 export function NowPlayingBar() {
   const t = getT().local;
   const profileT = getT().profile;
   const playback = usePlaybackState();
+  // The built-in player modal is hosted here because this island is on
+  // every page (BaseLayout, transition:persist), same as the reader's bar.
+  // The modal simply covers the strip (z-index 600 over 200); the strip
+  // itself is left untouched and is back the moment the player closes.
+  const playerModalOpen = useExternalStore(playerModalStore);
   const game = useGamePresence();
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
@@ -36,6 +46,7 @@ export function NowPlayingBar() {
 
   return (
     <AnimatePresence>
+      {playerModalOpen && <PlayerModal key="player-modal" />}
       {playback && (
         <NowMediaBar
           key="video-playback"

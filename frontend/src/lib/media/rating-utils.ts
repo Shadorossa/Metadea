@@ -1,6 +1,6 @@
 import { STAR_PATH } from './constants';
-import { STORAGE_KEYS } from '../shared/storage-keys';
-import { getUserInfo } from '../tauri';
+import { STORAGE_KEYS } from '../storage/storage-keys';
+import { getUserInfo } from '../tauri/steam';
 
 export type RatingSystem = '5-star' | '10-dec' | '10' | '3-emoji';
 

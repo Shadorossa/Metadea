@@ -1,0 +1,312 @@
+/* Field inputs, selects, slots box, changed-dot indicators, cover/photo uploaders, field layouts. Split verbatim from pr.css. */
+/* Underlined style for inputs and slots to avoid box saturation */
+.pr-editor-field input[type="text"],
+.pr-editor-field input[type="number"],
+.pr-editor-field textarea,
+.pr-editor-field select,
+.pr-editor-cover-uploader input,
+.pr-editor-richtext {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding-left: 2px !important;
+  box-shadow: none !important;
+}
+
+/* Character voice actor buttons now imported from character-lang-buttons.css */
+
+.pr-editor-field textarea {
+  padding-top: 4px !important;
+  resize: vertical;
+}
+
+/* Native <select> arrow/option list look out of place against the dark
+   underlined inputs around it (default browser chrome: light dropdown,
+   plain arrow) - custom-arrow treatment plus explicit option colors so the open list
+   itself stays dark instead of falling back to the browser's white default. */
+.pr-editor-field select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  cursor: pointer;
+  padding-right: 1.4rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%23a0a0b8' d='M2.5 4.5l3.5 3.5 3.5-3.5z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.1rem center !important;
+  background-size: 9px !important;
+}
+
+.pr-editor-field select option {
+  background: var(--bg-elevated);
+  color: var(--text-main);
+}
+
+.pr-editor-slots-box {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  box-shadow: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border: 1px solid var(--border-color);
+  min-height: 2.2rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+}
+
+.pr-editor-slots-box:focus-within {
+  border-bottom-color: var(--accent) !important;
+}
+
+/* Indicators */
+.pr-editor-field label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pr-editor-changed-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+  animation: pr-dot-pulse 1.5s infinite ease-in-out;
+}
+
+.pr-editor-changed-dot--slot {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+}
+
+.pr-editor-changed-dot--banner {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  z-index: 10;
+}
+
+.pr-editor-section-changed-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background-color: var(--accent);
+  border-radius: 50%;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+@keyframes pr-dot-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+}
+
+/* Cover Uploader Card */
+.pr-editor-cover-uploader {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  width: 100%;
+}
+
+.pr-editor-cover-preview-card {
+  width: 70px;
+  height: 100px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pr-editor-cover-placeholder {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.pr-editor-char-photo-wrap {
+  position: relative;
+  width: 110px;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pr-editor-char-photo-wrap:hover,
+.pr-editor-char-photo-wrap:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.pr-editor-char-photo-wrap.is-dragging {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.pr-editor-char-photo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.pr-editor-char-photo-wrap:hover img,
+.pr-editor-char-photo-wrap:focus-visible img {
+  transform: scale(1.04);
+  filter: brightness(0.8);
+}
+
+.pr-editor-photo-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+  padding: 0.5rem;
+  text-align: center;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.pr-editor-photo-hover-overlay span {
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.pr-editor-char-photo-wrap:hover .pr-editor-photo-hover-overlay,
+.pr-editor-char-photo-wrap:focus-visible .pr-editor-photo-hover-overlay {
+  opacity: 1;
+}
+
+.pr-editor-cover-uploader input {
+  flex: 1;
+  height: 36px;
+  color: var(--text-main);
+}
+
+.pr-editor-cover-uploader input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+/* Custom Grids inside columns */
+.pr-editor-classification-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.pr-editor-field.pr-editor-field--inline {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pr-editor-field.pr-editor-field--inline > label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pr-editor-field-row.pr-editor-field-row--release-progress {
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.pr-editor-subgroup.pr-editor-subgroup--vertical-label {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.pr-editor-vertical-label {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pr-editor-subgroup.pr-editor-subgroup--vertical-label .pr-editor-subgroup-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Smooth Focus States for Inputs */
+.pr-editor-field input[type="text"],
+.pr-editor-field input[type="number"],
+.pr-editor-field textarea,
+.pr-editor-field select,
+.pr-editor-cover-uploader input {
+  transition: border-color var(--anim-fast) ease, box-shadow var(--anim-fast) ease;
+}
+
+.pr-editor-field input[type="text"]:focus,
+.pr-editor-field input[type="number"]:focus,
+.pr-editor-field textarea:focus,
+.pr-editor-field select:focus,
+.pr-editor-cover-uploader input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 8px rgba(124, 106, 247, 0.25) !important;
+}
+
+.pr-editor-readonly-input {
+  opacity: 0.7;
+}
+
+.pr-editor-field-wrap {
+  position: relative;
+}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { parseCSV } from '../../lib/shared/string-utils';
+import { parseCSV } from '../../lib/shared/text/string-utils';
 
 export interface SlotInputProps {
   label: string;

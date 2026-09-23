@@ -3,5 +3,5 @@
   "identifier": "screenshot-toast",
   "description": "Allows the passive screenshot toast to receive its display event.",
   "windows": ["screenshot-toast"],
-  "permissions": ["core:event:allow-listen"]
+  "permissions": ["core:event:allow-listen", "allow-toast-commands"]
 }

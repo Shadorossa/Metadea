@@ -1,12 +1,13 @@
-import { useReadingSession, useResumeOpen, clearReadingSession, setReadingSession, openResumeModal, closeResumeModal } from '../../lib/reader/reading-session';
-import { usePlaybackState } from '../../lib/local/playback-service';
+import { clearReadingSession, setReadingSession, openResumeModal, closeResumeModal } from '../../lib/reader/reading-session';
+import { useReadingSession, useResumeOpen } from './hooks/useReadingSession';
+import { usePlaybackState } from '../local/hooks/usePlaybackState';
 import { AnimatePresence } from 'motion/react';
 import { wrapAssetUrl } from '../../lib/tauri';
-import { toSmallCover } from '../../lib/shared/small-cover';
+import { toSmallCover } from '../../lib/media/small-cover';
 import { NowMediaBar } from '../shared/NowMediaBar';
 import { ReaderModal } from './ReaderModal';
 import { IconX } from '../local/ui/icons';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 
 export function NowReadingBar() {
   const t = getT().reader;

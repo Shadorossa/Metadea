@@ -53,7 +53,7 @@ body[data-theme="steampunk"], html[data-theme="steampunk"] body {
   border: 3px double #8c6239 !important;
   background: linear-gradient(180deg, #3a2b1f 0%, #1e150f 100%) !important;
   color: #dfc2a1 !important;
-  box-shadow: 0 4px 0px #4d331c, 0 6px 10px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 4px 0px #4d331c, 0 6px 10px rgba(0,0,0,0.5);
   text-shadow: 1px 1px 2px #000;
   transition: all 0.1s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
   font-weight: bold;
@@ -66,23 +66,23 @@ body[data-theme="steampunk"], html[data-theme="steampunk"] body {
 [data-theme="steampunk"] .search-action-btn:hover {
   background: linear-gradient(180deg, #4d3a2b 0%, #291d14 100%) !important;
   border-color: #d4a373 !important;
-  box-shadow: 0 4px 0px #4d331c, 0 8px 15px rgba(212, 163, 115, 0.25) !important;
-  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 0px #4d331c, 0 8px 15px rgba(212, 163, 115, 0.25);
+  transform: translateY(-1px);
 }
 
 [data-theme="steampunk"] .btn:active {
-  transform: translateY(3px) !important;
-  box-shadow: 0 1px 0px #4d331c, 0 2px 4px rgba(0,0,0,0.5) !important;
+  transform: translateY(3px);
+  box-shadow: 0 1px 0px #4d331c, 0 2px 4px rgba(0,0,0,0.5);
 }
 
 /* "Eliminar de Metadea" — same riveted-metal look as every other steampunk
    button, but a red warning-plate variant instead of brass, since this one
    is a destructive/danger action (see media.css's .pr-editor-block-btn). */
 [data-theme="steampunk"] .pr-editor-block-btn {
-  border: 3px double #8c2f22 !important;
+  border: 3px double #8c2f22;
   background: linear-gradient(180deg, #4a1f18 0%, #240f0b 100%) !important;
   color: #f0b8a8 !important;
-  box-shadow: 0 4px 0px #5c1f16, 0 6px 10px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 4px 0px #5c1f16, 0 6px 10px rgba(0,0,0,0.5);
   text-shadow: 1px 1px 2px #000;
   font-weight: bold;
   text-transform: uppercase;
@@ -92,20 +92,20 @@ body[data-theme="steampunk"], html[data-theme="steampunk"] body {
 [data-theme="steampunk"] .pr-editor-block-btn:hover,
 [data-theme="steampunk"] .pr-editor-block-btn--active {
   background: linear-gradient(180deg, #6b281c 0%, #2e1310 100%) !important;
-  border-color: #d4552f !important;
-  box-shadow: 0 4px 0px #5c1f16, 0 8px 15px rgba(212, 85, 47, 0.3) !important;
+  border-color: #d4552f;
+  box-shadow: 0 4px 0px #5c1f16, 0 8px 15px rgba(212, 85, 47, 0.3);
 }
 
 /* Placas de metal victoriano para tarjetas */
 [data-theme="steampunk"] .media-relation-card {
   border: 2px solid #5c3f24 !important;
-  background-color: #211812 !important;
+  background-color: #211812;
   background-image: 
     /* Esquinas remachadas falsas en CSS */
     radial-gradient(circle at 6px 6px, #8c6239 2px, transparent 3px),
     radial-gradient(circle at calc(100% - 6px) 6px, #8c6239 2px, transparent 3px),
     radial-gradient(circle at 6px calc(100% - 6px), #8c6239 2px, transparent 3px),
-    radial-gradient(circle at calc(100% - 6px) calc(100% - 6px), #8c6239 2px, transparent 3px) !important;
+    radial-gradient(circle at calc(100% - 6px) calc(100% - 6px), #8c6239 2px, transparent 3px);
   box-shadow: 0 6px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02) !important;
   border-radius: 4px !important;
 }
@@ -119,7 +119,7 @@ body[data-theme="steampunk"], html[data-theme="steampunk"] body {
 
 [data-theme="steampunk"] .media-relation-card:hover {
   border-color: #d4a373 !important;
-  transform: translateY(-4px) !important;
+  transform: translateY(-4px);
   box-shadow: 0 12px 24px rgba(212, 163, 115, 0.15), 0 8px 16px rgba(0,0,0,0.7) !important;
 }
 

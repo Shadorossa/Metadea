@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri';
-import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
-import { normalizeForMatch } from '../utils/folderMatch';
-import { extractEpisodeNumberFromTitle } from '../../../lib/media/media-relations';
+import { CONTAINS_RELATION_TYPES } from '../../../lib/media/saga/saga-relation-types';
+import { normalizeForMatch } from '../../../lib/local/folder-match';
+import { extractEpisodeNumberFromTitle } from '../../../lib/media/saga/media-relations';
 
 export interface NeighborInfo {
   externalId: string;

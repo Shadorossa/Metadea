@@ -1,7 +1,7 @@
-import { tauriCmd, tauriRun, invoke, isTauri, readStoredJson, writeStoredJson } from './core';
+import { tauriCmd, tauriRun, invoke, isTauri, readStoredJson, writeStoredJson } from './bridge';
 import { getMediaRelations, getCatalogEntry } from './catalog';
-import { STORAGE_KEYS } from '../shared/storage-keys';
-import { isSeriesSeasonSyntheticId } from '../media/mapper-utils';
+import { STORAGE_KEYS } from '../storage/storage-keys';
+import { isSeriesSeasonSyntheticId } from '../media/mappers/mapper-utils';
 
 export interface LibraryEntry {
   id: string;
@@ -44,19 +44,21 @@ function notifyLibraryChanged() {
 // Completing something manually elsewhere (the editor modal's status
 // dropdown, AniList import, ...) does NOT add its sequel — those are
 // explicit user actions with no "just kept watching" context behind them.
-export async function addSequelToPlanning(externalId: string): Promise<void> {
+// Returns the external id of the entry it created, or null when nothing was
+// added - the auto-mark undo removes exactly that entry and nothing else.
+export async function addSequelToPlanning(externalId: string): Promise<string | null> {
   const relations = await getMediaRelations(externalId).catch(() => []);
   const sequel = relations.find(r => r.relation_type === 'SEQUEL');
-  if (!sequel) return;
+  if (!sequel) return null;
 
   // Already tracked in some status (including a prior "planning" the user
   // set themselves, or already watching/dropped/whatever) — never override
   // an existing choice, only fill in a genuinely untracked sequel.
   const existing = await getLibraryEntry(sequel.related_media_external_id).catch(() => null);
-  if (existing?.status) return;
+  if (existing?.status) return null;
 
   const meta = await getCatalogEntry(sequel.related_media_external_id).catch(() => null);
-  if (!meta?.type) return;
+  if (!meta?.type) return null;
 
   const draft: LibraryEntry = {
     id: '', user_id: 'local', external_id: sequel.related_media_external_id, type: meta.type,
@@ -66,6 +68,7 @@ export async function addSequelToPlanning(externalId: string): Promise<void> {
     started_at: null, finished_at: null,
   };
   await saveLibraryEntry(draft);
+  return sequel.related_media_external_id;
 }
 
 export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntry> {
@@ -144,6 +147,14 @@ export async function deleteEpisodeHistoryEntry(id: string): Promise<void> {
 
 export async function readMonthlyHistory(): Promise<Record<string, string[]>> {
   return readStoredJson<Record<string, string[]>>('read_monthly_history', STORAGE_KEYS.monthlyHistory, {});
+}
+
+/** Typed counterpart of readMonthlyHistory: the same {month: externalId[]}
+ *  map as a real object over IPC instead of a JSON string parsed here.
+ *  Outside Tauri it falls back to readMonthlyHistory's localStorage path. */
+export async function readMonthlyHistoryTyped(): Promise<Record<string, string[]>> {
+  if (!isTauri()) return readMonthlyHistory();
+  return invoke<Record<string, string[]>>('read_monthly_history_typed');
 }
 
 export async function writeMonthlyHistory(history: Record<string, string[]>): Promise<void> {

@@ -1,24 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import type { Translations } from '../../i18n/index';
 import { motion } from 'motion/react';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 import { type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { useCoverCacheBatch } from './hooks/useCoverCacheBatch';
-import { isInProgressStatus } from '../../lib/constants/media';
+import { isInProgressStatus } from '../../lib/media/media-types';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { GameCard } from './cards/GameCard';
 import { type CoverCache } from './details/GameDetailPanel';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, displayNameFor, sortEntries, type SortMode, type StatusEntry } from './utils/catalogGameLinking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, displayNameFor, sortEntries, type SortMode, type StatusEntry } from '../../lib/local/catalog-game-linking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { VirtualCardGrid } from './ui/VirtualCardGrid';
 import { SortModeSelect } from './ui/SortModeSelect';
 import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
-import { LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
-import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
-import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
+import { LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from '../../lib/local/platforms';
+import { catalogReleaseTimestampMs } from '../../lib/media/mappers/mapper-utils';
+import { CONTAINS_RELATION_TYPES } from '../../lib/media/saga/saga-relation-types';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -104,13 +105,16 @@ interface LocalMediaSectionProps {
   onDeleteLibraryItem?: (externalId: string) => void;
   onRefreshScan?: () => void;
   sectionRefs?: React.MutableRefObject<Map<string, HTMLElement>>;
+  // Server-rendered `t.local` from local.astro — see LocalLibrary.
+  ssrLocal?: Translations['local'];
 }
 
-export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem, onRefreshScan, sectionRefs }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem, onRefreshScan, sectionRefs, ssrLocal }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
   const t = getT();
+  const local = isMounted ? t.local : (ssrLocal ?? t.local);
   const p = t.profile;
   const allItemsRaw = useLocalMediaItems(category, mediaRaw);
   const loading = mediaLoading;
@@ -353,7 +357,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
         <div className="local-content">
           <div className="local-content-header">
             <span className="local-content-count">
-              {!loading ? (items.length !== 1 ? (isMounted ? t.local.media_count_plural : '{count} obras en tu biblioteca').replace('{count}', String(items.length)) : (isMounted ? t.local.media_count_singular : '{count} obra en tu biblioteca').replace('{count}', String(items.length))) : ''}
+              {!loading ? (items.length !== 1 ? local.media_count_plural : local.media_count_singular).replace('{count}', String(items.length)) : ''}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <FolderRouteControls rootFolder={rootFolder} onSetRoute={onSetRoute} onClearRoute={onClearRoute} />
@@ -362,7 +366,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                   type="button"
                   className="local-refresh-btn"
                   onClick={onRefreshScan}
-                  title={isMounted ? t.local.scan_again : 'Escanear de nuevo'}
+                  title={local.scan_again}
                 >
                   <IconRefresh />
                 </button>
@@ -375,7 +379,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
           ) : isEmpty ? (
             <div className="local-state-placeholder">
               <IconFolder />
-              <p>{isMounted ? t.local.empty_category_media : 'No tienes obras de este tipo en biblioteca (viendo/leyendo/jugando o pendientes)'}</p>
+              <p>{local.empty_category_media}</p>
             </div>
           ) : (
             <div className="library-sections-list">
@@ -440,10 +444,10 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
           {!rootFolder && (
             <div className="local-state-placeholder" style={{ marginTop: '1rem' }}>
               <IconFolder />
-              <p>{isMounted ? t.local.no_folder_assigned : 'Sin carpeta asignada'}</p>
-              <span>{isMounted ? t.local.choose_folder_episodes_hint : 'Elige una carpeta para poder detectar tus episodios/capítulos locales'}</span>
+              <p>{local.no_folder_assigned}</p>
+              <span>{local.choose_folder_episodes_hint}</span>
               <button type="button" className="local-add-route-btn" onClick={onSetRoute}>
-                <IconPlus /> {isMounted ? t.local.add_route : 'Añadir ruta'}
+                <IconPlus /> {local.add_route}
               </button>
             </div>
           )}

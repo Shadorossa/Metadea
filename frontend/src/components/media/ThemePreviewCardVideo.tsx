@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
-import { getThemePreviewFrame, saveThemePreviewFrame, cacheThemeVideo, getThemeVideoPath } from '../../lib/tauri/misc-commands';
+import { getThemePreviewFrame, saveThemePreviewFrame, cacheThemeVideo, getThemeVideoPath } from '../../lib/tauri/themes';
 import { wrapAssetUrl } from '../../lib/tauri';
-import { getCachedThemeVideo, cacheThemeVideo as cacheThemeVideoBlob } from '../../lib/media/themeVideoCache';
+import { getCachedThemeVideo, cacheThemeVideo as cacheThemeVideoBlob } from '../../lib/media/themes/theme-video-cache';
 
 interface Props {
   externalId: string;

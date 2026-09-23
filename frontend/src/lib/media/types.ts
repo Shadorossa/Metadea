@@ -1,4 +1,4 @@
-import type { IN_PROGRESS_STATUSES } from '../constants/media';
+import type { IN_PROGRESS_STATUSES } from './media-types';
 
 // Interfaz normalizada que consume buildMediaHtml, independiente del proveedor
 

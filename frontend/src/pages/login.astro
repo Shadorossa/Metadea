@@ -39,7 +39,7 @@ const t    = useTranslations(lang);
 
     <script>
       import { storeAuthToken, initTauriDatabase } from '../lib/tauri';
-      import { STORAGE_KEYS } from '../lib/shared/storage-keys';
+      import { STORAGE_KEYS } from '../lib/storage/storage-keys';
 
       const form = document.getElementById('login-form');
       const input = document.getElementById('username-input') as HTMLInputElement;

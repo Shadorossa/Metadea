@@ -1,0 +1,151 @@
+// ─── Media type groupings ─────────────────────────────────────────────────────
+
+export const ANILIST_TYPES = ['anime', 'manga', 'lnovel'] as const;
+type AniListMediaType = typeof ANILIST_TYPES[number];
+
+export const IGDB_TYPES = ['game', 'vnovel'] as const;
+
+export const ALL_MEDIA_TYPES = [
+  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'series', 'movie', 'book', 'comic', 'event', 'character',
+] as const;
+
+// Central feature locks: remove a type here to re-enable it everywhere that
+// exposes a media-type selector or aggregates cross-type search results.
+export const DISABLED_MEDIA_TYPES: readonly string[] = ['event'];
+
+export function isMediaTypeDisabled(type: string): boolean {
+  return DISABLED_MEDIA_TYPES.includes(type);
+}
+
+// Search tab order (includes 'all' sentinel)
+export const SEARCH_TAB_TYPES = [
+  'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event', 'character', 'staff',
+] as const;
+
+// Types that have a dedicated detail page. 'staff' isn't in ALL_MEDIA_TYPES
+// (it can't be favorited/added to a library like a character can) but does
+// have one — it resolves to the existing /author page (person:a<id>, same
+// as an AniList staff link from quick search), not a new /staff page.
+export const DETAIL_SUPPORTED_TYPES = [
+  'anime', 'manga', 'lnovel', 'book', 'comic', 'event', 'game', 'vnovel', 'movie', 'series', 'character', 'staff',
+] as const;
+
+// ─── Labels ───────────────────────────────────────────────────────────────────
+
+import { getT } from '../../i18n/runtime';
+
+export function getTypeLabel(type: string): string {
+  const t = getT();
+  const searchTypeMap: Record<string, string | undefined> = {
+    anime: t.search?.types?.anime,
+    manga: t.search?.types?.manga,
+    lnovel: t.search?.types?.lnovel,
+    game: t.search?.types?.game,
+    vnovel: t.search?.types?.vnovel,
+    series: t.search?.types?.series,
+    movie: t.search?.types?.movie,
+    book: t.search?.types?.book,
+    comic: t.search?.types?.comic,
+    event: t.search?.types?.event,
+    character: t.search?.types?.character,
+    staff: t.search?.types?.staff,
+  };
+  return searchTypeMap[type] || type;
+}
+
+export function getGenreLabel(genre: string): string {
+  const t = getT();
+  const genres = (t as any).genres as Record<string, string> | undefined;
+  return genres?.[genre] || genre;
+}
+
+// ─── AniList formats ──────────────────────────────────────────────────────────
+
+const ANIME_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC'] as const;
+const MANGA_FORMATS = ['MANGA', 'NOVEL', 'ONE_SHOT'] as const;
+
+export const ANIME_FORMAT_SET = new Set<string>(ANIME_FORMATS);
+export const MANGA_FORMAT_SET = new Set<string>(MANGA_FORMATS);
+
+// ─── AniList status maps ──────────────────────────────────────────────────────
+
+// App status → AniList mutation value
+export const APP_TO_ANILIST_STATUS: Record<string, string | null> = {
+  planning:  'PLANNING',
+  watching:  'CURRENT',
+  reading:   'CURRENT',
+  completed: 'COMPLETED',
+  paused:    'PAUSED',
+  dropped:   'DROPPED',
+  '':        null,
+};
+
+// AniList list status → app status
+export const ANILIST_TO_APP_STATUS: Record<string, string> = {
+  CURRENT:   'watching',
+  PLANNING:  'planning',
+  COMPLETED: 'completed',
+  PAUSED:    'paused',
+  DROPPED:   'dropped',
+};
+
+// ─── Library status groupings ────────────────────────────────────────────────
+
+// "In progress" spans three verbs depending on media type (watching an anime,
+// reading a manga, playing a game) — every place that buckets library entries
+// by progress state used to repeat this 3-way check inline.
+export const IN_PROGRESS_STATUSES = ['watching', 'reading', 'playing'] as const;
+
+export function isInProgressStatus(status: string | null | undefined): boolean {
+  return status != null && (IN_PROGRESS_STATUSES as readonly string[]).includes(status);
+}
+
+// "Read" (chapters/pages) vs. "watch" (episodes) — the same split was
+// independently re-declared as its own Set in LocalMediaCard.tsx and
+// NowPlayingBar.tsx, and re-derived as an inverse condition in
+// LocalMediaDetailPanel.tsx and playback-service.ts. One place to add a
+// 7th media type to the reading side later, instead of four.
+export const READING_TYPES = new Set(['manga', 'lnovel', 'book', 'comic']);
+
+export function isReadingType(type: string | null | undefined): boolean {
+  return type != null && READING_TYPES.has(type);
+}
+
+// Priority order for picking one "representative" status out of several
+// seasons of the same unified anime chain — an in-progress season always
+// wins (you're actively watching the work as a whole), completed only wins
+// when every single season is also completed. Shared by the library grid's
+// fused card (unifyAnimeSeasons in library-grouping.ts) and the media
+// editor's "general" tab (MediaEditorModal.tsx) so both read the exact same
+// rule instead of drifting apart.
+export const SEASON_STATUS_PRIORITY: Record<string, number> = {
+  watching: 0, reading: 0, playing: 0,
+  planning: 1,
+  paused: 2,
+  dropped: 3,
+  completed: 4,
+};
+
+export function pickAggregateStatus(statuses: (string | null | undefined)[]): string {
+  const real = statuses.filter((s): s is string => !!s);
+  if (real.length === 0) return '';
+  let best = real[0];
+  let bestPriority = SEASON_STATUS_PRIORITY[best] ?? 5;
+  for (const s of real) {
+    const priority = SEASON_STATUS_PRIORITY[s] ?? 5;
+    if (priority < bestPriority) { bestPriority = priority; best = s; }
+  }
+  // A partial chain isn't complete merely because every *tracked* member
+  // happens to be completed; missing/untracked seasons still belong to the
+  // aggregate work and must keep it from showing a false completed status.
+  if (best === 'completed' && statuses.some(status => status !== 'completed')) return '';
+  return best;
+}
+
+// A season/update/issue/episode-tagged catalog entry (a Steam "season pass"
+// or similar bundle child) isn't a separately-countable/launchable work of
+// its own — it shows as itself but rolls up into whatever it's part of.
+// Independently declared with the identical value in Local's
+// catalogGameLinking.ts and Profile's stats-calculators.ts before being
+// pulled out here.
+export const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE', 'EPISODE']);

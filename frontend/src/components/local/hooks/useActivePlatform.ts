@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { LocalGame } from '../../../lib/tauri';
-import type { PlatformId, CategoryId } from '../utils/constants';
+import type { PlatformId, CategoryId } from '../../../lib/local/platforms';
 
 export function useActivePlatform(games: LocalGame[], activeCategory: CategoryId, gamesState: string) {
   const [activePlatform, setActivePlatform] = useState<PlatformId | null>(null);

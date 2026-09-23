@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import type { MediaPageData } from '../../../lib/media/types';
 import type { Translations } from '../../../i18n/index';
-import { toMediumCover } from '../../../lib/shared/small-cover';
-import { setMediaPagePresence, clearMediaPagePresence } from '../../../lib/discord/presence-manager';
+import { toMediumCover } from '../../../lib/media/small-cover';
+import { setMediaPagePresence, clearMediaPagePresence } from '../../../lib/local/discord-presence';
 
 export function useDiscordPresence(data: MediaPageData | null, _discordT: Translations['discord']) {
   useEffect(() => {

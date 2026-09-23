@@ -1,4 +1,4 @@
-import { tauriCmd, tauriRun } from './core';
+import { tauriCmd, tauriRun } from './bridge';
 
 // Single source of truth for staleness/resync bookkeeping across every
 // entity — media_catalog included as of db.rs migration 32. media-status.ts's

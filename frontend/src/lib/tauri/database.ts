@@ -1,4 +1,4 @@
-import { invoke, markDbReady, waitForTauriBridge } from './core';
+import { invoke, markDbReady, waitForTauriBridge } from './bridge';
 
 export async function initTauriDatabase(): Promise<string> {
   if (!(await waitForTauriBridge())) {

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 import { igdbSearchUnfiltered, igdbImageUrl } from '../../lib/tauri';
+import { comicVineSearch } from '../../lib/tauri/comicvine';
+import { isTauri } from '../../lib/tauri/bridge';
 import { graphqlPost, fetchJson } from '../../lib/api/client';
 import { API_ENDPOINTS } from '../../lib/api/endpoints';
 import { getTmdbAuth, tmdbLocale } from '../../lib/search/providers/tmdb';
 import { bookIdFromWorkKey } from '../../lib/search/providers/openlibrary';
-import { useDebouncedSearch } from '../../lib/shared/useDebouncedSearch';
+import { useDebouncedSearch } from '../shared/hooks/useDebouncedSearch';
 import { Pagination } from '../media/Pagination';
 
 const PAGE_SIZE = 50;
@@ -32,6 +34,17 @@ const PROVIDER_LABELS: Record<ApiProvider, string> = {
   comicvine:   'Comic Vine (Cómics)',
 };
 
+// Why these don't go through lib/search's `search()` / provider functions:
+// every one of those applies the exact filtering this component exists to
+// bypass (cover required, TMDB anime excluded, AniList adult/NOVEL/season
+// filtering, Open Library comic/manga heuristics, Comic Vine reprint
+// collapsing), issues per-type queries (different ordering than AniList's
+// untyped SEARCH_MATCH or TMDB's /search/multi) and fetches 100-result
+// pages. What IS shared: the typed fetch helpers (graphqlPost — AniList
+// rate-limited — and fetchJson, both timeout+abort aware), the typed Tauri
+// wrappers (igdbSearchUnfiltered, comicVineSearch), and the providers'
+// exported auth/url/id helpers.
+
 // ── AniList raw search — no format/type filter ────────────────────────────────
 const ANILIST_RAW_QUERY = `
   query Search($q: String!, $page: Int) {
@@ -46,15 +59,28 @@ const ANILIST_RAW_QUERY = `
   }
 `;
 
+interface AniListRawMedia {
+  id: number;
+  type: 'ANIME' | 'MANGA' | null;
+  format: string | null;
+  title: { romaji: string | null; english: string | null; native: string | null } | null;
+  coverImage: { large: string | null } | null;
+  startDate: { year: number | null } | null;
+}
+
+interface AniListRawData {
+  Page?: { media?: AniListRawMedia[] };
+}
+
 async function searchAniListRaw(query: string, signal: AbortSignal): Promise<RawResult[]> {
-  const { ok, result } = await graphqlPost<any>(
+  const { ok, result } = await graphqlPost<AniListRawData>(
     API_ENDPOINTS.ANILIST,
     ANILIST_RAW_QUERY,
     { q: query, page: 1 },
     { signal },
   );
   if (!ok) return [];
-  return (result?.data?.Page?.media ?? []).map((m: any) => {
+  return (result?.data?.Page?.media ?? []).map(m => {
     // Same anime/manga/lnovel split as the normal search flow (lib/search/index.ts):
     // AniList only has ANIME/MANGA types — a light novel is a MANGA-type entry
     // with format NOVEL.
@@ -70,6 +96,20 @@ async function searchAniListRaw(query: string, signal: AbortSignal): Promise<Raw
 }
 
 // ── TMDB multi-search — movies + series without anime filter ─────────────────
+interface TmdbMultiHit {
+  id: number;
+  media_type: 'movie' | 'tv' | 'person';
+  title?: string;
+  name?: string;
+  poster_path?: string | null;
+  release_date?: string;
+  first_air_date?: string;
+}
+
+interface TmdbMultiResponse {
+  results?: TmdbMultiHit[];
+}
+
 async function searchTmdbRaw(query: string, signal: AbortSignal): Promise<RawResult[]> {
   const auth = await getTmdbAuth();
   if (!auth) return [];
@@ -78,16 +118,16 @@ async function searchTmdbRaw(query: string, signal: AbortSignal): Promise<RawRes
     ? { Authorization: `Bearer ${auth.accessToken}` }
     : {};
   const qs = auth.apiKey && !auth.accessToken ? `&api_key=${auth.apiKey}` : '';
-  const data = await fetchJson<any>(url + qs, { signal, headers });
+  const data = await fetchJson<TmdbMultiResponse>(url + qs, { signal, headers });
   if (!data) return [];
   return (data.results ?? [])
-    .filter((r: any) => r.media_type === 'movie' || r.media_type === 'tv')
-    .map((r: any) => {
+    .filter(r => r.media_type === 'movie' || r.media_type === 'tv')
+    .map(r => {
       const type = r.media_type === 'movie' ? 'movie' : 'series';
       return {
         externalId: `${type}:${r.id}`,
         title: r.title || r.name || `#${r.id}`,
-        cover: r.poster_path ? `https://image.tmdb.org/t/p/w185${r.poster_path}` : null,
+        cover: r.poster_path ? API_ENDPOINTS.TMDB_IMAGE(r.poster_path, 'w185') : null,
         year:  r.release_date
           ? parseInt(r.release_date.slice(0, 4))
           : r.first_air_date ? parseInt(r.first_air_date.slice(0, 4)) : null,
@@ -97,25 +137,39 @@ async function searchTmdbRaw(query: string, signal: AbortSignal): Promise<RawRes
 }
 
 // ── OpenLibrary raw search — no cover filter ──────────────────────────────────
+interface OpenLibraryRawDoc {
+  key: string;
+  title: string;
+  author_name?: string[];
+  first_publish_year?: number;
+  cover_i?: number;
+}
+
+interface OpenLibraryRawResponse {
+  docs?: OpenLibraryRawDoc[];
+}
+
 async function searchOpenLibraryRaw(query: string, signal: AbortSignal): Promise<RawResult[]> {
-  const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=50&fields=key,title,author_name,first_publish_year,cover_i`;
-  const data = await fetchJson<any>(url, { signal });
+  const url = `${API_ENDPOINTS.OPENLIBRARY}/search.json?q=${encodeURIComponent(query)}&limit=50&fields=key,title,author_name,first_publish_year,cover_i`;
+  const data = await fetchJson<OpenLibraryRawResponse>(url, { signal });
   if (!data) return [];
-  return (data.docs ?? []).map((b: any) => ({
+  return (data.docs ?? []).map(b => ({
     externalId: `book:${bookIdFromWorkKey(b.key)}`,
     title: b.title,
-    cover: b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
+    cover: b.cover_i ? `${API_ENDPOINTS.OPENLIBRARY_COVERS}/${b.cover_i}-M.jpg` : null,
     year:  b.first_publish_year ?? null,
     extra: b.author_name?.[0] ?? null,
   }));
 }
 
 // ── Comic Vine raw search — no cover filter ───────────────────────────────────
-async function searchComicVineRaw(query: string, signal: AbortSignal): Promise<RawResult[]> {
-  const url = `/api/search/comics?q=${encodeURIComponent(query)}&page=1`;
-  const data = await fetchJson<any>(url, { signal });
-  if (!data) return [];
-  return (data.results ?? []).map((v: any) => ({
+// Same Tauri command lib/search/providers/comicvine.ts uses (Comic Vine has
+// no CORS, so there's no browser path at all — see that file), minus its
+// cover/manga/reprint filtering.
+async function searchComicVineRaw(query: string): Promise<RawResult[]> {
+  if (!isTauri()) return [];
+  const page = await comicVineSearch(query, 1);
+  return page.volumes.map(v => ({
     externalId: `comic:${v.id}`,
     title: v.name,
     cover: v.image?.medium_url ?? null,
@@ -127,13 +181,15 @@ async function searchComicVineRaw(query: string, signal: AbortSignal): Promise<R
 // ── IGDB unfiltered search ────────────────────────────────────────────────────
 async function searchIgdbRaw(query: string): Promise<RawResult[]> {
   const page = await igdbSearchUnfiltered(query, 1);
-  return (page.games ?? []).map((g: any) => {
+  return (page.games ?? []).map(g => {
     const cover = g.cover?.image_id ? igdbImageUrl(g.cover.image_id, 'cover_big') : null;
     const year = g.first_release_date
       ? new Date(g.first_release_date * 1000).getFullYear()
       : null;
-    const genres = Array.isArray(g.genres) ? g.genres.map((gn: any) => gn.name).join(', ') : null;
-    const type = g.is_vn ? 'vnovel' : 'game';
+    const genres = Array.isArray(g.genres) ? g.genres.map(gn => gn.name).join(', ') : null;
+    // is_vn is stamped on by igdb_search_unfiltered (igdb.rs) — not part of
+    // IgdbGame's declared fields, so it comes through the index signature.
+    const type = g.is_vn === true ? 'vnovel' : 'game';
     return {
       externalId: `${type}:${g.id}`,
       title: g.name,
@@ -172,7 +228,7 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
                     : provider === 'anilist'     ? searchAniListRaw(q, signal)
                     : provider === 'tmdb'        ? searchTmdbRaw(q, signal)
                     : provider === 'openlibrary' ? searchOpenLibraryRaw(q, signal)
-                    : searchComicVineRaw(q, signal);
+                    : searchComicVineRaw(q);
       return search.catch(err => {
         console.error('[AdminAddSearch] Search error:', err);
         return [] as RawResult[];

@@ -1,0 +1,35 @@
+[[permission]]
+identifier = "allow-player-commands"
+description = "Built-in video player (src/player): open, control and close playback"
+commands.allow = [
+  "player_engine_available",
+  "player_open",
+  "player_toggle_pause",
+  "player_set_pause",
+  "player_seek",
+  "player_next",
+  "player_prev",
+  "player_play_index",
+  "player_set_track",
+  "player_set_volume",
+  "player_set_mute",
+  "player_set_speed",
+  "player_set_sub_delay",
+  "player_screenshot",
+  "player_get_status",
+  "player_get_session",
+  "player_stop_close",
+  "player_set_video_bounds",
+  "player_set_fullscreen",
+  "player_is_fullscreen",
+  "player_focus_overlay",
+]
+
+[[permission]]
+identifier = "allow-toast-commands"
+description = "Native toast window: readiness handshake, the watched-episode toast and its Undo action"
+commands.allow = [
+  "screenshot_toast_ready",
+  "show_episode_watched_toast",
+  "episode_toast_action",
+]

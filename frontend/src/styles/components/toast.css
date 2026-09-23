@@ -36,7 +36,7 @@
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--toast-background, #ef4444);
+  background: var(--toast-background, var(--color-error-strong));
   color: white;
   padding: 12px 24px;
   border-radius: 8px;

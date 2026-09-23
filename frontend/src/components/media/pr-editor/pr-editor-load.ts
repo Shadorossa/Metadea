@@ -1,66 +1,114 @@
-// The relations/saga half of PrEditorModal's load() effect — a pure
-// computation of `externalId` alone, split out since it reads no component
-// state. (The catalog-entry half stays in the component, in its own try block.)
-import { getCatalogEntryForEditor, getMediaRelationsForEditor } from '../../../lib/tauri/catalog';
+// PrEditorModal's load() effect, split out since it reads no component
+// state: the catalog entry itself (resolveCatalogEntryForEditor) and the
+// relations/saga half (loadPrEditorRelationsAndSaga), each a pure
+// computation of `externalId` alone.
+import { getBlockedExternalIds, getCatalogEntryForEditor, getMediaRelationsForEditor } from '../../../lib/tauri/catalog';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../../lib/tauri/catalog';
 import { invoke } from '../../../lib/tauri';
+import { fetchMediaDataInternal } from '../../../lib/media/media-page-data';
+import { mapMediaDataToCatalogEntry } from '../../../lib/media/mappers/catalog-mapper';
+import { comicVineGetIssues } from '../../../lib/tauri/comicvine';
 import {
   BUNDLE_RELATION_TYPES, PART_OF_RELATION_TYPES, CONTAINS_RELATION_TYPES,
   isSagaRelationType, normalizeLegacyRelationType, type SagaRelationType,
-} from '../../../lib/media/sagaTypes';
-import { reconstructSagaOrder, type MediaMeta } from '../../../lib/media/sagaGrouping';
-import { compareByReleaseDate } from '../../../lib/media/mapper-utils';
-import { CANONICAL_RELATION_LABELS } from '../../../lib/media/canonical-relations';
-import type { BundledRelation, EditableRelation } from '../PrEditorModal';
+} from '../../../lib/media/saga/saga-relation-types';
+import { reconstructSagaOrder, type MediaMeta } from '../../../lib/media/saga/saga-grouping';
+import { compareByReleaseDate } from '../../../lib/media/mappers/mapper-utils';
+import { CANONICAL_RELATION_LABELS } from '../../../lib/media/saga/canonical-relations';
+import type { BundledRelation } from '../../../lib/media/editor/pr-editor-types';
+import type { PrEditorDraft } from './pr-editor-state';
+
+// The draft fields this loader fills in — the modal dispatches them as one
+// 'load' (both baseline and draft). The catalog entry, bundle children,
+// characters and authors are loaded separately.
+export type PrEditorLoadedDraft = Pick<PrEditorDraft,
+  'bundledRelations' | 'containedRelations' | 'editableRelations' | 'recommendations' | 'issueRelations'
+  | 'sagaOrder' | 'sagaRelationTypes' | 'sagaGroups' | 'sagaName'>;
+
+// The catalog row to edit, or a blank one for an id not in the catalog yet.
+// Null when the read failed for an entry that isn't blocked either — the
+// modal shows its local-read error for that.
+export async function resolveCatalogEntryForEditor(externalId: string): Promise<MediaCatalogEntry | null> {
+  try {
+    const res = await getCatalogEntryForEditor(externalId);
+    return res ?? {
+      id: '',
+      external_id: externalId,
+      type: externalId.split(':')[0],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  } catch (err) {
+    console.error('Failed to get catalog entry:', err);
+    // An older running Tauri binary may not yet have the editor-only
+    // command compiled in. The blocked-id command is older and lets the
+    // modal preserve the active removal state instead of presenting a
+    // misleading enabled-looking button.
+    const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+    if (!blockedIds.includes(externalId)) return null;
+    const now = new Date().toISOString();
+    const liveData = await fetchMediaDataInternal(externalId, true).catch(() => null);
+    return {
+      ...(liveData ? mapMediaDataToCatalogEntry(liveData, externalId) : {}),
+      id: '',
+      external_id: externalId,
+      type: liveData?.type ?? externalId.split(':')[0],
+      blocked_at: 'blocked',
+      created_at: now,
+      updated_at: now,
+    };
+  }
+}
+
+// The issue list a ComicVine volume resolves to, as relation cards — issues
+// without a cover are skipped since the card is the cover.
+export async function loadComicVineIssuePreview(volumeId: number, baseType: string): Promise<BundledRelation[]> {
+  const issues = await comicVineGetIssues(volumeId);
+  return issues.flatMap(issue => {
+    const cover = issue.image?.medium_url || issue.image?.small_url;
+    if (!cover) return [];
+    const number = issue.issue_number ? `#${issue.issue_number}` : '';
+    const name = issue.name ? ` - ${issue.name}` : '';
+    return [{
+      external_id: `${baseType}:issue-${issue.id}`,
+      title: number + name || `#${issue.id}`,
+      cover,
+    }];
+  });
+}
 
 export interface PrEditorRelationsAndSagaResult {
-  bundledRelations: BundledRelation[];
-  originalBundledIds: Set<string>;
-  containedRelations: BundledRelation[];
-  originalContainedIds: Set<string>;
-  editableRelations: EditableRelation[];
-  originalEditableRelationTypes: Map<string, string>;
-  recommendations: BundledRelation[];
-  originalRecommendationIds: Set<string>;
-  // ComicVine issues — split out of editableRelations into their own
-  // section since their titles are often just a bare issue number, which
-  // used to clutter the general Relations grid with a wall of numbers.
-  issueRelations: BundledRelation[];
-  originalIssueIds: Set<string>;
+  draft: PrEditorLoadedDraft;
   // Re-fetched via the transitive-ids expansion below — callers should prefer
   // this over whatever the sibling try block's getCatalogEntry resolved.
   currentEntry: MediaCatalogEntry | null;
+  // Display-only metadata (cover/title) for saga members other than this
+  // entry, so tags can show a thumbnail instead of a bare id.
   sagaMeta: Record<string, MediaMeta>;
-  sagaOrder: string[];
-  originalSagaOrder: string[];
-  sagaRelationTypes: Record<string, SagaRelationType>;
-  originalSagaRelationTypes: Record<string, SagaRelationType>;
-  sagaGroups: Record<string, string>;
-  originalSagaGroups: Record<string, string>;
-  sagaName: string;
-  originalSagaName: string;
 }
 
 export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<PrEditorRelationsAndSagaResult> {
   const rels = await getMediaRelationsForEditor(externalId).catch(() => [] as DbMediaRelation[]);
 
-  // Each of these sections is a plain list of related ids plus the set of ids
-  // it started out with, which the modal diffs against on submit.
-  const summarize = (matches: (r: DbMediaRelation) => boolean) => {
-    const list: BundledRelation[] = rels.filter(matches).map(r => ({
+  // Each of these sections is a plain list of related ids; the ids it
+  // started out with are derived from the baseline (pr-editor-state.ts)
+  // when the modal diffs against them on submit.
+  const summarize = (matches: (r: DbMediaRelation) => boolean): BundledRelation[] =>
+    rels.filter(matches).map(r => ({
       external_id: r.related_media_external_id,
       title: r.title,
       cover: r.cover,
     }));
-    return [list, new Set(list.map(r => r.external_id))] as const;
-  };
 
   // Bundled In (PART_OF/UPDATE) vs. Contains (EPISODE) are opposite directions
   // of the same relationship; BUNDLE_RELATION_TYPES covers both for excluding them below.
-  const [bundledRelations, originalBundledIds] = summarize(r => PART_OF_RELATION_TYPES.includes(r.relation_type));
-  const [containedRelations, originalContainedIds] = summarize(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
-  const [issueRelations, originalIssueIds] = summarize(r => r.relation_type === 'ISSUE');
-  const [recommendations, originalRecommendationIds] = summarize(r => r.relation_type === 'RECOMMENDATION');
+  const bundledRelations = summarize(r => PART_OF_RELATION_TYPES.includes(r.relation_type));
+  const containedRelations = summarize(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
+  // ComicVine issues — split out of editableRelations into their own
+  // section since their titles are often just a bare issue number, which
+  // used to clutter the general Relations grid with a wall of numbers.
+  const issueRelations = summarize(r => r.relation_type === 'ISSUE');
+  const recommendations = summarize(r => r.relation_type === 'RECOMMENDATION');
 
   const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
   if (!transitiveIds.includes(externalId)) transitiveIds.push(externalId);
@@ -83,7 +131,6 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
         cover: r.cover,
       };
     });
-  const originalEditableRelationTypes = new Map(editableRelations.map(r => [r.related_media_external_id, r.relation_type]));
 
   const entriesData = await Promise.all(
     transitiveIds.map(async id => ({ id, entry: await getCatalogEntryForEditor(id).catch(() => null) }))
@@ -118,7 +165,6 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
   ]);
   // Reconstructed from SEQUEL edges, not release-date order alone, so a manual reorder survives a reload.
   const sagaOrder = reconstructSagaOrder(sortedIds, allRelsList);
-  const originalSagaOrder = sagaOrder;
 
   const sagaRelationTypes: Record<string, SagaRelationType> = {};
   const sagaGroups: Record<string, string> = {};
@@ -155,25 +201,18 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
   }
 
   return {
-    bundledRelations,
-    originalBundledIds,
-    containedRelations,
-    originalContainedIds,
-    editableRelations,
-    originalEditableRelationTypes,
-    recommendations,
-    originalRecommendationIds,
-    issueRelations,
-    originalIssueIds,
+    draft: {
+      bundledRelations,
+      containedRelations,
+      editableRelations,
+      recommendations,
+      issueRelations,
+      sagaOrder,
+      sagaRelationTypes,
+      sagaGroups,
+      sagaName: dbSagaName || '',
+    },
     currentEntry,
     sagaMeta,
-    sagaOrder,
-    originalSagaOrder,
-    sagaRelationTypes,
-    originalSagaRelationTypes: { ...sagaRelationTypes },
-    sagaGroups,
-    originalSagaGroups: { ...sagaGroups },
-    sagaName: dbSagaName || '',
-    originalSagaName: dbSagaName || '',
   };
 }

@@ -1,11 +1,20 @@
-import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, saveCatalogEntry, getAniListToken } from '../tauri';
+import { getAllLibraryEntries, getCatalogEntriesByIds, saveLibraryEntry, saveCatalogEntry, getAniListToken } from '../tauri';
 import type { LibraryEntry } from '../tauri';
 import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
-import { saveMediaCompanies } from '../tauri/misc-commands';
-import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../constants/media';
+import { saveMediaCompanies } from '../tauri/companies';
+import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../media/media-types';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
+import { getT } from '../../i18n/runtime';
+
+// Which of the ids about to be imported already have a (visible) catalog
+// row — the only thing the import loops ask of the catalog, so it's a
+// by-ids lookup rather than the whole table.
+async function loadCatalogedIds(externalIds: string[]): Promise<Set<string>> {
+  const entries = await getCatalogEntriesByIds([...new Set(externalIds)]).catch(() => []);
+  return new Set(entries.map(e => e.external_id));
+}
 
 const IMPORT_QUERY = `
 query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
@@ -44,6 +53,10 @@ export interface ImportProgress {
   total: number;
   status: 'loading' | 'importing' | 'saving' | 'done' | 'error';
   message?: string;
+  // Items whose local write failed. A run with failures still reports
+  // 'done' — it is a partial success, not an error — and the UI is expected
+  // to say how many did not land.
+  failed?: number;
 }
 
 type AniListMediaType = 'ANIME' | 'MANGA';
@@ -145,7 +158,7 @@ async function fetchAllPages(
   let hasNextPage = true;
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
   while (hasNextPage) {
-    onProg({ current: page - 1, total: page, status: 'loading', message: `Descargando ${anilistType} página ${page}...` });
+    onProg({ current: page - 1, total: page, status: 'loading', message: getT().settings.anilist_downloading_page.replace('{type}', anilistType).replace('{page}', String(page)) });
     const { ok, status, result: pageResult } = await graphqlPost<AniListImportPage>(
       API_ENDPOINTS.ANILIST, IMPORT_QUERY, { userId, type: anilistType, page }, { token },
     );
@@ -242,8 +255,9 @@ async function fetchAniListItems(
 export async function importFromAniList(
   selectedFormats: string[],
   onProgress?: (progress: ImportProgress) => void
-): Promise<{ ok: boolean; error?: string; imported?: number }> {
+): Promise<{ ok: boolean; error?: string; imported?: number; failed?: number }> {
   const onProg = onProgress || (() => {});
+  let failed = 0;
   if (!selectedFormats.some(f => ANIME_FORMAT_SET.has(f)) && !selectedFormats.some(f => MANGA_FORMAT_SET.has(f))) {
     return { ok: true, imported: 0 };
   }
@@ -253,17 +267,17 @@ export async function importFromAniList(
     if ('ok' in fetched) return fetched;
     const { filteredList } = fetched;
 
-    onProg({ current: 1, total: 1, status: 'importing', message: `Importando ${filteredList.length} items...` });
+    onProg({ current: 1, total: 1, status: 'importing', message: getT().settings.anilist_importing_items.replace('{count}', String(filteredList.length)) });
 
     const existingLibrary = await getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
     const existingMap = new Map(existingLibrary.map(e => [e.external_id, e]));
-    const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
-    const catalogMap = new Map(catalogEntries.map(e => [e.external_id, e]));
+    const importIds = filteredList.map(mediaItem => formatMediaId(mediaItem.media?.type ?? 'ANIME', mediaItem.media?.format, mediaItem.mediaId));
+    const catalogIds = await loadCatalogedIds(importIds);
 
     let imported = 0;
 
-    for (const mediaItem of filteredList) {
-      const externalId = formatMediaId(mediaItem.media?.type ?? 'ANIME', mediaItem.media?.format, mediaItem.mediaId);
+    for (const [index, mediaItem] of filteredList.entries()) {
+      const externalId = importIds[index];
 
       if (existingMap.has(externalId)) {
         imported++;
@@ -294,19 +308,24 @@ export async function importFromAniList(
         selected_version: null,
       };
 
-      await saveLibraryEntry(entry).catch(console.error);
-
-      if (!catalogMap.has(externalId)) {
-        await saveCatalogEntry(buildCatalogEntry(externalId, entryType, mediaItem)).catch(console.error);
-        await saveAniListStudios(externalId, entryType, mediaItem);
+      try {
+        await saveLibraryEntry(entry);
+        if (!catalogIds.has(externalId)) {
+          await saveCatalogEntry(buildCatalogEntry(externalId, entryType, mediaItem));
+          await saveAniListStudios(externalId, entryType, mediaItem);
+        }
+      } catch (err) {
+        failed++;
+        console.error(`Failed to import ${externalId}:`, err);
+        continue;
       }
 
       imported++;
       onProg({ current: imported, total: filteredList.length, status: 'importing', message: `${imported}/${filteredList.length}...` });
     }
 
-    onProg({ current: filteredList.length, total: filteredList.length, status: 'done' });
-    return { ok: true, imported };
+    onProg({ current: filteredList.length, total: filteredList.length, status: 'done', failed });
+    return { ok: true, imported, failed };
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error';
     onProg({ current: 0, total: 0, status: 'error', message });
@@ -317,8 +336,9 @@ export async function importFromAniList(
 export async function syncFromAniList(
   selectedFormats: string[],
   onProgress?: (progress: ImportProgress) => void
-): Promise<{ ok: boolean; error?: string; updated?: number; added?: number }> {
+): Promise<{ ok: boolean; error?: string; updated?: number; added?: number; failed?: number }> {
   const onProg = onProgress || (() => {});
+  let failed = 0;
   if (!selectedFormats.some(f => ANIME_FORMAT_SET.has(f)) && !selectedFormats.some(f => MANGA_FORMAT_SET.has(f))) {
     return { ok: true, updated: 0, added: 0 };
   }
@@ -328,12 +348,13 @@ export async function syncFromAniList(
     if ('ok' in fetched) return fetched;
     const { filteredList } = fetched;
 
-    onProg({ current: 0, total: filteredList.length, status: 'importing', message: `Sincronizando ${filteredList.length} items...` });
+    onProg({ current: 0, total: filteredList.length, status: 'importing', message: getT().settings.anilist_syncing_items.replace('{count}', String(filteredList.length)) });
 
     const existingLibrary = await getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
     const existingMap = new Map(existingLibrary.map(e => [e.external_id, e]));
-    const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
-    const catalogMap = new Map(catalogEntries.map(e => [e.external_id, e]));
+    const catalogIds = await loadCatalogedIds(
+      filteredList.map(mediaItem => formatMediaId(mediaItem.media?.type ?? 'ANIME', mediaItem.media?.format, mediaItem.mediaId)),
+    );
 
     let updated = 0;
     let added = 0;
@@ -368,18 +389,23 @@ export async function syncFromAniList(
           (existing.notes ?? null) !== newNotes;
 
         if (changed) {
-          await saveLibraryEntry({
-            ...existing,
-            type: newType,
-            status: newStatus,
-            rating: newRating,
-            progress: newProgress,
-            progress_2: newProgress2,
-            started_at: newStartedAt,
-            finished_at: newFinishedAt,
-            notes: newNotes,
-          }).catch(console.error);
-          updated++;
+          try {
+            await saveLibraryEntry({
+              ...existing,
+              type: newType,
+              status: newStatus,
+              rating: newRating,
+              progress: newProgress,
+              progress_2: newProgress2,
+              started_at: newStartedAt,
+              finished_at: newFinishedAt,
+              notes: newNotes,
+            });
+            updated++;
+          } catch (err) {
+            failed++;
+            console.error(`Failed to update ${importId}:`, err);
+          }
         }
       } else {
         const entryType = newType;
@@ -405,20 +431,25 @@ export async function syncFromAniList(
           selected_platform: null,
           selected_version: null,
         };
-        await saveLibraryEntry(entry).catch(console.error);
-        if (!catalogMap.has(importId)) {
-          await saveCatalogEntry(buildCatalogEntry(importId, entryType, mediaItem)).catch(console.error);
-          await saveAniListStudios(importId, entryType, mediaItem);
+        try {
+          await saveLibraryEntry(entry);
+          if (!catalogIds.has(importId)) {
+            await saveCatalogEntry(buildCatalogEntry(importId, entryType, mediaItem));
+            await saveAniListStudios(importId, entryType, mediaItem);
+          }
+          added++;
+        } catch (err) {
+          failed++;
+          console.error(`Failed to add ${importId}:`, err);
         }
-        added++;
       }
 
       done++;
       onProg({ current: done, total: filteredList.length, status: 'importing', message: `${done}/${filteredList.length}...` });
     }
 
-    onProg({ current: filteredList.length, total: filteredList.length, status: 'done' });
-    return { ok: true, updated, added };
+    onProg({ current: filteredList.length, total: filteredList.length, status: 'done', failed });
+    return { ok: true, updated, added, failed };
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error';
     onProg({ current: 0, total: 0, status: 'error', message });

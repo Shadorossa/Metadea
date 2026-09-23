@@ -1,6 +1,6 @@
-import type { DbMediaRelation, MediaCatalogEntry } from '../tauri';
-import { isSagaComponentRelationType, SAGA_GROUPABLE_TYPES } from '../media/sagaTypes';
-import { createUnionFind, type UnionFind } from '../shared/union-find';
+import type { DbMediaRelation, CatalogSummary } from '../tauri';
+import { isSagaComponentRelationType, SAGA_GROUPABLE_TYPES } from '../media/saga/saga-relation-types';
+import { createUnionFind, type UnionFind } from '../shared/collections/union-find';
 
 export interface DirectSagaGraph {
   graph: UnionFind<string>;
@@ -13,7 +13,7 @@ export interface DirectSagaGraph {
  */
 export function buildDirectSagaGraph(
   relations: DbMediaRelation[],
-  catalogMap: Map<string, MediaCatalogEntry>,
+  catalogMap: Map<string, CatalogSummary>,
 ): DirectSagaGraph {
   const graph = createUnionFind<string>();
   const directIds = new Set<string>();

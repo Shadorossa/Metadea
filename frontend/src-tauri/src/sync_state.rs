@@ -51,18 +51,21 @@ pub async fn get_sync_states(
         return Ok(Vec::new());
     }
     let conn = state.conn.lock().str_err()?;
-    let placeholders = external_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-    let sql = format!(
-        "SELECT external_id, last_synced_at, sync_failed_count, last_sync_error
-         FROM sync_state WHERE external_id IN ({placeholders})"
-    );
-    let mut stmt = conn.prepare(&sql).str_err()?;
-    let params = rusqlite::params_from_iter(external_ids.iter());
-    let rows = stmt
-        .query_map(params, row_to_entry)
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
+    let mut rows = Vec::with_capacity(external_ids.len());
+    for chunk in external_ids.chunks(crate::db::SQL_IN_CHUNK) {
+        let placeholders = crate::db::sql_placeholders(chunk.len());
+        let sql = format!(
+            "SELECT external_id, last_synced_at, sync_failed_count, last_sync_error
+             FROM sync_state WHERE external_id IN ({placeholders})"
+        );
+        let mut stmt = conn.prepare(&sql).str_err()?;
+        let params = rusqlite::params_from_iter(chunk.iter());
+        rows.extend(
+            stmt.query_map(params, row_to_entry)
+                .str_err()?
+                .filter_map(|r| r.ok()),
+        );
+    }
     Ok(rows)
 }
 

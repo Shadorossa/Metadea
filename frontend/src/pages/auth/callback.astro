@@ -16,8 +16,8 @@ const t    = useTranslations(lang);
 
     <script>
       import { storeAuthToken, initTauriDatabase } from '../../lib/tauri';
-      import { API_URL } from '../../lib/config';
-      import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
+      import { API_URL } from '../../lib/api/urls';
+      import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
 
       // Standalone page (no BaseLayout) — every invoke() call (see
       // lib/tauri/core.ts) awaits a promise that only resolves once this

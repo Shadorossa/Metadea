@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useEscapeKey } from '../../lib/shared/useEscapeKey';
-import type { RelationOptionGroup } from '../../lib/media/sagaTypes';
+import { useEscapeKey } from '../shared/hooks/useEscapeKey';
+import type { RelationOptionGroup } from '../../lib/media/saga/saga-relation-types';
 
 interface RelationTypeSelectProps {
   value:        string;

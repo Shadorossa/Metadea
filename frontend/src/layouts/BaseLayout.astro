@@ -16,7 +16,7 @@ import '../styles/components/now-playing-bar.css';
 import { CharacterPrEditorModal } from '../components/character/CharacterPrEditorModal';
 import type { Locale } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
-import { STORAGE_KEYS } from '../lib/shared/storage-keys';
+import { STORAGE_KEYS } from '../lib/storage/storage-keys';
 import ClientRouter from 'astro/components/ClientRouter.astro';
 
 import '../styles/core/themes/nebula.css';
@@ -92,9 +92,10 @@ const t = useTranslations(lang);
     <NowPlayingBar client:load transition:persist />
     <NowReadingBar client:load transition:persist />
 
-    <!-- Global character editor (see window.openCharacterEditor) — used to
-         only be mounted per-page (character.astro, admin/catalog.astro),
-         which meant window.openCharacterEditor was undefined anywhere else
+    <!-- Global character editor (see window.__metadeaCharacterEditor in
+         lib/shared/editor-session-bus.ts) — used to only be mounted per-page
+         (character.astro, admin/catalog.astro), which meant the editor API
+         was undefined anywhere else
          PrEditorModal's own "+ Crear personaje"/character list can open it
          from (e.g. the actual media page) — the button silently did nothing
          since that call is optional-chained. Mounted here once instead, so
@@ -144,7 +145,7 @@ const t = useTranslations(lang);
     </dialog>
 
     <script>
-      import { STORAGE_KEYS } from '../lib/shared/storage-keys';
+      import { STORAGE_KEYS } from '../lib/storage/storage-keys';
 
       // Auth modal — runs on first load and after each View Transitions swap
       function initAuthModal() {
@@ -238,7 +239,7 @@ const t = useTranslations(lang);
       // it can fire from Search, a media page, the library import, etc.
       let rateLimitToastTimer: ReturnType<typeof setTimeout> | undefined;
       window.addEventListener('metadea:rate-limit-wait', (async (e: CustomEvent<{ provider: string; waitMs: number }>) => {
-        const { getT } = await import('../i18n/client');
+        const { getT } = await import('../i18n/runtime');
         const template = getT().settings.rate_limit_wait || 'Waiting on {provider}\'s rate limit...';
         showGlobalToast(template.replace('{provider}', e.detail.provider));
         clearTimeout(rateLimitToastTimer);
@@ -257,7 +258,7 @@ const t = useTranslations(lang);
       async function checkAppUpdates() {
         if (!isTauriRuntime()) return;
         if (!navigator.onLine) return;
-        const { getT } = await import('../i18n/client');
+        const { getT } = await import('../i18n/runtime');
         const tm = getT().settings;
         const showStatus = isOnHomePage();
         if (showStatus) showGlobalToast(tm.app_checking_update || 'Buscando actualizaciones...');
@@ -313,7 +314,7 @@ const t = useTranslations(lang);
         try {
           const { initTauriDatabase } = await import('../lib/tauri');
           await initTauriDatabase();
-          const { startLibraryReleaseNotifications } = await import('../lib/shared/library-release-notifications');
+          const { startLibraryReleaseNotifications } = await import('../lib/notifications/library-release-notifications');
           startLibraryReleaseNotifications();
         } catch (e) {
           console.error(e);
@@ -348,8 +349,12 @@ const t = useTranslations(lang);
         }
 
         if (!window.location.pathname.startsWith('/media')) {
-          import('../lib/discord/presence-manager').then(m => m.requestDiscordIdle()).catch(() => {});
+          import('../lib/local/discord-presence').then(m => m.requestDiscordIdle()).catch(() => {});
         }
+
+        // metadea:// links (lib/deep-link/) — idempotent, so re-running this
+        // handler after a page swap never stacks a second listener.
+        import('../lib/deep-link/deep-link-listener').then(m => m.registerDeepLinkListener()).catch(() => {});
       });
     </script>
 

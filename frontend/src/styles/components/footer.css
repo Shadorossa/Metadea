@@ -70,17 +70,17 @@
 
 .footer-bottom-row {
   display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  width: 100% !important;
-  margin-top: 1rem !important;
-  padding-top: 0.5rem !important;
-  border-top: 1px solid rgba(255,255,255,0.05) !important;
-  font-size: 0.65rem !important;
-  color: var(--text-dim) !important;
-  font-family: monospace !important;
-  letter-spacing: 0.05em !important;
-  opacity: 0.85 !important;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
 }
 
 .footer-tos-link {

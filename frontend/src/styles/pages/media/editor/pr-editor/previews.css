@@ -1,0 +1,32 @@
+/* PrEditorEpisodesSection / PrEditorThemesSection preview grids. Split verbatim from pr.css. */
+.pr-editor-episode-preview-grid {
+  margin-top: 0.75rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .pr-editor-episode-preview-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .pr-editor-episode-preview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .pr-editor-episode-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.pr-editor-episode-preview-state {
+  grid-column: 1 / -1;
+}
+
+.pr-editor-theme-preview-grid {
+  min-height: 0;
+  margin-bottom: 0;
+}

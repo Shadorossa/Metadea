@@ -139,8 +139,8 @@ fn assign_saga_order_indices(chain_ids: &[String], existing: &std::collections::
     }
 
     let (last_i, last_v) = anchors[anchors.len() - 1];
-    for i in (last_i + 1)..chain_ids.len() {
-        result.insert(chain_ids[i].clone(), last_v + (i - last_i) as f64);
+    for (i, id) in chain_ids.iter().enumerate().skip(last_i + 1) {
+        result.insert(id.clone(), last_v + (i - last_i) as f64);
     }
 
     for w in anchors.windows(2) {
@@ -156,6 +156,156 @@ fn assign_saga_order_indices(chain_ids: &[String], existing: &std::collections::
     }
 
     result
+}
+
+#[cfg(test)]
+mod release_date_key_tests {
+    use super::{release_date_key, SagaEntry};
+
+    fn entry(year: Option<i32>, month: Option<i32>, day: Option<i32>) -> SagaEntry {
+        SagaEntry {
+            external_id: "x".to_string(),
+            title: "x".to_string(),
+            cover: None,
+            format: None,
+            media_type: "anime".to_string(),
+            year,
+            month,
+            day,
+        }
+    }
+
+    #[test]
+    fn uses_the_fields_when_present() {
+        assert_eq!(release_date_key(&entry(Some(2001), Some(3), Some(9))), (2001, 3, 9));
+    }
+
+    #[test]
+    fn missing_fields_sort_last() {
+        assert_eq!(release_date_key(&entry(None, None, None)), (9999, 12, 31));
+        assert_eq!(release_date_key(&entry(Some(1999), None, None)), (1999, 12, 31));
+        assert_eq!(release_date_key(&entry(Some(1999), Some(1), None)), (1999, 1, 31));
+    }
+
+    #[test]
+    fn sorting_puts_known_dates_before_unknown_ones() {
+        let mut entries = [entry(None, None, None),
+            entry(Some(2005), None, None),
+            entry(Some(2005), Some(2), Some(1))];
+        entries.sort_by_key(release_date_key);
+        let years: Vec<(Option<i32>, Option<i32>)> = entries.iter().map(|e| (e.year, e.month)).collect();
+        assert_eq!(years, vec![(Some(2005), Some(2)), (Some(2005), None), (None, None)]);
+    }
+}
+
+#[cfg(test)]
+mod assign_saga_order_indices_tests {
+    use super::assign_saga_order_indices;
+    use std::collections::HashMap;
+
+    fn ids(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| s.to_string()).collect()
+    }
+
+    fn existing(pairs: &[(&str, f64)]) -> HashMap<String, f64> {
+        pairs.iter().map(|(k, v)| (k.to_string(), *v)).collect()
+    }
+
+    fn get(result: &HashMap<String, f64>, id: &str) -> f64 {
+        result[id]
+    }
+
+    #[test]
+    fn renumbers_from_100_when_nothing_is_anchored() {
+        let result = assign_saga_order_indices(&ids(&["a", "b", "c"]), &HashMap::new());
+        assert_eq!(get(&result, "a"), 100.0);
+        assert_eq!(get(&result, "b"), 101.0);
+        assert_eq!(get(&result, "c"), 102.0);
+    }
+
+    #[test]
+    fn empty_chain_yields_empty_result() {
+        assert!(assign_saga_order_indices(&[], &existing(&[("a", 1.0)])).is_empty());
+    }
+
+    #[test]
+    fn keeps_existing_values_when_already_monotonic() {
+        let result = assign_saga_order_indices(
+            &ids(&["a", "b", "c"]),
+            &existing(&[("a", 100.0), ("b", 150.0), ("c", 300.0)]),
+        );
+        assert_eq!(get(&result, "a"), 100.0);
+        assert_eq!(get(&result, "b"), 150.0);
+        assert_eq!(get(&result, "c"), 300.0);
+    }
+
+    #[test]
+    fn extends_the_front_by_whole_steps_below_the_first_anchor() {
+        let result = assign_saga_order_indices(&ids(&["x", "y", "a"]), &existing(&[("a", 100.0)]));
+        assert_eq!(get(&result, "x"), 98.0);
+        assert_eq!(get(&result, "y"), 99.0);
+        assert_eq!(get(&result, "a"), 100.0);
+    }
+
+    #[test]
+    fn extends_the_back_by_whole_steps_above_the_last_anchor() {
+        let result = assign_saga_order_indices(&ids(&["a", "x", "y"]), &existing(&[("a", 100.5)]));
+        assert_eq!(get(&result, "a"), 100.5);
+        assert_eq!(get(&result, "x"), 101.5);
+        assert_eq!(get(&result, "y"), 102.5);
+    }
+
+    #[test]
+    fn inserted_between_two_anchors_takes_the_midpoint() {
+        let result = assign_saga_order_indices(
+            &ids(&["a", "n", "c"]),
+            &existing(&[("a", 100.0), ("c", 101.0)]),
+        );
+        assert_eq!(get(&result, "n"), 100.5);
+    }
+
+    #[test]
+    fn several_inserted_between_anchors_are_spaced_evenly() {
+        let result = assign_saga_order_indices(
+            &ids(&["a", "n1", "n2", "n3", "c"]),
+            &existing(&[("a", 100.0), ("c", 104.0)]),
+        );
+        assert_eq!(get(&result, "n1"), 101.0);
+        assert_eq!(get(&result, "n2"), 102.0);
+        assert_eq!(get(&result, "n3"), 103.0);
+    }
+
+    #[test]
+    fn non_monotonic_anchors_trigger_a_full_renumber() {
+        let result = assign_saga_order_indices(
+            &ids(&["a", "b", "c"]),
+            &existing(&[("a", 200.0), ("c", 100.0)]),
+        );
+        assert_eq!(get(&result, "a"), 100.0);
+        assert_eq!(get(&result, "b"), 101.0);
+        assert_eq!(get(&result, "c"), 102.0);
+    }
+
+    #[test]
+    fn equal_anchor_values_also_trigger_a_full_renumber() {
+        let result = assign_saga_order_indices(
+            &ids(&["a", "b"]),
+            &existing(&[("a", 100.0), ("b", 100.0)]),
+        );
+        assert_eq!(get(&result, "a"), 100.0);
+        assert_eq!(get(&result, "b"), 101.0);
+    }
+
+    #[test]
+    fn existing_ids_outside_the_chain_are_ignored() {
+        let result = assign_saga_order_indices(
+            &ids(&["a", "b"]),
+            &existing(&[("zzz", 5.0), ("a", 100.0)]),
+        );
+        assert_eq!(result.len(), 2);
+        assert_eq!(get(&result, "a"), 100.0);
+        assert_eq!(get(&result, "b"), 101.0);
+    }
 }
 
 #[tauri::command]
@@ -416,20 +566,21 @@ pub async fn get_saga_names(
     }
 
     let conn = state.conn.lock().str_err()?;
-    let placeholders = media_external_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-    let sql = format!(
-        "SELECT sr.media_external_id, s.name FROM saga_relations sr JOIN sagas s ON s.id = sr.saga_id
-         WHERE sr.media_external_id IN ({}) AND s.name != ''",
-        placeholders
-    );
-    let mut stmt = conn.prepare(&sql).str_err()?;
-    let params = rusqlite::params_from_iter(media_external_ids.iter());
-    let rows = stmt.query_map(params, |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-    }).str_err()?;
+    for chunk in media_external_ids.chunks(crate::db::SQL_IN_CHUNK) {
+        let sql = format!(
+            "SELECT sr.media_external_id, s.name FROM saga_relations sr JOIN sagas s ON s.id = sr.saga_id
+             WHERE sr.media_external_id IN ({}) AND s.name != ''",
+            crate::db::sql_placeholders(chunk.len())
+        );
+        let mut stmt = conn.prepare(&sql).str_err()?;
+        let params = rusqlite::params_from_iter(chunk.iter());
+        let rows = stmt.query_map(params, |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        }).str_err()?;
 
-    for row in rows.filter_map(|r| r.ok()) {
-        map.insert(row.0, row.1);
+        for row in rows.filter_map(|r| r.ok()) {
+            map.insert(row.0, row.1);
+        }
     }
     Ok(map)
 }
@@ -625,10 +776,7 @@ pub async fn get_community_sagas(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<SagaListEntry>, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .str_err()?;
+    let client = crate::http::http_client();
     let resp = client.get(COMMUNITY_DB_URL).send().await.str_err()?;
     if !resp.status().is_success() {
         return Err(format!("Failed to download community catalog: HTTP {}", resp.status()));

@@ -5,21 +5,21 @@ import {
   getLibraryEntry,
   igdbGetGameDetail, getMediaCompanies, readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
-import { getT } from '../../../i18n/client';
+import { getT } from '../../../i18n/runtime';
 import { MediaScreenshotsSection } from './MediaScreenshotsSection';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { IconMonitor, IconPencil } from '../ui/icons';
-import { formatPlaytime, formatLastPlayed } from '../utils/formatters';
-import { formatUnixDateLong } from '../../../lib/shared/formatDate';
-import { toMediumCover } from '../../../lib/shared/small-cover';
-import { setGamePresence } from '../../../lib/discord/presence-manager';
-import { gameExternalId, firstCsvUrl, catalogReleaseTimestampMs } from '../../../lib/media/mapper-utils';
-import { parseCSV } from '../../../lib/shared/string-utils';
+import { formatPlaytime, formatLastPlayed } from '../../../lib/local/formatters';
+import { formatUnixDateLong } from '../../../lib/shared/text/format-date';
+import { toMediumCover } from '../../../lib/media/small-cover';
+import { setGamePresence } from '../../../lib/local/discord-presence';
+import { gameExternalId, firstCsvUrl, catalogReleaseTimestampMs } from '../../../lib/media/mappers/mapper-utils';
+import { parseCSV } from '../../../lib/shared/text/string-utils';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
-import { openMediaEditor } from '../../../lib/media/openMediaEditor';
-import { getLocalCatalogEntry, resolvePortRedirect } from '../../../lib/media/portRedirect';
+import { openMediaEditor } from '../../../lib/media/editor/open-media-editor';
+import { getLocalCatalogEntry, resolvePortRedirect } from '../../../lib/media/port-redirect';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 

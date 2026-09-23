@@ -1,4 +1,4 @@
-import { isTauri, invoke, tauriCmd, tauriRun } from './core';
+import { isTauri, invoke, tauriCmd, tauriRun } from './bridge';
 
 // Local-only cover override for the profile Favorites tab. bg_size/pos_x/
 // pos_y map directly to CSS background-size/background-position percentages

@@ -1,4 +1,4 @@
-import { getT } from '../../../i18n/client';
+import { getT } from '../../../i18n/runtime';
 
 interface CatalogLinkIconProps {
   externalId: string;

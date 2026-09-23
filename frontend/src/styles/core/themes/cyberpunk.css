@@ -111,7 +111,7 @@ body[data-theme="cyberpunk"], html[data-theme="cyberpunk"] body {
 [data-theme="cyberpunk"] .search-action-btn:hover {
   background-color: var(--text-main) !important;
   color: #000000 !important;
-  box-shadow: 0px 0px 8px var(--accent-glow) !important;
+  box-shadow: 0px 0px 8px var(--accent-glow);
 }
 
 /* Active elements */
@@ -135,7 +135,7 @@ body[data-theme="cyberpunk"], html[data-theme="cyberpunk"] body {
 [data-theme="cyberpunk"] .status-dropdown-tray {
   border-radius: 0px !important;
   border: 1px dashed var(--accent-border) !important;
-  background-color: var(--bg-card) !important;
+  background-color: var(--bg-card);
   box-shadow: 3px 3px 0px rgba(0, 255, 255, 0.15) !important;
   transition: all 0.20s ease-in-out !important;
 }
@@ -151,7 +151,7 @@ body[data-theme="cyberpunk"], html[data-theme="cyberpunk"] body {
 [data-theme="cyberpunk"] .media-relation-card:hover,
 [data-theme="cyberpunk"] .media-char-card:hover {
   border: 1px solid var(--text-main) !important;
-  transform: translate(-2px, -2px) !important;
+  transform: translate(-2px, -2px);
   box-shadow: 5px 5px 0px var(--text-main) !important;
 }
 
@@ -183,30 +183,30 @@ body[data-theme="cyberpunk"], html[data-theme="cyberpunk"] body {
 /* Custom badges */
 [data-theme="cyberpunk"] .card-rating-badge,
 [data-theme="cyberpunk"] .theme-card-check {
-  border-radius: 0px !important;
-  border: 1px solid var(--text-main) !important;
-  background: #000 !important;
+  border-radius: 0px;
+  border: 1px solid var(--text-main);
+  background: #000;
   color: var(--text-main) !important;
   font-weight: bold !important;
 }
 
 /* Auth modal customization */
 [data-theme="cyberpunk"] .auth-modal-box {
-  border-radius: 0px !important;
-  border: 2px solid var(--border-color) !important;
-  background: var(--bg-elevated) !important;
-  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px)) !important;
-  box-shadow: 0 0 25px rgba(252, 238, 10, 0.15) !important;
+  border-radius: 0px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-elevated);
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+  box-shadow: 0 0 25px rgba(252, 238, 10, 0.15);
 }
 
 /* Role and relation type badges */
 [data-theme="cyberpunk"] .media-char-role,
 [data-theme="cyberpunk"] .media-relation-type {
-  border-radius: 0px !important;
-  border: 1px solid var(--accent-border) !important;
-  background: rgba(0, 255, 255, 0.05) !important;
+  border-radius: 0px;
+  border: 1px solid var(--accent-border);
+  background: rgba(0, 255, 255, 0.05);
   color: var(--accent-border) !important;
   font-family: 'Courier New', Courier, monospace !important;
-  text-transform: uppercase !important;
-  clip-path: polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 3px 100%, 0 calc(100% - 3px)) !important;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 3px 100%, 0 calc(100% - 3px));
 }

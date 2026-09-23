@@ -6,15 +6,16 @@ import {
 import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Crown, Star, Image as ImageIcon, Shuffle } from 'lucide-react';
-import { getAllLibraryEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
-import type { MediaCatalogEntry, FavoriteCustomImage, CharacterEntry } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
-import { typeIconMap } from '../../lib/shared/icon-strings';
-import { openFavoriteImageEditor } from '../../lib/profile/favorite-image-editor';
+import { getAllLibraryEntries, getAllCharactersLight, getAllFavoriteCustomImages, readUserFavoritesTyped, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
+import type { CatalogSummary, FavoriteCustomImage, CharacterEntry } from '../../lib/tauri';
+import { getT } from '../../i18n/runtime';
+import { showToast } from '../../lib/dom/toast';
+import { typeIconMap } from '../../lib/dom/icon-strings';
+import { openFavoriteImageEditor } from './mount/favorite-image-editor';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
-import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
+import { ALL_MEDIA_TYPES } from '../../lib/media/media-types';
 import { IconCharacter, IconX } from '../local/ui/icons';
-import { toMediumCover } from '../../lib/shared/small-cover';
+import { toMediumCover } from '../../lib/media/small-cover';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type FavData = Record<string, string[]>;
@@ -36,7 +37,7 @@ interface FavCardDisplay { title: string; rawCover: string; customImg?: Favorite
 // live sortable card and its DragOverlay preview, same reasoning as
 // ListsSection.tsx's resolveListItemDisplay.
 function resolveFavCardDisplay(
-  item: FavItem, catalogMap: Map<string, MediaCatalogEntry>, characterMap: Map<string, CharacterEntry>,
+  item: FavItem, catalogMap: Map<string, CatalogSummary>, characterMap: Map<string, CharacterEntry>,
   customImageMap: Map<string, FavoriteCustomImage>,
 ): FavCardDisplay {
   const title = item.type === 'character'
@@ -65,6 +66,7 @@ function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, o
   onEditImage: (item: FavItem) => void;
 }) {
   const { title, rawCover, customImg, mediaUrl } = display;
+  const p = getT().profile;
   return (
     <>
       <a className="fav-card-link" href={mediaUrl} draggable={false} />
@@ -77,7 +79,7 @@ function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, o
               <button
                 type="button"
                 className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
-                title="Multimedia"
+                title={p.favorites_multimedia}
                 onClick={e => { e.stopPropagation(); onToggleCrown(item.external_id); }}
               >
                 <Crown size={13} strokeWidth={2} color={isCrowned ? '#fbbf24' : 'currentColor'} fill={isCrowned ? '#fbbf24' : 'none'} />
@@ -86,7 +88,7 @@ function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, o
             <button
               type="button"
               className="fav-remove-btn"
-              title="Eliminar"
+              title={p.favorites_remove}
               onClick={e => { e.stopPropagation(); e.preventDefault(); onRemove(item.external_id, item.type); }}
             >
               <IconX size={11} strokeWidth={2.5} />
@@ -95,7 +97,7 @@ function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, o
           <button
             type="button"
             className="fav-edit-image-btn"
-            title="Editar imagen"
+            title={getT().character.edit_image}
             onClick={e => { e.stopPropagation(); e.preventDefault(); onEditImage(item); }}
           >
             <ImageIcon size={12} strokeWidth={2} />
@@ -127,7 +129,7 @@ function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, o
 interface FavCardProps {
   item: FavItem;
   idx: number;
-  catalogMap: Map<string, MediaCatalogEntry>;
+  catalogMap: Map<string, CatalogSummary>;
   characterMap: Map<string, CharacterEntry>;
   customImageMap: Map<string, FavoriteCustomImage>;
   reorderModeActive: boolean;
@@ -177,7 +179,7 @@ const MemoizedFavCard = memo(function FavCard({
 interface Props {
   // Someone else's profile (UserProfileView) already has the mapped
   // library, the viewer's own catalogMap/characterMap, and the full synced
-  // favData (profile-sync.ts sends the whole readUserFavorites() record,
+  // favData (profile-sync.ts sends the whole readUserFavoritesTyped() record,
   // every per-type key included, not just multimedia/character) in hand —
   // passing them in skips this component's own local-only fetch and the
   // is_favorite-reconciliation write below (which would be both wrong and
@@ -185,7 +187,7 @@ interface Props {
   // remove/edit-image/reorder affordance — custom crop images aren't
   // synced either, so covers always show the plain, uncropped version.
   overrideItems?: Items;
-  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+  overrideCatalogMap?: Map<string, CatalogSummary>;
   overrideCharacterMap?: Map<string, CharacterEntry>;
   overrideFavData?: FavData;
   readOnly?: boolean;
@@ -197,7 +199,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
   const s = t.search.types;
 
   const [items, setItems] = useState<Items | null>(overrideItems ?? null);
-  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
+  const [catalogMap, setCatalogMap] = useState<Map<string, CatalogSummary>>(overrideCatalogMap ?? new Map());
   const [characterMap, setCharacterMap] = useState<Map<string, CharacterEntry>>(overrideCharacterMap ?? new Map());
   const [customImageMap, setCustomImageMap] = useState<Map<string, FavoriteCustomImage>>(new Map());
   const [favData, setFavData] = useState<FavData>(overrideFavData ?? {});
@@ -209,14 +211,23 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
     let cancelled = false;
 
     const load = async () => {
+      // A failed favourites read must never be "repaired" below: the
+      // reconcile loop rebuilds each per-type list from library flags, but the
+      // cross-type 'multimedia' order has no other source, so persisting a
+      // fallback object wipes it. Render the fallback, skip the write.
+      let favReadFailed = false;
       const [{ items: libItems, catalog: catalogEntries }, characterEntries, customImages, rawFavData] = await Promise.all([
         getCachedLibraryAndCatalog(),
-        getAllCharacters().catch(err => {
+        getAllCharactersLight().catch(err => {
           console.error('[Favorites] Failed to load characters — is the Tauri backend rebuilt?', err);
           return [] as CharacterEntry[];
         }),
         getAllFavoriteCustomImages().catch(() => [] as FavoriteCustomImage[]),
-        readUserFavorites().catch(() => ({} as FavData)),
+        readUserFavoritesTyped().catch(err => {
+          console.error('[Favorites] Failed to read favourites; not persisting this session', err);
+          favReadFailed = true;
+          return {} as FavData;
+        }),
       ]);
       if (cancelled) return;
 
@@ -240,7 +251,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
           if (rawFavData.multimedia.includes(item.external_id)) { rawFavData.multimedia = rawFavData.multimedia.filter(id => id !== item.external_id); modified = true; }
         }
       }
-      if (modified) await writeUserFavorites(rawFavData).catch(err => console.error('Failed to persist favorites reorder:', err));
+      if (modified && !favReadFailed) await writeUserFavorites(rawFavData).catch(err => console.error('Failed to persist favorites reorder:', err));
 
       setItems(libItems);
       setCatalogMap(cMap);
@@ -262,17 +273,29 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
     };
   }, [overrideItems]);
 
-  const getOrderedItems = (catKey: string): FavItem[] => {
-    const ids = favData[catKey] || [];
-    if (catKey === 'character') return ids.map(id => ({ external_id: id, type: 'character' }));
-    return ids.map(id => {
-      const local = items?.find(item => item.external_id === id);
-      if (local) return local;
-      const meta = catalogMap.get(id);
-      if (meta) return { external_id: id, type: meta.type };
-      return null;
-    }).filter((i): i is FavItem => i !== null);
-  };
+  // Every tab's ordered items, resolved once per favData/library/catalog
+  // change — the tab strip reads all ten counts on every render, and each
+  // favourite used to be an items.find() scan of the whole library.
+  const itemsById = useMemo(() => new Map((items ?? []).map(item => [item.external_id, item])), [items]);
+  const orderedItemsByCategory = useMemo(() => {
+    const byCategory = new Map<string, FavItem[]>();
+    for (const [catKey, ids] of Object.entries(favData)) {
+      if (!ids) continue;
+      if (catKey === 'character') {
+        byCategory.set(catKey, ids.map(id => ({ external_id: id, type: 'character' })));
+        continue;
+      }
+      byCategory.set(catKey, ids.map(id => {
+        const local = itemsById.get(id);
+        if (local) return local;
+        const meta = catalogMap.get(id);
+        if (meta) return { external_id: id, type: meta.type };
+        return null;
+      }).filter((i): i is FavItem => i !== null));
+    }
+    return byCategory;
+  }, [favData, itemsById, catalogMap]);
+  const getOrderedItems = (catKey: string): FavItem[] => orderedItemsByCategory.get(catKey) ?? [];
 
   const categories = useMemo(() => [
     { key: 'multimedia', label: p.favorites_multimedia || 'Multimedia', icon: <Star size={14} strokeWidth={2} /> },
@@ -291,8 +314,17 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
   // Persists favData both to React state and to disk in one place, since
   // nearly every handler below does exactly this.
   const persistFavData = async (next: FavData) => {
+    const previous = favData;
     setFavData(next);
-    await writeUserFavorites(next).catch(err => console.error('Failed to persist favorites:', err));
+    try {
+      await writeUserFavorites(next);
+    } catch (err) {
+      console.error('Failed to persist favorites:', err);
+      // The optimistic update above would otherwise show a list the
+      // database never accepted.
+      setFavData(previous);
+      showToast(p.favorites_save_failed);
+    }
   };
 
   const toggleCrown = async (id: string) => {
@@ -310,7 +342,17 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
       const entry = items?.find(i => i.external_id === id);
       if (entry) {
         entry.is_favorite = 0;
-        await saveLibraryEntry(entry).catch(console.error);
+        try {
+          await saveLibraryEntry(entry);
+        } catch (err) {
+          // is_favorite on the library row and the favourites list are two
+          // stores for one fact; dropping the list entry after this write
+          // failed would leave them disagreeing.
+          console.error('Failed to clear is_favorite:', err);
+          entry.is_favorite = 1;
+          showToast(p.favorites_save_failed);
+          return;
+        }
       }
       next[type] = (favData[type] || []).filter(x => x !== id);
     }

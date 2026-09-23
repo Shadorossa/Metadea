@@ -4,7 +4,7 @@ import {
   setTierListPlacements, searchCatalog,
 } from '../../lib/tauri';
 import type { TierDef, TierListItemFull } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 
 interface Entry {
   external_id: string;

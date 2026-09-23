@@ -51,7 +51,7 @@ body[data-theme="gothic"], html[data-theme="gothic"] body {
   border: 1px solid #5c1414 !important;
   background: linear-gradient(180deg, #1b0c0c 0%, #0d0505 100%) !important;
   color: #e2d9cd !important;
-  box-shadow: inset 0 0 10px rgba(92, 20, 20, 0.3), 0 4px 8px rgba(0,0,0,0.6) !important;
+  box-shadow: inset 0 0 10px rgba(92, 20, 20, 0.3), 0 4px 8px rgba(0,0,0,0.6);
   font-family: inherit !important;
   text-transform: uppercase;
   letter-spacing: 0.15em;
@@ -64,7 +64,7 @@ body[data-theme="gothic"], html[data-theme="gothic"] body {
 [data-theme="gothic"] .search-action-btn:hover {
   border-color: #b71c1c !important;
   background: linear-gradient(180deg, #2a1111 0%, #160707 100%) !important;
-  box-shadow: 0 0 12px rgba(183, 28, 28, 0.25), 0 4px 8px rgba(0,0,0,0.6) !important;
+  box-shadow: 0 0 12px rgba(183, 28, 28, 0.25), 0 4px 8px rgba(0,0,0,0.6);
   color: #fff !important;
 }
 
@@ -79,6 +79,6 @@ body[data-theme="gothic"], html[data-theme="gothic"] body {
 
 [data-theme="gothic"] .media-relation-card:hover {
   border-color: #b71c1c !important;
-  transform: translateY(-4px) !important;
+  transform: translateY(-4px);
   box-shadow: 0 15px 30px rgba(183, 28, 28, 0.2), 0 12px 24px rgba(0,0,0,0.9) !important;
 }

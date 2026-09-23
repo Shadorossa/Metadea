@@ -159,6 +159,50 @@ pub async fn get_story_arcs_for_media_batch(
     Ok(arcs)
 }
 
+// Path flavour of resolve_story_arc_images: image_base64 carries the arc
+// image's absolute file path (wrap with wrapAssetUrl) instead of its bytes
+// — see image_storage::resolve_reference_path. The field keeps its name so
+// the StoryArc shape stays identical between both command flavours.
+fn resolve_story_arc_image_paths(
+    data_dir: &std::path::Path,
+    arcs: &mut [StoryArc],
+) -> Result<(), String> {
+    for arc in arcs {
+        arc.image_base64 = crate::image_storage::resolve_image_path_value(data_dir, arc.image_base64.take())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_story_arcs_for_media_light(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<StoryArc>, String> {
+    let mut arcs = {
+        let conn = state.conn.lock().str_err()?;
+        story_arcs_for_media_ids(&conn, &[media_external_id])?
+    };
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    resolve_story_arc_image_paths(&data_dir, &mut arcs)?;
+    Ok(arcs)
+}
+
+#[tauri::command]
+pub async fn get_story_arcs_for_media_batch_light(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_ids: Vec<String>,
+) -> Result<Vec<StoryArc>, String> {
+    let mut arcs = {
+        let conn = state.conn.lock().str_err()?;
+        story_arcs_for_media_ids(&conn, &media_external_ids)?
+    };
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    resolve_story_arc_image_paths(&data_dir, &mut arcs)?;
+    Ok(arcs)
+}
+
 // Upsert: empty id creates a new arc, an existing id updates name/image and
 // fully replaces its item list (delete+reinsert — same convention as
 // save_media_relations, simpler than diffing since an arc realistically

@@ -19,6 +19,7 @@ pub async fn store_auth_token(
     token: String,
     username: String,
 ) -> Result<String, String> {
+    let token = crate::utils::encrypt_secret(&token)?;
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
     conn.execute(
@@ -38,18 +39,20 @@ pub async fn get_auth_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Option<AuthSession>, String> {
     let conn = state.conn.lock().str_err()?;
-    conn.query_row(
+    let session = conn.query_row(
         "SELECT token, username FROM user_sessions WHERE service = 'app_auth'",
         [],
         |row| {
             Ok(AuthSession {
-                token:    row.get(0)?,
+                // Rows written before store_auth_token encrypted are plaintext.
+                token:    crate::utils::decrypt_secret_or_plaintext(&row.get::<_, String>(0)?),
                 username: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
             })
         },
     )
     .optional()
-    .str_err()
+    .str_err()?;
+    Ok(session)
 }
 
 #[tauri::command]

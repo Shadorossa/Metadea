@@ -64,7 +64,7 @@ body[data-theme="glitch"], html[data-theme="glitch"] body {
   border: 1px solid var(--border-color) !important;
   background: #0f071a !important;
   color: #39ff14 !important;
-  box-shadow: 2px 2px 0px #ff007f !important;
+  box-shadow: 2px 2px 0px #ff007f;
   transition: all 0.05s ease !important;
   font-family: inherit !important;
 }
@@ -74,13 +74,13 @@ body[data-theme="glitch"], html[data-theme="glitch"] body {
 [data-theme="glitch"] .search-action-btn:hover {
   background: #ff007f !important;
   color: #000 !important;
-  box-shadow: -2px -2px 0px #39ff14 !important;
+  box-shadow: -2px -2px 0px #39ff14;
   animation: text-glitch 0.2s infinite;
 }
 
 [data-theme="glitch"] .btn:active {
   transform: translate(2px, 2px);
-  box-shadow: 0px 0px 0px #ff007f !important;
+  box-shadow: 0px 0px 0px #ff007f;
 }
 
 [data-theme="glitch"] .search-input,
@@ -109,7 +109,7 @@ body[data-theme="glitch"], html[data-theme="glitch"] body {
 [data-theme="glitch"] .media-relation-card:hover {
   border-color: #ff007f !important;
   box-shadow: 4px 4px 0px #39ff14 !important;
-  transform: translate(-2px, -2px) !important;
+  transform: translate(-2px, -2px);
 }
 
 [data-theme="glitch"] ::-webkit-scrollbar-thumb {

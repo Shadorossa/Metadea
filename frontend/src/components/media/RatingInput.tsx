@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { STAR_PATH } from '../../lib/media/constants';
 import { getActiveRatingSystem, ratingToEmoji, type RatingSystem } from '../../lib/media/rating-utils';
-import { getT } from '../../i18n/client';
+import { getT } from '../../i18n/runtime';
 
 interface Props {
   rating: number;

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Translations } from '../../../i18n/index';
-import { type LogState, type EntryAction } from '../../../lib/media/log-state';
+import { type LogState, type EntryAction } from '../../../lib/media/editor/library-log-state';
 import { HeaderField } from './MediaEditorFields';
 import { MIN_DATE_YEAR, clampDateMinYear, clampNotBefore } from './media-editor-helpers';
 

@@ -106,8 +106,11 @@ pub fn store_image_value(data_dir: &Path, namespace: &str, owner: &str, value: &
     Ok(format!("{REFERENCE_PREFIX}{mime}:{normalized}"))
 }
 
-fn resolve_reference(data_dir: &Path, value: &str) -> Result<Option<String>, String> {
-    let Some(reference) = value.strip_prefix(REFERENCE_PREFIX) else { return Ok(Some(value.to_string())) };
+// A stored reference validated and located on disk: (mime, verified file
+// path, canonical file path). Ok(None) when the referenced file is gone.
+// Shared by both resolvers below so the data-URL and the path flavours
+// apply the exact same traversal checks.
+fn locate_reference<'a>(data_dir: &Path, reference: &'a str) -> Result<Option<(&'a str, PathBuf, PathBuf)>, String> {
     let (mime, relative) = reference.split_once(':').ok_or("Invalid Metadea image reference")?;
     if !mime.starts_with("image/") {
         return Err("Invalid image MIME type in Metadea reference".into());
@@ -127,12 +130,39 @@ fn resolve_reference(data_dir: &Path, value: &str) -> Result<Option<String>, Str
     if !canonical_path.starts_with(&canonical_root) {
         return Err("Image reference escapes Metadea's image directory".into());
     }
+    Ok(Some((mime, path, canonical_path)))
+}
+
+fn resolve_reference(data_dir: &Path, value: &str) -> Result<Option<String>, String> {
+    let Some(reference) = value.strip_prefix(REFERENCE_PREFIX) else { return Ok(Some(value.to_string())) };
+    let Some((mime, _, canonical_path)) = locate_reference(data_dir, reference)? else { return Ok(None) };
     let bytes = fs::read(canonical_path).map_err(|e| e.to_string())?;
     Ok(Some(format!("data:{mime};base64,{}", crate::utils::base64_encode(&bytes))))
 }
 
+// Same lookup as resolve_reference, but hands back the image's absolute
+// file path instead of inlining its bytes as base64 — the frontend turns
+// that into an asset:// URL via wrapAssetUrl (lib/tauri/bridge.ts) and the
+// WebView loads it lazily and caches it itself, so a profile with hundreds
+// of character portraits no longer ships every image through IPC on each
+// load. The (non-canonical) joined path is returned rather than the
+// canonicalized one: on Windows canonicalize() yields a \\?\-prefixed path
+// that the asset protocol's scope matcher doesn't recognize. The files live
+// under $APPDATA/user_metadata/images, already inside tauri.conf.json's
+// assetProtocol scope ($APPDATA/user_metadata/**). Anything that isn't a
+// Metadea reference (an http(s) URL, a legacy data URL) is returned as-is.
+pub fn resolve_reference_path(data_dir: &Path, value: &str) -> Result<Option<String>, String> {
+    let Some(reference) = value.strip_prefix(REFERENCE_PREFIX) else { return Ok(Some(value.to_string())) };
+    let Some((_, path, _)) = locate_reference(data_dir, reference)? else { return Ok(None) };
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
 pub fn resolve_image_value(data_dir: &Path, value: Option<String>) -> Result<Option<String>, String> {
     value.map(|value| resolve_reference(data_dir, &value)).transpose().map(Option::flatten)
+}
+
+pub fn resolve_image_path_value(data_dir: &Path, value: Option<String>) -> Result<Option<String>, String> {
+    value.map(|value| resolve_reference_path(data_dir, &value)).transpose().map(Option::flatten)
 }
 
 struct InlineImageRow {
@@ -214,6 +244,18 @@ mod tests {
         let reference = store_image_value(&root, "characters", "character:test", &data_url).unwrap();
         assert!(reference.starts_with(REFERENCE_PREFIX));
         assert_eq!(resolve_reference(&root, &reference).unwrap().as_deref(), Some(data_url.as_str()));
+
+        // Path flavour: same file, no bytes — an absolute path under the
+        // image directory that the frontend wraps with wrapAssetUrl.
+        let path = resolve_reference_path(&root, &reference).unwrap().unwrap();
+        assert!(Path::new(&path).is_absolute(), "{path}");
+        assert!(path.replace('\\', "/").contains("user_metadata/images/characters/"), "{path}");
+        assert!(!path.starts_with(r"\\?\"), "canonical UNC prefix would break the asset scope: {path}");
+        assert_eq!(fs::read(&path).unwrap(), b"test-image");
+        // Remote/legacy values pass through untouched; a missing file is None.
+        assert_eq!(resolve_reference_path(&root, "https://x/y.png").unwrap().as_deref(), Some("https://x/y.png"));
+        assert_eq!(resolve_reference_path(&root, "metadea-image:v1:image/png:user_metadata/images/characters/missing.png").unwrap(), None);
+        assert!(resolve_reference_path(&root, "metadea-image:v1:image/png:../etc/passwd").is_err());
         fs::remove_dir_all(root).unwrap();
     }
 }

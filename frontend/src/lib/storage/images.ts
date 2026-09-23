@@ -1,5 +1,5 @@
-import { STORAGE_KEYS } from '../shared/storage-keys';
-import { isTauri, invoke as tauriInvoke } from '../tauri/core';
+import { STORAGE_KEYS } from './storage-keys';
+import { isTauri, invoke as tauriInvoke } from '../tauri/bridge';
 
 const TAURI_KEYS: Record<string, string> = {
   [STORAGE_KEYS.profileAvatarCustom]: 'avatar',

@@ -7,24 +7,24 @@
   flex-shrink: 0;
   padding: 0;
   font: inherit;
-  border-radius: var(--radius-sm, 4px);
-  border: 1px dashed var(--border-color, #2d2a24);
-  background: var(--bg-primary, #12110f);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-color);
+  background: var(--bg-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
-  transition: border-color var(--anim-fast, 120ms);
+  transition: border-color var(--anim-fast);
 }
 
 .pr-editor-arc-image-picker:hover {
-  border-color: var(--accent, #7c6af7);
+  border-color: var(--accent);
 }
 
 .pr-editor-arc-image-picker span {
   font-size: 0.6rem;
-  color: var(--text-dim, #6b6b7d);
+  color: var(--text-dim);
   text-align: center;
   padding: 0 0.2rem;
   line-height: 1.2;
@@ -35,16 +35,16 @@
   font-size: 0.85rem;
   font-weight: 600;
   padding: 0.45rem 0.65rem;
-  border: 1px solid var(--border-color, #2d2a24);
-  background: var(--bg-primary, #12110f);
-  color: var(--text-main, #e3e1db);
-  border-radius: var(--radius-sm, 4px);
-  transition: border-color var(--anim-fast, 120ms);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--anim-fast);
 }
 
 .pr-editor-arc-name-input:focus {
   outline: none;
-  border-color: var(--accent, #7c6af7);
+  border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(124, 106, 247, 0.2);
 }
 
@@ -62,9 +62,9 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.35rem;
-  background: var(--bg-primary, #12110f);
-  border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
   flex-shrink: 0;
 }
@@ -82,7 +82,7 @@
   flex-shrink: 0;
   border-radius: 3px;
   overflow: hidden;
-  background: var(--bg-elevated, #1b1917);
+  background: var(--bg-elevated);
 }
 
 .pr-editor-arc-item-range {
@@ -95,14 +95,14 @@
 }
 
 .pr-editor-arc-item-range-sep {
-  color: var(--text-dim, #6b6b7d);
+  color: var(--text-dim);
   font-size: 0.68rem;
 }
 
 .pr-editor-arc-item-row {
   cursor: grab;
   position: relative;
-  transition: transform var(--anim-fast, 120ms), border-color var(--anim-fast, 120ms), box-shadow var(--anim-fast, 120ms);
+  transition: transform var(--anim-fast), border-color var(--anim-fast), box-shadow var(--anim-fast);
   user-select: none;
 }
 
@@ -116,15 +116,15 @@
 }
 
 .pr-editor-arc-item-row.is-drop-target-before {
-  box-shadow: -3px 0 0 0 var(--accent, #7c6af7);
+  box-shadow: -3px 0 0 0 var(--accent);
 }
 
 .pr-editor-arc-item-row.is-drop-target-after {
-  box-shadow: 3px 0 0 0 var(--accent, #7c6af7);
+  box-shadow: 3px 0 0 0 var(--accent);
 }
 
 .pr-editor-arc-item-row.is-drop-target-group {
-  border: 1.5px dashed var(--accent, #7c6af7);
+  border: 1.5px dashed var(--accent);
   background: rgba(124, 106, 247, 0.12);
   transform: scale(1.04);
 }
@@ -133,7 +133,7 @@
   position: absolute;
   inset: 0;
   background: rgba(124, 106, 247, 0.28);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -160,7 +160,7 @@
   overflow: hidden;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: var(--bg-elevated, #1b1917);
+  background: var(--bg-elevated);
 }
 
 .pr-editor-arc-stacked-covers-item:nth-child(1) {
@@ -187,7 +187,7 @@
   position: absolute;
   bottom: 2px;
   right: 2px;
-  background: var(--accent, #7c6af7);
+  background: var(--accent);
   color: #fff;
   font-size: 0.6rem;
   font-weight: 700;
@@ -210,27 +210,27 @@
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: color var(--anim-fast, 120ms), background var(--anim-fast, 120ms), border-color var(--anim-fast, 120ms);
+  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast);
 }
 
 .pr-editor-arc-card-action-btn:hover {
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
   background: rgba(124, 106, 247, 0.15);
-  border-color: var(--accent, #7c6af7);
+  border-color: var(--accent);
 }
 
 .pr-editor-arc-ep-trigger {
   font-size: 0.66rem;
   padding: 0.2rem 0.35rem;
-  background: var(--bg-elevated, #1b1917);
-  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
   border-radius: 3px;
-  color: var(--text-main, #e3e1db);
+  color: var(--text-main);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -239,22 +239,22 @@
   max-width: 90px;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: all var(--anim-fast, 120ms);
+  transition: all var(--anim-fast);
 }
 
 .pr-editor-arc-ep-trigger:hover,
 .pr-editor-arc-ep-trigger.is-active {
-  border-color: var(--accent, #7c6af7);
-  background: var(--bg-hover, #262422);
+  border-color: var(--accent);
+  background: var(--bg-card);
 }
 
 .pr-editor-arc-ep-popover {
   position: fixed;
   z-index: 9999;
   width: 360px;
-  background: var(--bg-primary, #141311);
-  border: 1px solid var(--border-color, #38342d);
-  border-radius: var(--radius-md, 6px);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
@@ -266,8 +266,8 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.5rem 0.65rem;
-  background: var(--bg-secondary, #1a1816);
-  border-bottom: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-color);
   box-sizing: border-box;
 }
 
@@ -282,7 +282,7 @@
 .pr-editor-arc-ep-range-label {
   font-size: 0.72rem;
   font-weight: 500;
-  color: var(--text-dim, #9c8f80);
+  color: var(--text-dim);
   flex-shrink: 0;
 }
 
@@ -292,10 +292,10 @@
   font-family: inherit;
   font-size: 0.72rem;
   padding: 0.22rem 0.35rem;
-  background: var(--bg-elevated, #201e1b);
-  border: 1px solid var(--border-color, #38342d);
-  color: var(--text-main, #e3e1db);
-  border-radius: var(--radius-sm, 3px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
@@ -305,19 +305,19 @@
   width: 1.6rem;
   height: 1.6rem;
   flex-shrink: 0;
-  border-radius: var(--radius-sm, 3px);
-  border: 1px solid var(--border-color, #2d2a24);
-  background: var(--bg-elevated, #24221f);
-  color: var(--text-dim, #a8a6a1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  color: var(--text-dim);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all var(--anim-fast, 120ms);
+  transition: all var(--anim-fast);
 }
 
 .pr-editor-arc-ep-clear-btn:hover {
-  color: #ef4444;
+  color: var(--color-error-strong);
   border-color: rgba(239, 68, 68, 0.4);
   background: rgba(239, 68, 68, 0.12);
 }
@@ -330,7 +330,7 @@
   flex-direction: column;
   gap: 0.15rem;
   scrollbar-width: thin;
-  scrollbar-color: var(--border-color, #38342d) transparent;
+  scrollbar-color: var(--border-color) transparent;
 }
 
 .pr-editor-arc-ep-list::-webkit-scrollbar {
@@ -342,12 +342,12 @@
 }
 
 .pr-editor-arc-ep-list::-webkit-scrollbar-thumb {
-  background: var(--border-color, #38342d);
+  background: var(--border-color);
   border-radius: 3px;
 }
 
 .pr-editor-arc-ep-list::-webkit-scrollbar-thumb:hover {
-  background: var(--accent, #7c6af7);
+  background: var(--accent);
 }
 
 .pr-editor-arc-ep-item {
@@ -360,11 +360,11 @@
   border: 1px solid transparent;
   cursor: pointer;
   text-align: left;
-  transition: background var(--anim-fast, 120ms);
+  transition: background var(--anim-fast);
 }
 
 .pr-editor-arc-ep-item:hover {
-  background: var(--bg-hover, #24221f);
+  background: var(--bg-card);
 }
 
 .pr-editor-arc-ep-item.is-selected {
@@ -391,7 +391,7 @@
 .pr-editor-arc-ep-name {
   font-size: 0.78rem;
   font-weight: 500;
-  color: var(--text-main, #e3e1db);
+  color: var(--text-main);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -400,12 +400,12 @@
 
 .pr-editor-arc-ep-season-num {
   font-weight: 700;
-  color: var(--accent, #a69a7d);
+  color: var(--accent);
 }
 
 .pr-editor-arc-ep-sub {
   font-size: 0.65rem;
-  color: var(--text-dim, #8f8e89);
+  color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -418,11 +418,11 @@
   font-size: 0.68rem;
   padding: 0.15rem 0.15rem;
   text-align: center;
-  border: 1px solid var(--border-color, #2d2a24);
-  background: var(--bg-elevated, #1b1917);
-  color: var(--text-main, #e3e1db);
-  border-radius: var(--radius-sm, 3px);
-  transition: border-color var(--anim-fast, 120ms);
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--anim-fast);
   -moz-appearance: textfield;
 }
 
@@ -434,7 +434,7 @@
 
 .pr-editor-arc-item-range-input:focus {
   outline: none;
-  border-color: var(--accent, #7c6af7);
+  border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(124, 106, 247, 0.2);
 }
 
@@ -444,7 +444,7 @@
   justify-content: space-between;
   margin-top: 0.15rem;
   padding-top: 0.55rem;
-  border-top: 1px solid var(--border-color, #2d2a24);
+  border-top: 1px solid var(--border-color);
 }
 
 .pr-editor-arc-add-item-group {
@@ -468,16 +468,16 @@
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.4rem;
-  background: var(--bg-elevated, #1b1917);
-  border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 6;
 }
 
 .pr-editor-arc-saga-picker-empty {
   font-size: 0.72rem;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   padding: 0.4rem 0.5rem;
 }
 
@@ -488,12 +488,12 @@
   padding: 0.35rem 0.5rem;
   background: none;
   border: none;
-  border-radius: calc(var(--radius-sm, 4px) - 2px);
-  color: var(--text-main, #e3e1db);
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--text-main);
   font-size: 0.76rem;
   text-align: left;
   cursor: pointer;
-  transition: background var(--anim-fast, 120ms);
+  transition: background var(--anim-fast);
 }
 
 .pr-editor-arc-saga-picker-item:hover {
@@ -576,7 +576,7 @@
 .pr-editor-subgroup-divider {
   width: 1px;
   align-self: stretch;
-  background: var(--border-color, #2d2a24);
+  background: var(--border-color);
 }
 
 .pr-editor-field--small {
@@ -588,7 +588,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
 }
 
 .pr-editor-add-btn {
@@ -597,16 +597,16 @@
   font-size: 0.75rem;
   font-weight: 600;
   background: transparent;
-  border: 1px dashed var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
-  color: var(--accent, #7c6af7);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
   cursor: pointer;
   transition: all 120ms ease;
 }
 
 .pr-editor-add-btn:hover {
   background: rgba(124, 106, 247, 0.1);
-  border-color: var(--accent, #7c6af7);
+  border-color: var(--accent);
 }
 
 .pr-editor-search-popup {
@@ -622,8 +622,8 @@
 }
 
 .pr-editor-search-popup-content {
-  background: var(--bg-primary, #12110f);
-  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   width: 100%;
   max-width: 500px;
@@ -644,7 +644,7 @@
   gap: 1rem;
   flex-shrink: 0;
   padding: 0.65rem 0.85rem;
-  border-bottom: 1px solid var(--border-color, #2d2a24);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .pr-editor-search-back {
@@ -653,17 +653,17 @@
   flex: 0 0 auto;
   gap: 0.4rem;
   padding: 0.4rem 0.55rem;
-  border: 1px solid var(--border-color, #2d2a24);
+  border: 1px solid var(--border-color);
   background: transparent;
-  color: var(--text-main, #e3e1db);
+  color: var(--text-main);
   cursor: pointer;
   font: inherit;
   font-size: 0.72rem;
 }
 
 .pr-editor-search-back:hover {
-  border-color: var(--accent, #7c6af7);
-  color: var(--accent, #c084fc);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .pr-editor-search-drilldown-title {
@@ -679,7 +679,7 @@
 
 .pr-editor-search-drilldown-title span {
   overflow: hidden;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   font-size: 0.7rem;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -692,14 +692,14 @@
   max-width: none;
   max-height: none;
   box-shadow: none;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md);
 }
 
 .pr-editor-search-controls {
   display: flex;
   flex-shrink: 0;
   align-items: stretch;
-  border-bottom: 1px solid var(--border-color, #2d2a24);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .pr-editor-search-input {
@@ -707,9 +707,9 @@
   min-width: 0;
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
-  background: var(--bg-primary, #12110f);
+  background: var(--bg-primary);
   border: none;
-  color: var(--text-main, #e3e1db);
+  color: var(--text-main);
 }
 
 .pr-editor-search-input:focus {
@@ -720,16 +720,16 @@
   flex-shrink: 0;
   padding: 0.75rem 0.6rem;
   font-size: 0.8rem;
-  background: var(--bg-primary, #12110f);
+  background: var(--bg-primary);
   border: none;
-  border-left: 1px solid var(--border-color, #2d2a24);
-  color: var(--text-main, #e3e1db);
+  border-left: 1px solid var(--border-color);
+  color: var(--text-main);
   cursor: pointer;
 }
 
 .pr-editor-search-select:focus {
   outline: none;
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
 }
 
 .pr-editor-search-results {
@@ -747,7 +747,7 @@
 .pr-editor-search-empty {
   padding: 2rem 1rem;
   text-align: center;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   font-size: 0.8rem;
 }
 
@@ -761,9 +761,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  border: 1px solid var(--border-color, #2d2a24);
-  background: var(--bg-elevated, #1b1917);
-  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
   padding: 0.5rem;
   cursor: pointer;
   transition: all 120ms ease;
@@ -771,14 +771,14 @@
 }
 
 .pr-editor-search-result-card:hover {
-  border-color: var(--accent, #7c6af7);
-  background: var(--bg-primary, #12110f);
+  border-color: var(--accent);
+  background: var(--bg-primary);
   transform: translateY(-2px);
 }
 
 .pr-editor-search-result-card.is-selected {
-  border-color: var(--accent, #7c6af7);
-  box-shadow: inset 0 0 0 1px var(--accent, #7c6af7);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .pr-editor-search-cast-actions {
@@ -787,8 +787,8 @@
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 0.75rem 0.85rem;
-  border-top: 1px solid var(--border-color, #2d2a24);
-  color: var(--text-muted, #a0a0b8);
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted);
   font-size: 0.75rem;
 }
 
@@ -797,13 +797,13 @@
   aspect-ratio: 3 / 4;
   object-fit: cover;
   border-radius: 2px;
-  background: var(--bg-primary, #12110f);
+  background: var(--bg-primary);
 }
 
 .pr-editor-search-result-cover--placeholder {
   display: grid;
   place-items: center;
-  color: var(--accent, #c084fc);
+  color: var(--accent);
   font-size: 2rem;
   font-weight: 700;
 }
@@ -819,7 +819,7 @@
 .pr-editor-search-result-id {
   font-size: 0.65rem;
   font-weight: 700;
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
   font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -828,7 +828,7 @@
 
 .pr-editor-search-result-title {
   font-size: 0.75rem;
-  color: var(--text-main, #e3e1db);
+  color: var(--text-main);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;

@@ -1,5 +1,5 @@
-import type { getAllLibraryEntries, MediaCatalogEntry, DbMediaRelation } from '../tauri';
-import { isInProgressStatus, ALL_MEDIA_TYPES, SUB_WORK_FORMATS } from '../constants/media';
+import type { getAllLibraryEntries, CatalogSummary, DbMediaRelation } from '../tauri';
+import { isInProgressStatus, ALL_MEDIA_TYPES, SUB_WORK_FORMATS } from '../media/media-types';
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 import { buildEditionMaps, sagaIdentityOf } from './library-grouping';
 import { buildDirectSagaGraph } from './saga-graph';
@@ -58,7 +58,7 @@ function getEditionChildIds(items: Items): Set<string> {
 // by-year, etc.) — only excluded from the ones that count/bucket *works*
 // (totalWorks, completed/currently/paused/dropped/planning), so a bundle's
 // episodes don't inflate "obras completadas" beyond the bundle itself.
-function isSubWorkItem(item: Items[number], childIds: Set<string>, catalogMap?: Map<string, MediaCatalogEntry>): boolean {
+function isSubWorkItem(item: Items[number], childIds: Set<string>, catalogMap?: Map<string, CatalogSummary>): boolean {
   if (childIds.has(item.external_id)) return true;
   if (catalogMap) {
     const format = catalogMap.get(item.external_id)?.format;
@@ -67,7 +67,7 @@ function isSubWorkItem(item: Items[number], childIds: Set<string>, catalogMap?: 
   return false;
 }
 
-export function getNonEditionItems(items: Items, catalogMap?: Map<string, MediaCatalogEntry>): Items {
+export function getNonEditionItems(items: Items, catalogMap?: Map<string, CatalogSummary>): Items {
   const childIds = getEditionChildIds(items);
   return items.filter(item => !isSubWorkItem(item, childIds, catalogMap));
 }
@@ -76,7 +76,7 @@ export function getNonEditionItems(items: Items, catalogMap?: Map<string, MediaC
 // (edition/version-log children, seasons, updates, comic issues) — used
 // where a stat wants to break those down separately instead of just
 // excluding them.
-export function getEditionItems(items: Items, catalogMap?: Map<string, MediaCatalogEntry>): Items {
+export function getEditionItems(items: Items, catalogMap?: Map<string, CatalogSummary>): Items {
   const childIds = getEditionChildIds(items);
   return items.filter(item => isSubWorkItem(item, childIds, catalogMap));
 }
@@ -104,7 +104,7 @@ export function getEditionItems(items: Items, catalogMap?: Map<string, MediaCata
 export function groupSagaChains(
   items: Items,
   relations: DbMediaRelation[],
-  catalogMap: Map<string, MediaCatalogEntry>,
+  catalogMap: Map<string, CatalogSummary>,
 ): Map<string, string[]> {
   const { graph: sagaGraph, directIds: directSagaIds } = buildDirectSagaGraph(relations, catalogMap);
 
@@ -145,7 +145,7 @@ export function groupSagaChains(
 // already-imported/logged entries get correct hours without a migration.
 const DEFAULT_EPISODE_MINUTES = 24;
 
-export function getItemMinutes(item: Items[number], catalogMap: Map<string, MediaCatalogEntry>): number {
+export function getItemMinutes(item: Items[number], catalogMap: Map<string, CatalogSummary>): number {
   if (item.type === 'anime' || item.type === 'series') {
     const perEpisodeMinutes = catalogMap.get(item.external_id)?.time_length || DEFAULT_EPISODE_MINUTES;
     return item.progress * perEpisodeMinutes;
@@ -160,7 +160,7 @@ export function getItemMinutes(item: Items[number], catalogMap: Map<string, Medi
 // ended up saga-aware in one place and not the other.
 export function computeOverviewAggregate(
   items: Items,
-  catalogMap: Map<string, MediaCatalogEntry>,
+  catalogMap: Map<string, CatalogSummary>,
   relations: DbMediaRelation[],
 ): OverviewAggregate {
   const nonEditionItems = getNonEditionItems(items, catalogMap);
@@ -292,7 +292,7 @@ export interface TypeBreakdownEntry {
 // Every media type is always represented in the breakdown, even with zero
 // logged works, so the "time by category" block always shows the full
 // two-column list instead of only whichever types happen to be in the library.
-export function computeTypeBreakdown(items: Items, catalogMap: Map<string, MediaCatalogEntry>): TypeBreakdownEntry[] {
+export function computeTypeBreakdown(items: Items, catalogMap: Map<string, CatalogSummary>): TypeBreakdownEntry[] {
   const nonEditionItems = getNonEditionItems(items, catalogMap);
   const byTypeMap = new Map<string, { count: number; minutes: number }>();
 
@@ -319,7 +319,7 @@ export function computeTypeBreakdown(items: Items, catalogMap: Map<string, Media
 
 // ── Genre breakdown ──────────────────────────────────────────────────────────
 
-export function computeTopGenres(items: Items, catalogMap: Map<string, MediaCatalogEntry>, limit = 10): [string, number][] {
+export function computeTopGenres(items: Items, catalogMap: Map<string, CatalogSummary>, limit = 10): [string, number][] {
   const nonEditionItems = getNonEditionItems(items, catalogMap);
   const genreCount: Record<string, number> = {};
   for (const item of nonEditionItems) {
@@ -395,7 +395,7 @@ export interface YearEntry {
   count: number;
 }
 
-export function computeCompletedByYear(items: Items, currentYear: number, catalogMap?: Map<string, MediaCatalogEntry>): YearEntry[] {
+export function computeCompletedByYear(items: Items, currentYear: number, catalogMap?: Map<string, CatalogSummary>): YearEntry[] {
   const nonEditionItems = getNonEditionItems(items, catalogMap);
   const byYear: Record<number, number> = {};
   for (const item of nonEditionItems) {
@@ -428,7 +428,7 @@ export interface UpcomingRelease {
 
 export function computeUpcomingPlanningReleases(
   items: Items,
-  catalogMap: Map<string, MediaCatalogEntry>,
+  catalogMap: Map<string, CatalogSummary>,
   minDate: Date, // lower bound; pass the 1st of the month to include earlier-this-month releases, not just today onward
 ): UpcomingRelease[] {
   const releases = getNonEditionItems(items, catalogMap)

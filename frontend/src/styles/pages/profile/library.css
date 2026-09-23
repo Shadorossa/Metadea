@@ -84,7 +84,7 @@
 
 .library-card:hover {
   border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(var(--accent-rgb, 139, 92, 246), 0.3);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.3);
 }
 
 .library-card-cell--stacked .library-card {
@@ -98,7 +98,7 @@
   box-shadow:
     0.2rem 0.2rem 0 0 color-mix(in srgb, var(--bg-base) 90%, #000),
     0.2rem 0.2rem 0 1px var(--accent),
-    0 0 12px rgba(var(--accent-rgb, 139, 92, 246), 0.3);
+    0 0 12px rgba(var(--accent-rgb), 0.3);
 }
 
 /* Hidden peek at whichever entries are collapsed under the "+N" badge -
@@ -259,7 +259,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-surface);
+  background: var(--bg-elevated);
 }
 
 .library-card-no-cover span {
@@ -356,8 +356,8 @@
   gap: 0.15rem;
   padding: 0.12rem 0.45rem;
   border-radius: 6px;
-  background: var(--card-bg-subtle, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--card-border-subtle, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
   width: fit-content;
   line-height: 1;
 }
@@ -365,14 +365,14 @@
 .rating-pill-val {
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--accent, #eab308);
+  color: var(--accent);
   letter-spacing: -0.01em;
 }
 
 .rating-pill-max {
   font-size: 0.65rem;
   font-weight: 600;
-  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  color: var(--text-muted);
   opacity: 0.7;
 }
 

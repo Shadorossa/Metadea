@@ -1,5 +1,5 @@
-import { isTauri, invoke } from './core';
-import { STORAGE_KEYS } from '../shared/storage-keys';
+import { isTauri, invoke } from './bridge';
+import { STORAGE_KEYS } from '../storage/storage-keys';
 
 export interface EnvConfig {
   igdb_client_id?:     string;

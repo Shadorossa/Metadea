@@ -1,4 +1,5 @@
 /* Search page */
+@import '../components/tab-strip.css';
 
 
 
@@ -46,7 +47,7 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: clamp(0.2rem, 0.5vw, 0.35rem) !important;
+  gap: clamp(0.2rem, 0.5vw, 0.35rem);
   padding: 0 clamp(0.4rem, 1vw, 0.6rem) !important;
   height: 48px !important;
   font-size: clamp(0.65rem, 1vw, 0.75rem) !important;
@@ -54,7 +55,7 @@
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
   color: var(--text-muted) !important;
-  white-space: nowrap !important;
+  white-space: nowrap;
   cursor: pointer !important;
   background: none !important;
   border: none !important;
@@ -66,13 +67,6 @@
   height: clamp(12px, 1.43vw, 15px) !important;
   flex-shrink: 0 !important;
   opacity: 0.7 !important;
-}
-
-.search-tab-icon {
-  opacity: 1;
-  pointer-events: auto;
-  will-change: opacity;
-  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .search-tab-label {
@@ -89,16 +83,12 @@
   .search-tab {
     padding: 0 !important;
     width: clamp(1.8rem, 2.2vw, 2.2rem) !important;
-    gap: 0.05rem !important;
-  }
-  .search-tab-icon {
-    opacity: 1 !important;
-    pointer-events: auto !important;
+    gap: 0.05rem;
   }
   .search-tab-label {
     opacity: 0 !important;
-    pointer-events: none !important;
-    max-width: 0 !important;
+    pointer-events: none;
+    max-width: 0;
     flex-shrink: 0 !important;
   }
 }
@@ -108,7 +98,7 @@
 .search-tab:hover svg { opacity: 1 !important; }
 .search-tab:disabled {
   color: var(--text-muted) !important;
-  opacity: 0.38 !important;
+  opacity: 0.38;
   cursor: not-allowed !important;
 }
 .search-tab:disabled:hover {
@@ -141,12 +131,6 @@
   transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@media (max-width: 1799px) {
-  .search-tab.active::after {
-    width: clamp(1rem, 80%, 1.2rem) !important;
-  }
-}
-
 /* ── Search bar ──────────────────────────────────────────────────────────── */
 .search-bar-row {
   display: flex;
@@ -170,11 +154,11 @@
   border-radius: var(--radius-md) !important;
   color: var(--text-main) !important;
   font-size: clamp(0.7rem, 1vw, 0.8rem) !important;
-  letter-spacing: -0.01em !important;
+  letter-spacing: -0.01em;
   outline: none !important;
   transition: border-color var(--anim-fast) var(--anim-ease), background var(--anim-fast) !important;
 }
-.search-page-wrapper .search-input::placeholder { color: var(--text-muted) !important; }
+.search-page-wrapper .search-input::placeholder { color: var(--text-muted); }
 .search-page-wrapper .search-input:focus {
   border-color: var(--accent) !important;
   background: rgba(192, 132, 252, 0.03) !important;
@@ -183,17 +167,17 @@
 /* Botones a la derecha del input */
 .search-page-wrapper .search-action-btn {
   display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: clamp(1.8rem, 3vw, 2.25rem) !important;
-  height: clamp(1.8rem, 3vw, 2.25rem) !important;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.8rem, 3vw, 2.25rem);
+  height: clamp(1.8rem, 3vw, 2.25rem);
   flex-shrink: 0 !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid var(--border-color);
   color: var(--text-muted) !important;
-  cursor: pointer !important;
-  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast) !important;
+  cursor: pointer;
+  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast);
 }
 .search-page-wrapper .search-action-btn:hover {
   color: var(--text-main) !important;
@@ -246,7 +230,7 @@
   gap: 0.15rem;
   width: 2.5rem;
   padding: 0.2rem;
-  background: var(--bg-secondary, var(--bg-primary));
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.45);

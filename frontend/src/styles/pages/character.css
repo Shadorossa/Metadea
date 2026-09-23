@@ -138,8 +138,8 @@
 
 .char-avatar-edit-btn:hover {
   background: rgba(0, 0, 0, 0.85);
-  border-color: var(--accent-primary, #a855f7);
-  color: var(--accent-primary, #a855f7);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .character-avatar-wrap {
@@ -241,9 +241,9 @@
 }
 
 .char-action-btn.active[data-action="like"] {
-  color: #4ade80;
-  background: color-mix(in srgb, #4ade80 12%, var(--bg-card));
-  border-color: color-mix(in srgb, #4ade80 40%, transparent);
+  color: var(--color-success-soft);
+  background: color-mix(in srgb, var(--color-success-soft) 12%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--color-success-soft) 40%, transparent);
 }
 
 .char-action-btn.active[data-action="dislike"] {
@@ -297,7 +297,7 @@
 
 .character-preview-field.character-preview-diff--removed,
 .character-avatar-frame.character-preview-diff--removed {
-  outline: 1px solid color-mix(in srgb, #ff8585 78%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--color-error-soft) 78%, transparent);
   outline-offset: 3px;
 }
 

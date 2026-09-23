@@ -1,5 +1,5 @@
 ---
-import { ICON_STAR, ICON_RATING_FACES } from "../../lib/shared/icon-strings";
+import { ICON_STAR, ICON_RATING_FACES } from "../../lib/dom/icon-strings";
 import type { Translations } from "../../i18n/index";
 import { LOCALES } from "../../i18n/index";
 
@@ -317,7 +317,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   <div class="settings-help-modal-content settings-danger-modal-content">
     <div class="settings-help-modal-header">
       <h3 data-i18n="settings.clear_notes_confirm_title">{t.settings.clear_notes_confirm_title}</h3>
-      <button type="button" class="settings-help-modal-close" id="clear-notes-modal-close" aria-label="Close">&times;</button>
+      <button type="button" class="settings-help-modal-close" id="clear-notes-modal-close" aria-label={t.settings.close}>&times;</button>
     </div>
     <div class="settings-help-modal-body">
       <p data-i18n="settings.clear_notes_confirm_warning">{t.settings.clear_notes_confirm_warning}</p>

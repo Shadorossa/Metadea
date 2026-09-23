@@ -35,7 +35,8 @@ fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
         .filter_map(|r| r.ok())
         .collect();
     for (name, value) in rows {
-        let opt = if value.is_empty() { None } else { Some(value) };
+        // Keys saved before write_env_config encrypted are plaintext rows.
+        let opt = if value.is_empty() { None } else { Some(crate::utils::decrypt_secret_or_plaintext(&value)) };
         match name.as_str() {
             "anilist_client_id"  => cfg.anilist_client_id  = opt,
             "igdb_client_id"     => cfg.igdb_client_id     = opt,
@@ -79,6 +80,8 @@ pub async fn write_env_config(
         ("apisports_api_key",  config.apisports_api_key.as_deref().unwrap_or("")),
     ];
     for (name, value) in pairs {
+        // An empty value means "unset" to env_from_db, so it stays empty.
+        let value = if value.is_empty() { String::new() } else { crate::utils::encrypt_secret(value)? };
         tx.execute(
             "INSERT INTO app_env (name, value, updated_at) VALUES (?1, ?2, ?3)
              ON CONFLICT(name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",

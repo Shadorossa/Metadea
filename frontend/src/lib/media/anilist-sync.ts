@@ -1,8 +1,8 @@
-import { ANILIST_TYPES, APP_TO_ANILIST_STATUS, ANILIST_TO_APP_STATUS } from '../constants/media';
+import { ANILIST_TYPES, APP_TO_ANILIST_STATUS, ANILIST_TO_APP_STATUS } from './media-types';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
-import { isTauri, invoke } from '../tauri/core';
-import { parseExternalId } from './mapper-utils';
+import { isTauri, invoke } from '../tauri/bridge';
+import { parseExternalId } from './mappers/mapper-utils';
 export type AniListSyncType = typeof ANILIST_TYPES[number];
 
 export function isAniListType(type: string): type is AniListSyncType {

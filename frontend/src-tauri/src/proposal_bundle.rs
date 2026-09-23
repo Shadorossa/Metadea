@@ -362,7 +362,7 @@ fn replace_bundle_relations(
     // mutable so a related id appearing more than once in the same bundle
     // still only gets its stub catalog row inserted once.
     let related_ids: Vec<String> = relations.iter().map(|r| r.related_media_external_id.clone()).collect();
-    let mut known_ids = existing_catalog_ids(&tx, &related_ids)?;
+    let mut known_ids = existing_catalog_ids(tx, &related_ids)?;
 
     for rel in relations {
         let parent_id = rel.media_external_id.as_deref().unwrap_or(&entry.external_id);

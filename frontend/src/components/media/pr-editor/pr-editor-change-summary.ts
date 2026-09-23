@@ -1,12 +1,18 @@
 // buildChangeSummary, split out of PrEditorModal.tsx: formats the "- " PR
-// body from precomputed values, same reasoning as SubmitPrEditorParams.
+// body. buildPrEditorChangeSummary derives everything from the editor state;
+// formatPrEditorChangeSummary is the pure formatter underneath it, taking
+// precomputed values so it can be exercised directly.
 import type { MediaCatalogEntry } from '../../../lib/tauri/catalog';
-import type { MediaMeta } from '../../../lib/media/sagaGrouping';
-import type { SagaRelationType } from '../../../lib/media/sagaTypes';
+import type { MediaMeta } from '../../../lib/media/saga/saga-grouping';
+import type { SagaRelationType } from '../../../lib/media/saga/saga-relation-types';
 import { DIFF_FIELDS } from '../../../lib/media/constants';
-import type { BundledRelation, EditableRelation } from '../PrEditorModal';
+import type { BundledRelation, EditableRelation } from '../../../lib/media/editor/pr-editor-types';
+import {
+  charactersChanged, getPrEditorDiff, isFieldChanged, originalEditableRelationTypes,
+  type PrEditorContext, type PrEditorState,
+} from './pr-editor-state';
 
-export interface PrEditorDiff {
+export interface PrEditorChangeSummaryDiff {
   addedBundled: BundledRelation[];
   removedBundledIds: string[];
   addedContained: BundledRelation[];
@@ -26,7 +32,7 @@ export interface BuildChangeSummaryParams {
   entry: MediaCatalogEntry;
   originalEntry: MediaCatalogEntry | null;
   isFieldChanged: (field: keyof MediaCatalogEntry) => boolean;
-  diff: PrEditorDiff;
+  diff: PrEditorChangeSummaryDiff;
   resolveMeta: (id: string) => MediaMeta;
   originalEditableRelationTypes: Map<string, string>;
   sagaOrder: string[];
@@ -38,8 +44,29 @@ export interface BuildChangeSummaryParams {
   mediaAuthorsCount: number;
 }
 
-// "- " bullet list of everything this proposal adds or changes, used as the PR body.
-export function buildPrEditorChangeSummary(p: BuildChangeSummaryParams): string {
+// "- " bullet list of everything this proposal adds or changes, used as the
+// PR body — derived from the editor state. Empty when no entry is loaded.
+export function buildPrEditorChangeSummary(state: PrEditorState, ctx: PrEditorContext, resolveMeta: (id: string) => MediaMeta): string {
+  const { draft, baseline } = state;
+  if (!draft.entry) return '';
+  return formatPrEditorChangeSummary({
+    entry: draft.entry,
+    originalEntry: baseline.entry,
+    isFieldChanged: field => isFieldChanged(state, field),
+    diff: getPrEditorDiff(state, ctx),
+    resolveMeta,
+    originalEditableRelationTypes: originalEditableRelationTypes(state),
+    sagaOrder: draft.sagaOrder,
+    sagaRelationTypes: draft.sagaRelationTypes,
+    sagaName: draft.sagaName,
+    originalSagaName: baseline.sagaName,
+    charactersChanged: charactersChanged(state),
+    charactersCount: draft.characters.length,
+    mediaAuthorsCount: draft.mediaAuthors.length,
+  });
+}
+
+export function formatPrEditorChangeSummary(p: BuildChangeSummaryParams): string {
   const { entry, originalEntry, isFieldChanged, diff: d, resolveMeta, originalEditableRelationTypes, sagaOrder, sagaRelationTypes, sagaName, originalSagaName } = p;
   const lines: string[] = [];
 

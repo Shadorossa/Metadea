@@ -1,4 +1,5 @@
-import { tauriCmd, tauriRun } from './core';
+import { STORAGE_KEYS } from '../storage/storage-keys';
+import { tauriCmd, tauriRun, readStoredJson, writeStoredJson } from './bridge';
 
 export interface LocalGame {
   name:              string;
@@ -87,3 +88,12 @@ export async function getHiddenLocalGames(): Promise<HiddenGameKey[]> {
   return tauriCmd<HiddenGameKey[]>('get_hidden_local_games', []);
 }
 
+// ── Category routes (Local's folder-per-category mapping) ──────────────────
+
+export async function readRoutes(): Promise<Record<string, string>> {
+  return readStoredJson<Record<string, string>>('read_routes', STORAGE_KEYS.categoryRoutes, {});
+}
+
+export async function writeRoutes(routes: Record<string, string>): Promise<void> {
+  return writeStoredJson('write_routes', STORAGE_KEYS.categoryRoutes, routes, 'routesJson');
+}

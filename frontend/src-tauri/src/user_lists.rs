@@ -94,6 +94,41 @@ pub async fn read_user_favorites(
     serde_json::to_string(&result).str_err()
 }
 
+// Typed counterpart of read_user_favorites: the same {type: [external_id]}
+// map (every FAV_MAP type present, empty or not) as a real object over IPC
+// instead of a JSON string the frontend has to JSON.parse again.
+pub(crate) fn load_user_favorites(
+    conn: &rusqlite::Connection,
+) -> Result<std::collections::HashMap<String, Vec<String>>, String> {
+    let mut result: std::collections::HashMap<String, Vec<String>> = FAV_MAP
+        .iter()
+        .map(|(type_name, _)| (type_name.to_string(), Vec::new()))
+        .collect();
+
+    let mut stmt = conn.prepare(
+        "SELECT l.key, i.external_id
+         FROM user_lists l
+         JOIN user_list_items i ON i.list_key = l.key
+         WHERE l.is_fav = 1
+         ORDER BY l.key, i.position",
+    ).str_err()?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+        .str_err()?;
+    for (key, external_id) in rows.flatten() {
+        result.entry(fav_key_to_type(&key)).or_default().push(external_id);
+    }
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn read_user_favorites_typed(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<std::collections::HashMap<String, Vec<String>>, String> {
+    let conn = state.conn.lock().str_err()?;
+    load_user_favorites(&conn)
+}
+
 #[tauri::command]
 pub async fn write_user_favorites(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -159,7 +194,9 @@ pub async fn get_all_user_lists(
          ORDER BY l.is_fav DESC, l.created_at ASC",
     ).str_err()?;
 
-    let rows: Vec<(String, String, String, bool, bool, String, bool, i64, Option<String>)> = stmt
+    // (key, name, description, is_fav, is_private, list_type, is_ranked, item_count, preview_csv)
+    type ListRow = (String, String, String, bool, bool, String, bool, i64, Option<String>);
+    let rows: Vec<ListRow> = stmt
         .query_map([], |r| {
             Ok((
                 r.get::<_, String>(0)?,
@@ -197,7 +234,45 @@ pub async fn get_list_items_full(
     list_key: String,
 ) -> Result<Vec<ListItemFull>, String> {
     let mut items: Vec<ListItemFull> = {
-    let conn = state.conn.lock().str_err()?;
+        let conn = state.conn.lock().str_err()?;
+        load_list_items_full(&conn, &list_key)?
+    };
+
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
+    }
+
+    Ok(items)
+}
+
+// Same as get_list_items_full, but a character item's cover_url is its
+// portrait's file path (wrap with wrapAssetUrl) instead of an inlined
+// base64 data URL — see image_storage::resolve_reference_path. Media
+// covers are remote URLs either way and come back untouched.
+#[tauri::command]
+pub async fn get_list_items_full_light(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    list_key: String,
+) -> Result<Vec<ListItemFull>, String> {
+    let mut items: Vec<ListItemFull> = {
+        let conn = state.conn.lock().str_err()?;
+        load_list_items_full(&conn, &list_key)?
+    };
+
+    let data_dir = app_handle.path().app_data_dir().str_err()?;
+    for item in &mut items {
+        item.cover_url = crate::image_storage::resolve_image_path_value(&data_dir, item.cover_url.take())?;
+    }
+
+    Ok(items)
+}
+
+pub(crate) fn load_list_items_full(
+    conn: &rusqlite::Connection,
+    list_key: &str,
+) -> Result<Vec<ListItemFull>, String> {
     // Single SQL JOIN — everything is in metadea.db. Characters never have a
     // media_catalog row (that table is media only — see save_character), so
     // their title/cover are resolved from the characters table instead via
@@ -222,7 +297,7 @@ pub async fn get_list_items_full(
          ORDER BY li.position"
     ).str_err()?;
 
-    let collected = stmt.query_map([&list_key], |r| {
+    let collected = stmt.query_map([list_key], |r| {
         Ok(ListItemFull {
             external_id: r.get(0)?,
             position:    r.get(1)?,
@@ -239,15 +314,7 @@ pub async fn get_list_items_full(
             format:      r.get(12)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
-    collected
-    };
-
-    let data_dir = app_handle.path().app_data_dir().str_err()?;
-    for item in &mut items {
-        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-    }
-
-    Ok(items)
+    Ok(collected)
 }
 
 #[tauri::command]

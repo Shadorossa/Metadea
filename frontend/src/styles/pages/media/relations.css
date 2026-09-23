@@ -75,7 +75,7 @@
 }
 
 .media-theme-badge--op {
-  background: var(--accent, #7c6af7);
+  background: var(--accent);
 }
 
 .media-theme-badge--ed {
@@ -125,7 +125,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(22, 20, 18, 0.85);
   backdrop-filter: blur(8px);
-  color: var(--text-main, #fff);
+  color: var(--text-main);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -157,7 +157,7 @@
   gap: 0.3rem;
   background: rgba(0, 0, 0, 0.4);
   padding: 0.2rem 0.3rem;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.08);
   margin-left: 0.5rem;
   flex-shrink: 0;
@@ -169,7 +169,7 @@
   font-family: inherit;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--text-muted, #a1a1aa);
+  color: var(--text-muted);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   cursor: pointer;
@@ -183,7 +183,7 @@
 }
 
 .theme-player-version-tab.active {
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
   background: rgba(255, 255, 255, 0.12);
 }
 
@@ -191,7 +191,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   padding: 0.35rem 0.75rem;
   text-decoration: none;
   color: inherit;
@@ -207,7 +207,7 @@
 }
 
 .theme-player-season-card:hover {
-  border-color: var(--accent, #7c6af7);
+  border-color: var(--accent);
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
@@ -251,7 +251,7 @@
   z-index: 2;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--text-main, #fff);
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -269,10 +269,10 @@
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-muted, #a1a1aa);
+  color: var(--text-muted);
   background: rgba(255, 255, 255, 0.08);
   padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.12);
   white-space: nowrap;
 }
@@ -293,7 +293,7 @@
   position: relative;
   width: 100%;
   max-width: 860px;
-  background: var(--bg-elevated, #1b1917);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -355,7 +355,7 @@
 
 .theme-player-error-text {
   font-size: 0.9rem;
-  color: var(--text-dim, #ccc);
+  color: var(--text-dim);
   margin: 0;
 }
 
@@ -363,16 +363,16 @@
   padding: 0.4rem 1rem;
   font-size: 0.82rem;
   font-weight: 600;
-  border-radius: var(--radius-sm, 4px);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  background: var(--bg-surface, #222);
-  color: var(--text-main, #fff);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  color: var(--text-main);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .theme-player-retry-btn:hover {
-  background: var(--accent-color, #e0b06b);
+  background: var(--accent);
   color: #000;
   border-color: transparent;
 }
@@ -512,7 +512,7 @@
 }
 
 .media-match-score {
-  color: var(--accent, #c084fc);
+  color: var(--accent);
   font-size: 0.76rem;
   font-weight: 800;
   line-height: 1.15;
@@ -870,15 +870,15 @@
 }
 
 .media-section-header-row .section-label {
-  border-bottom: none !important;
+  border-bottom: none;
   margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
 }
 
 .media-section-header-line {
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.85) !important;
+  background: rgba(255, 255, 255, 0.85);
   /* Pure white line with slight opacity */
 }
 
@@ -931,8 +931,8 @@
   height: 24px;
   place-items: center;
   border-radius: 4px;
-  background: var(--surface-2, #333);
-  color: var(--text-main, #fff);
+  background: var(--bg-card);
+  color: var(--text-main);
   font-size: 0.8rem;
   font-weight: 700;
 }
@@ -981,12 +981,12 @@
   border: 1px solid var(--border-color);
   backdrop-filter: blur(8px);
   cursor: pointer;
-  transition: all var(--anim-fast, 120ms);
+  transition: all var(--anim-fast);
 }
 
 .media-banner-pr-btn:hover {
-  color: var(--accent, #7c6af7);
-  border-color: var(--accent, #7c6af7);
+  color: var(--accent);
+  border-color: var(--accent);
   background: var(--bg-elevated);
 }
 

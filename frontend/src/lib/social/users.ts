@@ -2,7 +2,7 @@
 // (no daily-cache gate, unlike profile-sync/activity-feed) since these are
 // triggered by explicit user actions (search-as-you-type, opening a profile,
 // clicking Follow), not something to batch once a day.
-import { API_URL } from '../config';
+import { API_URL } from '../api/urls';
 import { getAuthToken } from '../tauri';
 
 export interface UserSearchResult {

@@ -167,7 +167,7 @@ pub async fn cache_theme_video(
 
         // Re-check existence in case another task completed it while waiting for the semaphore
         if !file_path.exists() {
-            let client = crate::igdb::get_http_client();
+            let client = crate::http::http_client();
             let mut attempts = 0;
             let bytes = loop {
                 attempts += 1;

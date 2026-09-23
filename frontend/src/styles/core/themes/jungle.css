@@ -50,7 +50,7 @@ body[data-theme="jungle"], html[data-theme="jungle"] body {
   border: 2px solid #3b5e40 !important;
   background-color: #0f1c13 !important;
   color: #9ece9a !important;
-  box-shadow: 0 4px 0px #223725 !important;
+  box-shadow: 0 4px 0px #223725;
   transition: all 0.1s ease !important;
   font-family: inherit !important;
 }
@@ -60,12 +60,12 @@ body[data-theme="jungle"], html[data-theme="jungle"] body {
 [data-theme="jungle"] .search-action-btn:hover {
   background-color: #15271a !important;
   border-color: #10b981 !important;
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15), 0 4px 0px #223725 !important;
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15), 0 4px 0px #223725;
 }
 
 [data-theme="jungle"] .btn:active {
   transform: translateY(4px);
-  box-shadow: 0 0px 0px #223725 !important;
+  box-shadow: 0 0px 0px #223725;
 }
 
 [data-theme="jungle"] .search-input,
@@ -97,7 +97,7 @@ body[data-theme="jungle"], html[data-theme="jungle"] body {
 [data-theme="jungle"] .media-relation-card:hover {
   border-color: #10b981 !important;
   box-shadow: 0 10px 20px rgba(16, 185, 129, 0.1), 0 6px 12px rgba(0,0,0,0.5) !important;
-  transform: translateY(-2px) !important;
+  transform: translateY(-2px);
 }
 
 [data-theme="jungle"] ::-webkit-scrollbar-thumb {

@@ -1,0 +1,75 @@
+import type { OpenLibWork } from '../../search/providers/openlibrary';
+import { openLibCoverUrl } from '../../search/providers/openlibrary';
+import { getT } from '../../../i18n/runtime';
+import type { MediaAuthor, MediaPageData } from '../types';
+import { canonicalizeAlwaysFinished } from '../media-status';
+import { parseFlexibleDate } from './mapper-utils';
+
+
+function extractDescription(raw: OpenLibWork['description']): string | undefined {
+  if (!raw) return undefined;
+  if (typeof raw === 'string') return raw;
+  return raw.value ?? undefined;
+}
+
+export function mapOpenLibToMedia(
+  work: OpenLibWork,
+  authors: MediaAuthor[],
+  externalId: string,
+  mediaType: 'book' | 'comic' = 'book',
+  firstEditionCover?: number,
+): MediaPageData {
+  const tm = getT().media;
+
+  const cover = work.covers?.[0] != null
+    ? openLibCoverUrl(work.covers[0], 'L')
+    : firstEditionCover != null
+      ? openLibCoverUrl(firstEditionCover, 'L')
+      : undefined;
+
+  const genres    = (work.subjects ?? []).slice(0, 6);
+  const genreDots = genres.join(' · ') || undefined;
+
+  const stats: MediaPageData['stats'] = [];
+  if (authors.length) {
+    stats.push({
+      label: authors.length > 1 ? tm.stat_authors : tm.stat_author,
+      value: authors.map(a => a.name).join(', '),
+    });
+  }
+  if (work.first_publish_date) {
+    stats.push({ label: tm.stat_published, value: work.first_publish_date });
+  }
+
+  const metaLines = authors.length ? [authors.map(a => a.name).join(', ')] : [];
+  const dateParts = parseFlexibleDate(work.first_publish_date);
+
+  return {
+    externalId,
+    type: mediaType,
+    titleMain:    work.title,
+    titleNative:  undefined,
+    titleEnglish: undefined,
+    cover,
+    bannerImage:  undefined,
+    bannerColor:  'linear-gradient(135deg, #1a1a2e22, #2a1a3e44)',
+    status:       canonicalizeAlwaysFinished(),
+    statusLabel:  undefined,
+    statusClass:  '',
+    genreDots,
+    metaLines,
+    releaseYear:  dateParts?.year ?? undefined,
+    releaseMonth: dateParts?.month ?? undefined,
+    releaseDay:   dateParts?.day ?? undefined,
+    dateBadge:    work.first_publish_date,
+    description:  extractDescription(work.description),
+    stats,
+    characters:   [],
+    relations:    [],
+    progressStatus: 'reading',
+    progressLabel:  getT().profile.status_reading,
+    authors,
+    source:       'openlibrary',
+    sourceUrl:    `https://openlibrary.org/works/${externalId.slice(externalId.indexOf(':') + 1)}`,
+  };
+}

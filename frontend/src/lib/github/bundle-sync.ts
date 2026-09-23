@@ -1,11 +1,11 @@
 import { saveCatalogEntry, getCatalogEntry, saveMediaRelations, saveMediaAuthors, type DbMediaRelation } from '../tauri/catalog';
 import { saveCharactersSkeleton, type SkeletonCharacter } from '../tauri/characters';
 import { saveStoryArc } from '../tauri/story-arcs';
-import type { ProposalBundle } from './submitCollaborativeProposal';
+import type { ProposalBundle } from './submit-collaborative-proposal';
 import { fetchFileAtRef } from './api';
-import { catalogFilePath } from './catalogPaths';
-import { ALL_CHAIN_RELATION_TYPES } from '../media/sagaTypes';
-import { fetchMediaData } from '../media/mediaService';
+import { catalogFilePath } from './catalog-paths';
+import { ALL_CHAIN_RELATION_TYPES } from '../media/saga/saga-relation-types';
+import { fetchMediaData } from '../media/media-page-data';
 
 // Imports a merged GitHub catalog file into the local DB so the existing rich
 // editor (PrEditorModal) has something to show/edit before submitting the

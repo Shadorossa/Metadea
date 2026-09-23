@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { getAllTierLists, getAllCatalogEntries, createTierList, deleteTierList } from '../../lib/tauri';
-import type { TierListInfo, MediaCatalogEntry } from '../../lib/tauri';
-import { getT } from '../../i18n/client';
+import { getAllTierLists, getCatalogEntriesByIds, createTierList, deleteTierList } from '../../lib/tauri';
+import type { TierListInfo, CatalogSummary } from '../../lib/tauri';
+import { getT } from '../../i18n/runtime';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { IconTrash } from '../local/ui/icons';
 
@@ -13,7 +13,7 @@ export default function TierIndex() {
 
   const [search, setSearch]     = useState('');
   const [lists, setLists]       = useState<TierListInfo[]>([]);
-  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(new Map());
+  const [catalogMap, setCatalogMap] = useState<Map<string, CatalogSummary>>(new Map());
   const [loading, setLoading]   = useState(true);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -23,8 +23,12 @@ export default function TierIndex() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = () => {
-    Promise.all([getAllTierLists(), getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[])])
-      .then(([tierLists, catalog]) => {
+    // Only the collage covers are read from the catalog — fetched for the
+    // preview ids alone instead of the whole table.
+    getAllTierLists()
+      .then(async tierLists => {
+        const previewIds = [...new Set(tierLists.flatMap(list => list.preview_ids))];
+        const catalog = await getCatalogEntriesByIds(previewIds).catch(() => [] as CatalogSummary[]);
         setLists(tierLists);
         setCatalogMap(new Map(catalog.map(e => [e.external_id, e])));
         setLoading(false);

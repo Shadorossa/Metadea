@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MediaTheme } from '../../../lib/tauri/misc-commands';
+import type { MediaTheme } from '../../../lib/tauri/themes';
 import { ThemePreviewCardVideo } from '../ThemePreviewCardVideo';
 
 export function PrEditorThemeCard({ theme, fallbackUrl }: { theme: MediaTheme; fallbackUrl?: string }) {

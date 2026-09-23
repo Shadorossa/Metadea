@@ -1,4 +1,4 @@
-import { tauriCmd, tauriRun } from './core';
+import { tauriCmd, tauriRun } from './bridge';
 
 // Where VLC's own position was last seen for an episode not yet marked
 // watched — see resume_position.rs's own comment for why this is a

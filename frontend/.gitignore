@@ -25,6 +25,17 @@ pnpm-debug.log*
 .idea/
 
 # claude setting folder
-.claude.
+.claude/
+
+# Local debugging leftovers — never source.
+*.db
+*.db-shm
+*.db-wal
+tauri-dev.log
+tauri-output.log
+scratch/
 
 src-tauri/target/
+
+# libmpv runtime (100 MB, LGPL build downloaded per src-tauri/resources/README-libmpv.md)
+src-tauri/resources/*.dll

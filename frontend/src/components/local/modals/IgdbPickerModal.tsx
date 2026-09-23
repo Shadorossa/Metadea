@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { ModalShell } from '../../shared/ModalShell';
 import {
   igdbSearchCandidates, igdbForceByIgdbId, saveGameLink, getCatalogEntry, saveCatalogEntry,
   searchCatalog,
   type LocalGame, type IgdbCandidate, type MediaCatalogEntry,
 } from '../../../lib/tauri';
-import { getT } from '../../../i18n/client';
-import { useDebouncedCallback } from '../../../lib/shared/useDebouncedCallback';
+import { getT } from '../../../i18n/runtime';
+import { useDebouncedCallback } from '../../shared/hooks/useDebouncedCallback';
 
 interface IgdbPickerModalProps {
   game:     LocalGame;
@@ -80,7 +80,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
             name: c.title_main || c.external_id,
             year: c.release_year || 0,
             cover_url: c.cover_url || '',
-            developer: c.type === 'vnovel' ? 'Visual Novel' : 'Base de datos',
+            developer: '',
             category: null,
             externalId: c.external_id,
             type: c.type,
@@ -107,7 +107,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
         if (seenKeys.has(idKey) || seenKeys.has(gameKey) || seenKeys.has(vnKey)) {
           if (item.developer) {
             const existing = combined.find(c => c.id === item.id);
-            if (existing && (!existing.developer || existing.developer === 'Visual Novel' || existing.developer === 'Base de datos')) {
+            if (existing && !existing.developer) {
               existing.developer = item.developer;
             }
           }
@@ -158,7 +158,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
         }
       }
 
-      await saveGameLink(game.launcher, linkKey, externalId).catch(console.error);
+      await saveGameLink(game.launcher, linkKey, externalId);
 
       const existing = await getCatalogEntry(externalId).catch(() => null);
       const isVn = externalId.startsWith('vnovel:');
@@ -174,18 +174,26 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
             created_at: '',
             updated_at: '',
           };
-      await saveCatalogEntry(catalogEntry).catch(console.error);
+      // Both writes above must land before the picker reports success —
+      // onPicked links the local game to this catalog id, and a swallowed
+      // failure used to leave that link pointing at a row never written.
+      await saveCatalogEntry(catalogEntry);
       onPicked({ externalId, name: candidate.name });
       onClose();
     } catch (e) {
       console.error('igdb force error', e);
+      setError(e instanceof Error ? e.message : String(e));
       setApplying(null);
     }
   };
 
-  return createPortal(
-    <div className="igdb-picker-overlay" onClick={onClose}>
-      <div className="igdb-picker-modal" onClick={e => e.stopPropagation()}>
+  return (
+    <ModalShell
+      onClose={onClose}
+      label={t.local.select_igdb_game}
+      overlayClassName="igdb-picker-overlay"
+      panelClassName="igdb-picker-modal"
+    >
         <div className="igdb-picker-header">
           <span>{t.local.select_igdb_game}</span>
           <button className="igdb-picker-close" onClick={onClose}>✕</button>
@@ -239,7 +247,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
                       )}
                     </div>
                     <span className="igdb-picker-meta">
-                      {c.year > 0 ? c.year : '—'}{c.developer ? ` · ${c.developer}` : ''}
+                      {c.year > 0 ? c.year : '—'}{(() => { const dev = c.developer || (c.source === 'database' ? (c.type === 'vnovel' ? t.search.types.vnovel : t.local.igdb_source_database) : ''); return dev ? ` · ${dev}` : ''; })()}
                     </span>
                   </div>
                 </button>
@@ -247,8 +255,6 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
             })}
           </div>
         )}
-      </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 }

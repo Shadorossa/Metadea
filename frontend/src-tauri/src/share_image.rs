@@ -81,7 +81,7 @@ async fn ensure_public_https(url: &str) -> Result<(), String> {
 pub async fn fetch_image_data_url(url: String) -> Result<String, String> {
     ensure_public_https(&url).await?;
 
-    let mut resp = crate::igdb::get_http_client()
+    let mut resp = crate::http::http_client()
         .get(&url)
         .send()
         .await

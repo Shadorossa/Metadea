@@ -1,47 +1,40 @@
-import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
-import { getT } from '../../i18n/client';
-import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes, fetchMediaThemes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
-import { getCatalogEntry, getLibraryEntry, getMediaRelations, replaceIssueRelations, saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
-import type { LibraryEntry, MediaEpisode, MediaTheme } from '../../lib/tauri';
-import type { MediaPageData, MediaSeasonInfo } from '../../lib/media/types';
+import { getT } from '../../i18n/runtime';
+import { fetchMediaDataWithFallback, invalidateCachedMediaData } from '../../lib/media/media-page-data';
+import { getMediaRelations, saveLibraryEntry } from '../../lib/tauri';
+import type { LibraryEntry } from '../../lib/tauri';
+import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
 import { AnimatePresence } from 'motion/react';
-import { pauseThemeCaptureQueue, resumeThemeCaptureQueue } from './ThemePreviewCardVideo';
-import { prefetchSagaData, loadSagaChain } from '../../lib/media/sagaData';
-import type { SagaEntry } from '../../lib/anilist/saga';
-import { isUnifySeasonsEnabled } from '../../lib/settings/preferences';
+import { isUnifySeasonsEnabled } from '../../lib/storage/preferences';
 import { PrEditorModal } from './PrEditorModal';
-import type { PrEditorSessionHandle, PrEditorSessionTab } from './PrEditorModal';
-import { openSubmittedProposal, submitCollaborativeProposal, type ProposalFileEntry } from '../../lib/github/submitCollaborativeProposal';
-import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
-import { IconPlus, IconCheck, IconLayers, IconHeart, IconRefresh } from '../local/ui/icons';
+import { getActiveRatingSystem, syncActiveRatingSystem, type RatingSystem } from '../../lib/media/rating-utils';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
 import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
 import { useDiscordPresence } from './hooks/useDiscordPresence';
-import { MediaStoreLinks, openLink } from './MediaStoreLinks';
-import { MediaSourceLink } from './MediaSourceLink';
-import { Pagination } from './Pagination';
-import { parseStatSectionLabel, StatSectionTracker } from '../../lib/shared/stat-sections';
-import { saveCharactersSkeleton } from '../../lib/tauri/characters';
-import { getApiSportsEventMatches, getApiSportsEventSeasons, saveStaffSkeleton, getThemeVideoPath, cacheThemeVideo, getMediaEpisodes, getMediaThemes } from '../../lib/tauri/misc-commands';
-import { getAnimePrequelEpisodeOffset } from '../../lib/media/anime-tmdb-match';
-import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
-import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
-import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
-import { mergePlatformVersions, stripSeasonSuffix } from '../../lib/media/mapper-utils';
-import { sanitizeHtml } from '../../lib/shared/sanitize-html';
-import { ANILIST_TYPES, pickAggregateStatus } from '../../lib/constants/media';
+import { readUserFavoritesTyped, syncFavorites } from '../../lib/tauri/favorites';
+import { sanitizeHtml } from '../../lib/shared/text/sanitize-html';
+import { ANILIST_TYPES } from '../../lib/media/media-types';
 
 import { getPreferredCover } from '../../lib/media/cover-preferences';
-import { fetchApiSportsSeasonMatches, type EventMatch } from '../../lib/search/providers/apisports';
-import { splitTitleAfterColon, formatEpisodeNumber, formatThemeEpisodes, fetchUnifiedAnimeEpisodes } from './media-page/media-page-format';
-import { EpisodeCard, MatchCard, RelationCard, CharacterCard, UserScoreCard, ThemeCardItem } from './media-page/MediaPageCards';
-import { StarRating, StatusDropdown, SectionTabs } from './media-page/MediaPageControls';
 import { usePrEditorSession } from './media-page/usePrEditorSession';
 import { ThemePlayerOverlay } from './media-page/ThemePlayerOverlay';
+import { useMediaPageData } from './media-page/useMediaPageData';
+import { useThemePlayer } from './media-page/useThemePlayer';
+import { useEpisodesAndSeasons } from './media-page/useEpisodesAndSeasons';
+import { useEventMatches } from './media-page/useEventMatches';
+import { useFriendsScores } from './media-page/useFriendsScores';
+import { useCustomImages } from './media-page/useCustomImages';
+import { useRetrySync } from './media-page/useRetrySync';
+import { useFriendsGridCutoff } from './media-page/useFriendsGridCutoff';
+import { MediaHero } from './media-page/MediaHero';
+import { MediaRelationsSection, EPISODE_PAGE_SIZE, type RelationsTab } from './media-page/MediaRelationsSection';
+import { MediaStatsColumn } from './media-page/MediaStatsColumn';
+import { MediaCastSection, type CharTab } from './media-page/MediaCastSection';
+import { MediaScoresSection } from './media-page/MediaScoresSection';
 
 
 // ── MediaPage ──────────────────────────────────────────────────────────────
@@ -65,11 +58,19 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
 
   // Estado para el ID actual de la obra
   const [currentId, setCurrentId] = useState('');
-  const [pageState, setPageState] = useState<'loading' | 'error' | 'ready'>('loading');
-  const [isFetchingFull,     setIsFetchingFull]     = useState(false);
-  const [data,               setData]               = useState<MediaPageData | null>(null);
   const [showEditor,         setShowEditor]         = useState(false);
   const [showSaga,           setShowSaga]           = useState(false);
+  const [relationPage,       setRelationPage]       = useState(1);
+  const [relationsTab,       setRelationsTab]       = useState<RelationsTab>('related');
+  const [characterPage,      setCharacterPage]      = useState(1);
+  const [charTab,            setCharTab]            = useState<CharTab>('characters');
+  const {
+    data, setData,
+    pageState, setPageState,
+    isFetchingFull, setIsFetchingFull,
+    episodes, setEpisodes,
+    themes, setThemes,
+  } = useMediaPageData({ currentId, previewMode, tm });
   const prSession = usePrEditorSession({
     currentId,
     currentTitle: data?.titleMain,
@@ -78,36 +79,32 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       if (currentId) fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
     },
   });
-  const [relationPage,       setRelationPage]       = useState(1);
-  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes' | 'matches' | 'seasons' | 'themes'>('related');
-  const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
-  const [matches,            setMatches]            = useState<EventMatch[]>([]);
-  const [eventSeasonEntries, setEventSeasonEntries] = useState<Record<string, LibraryEntry | null>>({});
-  const [themes,             setThemes]             = useState<MediaTheme[]>([]);
-  // Anime's own season list — the live/cached PREQUEL/SEQUEL chain from
-  // sagaData.ts, same source SagaViewerModal already uses. TMDB series don't
-  // need this state at all: their season list is already sitting on
-  // data.seasons (tmdb-mapper.ts), no extra fetch involved.
-  const [animeSeasonChain,   setAnimeSeasonChain]   = useState<SagaEntry[]>([]);
-  const [animeSeasonChainResolvedFor, setAnimeSeasonChainResolvedFor] = useState<string | null>(null);
-  const [playingTheme,          setPlayingTheme]          = useState<MediaTheme | null>(null);
-  const [selectedThemeVersion,  setSelectedThemeVersion]  = useState<number>(1);
-  const [playingVideoSrc,       setPlayingVideoSrc]       = useState<string | null>(null);
-  const [playerError,        setPlayerError]        = useState(false);
-  const [playerRetryKey,     setPlayerRetryKey]     = useState(0);
-  const [episodeOffset,      setEpisodeOffset]      = useState(0);
-  const [characterPage,      setCharacterPage]      = useState(1);
-  const [charTab,            setCharTab]            = useState<'characters' | 'staff'>('characters');
-  const [customImagesMap,    setCustomImagesMap]    = useState<Map<string, FavoriteCustomImage>>(new Map());
-  const [friendsScores,      setFriendsScores]      = useState<FriendScore[]>([]);
-  const [friendsLoading,     setFriendsLoading]     = useState(false);
-  const [retryingSync,       setRetryingSync]       = useState(false);
+  // localStorage is unavailable during Astro's server render.
+  const unifySeasonsEnabled = typeof window !== 'undefined' && isUnifySeasonsEnabled();
+  const {
+    playingTheme, setPlayingTheme,
+    selectedThemeVersion, setSelectedThemeVersion,
+    playingVideoSrc, setPlayingVideoSrc,
+    playerError, setPlayerError,
+    playerRetryKey, setPlayerRetryKey,
+  } = useThemePlayer({ currentId, previewMode, themes });
+  const { animeSeasonChain, animeSeasonChainResolvedFor, episodeOffset } = useEpisodesAndSeasons({
+    currentId,
+    previewMode,
+    dataType: data?.type,
+    dataHasSaga: data?.hasSaga,
+    unifySeasonsEnabled,
+    episodes,
+    setEpisodes,
+    setThemes,
+  });
+  const customImagesMap = useCustomImages(currentId, previewMode);
+  const { friendsScores, friendsLoading } = useFriendsScores(currentId, previewMode);
   const [ratingSystem,       setRatingSystem]       = useState<RatingSystem>(getActiveRatingSystem());
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const [isFavorited,        setIsFavorited]        = useState(false);
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const usersScrollRef = useRef<HTMLDivElement | null>(null);
-  const usersGridRef = useRef<HTMLDivElement | null>(null);
+  const { usersScrollRef, usersGridRef } = useFriendsGridCutoff(friendsScores);
   const titleRef = useAutoShrinkTitle(data?.titleMain);
   const descriptionRef = useRef<HTMLDivElement>(null);
   const [descriptionOverflows, setDescriptionOverflows] = useState(false);
@@ -131,312 +128,30 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   } = useLibraryEntry(currentId, data?.type);
   const isEventCompetition = data?.type === 'event'
     && /^event:apisports:(football|basketball):\d+$/.test(currentId);
-  // localStorage is unavailable during Astro's server render.
-  const unifySeasonsEnabled = typeof window !== 'undefined' && isUnifySeasonsEnabled();
 
-  // Season relationships are stored locally after the first successful
-  // provider fetch. Load them independently of the API response so an
-  // already-synced competition still has its season tabs when offline.
-  useEffect(() => {
-    if (previewMode || !isEventCompetition) return;
-    let cancelled = false;
-    getApiSportsEventSeasons(currentId).then(storedRows => {
-      if (cancelled || storedRows.length === 0) return;
-      const storedSeasons: MediaSeasonInfo[] = storedRows.map(row => ({
-        externalId: row.externalId,
-        seasonNumber: row.seasonNumber,
-        name: row.name,
-        coverUrl: row.coverUrl,
-        airDate: row.airDate,
-      }));
-      setData(previous => {
-        if (!previous || previous.externalId !== currentId || previous.type !== 'event') return previous;
-        const byId = new Map<string, MediaSeasonInfo>();
-        for (const season of storedSeasons) {
-          if (season.externalId) byId.set(season.externalId, season);
-        }
-        for (const season of previous.seasons ?? []) {
-          if (season.externalId) byId.set(season.externalId, season);
-        }
-        const seasons = [...byId.values()].sort((a, b) => {
-          const year = (season: MediaSeasonInfo) => Number(
-            season.airDate?.slice(0, 4) || season.name?.match(/\b(?:19|20|21)\d{2}\b/)?.[0] || 0,
-          );
-          return year(b) - year(a) || b.seasonNumber - a.seasonNumber;
-        });
-        return { ...previous, seasons };
-      });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [previewMode, isEventCompetition, currentId]);
-
-  useEffect(() => {
-    if (previewMode || !isEventCompetition || !unifySeasonsEnabled) {
-      setEventSeasonEntries({});
-      return;
-    }
-    let cancelled = false;
-    const seasons = data?.seasons ?? [];
-    Promise.all(seasons.map(async season => {
-      if (!season.externalId) return null;
-      const entry = await getLibraryEntry(season.externalId).catch(() => null);
-      return [season.externalId, entry] as const;
-    })).then(rows => {
-      if (cancelled) return;
-      setEventSeasonEntries(Object.fromEntries(rows.filter((row): row is readonly [string, LibraryEntry | null] => !!row)));
-    });
-    return () => { cancelled = true; };
-  }, [previewMode, isEventCompetition, unifySeasonsEnabled, data?.seasons, showEditor]);
-
-  const eventSeasonIds = (data?.seasons ?? []).map(season => season.externalId).filter((id): id is string => !!id);
-  const eventSeasonEntriesLoaded = eventSeasonIds.length > 0 && eventSeasonIds.every(id => id in eventSeasonEntries);
-  const currentEventSeasonEntries = eventSeasonIds.map(id => eventSeasonEntries[id] ?? null);
-  const eventAggregateStatus = isEventCompetition && unifySeasonsEnabled
-    ? (pickAggregateStatus(currentEventSeasonEntries.map(entry => entry?.status)) || (eventSeasonEntriesLoaded ? '' : libStatus))
-    : libStatus;
-  const eventSeasonRatings = isEventCompetition && unifySeasonsEnabled
-    ? currentEventSeasonEntries.map(entry => entry?.rating ?? 0).filter(rating => rating > 0)
-    : [];
-  const eventAggregateRating = eventSeasonRatings.length > 0
-    ? eventSeasonRatings.reduce((sum, rating) => sum + rating, 0) / eventSeasonRatings.length
-    : (isEventCompetition && unifySeasonsEnabled && eventSeasonEntriesLoaded ? 0 : libRating);
-  const mediaInLibrary = (isEventCompetition && unifySeasonsEnabled
-    && currentEventSeasonEntries.some(entry => !!entry?.status)) || inLibrary;
-
-  const saveEventSeasonUpdates = useCallback(async (updates: Partial<LibraryEntry>) => {
-    if (!isEventCompetition || !unifySeasonsEnabled) return false;
-    const seasons = (data?.seasons ?? []).filter(season => !!season.externalId);
-    const rows: Array<readonly [string, LibraryEntry]> = [];
-    for (const season of seasons) {
-      const id = season.externalId!;
-      const existing = eventSeasonEntries[id] ?? await getLibraryEntry(id).catch(() => null);
-      const seasonUpdates = { ...updates };
-      if (seasonUpdates.status === 'completed') {
-        const [catalog, matchCache] = await Promise.all([
-          getCatalogEntry(id).catch(() => null),
-          getApiSportsEventMatches(id).catch(() => ({ syncedAt: null, matches: [] })),
-        ]);
-        let totalCount = matchCache.syncedAt ? matchCache.matches.length : (catalog?.total_count ?? 0);
-        if (!matchCache.syncedAt && totalCount <= 0) {
-          totalCount = (await fetchApiSportsSeasonMatches(id).catch(() => [])).length;
-        }
-        if (totalCount > 0) seasonUpdates.progress = totalCount;
-      }
-      const draft: LibraryEntry = {
-        id: '', user_id: 'local',
-        status: null, rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
-        is_favorite: 0, is_platinum: 0, tags: null, notes: null,
-        added_at: null, updated_at: null, selected_platform: null, selected_version: null,
-        started_at: null, finished_at: null,
-        ...existing,
-        ...seasonUpdates,
-        external_id: id,
-        type: 'event',
-      };
-      rows.push([id, await saveLibraryEntry(draft)]);
-    }
-    setEventSeasonEntries(previous => ({ ...previous, ...Object.fromEntries(rows) }));
-    return true;
-  }, [isEventCompetition, unifySeasonsEnabled, data?.seasons, eventSeasonEntries]);
-
-  // Warms SagaViewerModal's saga-chain + story-arcs caches (lib/media/sagaData.ts)
-  // as soon as the page is known to have a saga, instead of only starting
-  // that fetch once the user clicks the Saga button — by then it's typically
-  // already resolved, so opening the modal reads a cached result instantly.
-  //
-  // Also fires for every anime/manga even when data.hasSaga is false —
-  // hasSaga only reflects PREQUEL/SEQUEL rows already saved locally, which a
-  // freshly-added work (never visited/resynced before) won't have yet.
-  // loadSagaChain's own fallback (sagaData.ts) checks a live AniList query
-  // in that case instead of just giving up, and persists whatever it finds
-  // back to media_relations — so this is what actually discovers a season
-  // chain the first time, not just re-reads an already-known one.
-  useEffect(() => {
-    if (previewMode || !currentId) return;
-    if (data?.hasSaga || data?.type === 'anime' || data?.type === 'manga') prefetchSagaData(currentId);
-  }, [previewMode, data?.hasSaga, data?.type, currentId]);
-
-  // Anime's "Temporadas" tab — only when the Settings > Preferencias toggle
-  // is on (see preferences.ts's own doc comment for why: TMDB's own tab
-  // stays on unconditionally, but AniList's per-season entries are still the
-  // default/classic view unless the user opts into this). Reads the same
-  // loadSagaChain the effect above already warmed, so this is normally an
-  // instant cache hit, not a second fetch.
-  useEffect(() => {
-    if (previewMode || !currentId || data?.type !== 'anime' || !unifySeasonsEnabled) {
-      setAnimeSeasonChain([]);
-      setAnimeSeasonChainResolvedFor(currentId || null);
-      return;
-    }
-    let cancelled = false;
-    loadSagaChain(currentId).then(chain => {
-      if (cancelled) return;
-      setAnimeSeasonChain(chain.ok && chain.entries.length > 1 ? chain.entries : []);
-      setAnimeSeasonChainResolvedFor(currentId);
-    }).catch(() => {
-      if (cancelled) return;
-      setAnimeSeasonChain([]);
-      setAnimeSeasonChainResolvedFor(currentId);
-    });
-    return () => { cancelled = true; };
-  }, [previewMode, currentId, data?.type, unifySeasonsEnabled]);
-
-  // When "Unificar temporadas" is on, combine the chain's own episodes in
-  // watch order. A movie/single-episode special contributes one display-only
-  // unit; its standalone page still has no episode list.
-  useEffect(() => {
-    if (previewMode || !currentId || data?.type !== 'anime') return;
-    if (unifySeasonsEnabled && animeSeasonChainResolvedFor !== currentId) return;
-    let cancelled = false;
-
-    const canUnifySeasonChain = unifySeasonsEnabled
-      && animeSeasonChain.length > 1
-      && animeSeasonChain.every(entry => entry.mediaType === 'anime' || entry.mediaType === 'series');
-    if (!canUnifySeasonChain) {
-      // Single-season mode: load only current anime's episodes and themes
-      fetchMediaEpisodes(currentId, false).then(eps => {
-        if (!cancelled && eps.length > 0) setEpisodes(eps);
-      }).catch(() => {});
-      fetchMediaThemes(currentId).then(th => {
-        if (!cancelled && th.length > 0) setThemes(th);
-      }).catch(() => {});
-      return;
-    }
-
-    if (currentId !== animeSeasonChain[0].externalId) {
-      setEpisodes([]);
-      setThemes([]);
-      return;
-    }
-
-    // Episodes and themes are independent. Start both immediately and update
-    // each tab as soon as its own data is ready; previously episodes waited
-    // for every season's themes, which were also fetched one after another.
-    fetchUnifiedAnimeEpisodes(animeSeasonChain).then(allEpisodes => {
-      if (!cancelled && allEpisodes.length > 0) setEpisodes(allEpisodes);
-    }).catch(() => {});
-
-    Promise.all(animeSeasonChain.map(seasonEntry =>
-      fetchMediaThemes(seasonEntry.externalId).catch(() => [] as MediaTheme[]),
-    )).then(themeLists => {
-      if (cancelled) return;
-      const allThemes = themeLists.flat();
-      if (allThemes.length > 0) {
-        const themeMap = new Map<string, MediaTheme>();
-        for (const th of allThemes) {
-          const key = `${th.theme_type}_${th.sequence}_${(th.song_title || th.slug).toLowerCase().trim()}`;
-          if (!themeMap.has(key)) {
-            themeMap.set(key, th);
-          }
-        }
-        const mergedThemes = Array.from(themeMap.values()).sort((a, b) =>
-          a.theme_type !== b.theme_type ? (a.theme_type === 'OP' ? -1 : 1) : a.sequence - b.sequence
-        );
-        setThemes(mergedThemes);
-      }
-    }).catch(() => {});
-
-    return () => { cancelled = true; };
-  }, [previewMode, currentId, data?.type, animeSeasonChain, animeSeasonChainResolvedFor, unifySeasonsEnabled]);
-
-  useEffect(() => {
-    if (previewMode || data?.type !== 'event' || !currentId) {
-      setMatches([]);
-      return;
-    }
-    let cancelled = false;
-    setMatches([]);
-    fetchApiSportsSeasonMatches(currentId)
-      .then(rows => { if (!cancelled) setMatches(rows); })
-      .catch(() => { if (!cancelled) setMatches([]); });
-    return () => { cancelled = true; };
-  }, [previewMode, currentId, data?.type]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const navs = window.performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
-      if (navs.length > 0 && navs[0].type === 'reload') {
-        // Was checking for 'media_data:'/'cached_saga:' — stale key prefixes
-        // from before media-cache.ts's cache was renamed/versioned to
-        // CACHE_PREFIX ('media_cache_v3:'). Neither ever matched, so this
-        // purge-on-reload safety net has been a silent no-op.
-        for (let i = sessionStorage.length - 1; i >= 0; i--) {
-          const key = sessionStorage.key(i);
-          if (key && key.startsWith(CACHE_PREFIX)) {
-            sessionStorage.removeItem(key);
-          }
-        }
-      }
-    }
-  }, []);
+  const {
+    matches,
+    eventAggregateStatus,
+    eventAggregateRating,
+    mediaInLibrary,
+    saveEventSeasonUpdates,
+  } = useEventMatches({
+    currentId,
+    previewMode,
+    dataType: data?.type,
+    dataSeasons: data?.seasons,
+    isEventCompetition,
+    unifySeasonsEnabled,
+    showEditor,
+    setData,
+    libStatus,
+    libRating,
+    inLibrary,
+  });
 
   useEffect(() => {
     syncActiveRatingSystem().then(setRatingSystem);
   }, []);
-
-  // Caps the Usuarios grid to exactly 3 rows — computed purely from the
-  // grid's own box width via ResizeObserver, never by measuring/counting
-  // child cards. Every previous version of this effect keyed off the card
-  // count (via the friendsScores dependency, then a MutationObserver on the
-  // grid's children) and kept breaking the same way: whenever
-  // fetchFollowedFriendsScores resolves fast enough (its own 10-minute
-  // cache, or just a quick network response), the "how many cards are
-  // there" signal and "did the effect actually re-measure yet" signal could
-  // race, silently leaving max-height unset and showing the whole list
-  // uncapped. A ResizeObserver on the container has nothing to race — it
-  // fires once synchronously on observe() and then only on genuine width
-  // changes, regardless of how or when the cards inside it change.
-  useEffect(() => {
-    const scrollEl = usersScrollRef.current;
-    const gridEl = usersGridRef.current;
-    if (!scrollEl || !gridEl) return;
-
-    const PER_ROW = 5; // matches .media-users-grid's grid-template-columns
-    const ROWS_VISIBLE = 3;
-
-    const updateFade = () => {
-      const atTop = scrollEl.scrollTop <= 0;
-      const atBottom = scrollEl.scrollTop >= scrollEl.scrollHeight - scrollEl.clientHeight - 1;
-      scrollEl.classList.toggle('at-top', atTop);
-      scrollEl.classList.toggle('at-bottom', atBottom);
-    };
-
-    const recompute = () => {
-      const cutoffIndex = ROWS_VISIBLE * PER_ROW;
-      if (gridEl.children.length <= cutoffIndex) {
-        scrollEl.style.maxHeight = '';
-        updateFade();
-        return;
-      }
-      const style = getComputedStyle(gridEl);
-      const gap = parseFloat(style.columnGap || style.gap || '0') || 0;
-      const paddingTop = parseFloat(style.paddingTop || '0') || 0;
-      // Cards are square (aspect-ratio 1/1 on .media-user-avatar, and the
-      // card itself is just that avatar plus a name/score line below it of
-      // roughly fixed height) — cardWidth from the grid's own box width is
-      // all that's needed, no child measurement required.
-      const cardWidth = (gridEl.clientWidth - gap * (PER_ROW - 1)) / PER_ROW;
-      const nameLineHeight = 40; // height of the star-rating line under each avatar
-      const rowHeight = cardWidth + nameLineHeight;
-      scrollEl.style.maxHeight = `${paddingTop + ROWS_VISIBLE * rowHeight + (ROWS_VISIBLE - 1) * gap}px`;
-      updateFade();
-    };
-
-    recompute();
-    scrollEl.addEventListener('scroll', updateFade);
-
-    // ResizeObserver watches the grid's whole content-box, not just its
-    // width — adding/removing cards changes its height too (more rows), so
-    // this alone already re-fires recompute() on a card-count change; no
-    // separate MutationObserver needed to catch that case.
-    const resizeObserver = new ResizeObserver(recompute);
-    resizeObserver.observe(gridEl);
-
-    return () => {
-      scrollEl.removeEventListener('scroll', updateFade);
-      resizeObserver.disconnect();
-    };
-  }, [friendsScores]);
 
   // Escuchar cambios de navegación (Astro View Transitions y Popstate)
   useEffect(() => {
@@ -468,344 +183,17 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     }
   }, [previewMode, previewData]);
 
-  // Fetch page data cuando el currentId cambia
+  // Section tabs/pagination start over on every navigation — same trigger
+  // and guards as the main load effect (useMediaPageData) this used to be
+  // part of, kept here so the data hooks don't know about page UI state.
   useEffect(() => {
     if (previewMode) return;
     if (!currentId) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const urlId = params.get('id') ?? '';
-    
-    // Solo inicializamos el esqueleto si la URL actual corresponde al juego que vamos a cargar
-    if (urlId === currentId) {
-      const skeletonTitle = params.get('t');
-      const skeletonCover = params.get('c');
-
-      if (skeletonTitle) {
-        setData({
-          externalId: currentId,
-          type: currentId.split(':')[0],
-          titleMain: skeletonTitle,
-          cover: skeletonCover || undefined,
-          bannerColor: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-          metaLines: [],
-          stats: [],
-          characters: [],
-          relations: [],
-        } as unknown as MediaPageData);
-        setPageState('ready');
-      } else {
-        setPageState('loading');
-        setData(null);
-      }
-    } else {
-      setPageState('loading');
-      setData(null);
-    }
-    
-    setIsFetchingFull(true);
     setRelationPage(1);
     setRelationsTab('related');
-    setEpisodes([]);
-    setThemes([]);
-    setPlayingTheme(null);
-    setPlayingVideoSrc(null);
-    setEpisodeOffset(0);
     setCharacterPage(1);
     setCharTab('characters');
-    getCustomImagesMap().then(setCustomImagesMap).catch(() => {});
-    setRelationsTab('related');
-
-    let cancelled = false;
-
-    // Read the local episode/theme cache immediately so the relation column
-    // can render it while the full media fetch and provider validation run.
-    getMediaEpisodes(currentId).then(cached => {
-      if (!cancelled && cached.length > 0) setEpisodes(cached);
-    }).catch(() => {});
-    getMediaThemes(currentId).then(cached => {
-      if (!cancelled && cached.length > 0) setThemes(cached);
-    }).catch(() => {});
-
-    // "Usuarios" (followed AniList friends' own scores for this exact entry)
-    // only needs the numeric id from the URL — not any of the media data
-    // itself — so it's fired here in parallel with the main fetch instead of
-    // nested inside the `full` callback below, where it used to wait on the
-    // live/catalog fetch to fully resolve first even though it has no real
-    // dependency on that data.
-    const [currentType, currentNumericIdStr] = currentId.split(':');
-    if ((ANILIST_TYPES as readonly string[]).includes(currentType)) {
-      const anilistId = parseInt(currentNumericIdStr, 10);
-      if (anilistId) {
-        setFriendsLoading(true);
-        fetchFollowedFriendsScores(anilistId).then(scores => {
-          if (!cancelled) setFriendsScores(scores);
-        }).catch(() => {}).finally(() => {
-          if (!cancelled) setFriendsLoading(false);
-        });
-      }
-    }
-
-    fetchMediaDataWithFallback(
-      currentId,
-      partial => {
-        // A never-synced skeleton's first visit kicks off a full live fetch
-        // that can take a moment — if the user has already navigated to a
-        // different page (or back to this same one) by the time it resolves,
-        // this late result must not overwrite whatever's on screen now.
-        // Every other callback below already guards on `cancelled`; this one
-        // and `full` below didn't, letting a stale fetch clobber the current
-        // page's state instead of just being silently dropped.
-        if (cancelled) return;
-        setData(partial);
-        setPageState('ready');
-      },
-      (full, isFinal) => {
-        if (cancelled) return;
-        setData(full);
-        setPageState('ready');
-        // isFinal is false for a stub/local-data row that's about to be
-        // followed by a background live resync (see fetchMediaDataWithFallback)
-        // — the bottom progress bar must stay up through that resync, not
-        // disappear the moment the mostly-empty stub renders.
-        if (isFinal) setIsFetchingFull(false);
-
-        // Background fetches below resolve after the user may have already
-        // navigated to a different media page — this guards every merge so
-        // a late response can't clobber whatever's now on screen.
-        const patchIfCurrent = (patch: Partial<MediaPageData>) => {
-          setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, ...patch } : prev);
-        };
-
-        if (!full.charactersInheritedFromBase && full.characters && full.characters.length > 0) {
-          const isCastRole = full.type === 'movie' || full.type === 'series';
-          const skeletonChars = mediaCharactersToSkeleton(full.characters, isCastRole);
-          saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
-        }
-        if (full.staff && full.staff.length > 0) {
-          saveStaffSkeleton(currentId, mediaStaffToSkeleton(full.staff)).catch(console.error);
-        }
-
-        // A cast over 50 (AniList's per-page cap) no longer blocks the page
-        // itself — see fetchAniListDetail/fetchExtraCharacters — so the rest
-        // of it is topped up here, after the page is already showing.
-        if (!full.charactersInheritedFromBase && full.charactersHasMore) {
-          fetchExtraCharacters(currentId, full).then(characters => {
-            if (cancelled || !characters) return;
-            patchCachedCharacters(currentId, characters);
-            patchIfCurrent({ characters, charactersHasMore: false });
-            const isCastRole = full.type === 'movie' || full.type === 'series';
-            saveCharactersSkeleton(currentId, mediaCharactersToSkeleton(characters, isCastRole)).catch(console.error);
-          });
-        }
-
-        // Transitive relations (remaster-of-an-expansion, port-of-a-remaster,
-        // etc.) take a few extra sequential IGDB requests — fetch them after
-        // the page is already showing instead of delaying first render.
-        //
-        // Only run this walk when the page being viewed is itself the true
-        // base game — every other edition (remake/remaster/DLC/expansion/...)
-        // only needs its own Fuente/parent relation (already set), and
-        // walking IGDB's edition/content graph starting from a non-base
-        // id kept surfacing siblings that don't belong to *this specific*
-        // edition (e.g. a remake's page showing the original's remaster and
-        // its non-remastered DLC, as if those were the remake's own).
-        const isBaseGame = full.format === 'GAME' || full.format === 'VISUAL_NOVEL';
-        const targetRelationsId = full.parentGame?.externalId || currentId;
-        if (isBaseGame) {
-          fetchExtraRelations(targetRelationsId, full).then(relations => {
-            // `cancelled` covers "the user has since navigated away from this
-            // page load" — skip the cache write too in that case, or a stale
-            // response computed from *this* page's data could land in
-            // whichever page's cache entry `targetRelationsId` now refers to
-            // (a parent game's page, if the user navigated there), corrupting
-            // it with relations that don't belong to it.
-            if (cancelled || !relations) return;
-            patchCachedRelations(targetRelationsId, relations);
-            patchIfCurrent({ relations });
-            // Transitive relations (remaster-of-an-expansion, etc.) used to
-            // only ever land in the session cache — never media_relations —
-            // so they rendered fine here but never showed up as an editable
-            // relation in the collaborative catalog editor, which reads
-            // straight from the DB. Persist them now that we know this
-            // response still belongs to the current page.
-            mergeAndPersistRelations(targetRelationsId, relations).catch(console.error);
-          });
-        }
-
-        if (full.type === 'book') {
-          fetchBookEditions(currentId, full.relations, tm.relations.EDITIONS).then(result => {
-            if (cancelled || !result) return;
-            const { relations, totalPages } = result;
-            patchCachedRelations(currentId, relations);
-            patchIfCurrent(totalPages !== null ? { relations, totalCount: totalPages } : { relations });
-            // Same gap the base-game relation walk used to have: caching
-            // this in sessionStorage only meant editions rendered fine here
-            // but never showed up as an editable relation in the
-            // collaborative catalog editor, which reads straight from the DB.
-            mergeAndPersistRelations(currentId, relations).catch(console.error);
-            // OpenLibrary has no page count on the Work itself, only on its
-            // editions (see fetchBookEditions) — persisted here the same way
-            // a comic's aggregated genres are, once this background fetch
-            // actually finds one.
-            if (totalPages !== null) updateCatalogTotalCount(currentId, totalPages).catch(console.error);
-          });
-        }
-
-        if (full.type === 'comic' || full.type === 'manga' || full.type === 'lnovel') {
-          fetchComicIssues(currentId, full.relations, tm.relations.ISSUE, full.titleMain, full.titleRomaji || full.titleEnglish).then(({ relations, characters, genreDots, genreTagDots }) => {
-            if (cancelled) return;
-
-            // Full cast aggregated across every issue — supersedes the
-            // first-issue-only sample the initial volume fetch showed.
-            if (characters.length > 0) {
-              const skeletonChars = mediaCharactersToSkeleton(characters, false);
-              saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
-              patchIfCurrent({ characters });
-            }
-
-            if (genreDots || genreTagDots) {
-              updateCatalogGenres(currentId, genreDots ?? null, genreTagDots ?? null).catch(console.error);
-              patchIfCurrent({ genreDots, genreTagDots });
-            }
-
-            if (relations) {
-              patchCachedRelations(currentId, relations);
-              patchIfCurrent({ relations });
-              // Issues used to only ever land in the session cache — never
-              // media_relations — so they never showed up as editable
-              // relations in the collaborative catalog editor either.
-              mergeAndPersistRelations(currentId, relations).catch(console.error);
-            }
-
-            // Chained (not a separate top-level fetch) so it builds off
-            // whatever fetchComicIssues just resolved rather than racing it
-            // — both would otherwise start from the same `full.relations`
-            // snapshot and independently strip+append their own relation
-            // type, so whichever finished last would silently wipe out the
-            // other's additions.
-            if (full.type === 'comic') {
-              fetchComicCollectedEditions(currentId, relations ?? full.relations, tm.relations.EDITIONS, full.titleMain, full.totalCount, full.releaseYear).then(editionRelations => {
-                if (cancelled || !editionRelations) return;
-                patchCachedRelations(currentId, editionRelations);
-                patchIfCurrent({ relations: editionRelations });
-                mergeAndPersistRelations(currentId, editionRelations).catch(console.error);
-              });
-            }
-          });
-        }
-
-        if (full.type === 'series') {
-          // totalCount_2 is already this series' season count (see
-          // tmdb-mapper.ts) — passing it through skips fetchMediaEpisodes
-          // re-fetching TMDB's full detail request a second time just to
-          // read that one field back.
-          fetchMediaEpisodes(currentId, false, full.type === 'series' ? full.totalCount_2 : undefined).then(eps => {
-            if (cancelled || eps.length === 0) return;
-            setEpisodes(eps);
-          }).catch(console.error);
-        }
-
-      },
-      ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
-      ()      => cancelled,
-    );
-
-    return () => { cancelled = true; };
   }, [currentId, previewMode]);
-
-
-  useEffect(() => {
-    if (!playingTheme) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        const idx = themes.findIndex(t => t.slug === playingTheme.slug);
-        if (idx > 0) setPlayingTheme(themes[idx - 1]);
-      } else if (e.key === 'ArrowRight') {
-        const idx = themes.findIndex(t => t.slug === playingTheme.slug);
-        if (idx >= 0 && idx < themes.length - 1) setPlayingTheme(themes[idx + 1]);
-      } else if (e.key === 'Escape') {
-        setPlayingTheme(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playingTheme, themes]);
-
-  useEffect(() => {
-    if (!currentId) return;
-    let cancelled = false;
-    getAnimePrequelEpisodeOffset(currentId).then(off => {
-      if (!cancelled && off > 0) setEpisodeOffset(off);
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [currentId]);
-
-  useEffect(() => {
-    if (episodes.length > 0 && episodes[0].episode_number > 1) {
-      setEpisodeOffset(episodes[0].episode_number - 1);
-    }
-  }, [episodes]);
-
-  useEffect(() => {
-    if (!playingTheme) {
-      resumeThemeCaptureQueue();
-      setPlayingVideoSrc(null);
-      setPlayerError(false);
-      return;
-    }
-
-    pauseThemeCaptureQueue();
-    setPlayerError(false);
-
-    let cancelled = false;
-
-    let targetVideoUrl = playingTheme.video_url;
-    if (playingTheme.versions) {
-      try {
-        const parsed = JSON.parse(playingTheme.versions);
-        if (Array.isArray(parsed)) {
-          const vObj = parsed.find((v: any) => v.version === selectedThemeVersion) || parsed[0];
-          if (vObj?.videoUrl) targetVideoUrl = vObj.videoUrl;
-        }
-      } catch {}
-    }
-
-    if (selectedThemeVersion === 1) {
-      getThemeVideoPath(playingTheme.external_id, playingTheme.slug)
-        .then(path => {
-          if (cancelled) return;
-          if (path) {
-            setPlayingVideoSrc(wrapAssetUrl(path));
-          } else if (targetVideoUrl) {
-            setPlayingVideoSrc(targetVideoUrl);
-          } else {
-            setPlayingVideoSrc(null);
-            setPlayerError(true);
-          }
-        })
-        .catch(() => {
-          if (cancelled) return;
-          if (targetVideoUrl) {
-            setPlayingVideoSrc(targetVideoUrl);
-          } else {
-            setPlayingVideoSrc(null);
-            setPlayerError(true);
-          }
-        });
-    } else {
-      if (targetVideoUrl) {
-        setPlayingVideoSrc(targetVideoUrl);
-      } else {
-        setPlayingVideoSrc(null);
-        setPlayerError(true);
-      }
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [playingTheme, playerRetryKey, selectedThemeVersion]);
 
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
   useEffect(() => {
@@ -821,7 +209,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   useEffect(() => {
     if (previewMode || !data) return;
     let cancelled = false;
-    readUserFavorites().then(favs => {
+    readUserFavoritesTyped().then(favs => {
       if (cancelled) return;
       setIsFavorited((favs[data.type] || []).includes(currentId));
     }).catch(() => {});
@@ -837,26 +225,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     if (!el) { setDescriptionOverflows(false); return; }
     setDescriptionOverflows(el.scrollHeight > el.clientHeight + 1);
   }, [data?.description]);
-
-  // Upsert catalog entry with the latest metadata from the API once we know the type
-  // (library entry loading is handled by useLibraryEntry above)
-  useEffect(() => {
-    // data and currentId can briefly disagree when navigating quickly between
-    // pages: currentId updates to the new page in the same render where
-    // `data` still holds the *previous* page's fetch result (this effect and
-    // the data-fetch effect above both run in the same commit, and the
-    // fetch effect's setData(null) doesn't take effect until the next
-    // render). Without this check, that stale `data` gets upserted under the
-    // new currentId's row — e.g. quickly opening MGS3 then MGS2 could leave
-    // MGS3's catalog entry overwritten with MGS2's data.
-    if (previewMode || !data?.type || !currentId || data.externalId !== currentId) return;
-
-    saveCatalogEntry(mapMediaDataToCatalogEntry(data, currentId)).catch(() => {});
-  // Re-run when bannerImage/authors changes so partial→full transition saves the banner URL and authors to catalog.
-  // currentId is included so navigating between two items of the same type (and same
-  // transient bannerImage state) still re-fetches the library entry for the new item.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, data?.type, data?.bannerImage, data?.authors, previewMode]);
 
   useDiscordPresence(data, t.discord);
 
@@ -903,103 +271,15 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     setIsFavorited(false);
   }, [applyDeleted]);
 
-  // Manual "retry sync" — calls fetchMediaData directly instead of
-  // fetchMediaDataWithFallback, which still gates its own live fetch behind
-  // needsResync()/sync_state; that used to make this button a no-op
-  // whenever the entry wasn't actually due yet (sync_state's backoff can
-  // push that out to months on a title with a couple of past failures),
-  // silently redisplaying the same stale local data instead of the fresh
-  // fetch the button promises.
-  const handleRetrySync = useCallback(() => {
-    if (!currentId || retryingSync) return;
-    setRetryingSync(true);
-    invalidateCachedMediaData(currentId);
-    fetchMediaData(currentId, { refreshAniListTotalCount: true, refreshSourceAdaptation: true }).then(async fresh => {
-      if (fresh) {
-        setData(fresh);
-        if (!fresh.charactersInheritedFromBase && fresh.characters && fresh.characters.length > 0) {
-          const isCastRole = fresh.type === 'movie' || fresh.type === 'series';
-          saveCharactersSkeleton(currentId, mediaCharactersToSkeleton(fresh.characters, isCastRole)).catch(console.error);
-        }
-        if (fresh.staff && fresh.staff.length > 0) {
-          saveStaffSkeleton(currentId, mediaStaffToSkeleton(fresh.staff)).catch(console.error);
-        }
-        if (!fresh.charactersInheritedFromBase && fresh.charactersHasMore) {
-          fetchExtraCharacters(currentId, fresh).then(characters => {
-            if (!characters) return;
-            patchCachedCharacters(currentId, characters);
-            setData(prev => (prev && prev.externalId === currentId) ? { ...prev, characters, charactersHasMore: false } : prev);
-            const isCastRole = fresh.type === 'movie' || fresh.type === 'series';
-            saveCharactersSkeleton(currentId, mediaCharactersToSkeleton(characters, isCastRole)).catch(console.error);
-          });
-        }
-      }
-      // Chained off the fresh fetch (not fired alongside it) so a series'
-      // already-known season count (totalCount_2) can be passed through —
-      // same duplicate-TMDB-detail-request avoidance as the main load
-      // effect above, otherwise this ran its own full TMDB detail fetch in
-      // parallel with the one fetchMediaData just made.
-      // Forced (not the cache-checked default) so this also backfills a
-      // series/anime that was saved before the Episodios tab existed — and
-      // refreshes one that's already had episodes fetched but has since
-      // aired new ones, which a plain revisit wouldn't do on its own.
-      const shouldUnifyAnime = fresh?.type === 'anime'
-        && unifySeasonsEnabled
-        && animeSeasonChain.length > 1
-        && currentId === animeSeasonChain[0].externalId;
-      const episodeRefresh = shouldUnifyAnime
-        ? fetchUnifiedAnimeEpisodes(animeSeasonChain, true)
-        : fetchMediaEpisodes(currentId, true, fresh?.type === 'series' ? fresh.totalCount_2 : undefined);
-      episodeRefresh.then(eps => {
-        setEpisodes(eps);
-      }).catch(console.error);
-      if (fresh?.type === 'anime') {
-        fetchMediaThemes(currentId, true).then(t => {
-          if (t.length > 0) setThemes(t);
-        }).catch(console.error);
-      }
-
-      // Retry also refreshes ComicVine issues. Replace only ISSUE rows so a
-      // corrected volume mapping removes its previous #1/#2 cards without
-      // disturbing curated relations of any other kind.
-      if (fresh && ['comic', 'manga', 'lnovel'].includes(fresh.type)) {
-        const issueResult = await fetchComicIssues(
-          currentId,
-          fresh.relations,
-          tm.relations.ISSUE,
-          fresh.titleMain,
-          fresh.titleRomaji || fresh.titleEnglish,
-        ).catch(error => {
-          console.error('Failed to refresh ComicVine issues', error);
-          return null;
-        });
-
-        if (issueResult?.relations) {
-          const refreshedIssues = issueResult.relations.filter(relation => relation.relationType === 'ISSUE');
-          const refreshedRelations = [
-            ...fresh.relations.filter(relation => relation.relationType !== 'ISSUE'),
-            ...refreshedIssues,
-          ];
-          patchCachedRelations(currentId, refreshedRelations);
-          setData(prev => prev?.externalId === currentId ? { ...prev, relations: refreshedRelations } : prev);
-
-          await replaceIssueRelations(currentId,
-            refreshedIssues.flatMap(relation => relation.relatedExternalId ? [{
-              related_media_external_id: relation.relatedExternalId,
-              relation_type: 'ISSUE',
-              type_label: relation.typeLabel,
-              title: relation.title,
-              cover: relation.cover ?? null,
-              format: relation.format ?? null,
-              release_day: relation.releaseDay ?? null,
-              release_month: relation.releaseMonth ?? null,
-              release_year: relation.releaseYear ?? null,
-            }] : []),
-          ).catch(console.error);
-        }
-      }
-    }).finally(() => setRetryingSync(false));
-  }, [currentId, retryingSync, unifySeasonsEnabled]);
+  const { retryingSync, handleRetrySync } = useRetrySync({
+    currentId,
+    unifySeasonsEnabled,
+    animeSeasonChain,
+    tm,
+    setData,
+    setEpisodes,
+    setThemes,
+  });
 
   const handleBlockedProposalSubmitted = useCallback(async (blockedExternalId: string) => {
     const relationRows = await getMediaRelations(blockedExternalId).catch(() => null);
@@ -1148,35 +428,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
 
   // ── Ready ────────────────────────────────────────────────────────────────
 
-  // Only certain edition types get redirected to their base game and blocked
-  // from being logged separately. Expansions are allowed as independent entries
-  // since they're typically sold and played separately (e.g., RE4 Separate Ways).
-  const isBlockedEdition = !!data.parentGame && data.format !== 'EXPANSION';
-  // API-Sports competitions have their own base entry and child season pages.
-  // Each season keeps its own matches and progress entry.
-  // A bundle (e.g. "The Great Ace Attorney Chronicles") isn't a playable
-  // title on its own — its contained works are — so it gets the same
-  // "can't be logged/edited here" treatment as a blocked edition, just with
-  // its own banner text instead of "is a version of {title}" (a bundle
-  // doesn't have one single parent to point back to). Detected from having
-  // at least two CONTAINS (EPISODE) relations of its own rather than from
-  // `data.format === 'BUNDLE'` — an already-cataloged container can be stuck
-  // with a stale format from before that value existed (persistToCatalog
-  // preserves an existing format rather than recomputing it), so the
-  // relation itself is the only reliable signal.
-  const isBundle = data.relations.filter(r => !!r.relationType && CONTAINS_RELATION_TYPES.includes(r.relationType)).length >= 2;
-  const isUneditable = isBlockedEdition || isBundle;
-  const bannerStyle = !data.bannerImage
-    ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
-    : undefined;
-  const isComicOrHasIssues = data.type === 'comic' || (Array.isArray(data.relations) && data.relations.some(r => r.relationType === 'ISSUE'));
-  const editionsLabel = isComicOrHasIssues ? tm.relations.ISSUE : tm.relations.EDITIONS;
-  const editionsRelationType = isComicOrHasIssues ? 'ISSUE' : 'EDITIONS';
-  const {
-    related: relatedRelationsRaw,
-    recommended: recommendedRelations,
-    editions: editionRelations,
-  } = bucketRelations(data.relations, data.format, editionsRelationType);
   // With the "Unificar temporadas" setting on, an anime's own PREQUEL/SEQUEL
   // rows move to the Temporadas tab instead of sitting in Relacionados —
   // with it off (or for every other media type), Relacionados is untouched,
@@ -1189,45 +440,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     && unifySeasonsEnabled
     && animeSeasonChainResolvedFor !== currentId;
   const isFirstSeasonInChain = !showsSeasonsTab || animeSeasonChain.length <= 1 || currentId === animeSeasonChain[0].externalId;
-  const relatedRelations = showsSeasonsTab
-    ? relatedRelationsRaw.filter(r => r.relationType !== 'PREQUEL' && r.relationType !== 'SEQUEL')
-    : relatedRelationsRaw;
-  const hasRecommendedRelations = recommendedRelations.length > 0;
-  const hasEditionRelations     = editionRelations.length > 0;
   const hasEpisodes             = !waitingForAnimeSeasonChain && isFirstSeasonInChain && episodes.length > 0;
-  const hasMatches              = data.type === 'event' && matches.length > 0;
   const hasThemes               = !waitingForAnimeSeasonChain && isFirstSeasonInChain && themes.length > 0;
-  const tmdbSeasons             = data.type === 'series' ? (data.seasons ?? []) : [];
-  const eventSeasons            = isEventCompetition ? (data.seasons ?? []) : [];
-  const hasSeasonsTab            = showsSeasonsTab
-    ? animeSeasonChain.length > 1
-    : isEventCompetition
-    ? eventSeasons.length > 0
-    : tmdbSeasons.length > 0;
-  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasMatches || hasSeasonsTab || hasThemes;
-  const visibleRelations = relationsTab === 'recommended'
-    ? recommendedRelations
-    : relationsTab === 'editions'
-    ? editionRelations
-    : relatedRelations;
-  const pageSize = relationsTab === 'recommended' ? 8 : 12;
-  // .media-relations-grid is a fixed 4-column grid — 3 rows worth per page.
-  const EPISODE_PAGE_SIZE = 12;
-  const CHARACTER_PAGE_SIZE = 12;
-  const roleOrder = (role?: string) => {
-    const normalizedRole = role?.toLowerCase().trim() || '';
-    if (normalizedRole === 'main') return 0;
-    if (normalizedRole === 'supporting') return 1;
-    if (normalizedRole === 'background') return 2;
-    return 3; // Unknown roles go last
-  };
-
-  const sortCharactersByRole = (chars: typeof data.characters) => {
-    return [...chars].sort((a, b) => roleOrder(a.role) - roleOrder(b.role));
-  };
-
-  const hasStaff = !!(data.staff && data.staff.length > 0);
-  const activeCharList = sortCharactersByRole(charTab === 'staff' ? (data.staff ?? []) : data.characters);
   const isAnilistType = (ANILIST_TYPES as readonly string[]).includes(data.type);
   const showUsers = isAnilistType && (friendsLoading || friendsScores.length > 0);
   return (
@@ -1268,6 +482,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         <ThemePlayerOverlay
           theme={playingTheme}
           themes={themes}
+          mediaTitle={data?.titleMain ?? ''}
+          mediaCover={data?.cover}
           videoSrc={playingVideoSrc}
           playerError={playerError}
           retryKey={playerRetryKey}
@@ -1350,188 +566,27 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       )}
 
       {/* Hero */}
-      <div className={`media-hero${data.type === 'game' || data.type === 'vnovel' ? ' media-hero--game' : ''}`}>
-        <div
-          className={data.bannerImage ? 'media-banner' : 'media-banner media-banner--color'}
-          style={bannerStyle}
-        >
-          {data.bannerImage && (
-            <img className="media-banner-img" src={data.bannerImage} alt="" loading="lazy" />
-          )}
-        </div>
-
-        <div className="media-banner-badges-container">
-          {data.dateBadge && (
-            <div className="media-banner-date-badge">{data.dateBadge}</div>
-          )}
-          {!previewMode && (
-            <button
-              type="button"
-              className="media-banner-pr-btn"
-              onClick={prSession.start}
-              title={tm.propose_github_changes}
-            >
-              <IconPlus />
-            </button>
-          )}
-          {!previewMode && (
-            <button
-              type="button"
-              className={`media-banner-pr-btn${retryingSync ? ' media-banner-pr-btn--spinning' : ''}`}
-              onClick={handleRetrySync}
-              disabled={retryingSync}
-              title={tm.retry_sync}
-            >
-              <IconRefresh />
-            </button>
-          )}
-        </div>
-        {data.companies?.find(c => c.role === 'developer') && (
-          <div className="media-banner-developer-badge">{data.companies.find(c => c.role === 'developer')!.name}</div>
-        )}
-
-        <div className="media-hero-body">
-          {/* Izquierda: títulos */}
-          <div className="media-hero-left">
-            <h1 className="media-title-main" ref={titleRef}>{data.titleMain}</h1>
-            {/* Prefer the native-script title (Japanese kanji/kana, ...) —
-                fall back to the romaji title only when it's missing and
-                actually differs from the main heading above (titleMain is
-                usually the romaji itself, so showing it again as a subtitle
-                would just repeat the same text). Both come straight from the
-                catalog row (title_native/title_romaji), no live fetch needed. */}
-            {data.titleNative
-              ? <p className="media-title-native">{data.titleNative}</p>
-              : (data.titleRomaji && data.titleRomaji !== data.titleMain)
-                ? <p className="media-title-native">{data.titleRomaji}</p>
-                : null}
-            {data.titleEnglish && <p className="media-title-english">{data.titleEnglish}</p>}
-          </div>
-
-          {/* Centro: cover + widget de biblioteca */}
-          <div className="media-cover-column">
-            {/* Hidden (not removed) once the Temporadas tab takes over this
-                same job for anime — SagaViewerModal itself is untouched and
-                still opens normally for every other media type. */}
-            {!previewMode && data.hasSaga && !showsSeasonsTab && (
-              <button type="button" className="media-saga-btn" onClick={() => setShowSaga(true)}>
-                <IconLayers size={14} />
-                {tm.saga_button}
-              </button>
-            )}
-            <div className="media-cover-frame">
-            <div
-              className={`media-cover-wrap${mediaInLibrary ? ' in-library' : ''}${isUneditable ? ' is-edition' : ''}${previewMode ? ' is-preview' : ''}`}
-              role={previewMode ? undefined : 'button'}
-              tabIndex={previewMode ? undefined : 0}
-              aria-label={isBlockedEdition
-                ? tm.is_version_of.replace('{title}', data.parentGame!.title)
-                : isBundle
-                ? tm.is_bundle
-                : tm.add_to_library.replace('\n', ' ')}
-              onClick={() => {
-                if (previewMode) return;
-                if (isBlockedEdition) {
-                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true&subId=${encodeURIComponent(currentId)}`;
-                  return;
-                }
-                if (isBundle) return;
-                handleCoverClick();
-              }}
-              onKeyDown={e => !previewMode && (e.key === 'Enter' || e.key === ' ') && (
-                isBlockedEdition
-                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true&subId=${encodeURIComponent(currentId)}`)
-                  : isBundle
-                  ? undefined
-                  : handleCoverClick()
-              )}
-            >
-              {displayCover && (
-                <img className="media-cover-img cover-image-fill" src={displayCover} alt={data.titleMain} />
-              )}
-              <div className="media-cover-overlay">
-                <div className="media-cover-overlay-inner">
-                  {isBlockedEdition ? (
-                    <span className="media-cover-overlay-label">
-                      {tm.is_version_of.replace('{title}', data.parentGame!.title)}
-                    </span>
-                  ) : isBundle ? (
-                    <span className="media-cover-overlay-label">{tm.is_bundle}</span>
-                  ) : (
-                    <>
-                      <span className="media-cover-overlay-icon">
-                        {mediaInLibrary ? <IconCheck size={22} strokeWidth={2.5} /> : <IconPlus size={22} strokeWidth={2.5} />}
-                      </span>
-                      <span
-                        className="media-cover-overlay-label"
-                        dangerouslySetInnerHTML={{
-                          __html: (mediaInLibrary ? tm.in_library : tm.add_to_library).replace('\n', '<br>'),
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-              {!previewMode && (
-                // Same dual write MediaEditorModal's own heart button makes
-                // on save (saveLibraryEntry's is_favorite column, then
-                // syncFavorites for the separate favorites list) — this
-                // started bundle-only (no library entry/editor of its own to
-                // hold that button at all) doing just the syncFavorites half,
-                // but favoriting straight from the cover is useful for every
-                // media type, and needs the same is_favorite write the editor
-                // makes or whatever elsewhere treats that column as the
-                // source of truth never sees it. handleEditorSaved/Deleted
-                // keep isFavorited in sync with the editor's own toggle too.
-                // Lives outside .media-cover-wrap (not inside it) specifically
-                // so it can straddle the cover's own bottom edge — that
-                // wrap's overflow:hidden (it clips its own hover overlay)
-                // would otherwise clip half the button off.
-                <button
-                  type="button"
-                  className={`media-cover-favorite-btn${isFavorited ? ' active' : ''}`}
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleToggleFavorite();
-                  }}
-                  title={tm.editor.favorite}
-                >
-                  <IconHeart filled={isFavorited} size={18} />
-                </button>
-              )}
-            </div>
-
-            {!previewMode && !isUneditable && (
-            <div className="media-library-widget-box">
-              <div className="media-library-row-horizontal">
-                <StatusDropdown
-                  status={eventAggregateStatus}
-                  progressStatus={data.progressStatus}
-                  progressLabel={data.progressLabel}
-                  onChange={handleStatusChange}
-                  t={tm}
-                />
-                <StarRating rating={eventAggregateRating} onRate={handleRate} t={tm} />
-              </div>
-            </div>
-            )}
-          </div>
-
-          {/* Derecha: géneros + meta */}
-          <div className="media-hero-right">
-            {(data.genreDots || data.genreTagDots) && (
-              <div className="media-genres-row">
-                {data.genreDots    && <span className="media-genres-dots">{data.genreDots}</span>}
-                {data.genreTagDots && <span className="media-genres-tags">{data.genreTagDots}</span>}
-              </div>
-            )}
-            {data.metaLines?.[0] && <p className="media-studios-label">{data.metaLines[0]}</p>}
-            {data.metaLines?.[1] && <p className="media-cover-meta">{data.metaLines[1]}</p>}
-            {data.metaLines?.[2] && <p className="media-cover-meta">{data.metaLines[2]}</p>}
-          </div>
-        </div>
-      </div>
+      <MediaHero
+        data={data}
+        currentId={currentId}
+        previewMode={previewMode}
+        t={tm}
+        titleRef={titleRef}
+        displayCover={displayCover}
+        showsSeasonsTab={showsSeasonsTab}
+        mediaInLibrary={mediaInLibrary}
+        isFavorited={isFavorited}
+        retryingSync={retryingSync}
+        eventAggregateStatus={eventAggregateStatus}
+        eventAggregateRating={eventAggregateRating}
+        onProposeChanges={prSession.start}
+        onRetrySync={handleRetrySync}
+        onOpenSaga={() => setShowSaga(true)}
+        onCoverClick={handleCoverClick}
+        onToggleFavorite={handleToggleFavorite}
+        onStatusChange={handleStatusChange}
+        onRate={handleRate}
+      />
 
       {/* Body: 3 columnas — Datos (the 3rd column) always renders now (at
           minimum its header + source link), so the grid never collapses to
@@ -1560,313 +615,30 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         {/* Relacionados — header bar always renders (even with zero
             relations) so this column isn't just blank space next to
             Sinopsis/Datos; only the grid+pagination are conditional. */}
-        <div className="media-col-related">
-          <div className="media-section-header-row">
-            {/* TMDB recommendations ride in the same list as real
-                relations (saga/adaptation/etc) — when both are present,
-                each label becomes a tab switching which subset the grid
-                below shows, instead of mixing recommendations into
-                "Related". */}
-            <SectionTabs
-              fallbackLabel={tm.section_related}
-              tabs={hasTabs ? [
-                { key: 'related', label: tm.section_related, active: relationsTab === 'related', onClick: () => { setRelationsTab('related'); setRelationPage(1); } },
-                ...(hasEditionRelations ? [{ key: 'editions', label: editionsLabel, active: relationsTab === 'editions', onClick: () => { setRelationsTab('editions'); setRelationPage(1); } }] : []),
-                ...(hasRecommendedRelations ? [{ key: 'recommended', label: tm.relations.RECOMMENDATION, active: relationsTab === 'recommended', onClick: () => { setRelationsTab('recommended'); setRelationPage(1); } }] : []),
-                ...(hasSeasonsTab ? [{ key: 'seasons', label: tm.stat_seasons, active: relationsTab === 'seasons', onClick: () => { setRelationsTab('seasons'); setRelationPage(1); } }] : []),
-                ...(hasEpisodes ? [{ key: 'episodes', label: tm.stat_episodes, active: relationsTab === 'episodes', onClick: () => { setRelationsTab('episodes'); setRelationPage(1); } }] : []),
-                ...(hasMatches ? [{ key: 'matches', label: tm.stat_matches, active: relationsTab === 'matches', onClick: () => { setRelationsTab('matches'); setRelationPage(1); } }] : []),
-                ...(hasThemes ? [{ key: 'themes', label: tm.section_themes, active: relationsTab === 'themes', onClick: () => { setRelationsTab('themes'); setRelationPage(1); } }] : []),
-              ] : []}
-            />
-            {data.storeLinks && data.storeLinks.length > 0 && (
-              <MediaStoreLinks links={data.storeLinks} />
-            )}
-          </div>
-          {relationsTab === 'themes' ? (
-            themes.length > 0 && (
-              <>
-                <div className="media-relations-grid">
-                  {themes
-                    .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
-                    .map(t => (
-                      <ThemeCardItem
-                        key={`${t.external_id || currentId}-${t.theme_type}-${t.sequence}-${t.slug}`}
-                        theme={t}
-                        onPlay={() => setPlayingTheme(t)}
-                        fallbackUrl={data.bannerImage || displayCover || undefined}
-                      />
-                    ))}
-                </div>
-                {themes.length > EPISODE_PAGE_SIZE && (
-                  <Pagination
-                    currentPage={relationPage}
-                    totalPages={Math.ceil(themes.length / EPISODE_PAGE_SIZE)}
-                    onChange={setRelationPage}
-                  />
-                )}
-              </>
-            )
-          ) : relationsTab === 'matches' ? (
-            matches.length > 0 && (
-              <>
-                <div className="media-relations-grid">
-                  {matches
-                    .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
-                    .map(match => <MatchCard key={match.id} match={match} />)}
-                </div>
-                {matches.length > EPISODE_PAGE_SIZE && (
-                  <Pagination
-                    currentPage={relationPage}
-                    totalPages={Math.ceil(matches.length / EPISODE_PAGE_SIZE)}
-                    onChange={setRelationPage}
-                  />
-                )}
-              </>
-            )
-          ) : relationsTab === 'seasons' ? (
-            // Reuses RelationCard (cover + title + a small top label) for both
-            // sources — an anime's own chain member gets "T{n}" (or "Estás
-            // aquí" on whichever one is the page currently open, same label
-            // SagaViewerModal already uses), a TMDB season gets its own
-            // TMDB-provided poster instead of the series' main cover.
-            (showsSeasonsTab ? animeSeasonChain.length > 0 : isEventCompetition ? eventSeasons.length > 0 : tmdbSeasons.length > 0) && (
-              isEventCompetition ? (
-                <>
-                  <div className="media-relations-grid">
-                    {eventSeasons
-                      .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
-                      .map(season => (
-                        <RelationCard
-                          key={season.externalId ?? season.seasonNumber}
-                          relation={{
-                            url: season.externalId ? `/media?id=${encodeURIComponent(season.externalId)}` : undefined,
-                            cover: season.coverUrl,
-                            typeLabel: tm.stat_season,
-                            title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
-                          }}
-                        />
-                      ))}
-                  </div>
-                  {eventSeasons.length > EPISODE_PAGE_SIZE && (
-                    <Pagination
-                      currentPage={relationPage}
-                      totalPages={Math.ceil(eventSeasons.length / EPISODE_PAGE_SIZE)}
-                      onChange={setRelationPage}
-                    />
-                  )}
-                </>
-              ) : (
-                <div className="media-relations-grid">
-                  {showsSeasonsTab
-                    ? animeSeasonChain.map((entry, i) => (
-                        <RelationCard
-                          key={entry.externalId}
-                          relation={{
-                            url: `/media?id=${encodeURIComponent(entry.externalId)}`,
-                            cover: entry.cover,
-                            typeLabel: `${tm.stat_season} ${i + 1}`,
-                            // The badge above already says which season this
-                            // is - stripSeasonSuffix hides "2nd Season"/"The
-                            // Final Season" wording from the title itself
-                            // instead of showing it twice.
-                            title: stripSeasonSuffix(entry.title),
-                          }}
-                        />
-                      ))
-                    : tmdbSeasons.map(season => (
-                        <RelationCard
-                          key={season.seasonNumber}
-                          relation={{
-                            cover: season.coverUrl,
-                            typeLabel: `${tm.stat_season} ${season.seasonNumber}`,
-                            title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
-                          }}
-                        />
-                      ))}
-                </div>
-              )
-            )
-          ) : relationsTab === 'episodes' ? (
-            episodes.length > 0 && (() => {
-              const regularEps = episodes
-                .filter(e => e.episode_number > 0)
-                .sort((a, b) => a.episode_number - b.episode_number);
-              const specialEps = episodes
-                .filter(e => e.episode_number < 0)
-                .sort((a, b) => Math.abs(a.episode_number) - Math.abs(b.episode_number));
+        <MediaRelationsSection
+          data={data}
+          currentId={currentId}
+          previewMode={previewMode}
+          previewAddedRelationIds={previewAddedRelationIds}
+          previewUpdatedRelationIds={previewUpdatedRelationIds}
+          t={tm}
+          relationsTab={relationsTab}
+          setRelationsTab={setRelationsTab}
+          relationPage={relationPage}
+          setRelationPage={setRelationPage}
+          episodes={episodes}
+          themes={themes}
+          matches={matches}
+          animeSeasonChain={animeSeasonChain}
+          showsSeasonsTab={showsSeasonsTab}
+          isEventCompetition={isEventCompetition}
+          hasEpisodes={hasEpisodes}
+          hasThemes={hasThemes}
+          displayCover={displayCover}
+          onPlayTheme={setPlayingTheme}
+        />
 
-              const regularPages = Math.ceil(regularEps.length / EPISODE_PAGE_SIZE);
-              const specialPages = Math.ceil(specialEps.length / EPISODE_PAGE_SIZE);
-              const totalEpPages = regularPages + specialPages;
-
-              let pageEpisodes: MediaEpisode[] = [];
-              if (relationPage <= regularPages) {
-                const start = (relationPage - 1) * EPISODE_PAGE_SIZE;
-                pageEpisodes = regularEps.slice(start, start + EPISODE_PAGE_SIZE);
-              } else {
-                const spPage = relationPage - regularPages;
-                const start = (spPage - 1) * EPISODE_PAGE_SIZE;
-                pageEpisodes = specialEps.slice(start, start + EPISODE_PAGE_SIZE);
-              }
-
-              return (
-                <>
-                  <div className="media-relations-grid">
-                    {pageEpisodes.map(ep => (
-                      <EpisodeCard key={`${ep.external_id || currentId}-${ep.season_number}-${ep.episode_number}`} ep={ep} />
-                    ))}
-                  </div>
-                  {totalEpPages > 1 && (
-                    <Pagination
-                      currentPage={relationPage}
-                      totalPages={totalEpPages}
-                      onChange={setRelationPage}
-                      formatPage={p => {
-                        if (p <= regularPages) return String(p);
-                        return `SP${p - regularPages}`;
-                      }}
-                    />
-                  )}
-                </>
-              );
-            })()
-          ) : visibleRelations.length > 0 && (
-            <>
-              <div className="media-relations-grid">
-                {visibleRelations
-                  .slice((relationPage - 1) * pageSize, relationPage * pageSize)
-                  .map((r, i) => (
-                    <RelationCard
-                      key={r.url ?? `${r.typeLabel}-${r.title}-${i}`}
-                      relation={r}
-                      changeKind={previewMode && r.relatedExternalId
-                        ? previewAddedRelationIds.includes(r.relatedExternalId)
-                          ? 'added'
-                          : previewUpdatedRelationIds.includes(r.relatedExternalId) ? 'updated' : undefined
-                        : undefined}
-                    />
-                  ))}
-              </div>
-              {visibleRelations.length > pageSize && (
-                <Pagination
-                  currentPage={relationPage}
-                  totalPages={Math.ceil(visibleRelations.length / pageSize)}
-                  onChange={setRelationPage}
-                />
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Datos — always rendered, even with no stats/authors, since the
-            link to the source page (MediaSourceLink) can always be built
-            from data.source/sourceUrl regardless of whether anything else
-            here has data. */}
-          <div className="media-col-stats">
-                <div className="media-section-header-row">
-                  <p className="section-label">{tm.section_data}</p>
-                  <div className="media-section-header-line" />
-                  <MediaSourceLink source={data.source} sourceUrl={data.sourceUrl} />
-                </div>
-
-                {data.authors && data.authors.length > 0 && (
-                  <div className="media-authors-box">
-                    <div className="media-authors-list">
-                      {data.authors.map((auth, idx) => (
-                        <div key={idx} className="media-author-pill">
-                          {auth.image ? (
-                            <img src={auth.image} alt={auth.name} className="media-author-avatar" />
-                          ) : (
-                            <div className="media-author-avatar media-author-avatar--placeholder">
-                              {auth.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <div className="media-author-info">
-                            {auth.url ? (
-                              <span
-                                className="media-author-name media-author-name--link"
-                                onClick={() => (auth.url!.startsWith('http') ? openLink(auth.url!) : (window.location.href = auth.url!))}
-                              >
-                                {auth.name}
-                              </span>
-                            ) : (
-                              <span className="media-author-name">{auth.name}</span>
-                            )}
-                            {auth.role && <span className="media-author-role">{auth.role}</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="media-stats-list">
-                  {(() => {
-                    const sectionTracker = new StatSectionTracker();
-                    const filtered = data.stats.filter(s => {
-                      if (!data.authors || data.authors.length === 0) return true;
-                      const labelLower = s.label.toLowerCase();
-                      const isAuthorStat = labelLower.includes('autor') ||
-                        labelLower.includes('author') ||
-                        labelLower.includes('creator') ||
-                        labelLower.includes('story') ||
-                        labelLower.includes('director');
-                      return !isAuthorStat;
-                    });
-
-                    return filtered.map((s, i) => {
-                      const { section, cleanLabel } = parseStatSectionLabel(s.label);
-                      const sectionHeader = sectionTracker.next(section);
-
-                      return (
-                        <Fragment key={i}>
-                          {sectionHeader && (
-                            <div className="media-stat-section-header">{sectionHeader}</div>
-                          )}
-                          {s.isScore ? (
-                            <div className="media-stat-item media-stat-item--score">
-                              <span
-                                title={`${formatAverageScore(Number(s.value), ratingSystem)}${averageScoreSuffix(ratingSystem)}`}
-                                dangerouslySetInnerHTML={{ __html: formatRatingHtml(Number(s.value), ratingSystem, 'media-stat-score-value') }}
-                              />
-                            </div>
-                          ) : s.label2 ? (
-                            <div className="media-stat-item media-stat-item--split">
-                              <span className="media-stat-col">
-                                <span className="media-stat-label">{cleanLabel}</span>
-                                <span className="media-stat-value">{s.value}</span>
-                              </span>
-                              <span className="media-stat-divider" />
-                              <span className="media-stat-col">
-                                <span className="media-stat-label">{s.label2}</span>
-                                <span className="media-stat-value">{s.value2}</span>
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="media-stat-item">
-                              <span className="media-stat-label">{cleanLabel}</span>
-                              <span className="media-stat-value">{s.value}</span>
-                            </div>
-                          )}
-                        </Fragment>
-                      );
-                    });
-                  })()}
-
-                  {data.type === 'game' && data.platforms && data.platforms.length > 0 && (
-                    <div className="media-stat-item media-stat-item--platforms">
-                      <span className="media-stat-label">{tm.stat_platforms}</span>
-                      <span className="media-stat-divider" />
-                      <span className="media-stat-value media-stat-platforms-value">
-                        {mergePlatformVersions(data.platforms).map((p, i) => (
-                          <span key={i}>{p}</span>
-                        ))}
-                      </span>
-                    </div>
-                  )}
-                </div>
-          </div>
+        <MediaStatsColumn data={data} t={tm} ratingSystem={ratingSystem} />
       </div>
 
       {/* Personajes + Usuarios — side by side, Usuarios pinned to the same
@@ -1879,59 +651,27 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       {(data.characters.length > 0 || showUsers) && (
         <div className="media-chars-users-row">
           {data.characters.length > 0 && (
-            <div className={`media-chars-section${!showUsers ? ' media-chars-section--full' : ''}`}>
-              <div className="media-section-header-row">
-                {/* Staff (director, writer, composer, ...) rides the same
-                    grid as Personajes, switched via a tab — same pattern as
-                    Related/Editions/Recommended above. Only shown when the
-                    provider actually returned staff data (AniList/TMDB). */}
-                <SectionTabs
-                  fallbackLabel={tm.section_characters}
-                  tabs={hasStaff ? [
-                    { key: 'characters', label: tm.section_characters, active: charTab === 'characters', onClick: () => { setCharTab('characters'); setCharacterPage(1); } },
-                    { key: 'staff', label: tm.section_staff, active: charTab === 'staff', onClick: () => { setCharTab('staff'); setCharacterPage(1); } },
-                  ] : []}
-                />
-              </div>
-              <div className="media-chars-grid">
-                {activeCharList
-                  .slice((characterPage - 1) * CHARACTER_PAGE_SIZE, characterPage * CHARACTER_PAGE_SIZE)
-                  .map((c, i) => (
-                    <CharacterCard key={i} character={c} charTab={charTab} customImagesMap={customImagesMap} />
-                  ))}
-              </div>
-              {activeCharList.length > CHARACTER_PAGE_SIZE && (
-                <Pagination
-                  currentPage={characterPage}
-                  totalPages={Math.ceil(activeCharList.length / CHARACTER_PAGE_SIZE)}
-                  onChange={setCharacterPage}
-                />
-              )}
-            </div>
+            <MediaCastSection
+              data={data}
+              t={tm}
+              charTab={charTab}
+              setCharTab={setCharTab}
+              characterPage={characterPage}
+              setCharacterPage={setCharacterPage}
+              customImagesMap={customImagesMap}
+              showUsers={showUsers}
+            />
           )}
 
           {showUsers && (
-            <div className="media-users-section">
-              <div className="media-section-header-row">
-                <p className="section-label">{tm.section_users}</p>
-                <div className="media-section-header-line" />
-              </div>
-              <div className="media-users-grid-scroll" ref={usersScrollRef}>
-                <div className="media-users-grid" ref={usersGridRef}>
-                  {friendsLoading && friendsScores.length === 0
-                    // 5 per row × 3 rows — matches PER_ROW/ROWS_VISIBLE in the
-                    // fade/cutoff effect above, so the skeleton fills exactly
-                    // the same 3 rows the real grid caps itself to (instead of
-                    // a half-filled row that looked broken).
-                    ? Array.from({ length: 15 }).map((_, i) => (
-                        <div key={i} className="media-user-card media-user-card--skeleton" />
-                      ))
-                    : friendsScores.map((f, i) => (
-                    <UserScoreCard key={i} score={f} ratingSystem={ratingSystem} />
-                  ))}
-                </div>
-              </div>
-            </div>
+            <MediaScoresSection
+              t={tm}
+              friendsScores={friendsScores}
+              friendsLoading={friendsLoading}
+              ratingSystem={ratingSystem}
+              scrollRef={usersScrollRef}
+              gridRef={usersGridRef}
+            />
           )}
         </div>
       )}

@@ -245,4 +245,73 @@ const { t } = Astro.props;
     </button>
   </div>
 
+  <!-- Video playback engine (built-in libmpv player vs. external VLC) -->
+  <div class="settings-section" id="playback-engine-section">
+    <h3 class="settings-section-title" data-i18n="player.settings_engine_title">{t.player.settings_engine_title}</h3>
+    <div class="settings-checkbox-row">
+      <div class="settings-checkbox-group">
+        <label class="settings-checkbox-label">
+          <input type="radio" name="playback-engine" value="internal" class="settings-checkbox" />
+          <span class="checkbox-label-text" data-i18n="player.settings_engine_internal">{t.player.settings_engine_internal}</span>
+        </label>
+      </div>
+      <div class="settings-checkbox-group">
+        <label class="settings-checkbox-label">
+          <input type="radio" name="playback-engine" value="vlc" class="settings-checkbox" />
+          <span class="checkbox-label-text" data-i18n="player.settings_engine_vlc">{t.player.settings_engine_vlc}</span>
+        </label>
+      </div>
+    </div>
+    <p class="settings-hint" data-i18n="player.settings_engine_hint">{t.player.settings_engine_hint}</p>
+    <h3 class="settings-section-title" data-i18n="player.settings_controls_title">{t.player.settings_controls_title}</h3>
+    <div class="settings-checkbox-row">
+      <div class="settings-checkbox-group">
+        <label class="settings-checkbox-label">
+          <input type="radio" name="player-controls-mode" value="overlay" class="settings-checkbox" />
+          <span class="checkbox-label-text" data-i18n="player.settings_controls_overlay">{t.player.settings_controls_overlay}</span>
+        </label>
+      </div>
+      <div class="settings-checkbox-group">
+        <label class="settings-checkbox-label">
+          <input type="radio" name="player-controls-mode" value="docked" class="settings-checkbox" />
+          <span class="checkbox-label-text" data-i18n="player.settings_controls_docked">{t.player.settings_controls_docked}</span>
+        </label>
+      </div>
+    </div>
+    <p class="settings-hint" data-i18n="player.settings_controls_hint">{t.player.settings_controls_hint}</p>
+  </div>
+
 </div>
+
+<script>
+  import {
+    getPlaybackEngine, setPlaybackEngine, parsePlaybackEngine, getControlsMode, setControlsMode, parseControlsMode,
+  } from '../../lib/player/player-settings';
+
+  // Self-contained wiring (settings.astro's init list is owned elsewhere):
+  // reflects the stored engine on load and persists a change immediately.
+  function initPlaybackEngineSetting() {
+    const section = document.getElementById('playback-engine-section');
+    if (!section || section.dataset.bound === 'true') return;
+    section.dataset.bound = 'true';
+    const engineRadios = section.querySelectorAll<HTMLInputElement>('input[name="playback-engine"]');
+    const engine = getPlaybackEngine();
+    engineRadios.forEach(radio => {
+      radio.checked = radio.value === engine;
+      radio.addEventListener('change', () => {
+        if (radio.checked) setPlaybackEngine(parsePlaybackEngine(radio.value));
+      });
+    });
+    const modeRadios = section.querySelectorAll<HTMLInputElement>('input[name="player-controls-mode"]');
+    const mode = getControlsMode();
+    modeRadios.forEach(radio => {
+      radio.checked = radio.value === mode;
+      radio.addEventListener('change', () => {
+        if (radio.checked) setControlsMode(parseControlsMode(radio.value));
+      });
+    });
+  }
+
+  initPlaybackEngineSetting();
+  document.addEventListener('astro:page-load', initPlaybackEngineSetting);
+</script>

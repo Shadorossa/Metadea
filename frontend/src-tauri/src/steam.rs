@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 
 use crate::platform_scanning::steam_root;
@@ -13,7 +13,9 @@ fn steam_api_key(db: &crate::db::MetadeaDb) -> Result<Option<String>, String> {
         .query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get::<_, String>(0))
         .optional()
         .str_err()?
-        .filter(|s| !s.is_empty()))
+        .filter(|s| !s.is_empty())
+        // Keys saved before write_env_config encrypted are plaintext rows.
+        .map(|s| crate::utils::decrypt_secret_or_plaintext(&s)))
 }
 
 fn is_hidden_achievement(schema: Option<&serde_json::Value>) -> bool {
@@ -31,7 +33,7 @@ fn is_hidden_achievement(schema: Option<&serde_json::Value>) -> bool {
 pub async fn download_achievements(
     app_handle: &tauri::AppHandle,
     app_id: &str,
-    game_dir: &PathBuf,
+    game_dir: &Path,
     lang: &str,
 ) {
     let db = app_handle.state::<crate::db::MetadeaDb>();
@@ -43,7 +45,7 @@ pub async fn download_achievements(
         Some(id) => id,
         None => return,
     };
-    let client = crate::igdb::get_http_client();
+    let client = crate::http::http_client();
 
     // Always fetch current player progress
     let progress_url = format!(
@@ -144,8 +146,8 @@ pub async fn download_achievements(
         // Download both locked and unlocked icons
         let icon_file = format!("{}_unlocked.jpg", apiname);
         let icon_gray_file = format!("{}_locked.jpg", apiname);
-        fetch_icon(&client, icon_url, &icons_dir.join(&icon_file)).await;
-        fetch_icon(&client, icon_gray_url, &icons_dir.join(&icon_gray_file)).await;
+        fetch_icon(client, icon_url, &icons_dir.join(&icon_file)).await;
+        fetch_icon(client, icon_gray_url, &icons_dir.join(&icon_gray_file)).await;
 
         let display_name = schema
             .and_then(|s| s["displayName"].as_str())
@@ -280,7 +282,7 @@ pub async fn steam_get_screenshots(
         }));
     }
 
-    screenshots.sort_by(|a, b| b.0.cmp(&a.0));
+    screenshots.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
     Ok(screenshots.into_iter().map(|(_, path)| path).collect())
 }
 
@@ -341,7 +343,7 @@ pub async fn steam_get_owned_games(
         api_key, steam_id
     );
 
-    let client = crate::igdb::get_http_client();
+    let client = crate::http::http_client();
     let resp = client.get(&url).send().await.str_err()?;
     if !resp.status().is_success() {
         return Err(format!("Steam API error (HTTP {})", resp.status()));
@@ -361,7 +363,7 @@ pub async fn steam_get_player_achievements(
     let steam_id = detect_steam_user_id().ok_or("Could not detect Steam user ID")?;
     let language = lang.unwrap_or_else(|| "spanish".to_string());
 
-    let client = crate::igdb::get_http_client();
+    let client = crate::http::http_client();
 
     // Fetch player progress (achieved status + unlock times)
     let progress_url = format!(

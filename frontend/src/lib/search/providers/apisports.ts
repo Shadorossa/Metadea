@@ -2,22 +2,31 @@ import { readEnvConfig } from '../../tauri/env';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
 import { MissingApiKeyError } from '../errors';
-import { getT } from '../../../i18n/client';
+import { getT } from '../../../i18n/runtime';
 import type { MediaPageData } from '../../media/types';
-import type { SearchPage, SearchResult } from '../index';
-import { isUnifySeasonsEnabled } from '../../settings/preferences';
+import type { SearchPage, SearchResult } from '../types';
+import { isUnifySeasonsEnabled } from '../../storage/preferences';
 import { API_SPORTS_EVENT_BANNER_COLOR } from '../../media/constants';
-import {
-  getApiSportsEventMatches,
-  saveApiSportsEventMatches,
-  saveApiSportsEventSeasons,
-  type ApiSportsEventMatchRow,
-  type ApiSportsEventSeasonRow,
-} from '../../tauri/misc-commands';
+import { getApiSportsEventMatches, saveApiSportsEventMatches, saveApiSportsEventSeasons, type ApiSportsEventMatchRow, type ApiSportsEventSeasonRow } from '../../tauri/episodes';
 
 export type ApiSportsDiscipline = 'football' | 'basketball';
 type ApiSport = ApiSportsDiscipline;
-type ApiSportsObject = Record<string, any>;
+type ApiSportsObject = Record<string, unknown>;
+
+// API-Sports rows are read as untrusted JSON: a nested object is only ever
+// reached through asRecord, and a text/score field only through the matching
+// coercion below, so a malformed row degrades to nulls instead of garbage.
+function asRecord(value: unknown): ApiSportsObject | null {
+  return value && typeof value === 'object' ? value as ApiSportsObject : null;
+}
+
+function textOrNull(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+function scoreOrNull(value: unknown): string | number | null {
+  return typeof value === 'string' || typeof value === 'number' ? value : null;
+}
 type ApiSportsEnvelope = { response?: unknown[]; errors?: Record<string, unknown> | unknown[] };
 
 interface SeasonInfo {
@@ -148,7 +157,7 @@ function leagueInfo(raw: ApiSportsObject, sport: ApiSport): LeagueInfo | null {
   // Football wraps details under `league`/`country`; Basketball returns them
   // at the top level. Accept both shapes at this boundary and keep the rest of
   // Metadea independent from the provider-specific response differences.
-  const league = raw.league && typeof raw.league === 'object' ? raw.league : raw;
+  const league = asRecord(raw.league) ?? raw;
   const id = league.id ?? raw.id;
   const name = league.name ?? raw.name;
   if (id == null || !name) return null;
@@ -156,11 +165,12 @@ function leagueInfo(raw: ApiSportsObject, sport: ApiSport): LeagueInfo | null {
   const seasons = (Array.isArray(seasonsRaw) ? seasonsRaw : [seasonsRaw])
     .map(seasonInfo)
     .filter((season): season is SeasonInfo => !!season);
-  const country = raw.country && typeof raw.country === 'object' ? raw.country.name : raw.country;
+  const countryRecord = asRecord(raw.country);
+  const country = countryRecord ? countryRecord.name : raw.country;
   return {
     id: String(id),
     name: String(name),
-    logo: typeof league.logo === 'string' ? league.logo : null,
+    logo: textOrNull(league.logo),
     sport,
     country: country ? String(country) : null,
     seasons,
@@ -264,40 +274,48 @@ function eventDateParts(value: unknown, fallbackTime?: unknown): { date: string 
 
 function normalizeMatch(raw: ApiSportsObject, sport: ApiSport): EventMatch | null {
   if (sport === 'football') {
-    const fixture = raw.fixture ?? {};
-    const teams = raw.teams ?? {};
-    const goals = raw.goals ?? {};
+    const fixture = asRecord(raw.fixture) ?? {};
+    const teams = asRecord(raw.teams) ?? {};
+    const goals = asRecord(raw.goals) ?? {};
+    const home = asRecord(teams.home);
+    const away = asRecord(teams.away);
+    const status = asRecord(fixture.status);
     const parts = eventDateParts(fixture.date);
     const id = fixture.id ?? raw.id;
     if (id == null) return null;
     return {
       id: String(id),
       ...parts,
-      home: teams.home?.name ?? null,
-      away: teams.away?.name ?? null,
-      homeScore: goals.home ?? null,
-      awayScore: goals.away ?? null,
-      image: teams.home?.logo ?? null,
-      venue: fixture.venue?.name ?? null,
-      status: fixture.status?.short ?? fixture.status?.long ?? null,
+      home: textOrNull(home?.name),
+      away: textOrNull(away?.name),
+      homeScore: scoreOrNull(goals.home),
+      awayScore: scoreOrNull(goals.away),
+      image: textOrNull(home?.logo),
+      venue: textOrNull(asRecord(fixture.venue)?.name),
+      status: textOrNull(status?.short) ?? textOrNull(status?.long),
     };
   }
 
-  const teams = raw.teams ?? {};
-  const scores = raw.scores ?? {};
+  const teams = asRecord(raw.teams) ?? {};
+  const scores = asRecord(raw.scores) ?? {};
+  const home = asRecord(teams.home);
+  const away = asRecord(teams.away);
+  const homeScores = asRecord(scores.home);
+  const awayScores = asRecord(scores.away);
+  const status = asRecord(raw.status);
   const parts = eventDateParts(raw.date, raw.time);
-  const id = raw.id ?? raw.game?.id;
+  const id = raw.id ?? asRecord(raw.game)?.id;
   if (id == null) return null;
   return {
     id: String(id),
     ...parts,
-    home: teams.home?.name ?? null,
-    away: teams.away?.name ?? null,
-    homeScore: scores.home?.total ?? scores.home?.points ?? null,
-    awayScore: scores.away?.total ?? scores.away?.points ?? null,
-    image: teams.home?.logo ?? null,
-    venue: typeof raw.arena === 'string' ? raw.arena : raw.venue?.name ?? null,
-    status: raw.status?.short ?? raw.status?.long ?? null,
+    home: textOrNull(home?.name),
+    away: textOrNull(away?.name),
+    homeScore: scoreOrNull(homeScores?.total ?? homeScores?.points),
+    awayScore: scoreOrNull(awayScores?.total ?? awayScores?.points),
+    image: textOrNull(home?.logo),
+    venue: textOrNull(raw.arena) ?? textOrNull(asRecord(raw.venue)?.name),
+    status: textOrNull(status?.short) ?? textOrNull(status?.long),
   };
 }
 

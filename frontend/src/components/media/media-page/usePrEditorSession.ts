@@ -1,17 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Translations } from '../../../i18n/index';
-import type { PrEditorSessionHandle, PrEditorSessionTab } from '../PrEditorModal';
-import { openSubmittedProposal, submitCollaborativeProposal, type ProposalFileEntry } from '../../../lib/github/submitCollaborativeProposal';
+import type { PrEditorSessionHandle, PrEditorSessionTab } from '../../../lib/media/editor/pr-editor-types';
+import { openSubmittedProposal, submitCollaborativeProposal, type ProposalFileEntry } from '../../../lib/github/submit-collaborative-proposal';
+import { emit, on, type CharacterAppearanceSeed, type PrEditorSessionController } from '../../../lib/shared/state/editor-session-bus';
 import { mergeProposalSessionBatches } from './proposal-session-merge';
 
-export interface CharacterAppearanceSeed {
-  media_external_id: string;
-  title: string;
-  cover: string | null;
-  release_year?: number | null;
-  release_month?: number | null;
-  release_day?: number | null;
-}
+export type { CharacterAppearanceSeed } from '../../../lib/shared/state/editor-session-bus';
+
+const sameTabs = (a: PrEditorSessionTab[], b: PrEditorSessionTab[]) =>
+  a.length === b.length && a.every((tab, index) => {
+    const other = b[index];
+    return tab.externalId === other.externalId
+      && tab.label === other.label
+      && tab.dirty === other.dirty
+      && tab.affected === other.affected
+      && tab.kind === other.kind;
+  });
 
 interface Options {
   currentId: string;
@@ -43,6 +47,9 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
   const [status, setStatus] = useState('');
   const [exitError, setExitError] = useState('');
   const handles = useRef(new Map<string, PrEditorSessionHandle>());
+  // Last controller published on window, kept here because the effect
+  // cleanup removes it from window before the next publish can compare.
+  const publishedController = useRef<PrEditorSessionController | null>(null);
 
   const registerSession = useCallback((externalId: string, handle: PrEditorSessionHandle | null) => {
     if (handle) handles.current.set(externalId, handle);
@@ -75,7 +82,7 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
     setSagaOrderById({});
     setActiveId(currentId);
     setActiveCharacterId(null);
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'media', externalId: currentId } }));
+    emit('metadea:pr-editor-active-tab-change', { kind: 'media', externalId: currentId });
     setShowExitPrompt(false);
     setExitPromptShake(0);
     setPendingTabCloseId(null);
@@ -88,7 +95,7 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
     setSessionIds(previous => previous.includes(externalId) ? previous : [...previous, externalId]);
     setActiveId(externalId);
     setActiveCharacterId(null);
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'media', externalId } }));
+    emit('metadea:pr-editor-active-tab-change', { kind: 'media', externalId });
     setShowExitPrompt(false);
     setExitPromptShake(0);
     setPendingTabCloseId(null);
@@ -97,17 +104,16 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
   const openCharacterTab = useCallback((externalId: string, initialAppearance?: CharacterAppearanceSeed, initialTitle?: string) => {
     setShowPrEditor(true);
     setActiveCharacterId(externalId);
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: 'character', externalId } }));
+    emit('metadea:pr-editor-active-tab-change', { kind: 'character', externalId });
     setCharacterEntries(previous => ({
       ...previous,
       [externalId]: { title: initialTitle || previous[externalId]?.title || pe.session_loading_character, dirty: previous[externalId]?.dirty ?? false },
     }));
-    (window as any).openCharacterEditor?.(externalId, initialAppearance, { mediaSession: true, title: initialTitle });
+    window.__metadeaCharacterEditor?.open(externalId, initialAppearance, { mediaSession: true, title: initialTitle });
   }, [pe.session_loading_character]);
 
   useEffect(() => {
-    const onCharacterSessionChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ action: 'update' | 'close'; externalId: string; title?: string; dirty?: boolean }>).detail;
+    return on('metadea:character-editor-session-change', detail => {
       if (!detail?.externalId) return;
       if (detail.action === 'close') {
         setCharacterEntries(previous => {
@@ -124,9 +130,7 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
           dirty: detail.dirty ?? previous[detail.externalId]?.dirty ?? false,
         },
       }));
-    };
-    window.addEventListener('metadea:character-editor-session-change', onCharacterSessionChange);
-    return () => window.removeEventListener('metadea:character-editor-session-change', onCharacterSessionChange);
+    });
   }, [pe.session_loading_character]);
 
   const removeEntry = useCallback((externalId: string) => {
@@ -142,7 +146,7 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
         setSessionTitles({});
         setSagaOrderById({});
         handles.current.delete(externalId);
-        (window as any).openCharacterEditor?.(nextCharacterId, undefined, { mediaSession: true });
+        window.__metadeaCharacterEditor?.open(nextCharacterId, undefined, { mediaSession: true });
         return;
       }
       setShowPrEditor(false);
@@ -190,7 +194,7 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
     setShowExitPrompt(false);
     setExitPromptShake(0);
     setPendingCharacterCloseId(null);
-    (window as any).closeCharacterEditorTab?.(externalId, true);
+    window.__metadeaCharacterEditor?.closeTab(externalId, true);
   }, [pendingCharacterCloseId]);
 
   const discard = useCallback(() => {
@@ -208,7 +212,7 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
     setSagaOrderById({});
     handles.current.clear();
     setStatus('');
-    (window as any).closeCharacterEditorSession?.();
+    window.__metadeaCharacterEditor?.closeSession();
   }, []);
 
   const hasChanges = Object.values(dirtyById).some(Boolean) || Object.values(characterEntries).some(entry => entry.dirty);
@@ -232,10 +236,10 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
       const summaries: string[] = [];
       for (const [ownerId, character] of Object.entries(characterEntries)) {
         if (!character.dirty) continue;
-        const prepared = await (window as any).prepareCharacterEditorProposal?.(ownerId, setStatus);
+        const prepared = await window.__metadeaCharacterEditor?.prepareProposal(ownerId, setStatus);
         if (!prepared) throw new Error(pe.session_prepare_character_failed.replace('{title}', character.title));
-        batches.push({ ownerId, entries: prepared.entries as ProposalFileEntry[] });
-        summaries.push(prepared.changeSummary as string);
+        batches.push({ ownerId, entries: prepared.entries });
+        summaries.push(prepared.changeSummary);
       }
       for (const ownerId of sessionIds) {
         const handle = handles.current.get(ownerId);
@@ -262,41 +266,47 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
     }
   }, [currentId, discard, onSubmitted, pe, sessionIds, submitting, characterEntries]);
 
-  const affectedIds = new Set(sessionIds.flatMap(id => handles.current.get(id)?.affectedExternalIds() ?? []));
-  const insertionOrder = new Map(sessionIds.map((id, index) => [id, index]));
-  const orderCandidates = sessionIds.map((id, index) => {
-    const sagaOrder = sagaOrderById[id] ?? [];
-    return { sagaOrder, index, coverage: sessionIds.filter(sessionId => sagaOrder.includes(sessionId)).length, active: id === activeId };
-  }).sort((a, b) => b.coverage - a.coverage || Number(b.active) - Number(a.active) || b.index - a.index);
-  const sagaOrderForTabs = orderCandidates[0]?.sagaOrder ?? [];
-  const sagaPosition = new Map(sagaOrderForTabs.map((id, index) => [id, index]));
-  const orderedSessionIds = [...sessionIds].sort((a, b) =>
-    (sagaPosition.get(a) ?? Number.MAX_SAFE_INTEGER) - (sagaPosition.get(b) ?? Number.MAX_SAFE_INTEGER)
-    || (insertionOrder.get(a) ?? 0) - (insertionOrder.get(b) ?? 0),
-  );
-  const sessionTabs: PrEditorSessionTab[] = orderedSessionIds.map(id => ({
-    externalId: id,
-    label: sessionTitles[id] || (id === currentId ? currentTitle : '') || pe.session_loading_work,
-    dirty: dirtyById[id] ?? false,
-    affected: affectedIds.has(id),
-    kind: 'media',
-  }));
-  const allSessionTabs: PrEditorSessionTab[] = [
-    ...sessionTabs,
-    ...Object.entries(characterEntries).map(([externalId, character]) => ({
-      externalId,
-      label: character.title,
-      dirty: character.dirty,
-      affected: false,
-      kind: 'character' as const,
-    })),
-  ];
+  // `affectedIds` reads the handles ref, which the registered editors mutate
+  // outside React; the memo deps are the state changes that accompany those
+  // registrations, which is what this derivation always effectively tracked.
+  const { affectedIds, allSessionTabs } = useMemo(() => {
+    const affectedIds = new Set(sessionIds.flatMap(id => handles.current.get(id)?.affectedExternalIds() ?? []));
+    const insertionOrder = new Map(sessionIds.map((id, index) => [id, index]));
+    const orderCandidates = sessionIds.map((id, index) => {
+      const sagaOrder = sagaOrderById[id] ?? [];
+      return { sagaOrder, index, coverage: sessionIds.filter(sessionId => sagaOrder.includes(sessionId)).length, active: id === activeId };
+    }).sort((a, b) => b.coverage - a.coverage || Number(b.active) - Number(a.active) || b.index - a.index);
+    const sagaOrderForTabs = orderCandidates[0]?.sagaOrder ?? [];
+    const sagaPosition = new Map(sagaOrderForTabs.map((id, index) => [id, index]));
+    const orderedSessionIds = [...sessionIds].sort((a, b) =>
+      (sagaPosition.get(a) ?? Number.MAX_SAFE_INTEGER) - (sagaPosition.get(b) ?? Number.MAX_SAFE_INTEGER)
+      || (insertionOrder.get(a) ?? 0) - (insertionOrder.get(b) ?? 0),
+    );
+    const sessionTabs: PrEditorSessionTab[] = orderedSessionIds.map(id => ({
+      externalId: id,
+      label: sessionTitles[id] || (id === currentId ? currentTitle : '') || pe.session_loading_work,
+      dirty: dirtyById[id] ?? false,
+      affected: affectedIds.has(id),
+      kind: 'media',
+    }));
+    const allSessionTabs: PrEditorSessionTab[] = [
+      ...sessionTabs,
+      ...Object.entries(characterEntries).map(([externalId, character]) => ({
+        externalId,
+        label: character.title,
+        dirty: character.dirty,
+        affected: false,
+        kind: 'character' as const,
+      })),
+    ];
+    return { affectedIds, allSessionTabs };
+  }, [sessionIds, activeId, dirtyById, sessionTitles, sagaOrderById, characterEntries, currentId, currentTitle, pe.session_loading_work]);
 
   const navigateTab = (tab: PrEditorSessionTab) => {
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-active-tab-change', { detail: { kind: tab.kind, externalId: tab.externalId } }));
+    emit('metadea:pr-editor-active-tab-change', { kind: tab.kind, externalId: tab.externalId });
     if (tab.kind === 'character') {
       setActiveCharacterId(tab.externalId);
-      (window as any).openCharacterEditor?.(tab.externalId, undefined, { mediaSession: true, title: tab.label });
+      window.__metadeaCharacterEditor?.open(tab.externalId, undefined, { mediaSession: true, title: tab.label });
       return;
     }
     setActiveCharacterId(null);
@@ -313,7 +323,7 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
         setShowExitPrompt(true);
         return;
       }
-      (window as any).closeCharacterEditorTab?.(tab.externalId);
+      window.__metadeaCharacterEditor?.closeTab(tab.externalId);
       return;
     }
     requestCloseEntry(tab.externalId);
@@ -322,14 +332,15 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
   // The session header lives outside this subtree, so the controls it needs
   // are published on window for it to drive.
   useEffect(() => {
-    const controller = {
+    const previous = publishedController.current;
+    const controller: PrEditorSessionController = {
       tabs: allSessionTabs,
       active: activeCharacterId
-        ? { kind: 'character' as const, externalId: activeCharacterId }
-        : { kind: 'media' as const, externalId: activeId },
+        ? { kind: 'character', externalId: activeCharacterId }
+        : { kind: 'media', externalId: activeId },
       navigate: navigateTab,
       closeTab: (tab: PrEditorSessionTab) => {
-        if (tab.kind === 'character') (window as any).closeCharacterEditorTab?.(tab.externalId);
+        if (tab.kind === 'character') window.__metadeaCharacterEditor?.closeTab(tab.externalId);
         else requestCloseEntry(tab.externalId);
       },
       requestClose,
@@ -337,10 +348,18 @@ export function usePrEditorSession({ currentId, currentTitle, pe, onSubmitted }:
       submitProposal: () => { void submit(); },
       hasChanges: Object.values(dirtyById).some(Boolean) || Object.values(characterEntries).some(entry => entry.dirty),
     };
-    (window as any).__metadeaPrEditorSession = controller;
-    window.dispatchEvent(new CustomEvent('metadea:pr-editor-session-update', { detail: controller }));
+    window.__metadeaPrEditorSession = controller;
+    publishedController.current = controller;
+    // The character editor re-renders on every update it hears; only tell it
+    // when something it actually mirrors (tabs, active tab, dirtiness) moved.
+    const unchanged = previous
+      && sameTabs(previous.tabs, controller.tabs)
+      && previous.active.kind === controller.active.kind
+      && previous.active.externalId === controller.active.externalId
+      && previous.hasChanges === controller.hasChanges;
+    if (!unchanged) emit('metadea:pr-editor-session-update', controller);
     return () => {
-      if ((window as any).__metadeaPrEditorSession === controller) delete (window as any).__metadeaPrEditorSession;
+      if (window.__metadeaPrEditorSession === controller) delete window.__metadeaPrEditorSession;
     };
   }, [allSessionTabs, activeCharacterId, activeId, requestClose, requestCloseEntry, discard, submit, dirtyById, characterEntries]);
 

@@ -5,8 +5,8 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getFollowers, getFollowing, unfollowUser, type UserSearchResult } from '../../lib/social/users';
-import { getT } from '../../i18n/client';
-import { beginGlobalLoading } from '../../lib/shared/global-loading';
+import { getT } from '../../i18n/runtime';
+import { beginGlobalLoading } from '../../lib/dom/global-loading';
 import { IconX } from '../local/ui/icons';
 
 // Instagram-story-style bubble: a circular photo with a ring around it, the

@@ -14,7 +14,7 @@
   font-size: 1rem;
   font-weight: 700;
   color: var(--text-main);
-  border-bottom: none !important;
+  border-bottom: none;
 }
 
 .local-launcher-title-label {
@@ -121,11 +121,11 @@
      the title's shared base rule only has a 0.5rem margin-bottom of its
      own - bumped here so the divider line doesn't sit right on top of the
      first row of covers. */
-  margin-bottom: 1.5rem !important;
+  margin-bottom: 1.5rem;
 }
 
 .local-games-container .library-section-title:has(.local-launcher-title-rule)::after {
-  display: none !important;
+  display: none;
 }
 
 
@@ -192,8 +192,8 @@
     to bottom,
     transparent 0%,
     transparent 45%,
-    rgba(var(--bg-card-rgb, 25, 25, 39), 0.55) 75%,
-    rgba(var(--bg-card-rgb, 25, 25, 39), 0.97) 100%
+    rgba(var(--bg-card-rgb), 0.55) 75%,
+    rgba(var(--bg-card-rgb), 0.97) 100%
   );
 }
 

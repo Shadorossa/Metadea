@@ -1,22 +1,27 @@
 // handleSubmit's I/O sequence, split out of PrEditorModal.tsx: builds the
 // saga-chain edges, persists locally, propagates reciprocal relations, and
-// (in 'proposal' mode) submits the GitHub PR. Takes precomputed diff values
-// instead of the component's own closures.
+// (in 'proposal' mode) submits the GitHub PR. Every diff it needs (edited
+// fields, removed ids, whether the saga changed) is derived from the editor
+// state via pr-editor-state.ts instead of the component's own closures.
 import { saveCatalogEntry, saveMediaRelations, getMediaRelationsForEditor, getCatalogEntry } from '../../../lib/tauri/catalog';
 import { saveCharactersSkeleton } from '../../../lib/tauri/characters';
 import { getStoryArcsForMedia, type StoryArc } from '../../../lib/tauri/story-arcs';
-import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../../lib/tauri/catalog';
-import type { DbMediaCharacter } from '../../../lib/tauri/characters';
+import type { MediaCatalogEntry, DbMediaRelation } from '../../../lib/tauri/catalog';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import { removeSagaMember, saveCachedSaga } from '../../../lib/tauri/catalog';
-import { invalidateCachedMediaData } from '../../../lib/media/mediaService';
-import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../../lib/media/sagaGrouping';
-import { submitCollaborativeProposal, openSubmittedProposal, type ProposalBundle, type ProposalFileEntry } from '../../../lib/github/submitCollaborativeProposal';
+import { invalidateCachedMediaData } from '../../../lib/media/media-page-data';
+import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../../lib/media/saga/saga-grouping';
+import { submitCollaborativeProposal, openSubmittedProposal, type ProposalBundle, type ProposalFileEntry } from '../../../lib/github/submit-collaborative-proposal';
 import { REL_TYPE_TO_PAIR } from '../../../lib/media/constants';
-import { ALL_CHAIN_RELATION_TYPES, type SagaRelationType } from '../../../lib/media/sagaTypes';
-import { setField } from '../../../lib/shared/object-utils';
-import { uploadImageToSharedCatalog } from '../../../lib/character/sharedCharacterImageStorage';
-import type { BundledRelation, EditableRelation } from '../PrEditorModal';
+import { ALL_CHAIN_RELATION_TYPES } from '../../../lib/media/saga/saga-relation-types';
+import { setField } from '../../../lib/shared/collections/object-utils';
+import { uploadImageToSharedCatalog } from '../../../lib/character/shared-image-storage';
+import type { BundledRelation } from '../../../lib/media/editor/pr-editor-types';
+import {
+  charactersChanged, editedFields as computeEditedFields, getPrEditorDiff,
+  originalBundleChildIds, originalBundledIds, originalContainedIds, toRecommendationRelation,
+  type PrEditorContext, type PrEditorState,
+} from './pr-editor-state';
 
 // A proposal only needs enough to identify the row plus whatever the user
 // actually hand-edited (`editedFields`) — auto-fetched fields (synopsis,
@@ -93,47 +98,13 @@ function buildRelatedProposalBundle(
   };
 }
 
-export interface SubmitPrEditorParams {
-  entry: MediaCatalogEntry;
-  externalId: string;
+export interface SubmitPrEditorParams extends PrEditorContext {
+  state: PrEditorState;
   mode: 'proposal' | 'local';
-  sagaOrder: string[];
-  originalSagaOrder: string[];
-  sagaRelationTypes: Record<string, SagaRelationType>;
-  sagaGroups: Record<string, string>;
-  sagaName: string;
   sagaMeta: Record<string, MediaMeta>;
-  bundledRelations: BundledRelation[];
-  originalBundledIds: Set<string>;
-  containedRelations: BundledRelation[];
-  originalContainedIds: Set<string>;
-  // The bundle referenced via Bundled In (bundledRelations[0], if any) and
-  // the rest of its own contents, edited inline instead of requiring a
-  // separate visit to that bundle's own editor — see PrEditorModal's own
-  // bundleChildren state comment for the full rationale.
-  bundleId?: string;
-  bundleChildren: BundledRelation[];
-  originalBundleChildIds: Set<string>;
-  editableRelations: EditableRelation[];
-  // ComicVine issues — same shape/handling as bundledRelations/containedRelations,
-  // just its own relation_type ('ISSUE') and its own collapsible section in
-  // the editor (see PrEditorModal's own issueRelations state comment).
-  issueRelations: BundledRelation[];
-  characters: DbMediaCharacter[];
-  charactersChanged: boolean;
-  mediaAuthors: DbMediaAuthor[];
-  sagaChanged: boolean;
-  editedFields: (keyof MediaCatalogEntry)[];
-  // Explicit removals this editor session made, for the GitHub upload merge
-  // (see mergeListByKey in submitCollaborativeProposal.ts) — tells "the user
-  // removed this" apart from "this session never loaded it" so an upstream
-  // relation/character/author someone else added isn't silently dropped.
-  removedRelationIds: string[];
-  removedCharacterIds: string[];
-  removedAuthorIds: string[];
   // Arcs deleted this session (PrEditorStoryArcsSection saves/deletes
   // directly, so this can't be derived from a before/after diff like the
-  // other removed*Ids above — the section reports it as it happens).
+  // other removed ids — the section reports it as it happens).
   removedArcIds: string[];
   changeSummary: string;
   prepareOnly?: boolean;
@@ -143,8 +114,66 @@ export interface SubmitPrEditorParams {
   setStatusMsg: (msg: string) => void;
 }
 
-export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<ProposalFileEntry[] | null> {
-  const { entry, externalId, mode } = p;
+// The concrete inputs the persistence sequence below works from, derived
+// once from the state pair. Kept as one flat object so the body reads the
+// same as when the modal handed these in precomputed.
+function resolveSubmitInputs(state: PrEditorState, ctx: PrEditorContext) {
+  const { draft, baseline } = state;
+  const diff = getPrEditorDiff(state, ctx);
+  const entry = draft.entry;
+  return {
+    entry,
+    sagaOrder: draft.sagaOrder,
+    originalSagaOrder: baseline.sagaOrder,
+    sagaRelationTypes: draft.sagaRelationTypes,
+    sagaGroups: draft.sagaGroups,
+    sagaName: draft.sagaName,
+    bundledRelations: draft.bundledRelations,
+    originalBundledIds: originalBundledIds(state),
+    containedRelations: draft.containedRelations,
+    originalContainedIds: originalContainedIds(state),
+    // The bundle referenced via Bundled In (bundledRelations[0], if any) and
+    // the rest of its own contents, edited inline instead of requiring a
+    // separate visit to that bundle's own editor — see PrEditorDraft's
+    // bundleChildren comment for the full rationale.
+    bundleId: draft.bundledRelations[0]?.external_id,
+    bundleChildren: draft.bundleChildren,
+    originalBundleChildIds: originalBundleChildIds(state),
+    editableRelations: [...draft.editableRelations, ...draft.recommendations.map(r => toRecommendationRelation(r, ctx.recommendationLabel))],
+    // ComicVine issues — same shape/handling as bundledRelations/containedRelations,
+    // just its own relation_type ('ISSUE') and its own section in the editor.
+    issueRelations: draft.issueRelations,
+    characters: draft.characters,
+    charactersChanged: charactersChanged(state),
+    mediaAuthors: draft.mediaAuthors,
+    sagaChanged: !!entry?.blocked_at || diff.sagaOrderChanged || diff.relTypesChanged
+      || diff.groupsChanged || diff.addedSaga.length > 0 || diff.removedSaga.length > 0,
+    editedFields: computeEditedFields(state),
+    // Explicit removals this editor session made, for the GitHub upload merge
+    // (see mergeListByKey in submitCollaborativeProposal.ts) — tells "the user
+    // removed this" apart from "this session never loaded it" so an upstream
+    // relation/character/author someone else added isn't silently dropped.
+    // Union of every relation-editing UI's own removals — media_relations
+    // has no per-category split once saved, so the merge just needs "which
+    // related_media_external_id ids did this session actually remove",
+    // regardless of which list they came from.
+    removedRelationIds: [
+      ...diff.removedBundledIds,
+      ...diff.removedContainedIds,
+      ...diff.removedEditableRelationIds,
+      ...diff.removedIssueIds,
+    ],
+    removedCharacterIds: diff.removedCharacterIds,
+    removedAuthorIds: diff.removedAuthorIds,
+  };
+}
+
+export async function submitPrEditorChanges(params: SubmitPrEditorParams): Promise<ProposalFileEntry[] | null> {
+  const { externalId, mode } = params;
+  const inputs = resolveSubmitInputs(params.state, params);
+  const { entry } = inputs;
+  if (!entry) return null;
+  const p = { ...params, ...inputs, entry };
 
   await saveCatalogEntry(entry);
   invalidateCachedMediaData(externalId);

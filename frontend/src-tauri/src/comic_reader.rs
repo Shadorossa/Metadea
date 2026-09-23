@@ -28,13 +28,34 @@ fn cache_root(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
 
 // Stable, filesystem-safe directory name for one archive — hashed so the
 // cache dir doesn't inherit the source file's own (possibly very long or
-// Unicode-heavy) name/path.
+// Unicode-heavy) name/path. FNV-1a (64-bit) is spelled out here because
+// std's DefaultHasher is not stable across Rust releases: a toolchain bump
+// would silently re-key every cache dir. Switching to it re-keyed existing
+// caches exactly once (they are just re-extracted on the next open).
 fn archive_cache_key(path: &str) -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    path.hash(&mut hasher);
-    format!("{:016x}", hasher.finish())
+    const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
+    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+    let hash = path.bytes().fold(FNV_OFFSET_BASIS, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(FNV_PRIME)
+    });
+    format!("{hash:016x}")
+}
+
+#[cfg(test)]
+mod archive_cache_key_tests {
+    use super::archive_cache_key;
+
+    #[test]
+    fn matches_the_published_fnv1a_64_vectors() {
+        assert_eq!(archive_cache_key(""), "cbf29ce484222325");
+        assert_eq!(archive_cache_key("a"), "af63dc4c8601ec8c");
+        assert_eq!(archive_cache_key("foobar"), "85944171f73967e8");
+    }
+
+    #[test]
+    fn distinct_paths_get_distinct_keys() {
+        assert_ne!(archive_cache_key(r"C:\comics\a.cbz"), archive_cache_key(r"C:\comics\b.cbz"));
+    }
 }
 
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "webp", "gif", "bmp"];
@@ -85,6 +106,70 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
                 other => other,
             },
         };
+    }
+}
+
+#[cfg(test)]
+mod natural_cmp_tests {
+    use super::natural_cmp;
+    use std::cmp::Ordering;
+
+    #[test]
+    fn compares_digit_runs_numerically() {
+        assert_eq!(natural_cmp("page2.jpg", "page10.jpg"), Ordering::Less);
+        assert_eq!(natural_cmp("page10.jpg", "page2.jpg"), Ordering::Greater);
+    }
+
+    #[test]
+    fn identical_strings_are_equal() {
+        assert_eq!(natural_cmp("page7.jpg", "page7.jpg"), Ordering::Equal);
+        assert_eq!(natural_cmp("", ""), Ordering::Equal);
+    }
+
+    #[test]
+    fn a_strict_prefix_sorts_first() {
+        assert_eq!(natural_cmp("page", "page1"), Ordering::Less);
+        assert_eq!(natural_cmp("page1", "page"), Ordering::Greater);
+        assert_eq!(natural_cmp("", "a"), Ordering::Less);
+    }
+
+    #[test]
+    fn leading_zeros_do_not_affect_numeric_equality() {
+        assert_eq!(natural_cmp("page007", "page7"), Ordering::Equal);
+        assert_eq!(natural_cmp("page02.jpg", "page2.jpg"), Ordering::Equal);
+    }
+
+    #[test]
+    fn handles_multiple_numeric_runs() {
+        assert_eq!(natural_cmp("v1.9", "v1.10"), Ordering::Less);
+        assert_eq!(natural_cmp("ch2-p10", "ch2-p9"), Ordering::Greater);
+        assert_eq!(natural_cmp("ch10-p1", "ch2-p9"), Ordering::Greater);
+    }
+
+    #[test]
+    fn falls_back_to_char_order_after_equal_numbers() {
+        assert_eq!(natural_cmp("1a", "1b"), Ordering::Less);
+        assert_eq!(natural_cmp("1b", "1a"), Ordering::Greater);
+    }
+
+    #[test]
+    fn digit_versus_letter_uses_plain_char_order() {
+        assert_eq!(natural_cmp("2", "a"), Ordering::Less);
+        assert_eq!(natural_cmp("A", "a"), Ordering::Less);
+    }
+
+    #[test]
+    fn non_ascii_characters_compare_by_code_point() {
+        assert_eq!(natural_cmp("é", "z"), Ordering::Greater);
+        assert_eq!(natural_cmp("página2", "página10"), Ordering::Less);
+        // Fullwidth digits are not ASCII digits, so they compare as chars.
+        assert_eq!(natural_cmp("２", "１０"), Ordering::Greater);
+    }
+
+    #[test]
+    fn numbers_that_overflow_u64_are_treated_as_zero() {
+        assert_eq!(natural_cmp("99999999999999999999999", "1"), Ordering::Less);
+        assert_eq!(natural_cmp("99999999999999999999999", "0"), Ordering::Equal);
     }
 }
 

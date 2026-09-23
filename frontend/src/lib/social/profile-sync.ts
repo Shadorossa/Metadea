@@ -4,11 +4,11 @@
 // prompted on Home once per local calendar day). Only runs for a real
 // Google-linked session; the local "offline_token" mode has no server
 // identity to sync to.
-import { API_URL } from '../config';
-import { getAuthToken, getUserInfo, saveUserInfo, readUserJourney, getAllLibraryEntries, readUserFavorites, readMonthlyHistory, getAllUserLists, getListItems } from '../tauri';
-import { STORAGE_KEYS } from '../shared/storage-keys';
+import { API_URL } from '../api/urls';
+import { getAuthToken, getUserInfo, saveUserInfo, readUserJourneyTyped, getAllLibraryEntries, readUserFavoritesTyped, readMonthlyHistoryTyped, getAllUserLists, getListItems } from '../tauri';
+import { STORAGE_KEYS } from '../storage/storage-keys';
 import { getImage } from '../storage/images';
-import { decodeJwtPayload } from '../profile/utils';
+import { decodeJwtPayload } from '../profile/media-type-label';
 
 export const PROFILE_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_ACTIVITY_ENTRIES = 30;
@@ -35,7 +35,7 @@ function recordAttempt(record: SyncAttemptRecord): void {
 // feed just needs "what happened, when", not the day-bucket structure the
 // local Profile page's calendar view uses it for.
 async function compileRecentActivity(): Promise<unknown[]> {
-  const journey = await readUserJourney().catch(() => []);
+  const journey = await readUserJourneyTyped().catch(() => []);
   const flat = journey.flatMap(day =>
     day.events
       .filter(event => event.type === 'complete')
@@ -124,8 +124,8 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
       getUserInfo().catch(() => ({} as Record<string, unknown>)),
       compileRecentActivity(),
       compileLibrary(),
-      readUserFavorites().catch(() => ({})),
-      readMonthlyHistory().catch(() => ({})),
+      readUserFavoritesTyped().catch(() => ({})),
+      readMonthlyHistoryTyped().catch(() => ({})),
       compileLists(),
       getImage(STORAGE_KEYS.profileAvatarCustom).catch(() => null),
       getImage(STORAGE_KEYS.profileBannerCustom).catch(() => null),

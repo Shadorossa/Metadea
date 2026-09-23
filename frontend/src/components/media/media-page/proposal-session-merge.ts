@@ -1,4 +1,4 @@
-import type { ProposalFileEntry } from '../../../lib/github/submitCollaborativeProposal';
+import type { ProposalFileEntry } from '../../../lib/github/submit-collaborative-proposal';
 
 // A proposal session can touch the same entry from several open editors at
 // once. Each batch names the entry its editor "owns", and that owner's draft

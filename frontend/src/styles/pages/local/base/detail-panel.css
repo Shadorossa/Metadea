@@ -75,7 +75,7 @@
 .local-game-detail-summary {
   font-size: 0.82rem;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   margin-bottom: 0.75rem;
   display: -webkit-box;
   -webkit-line-clamp: 6;

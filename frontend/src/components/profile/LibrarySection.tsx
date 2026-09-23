@@ -1,30 +1,33 @@
-import { useEffect, useMemo, useState, useDeferredValue } from 'react';
-import { getAllLibraryEntries, getAllMediaRelations, getCatalogEntry, getSagaNames, getSyncStates, readRoutes, scanFolderContents, scanAllGames, readMetadataIndex, readEmulatorsConfig } from '../../lib/tauri';
-import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri';
-import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
-import { notifyNewEpisode } from '../../lib/shared/notifications';
-import { getT } from '../../i18n/client';
-import { syncActiveRatingSystem } from '../../lib/media/rating-utils';
-import { SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON, GROUP_BUNDLE_ICON, RATING_SLOT_1_ICON, RATING_SLOT_2_ICON } from '../../lib/shared/icon-strings';
+import { useEffect, useMemo, useRef, useState, useDeferredValue } from 'react';
+import { getAllLibraryEntries, getCatalogEntry, getSagaNames, getSyncStates, readRoutes, scanFolderContents, scanAllGames, readMetadataIndex, readEmulatorsConfig } from '../../lib/tauri';
+import { toCatalogSummary, type CatalogSummary, type DbMediaRelation } from '../../lib/tauri';
+import { getCachedLibraryAndCatalog, getCachedMediaRelations } from '../../lib/profile/library-data-cache';
+import { syncActiveRatingSystemFromCachedInfo } from '../../lib/profile/user-info';
+import { buildInProgressIdsKey } from '../../lib/profile/playability-key';
+import { filterCoverCacheCandidates } from '../../lib/profile/cover-cache';
+import { useCoverCacheBatch } from '../local/hooks/useCoverCacheBatch';
+import { notifyNewEpisode } from '../../lib/notifications/notifications';
+import { getT } from '../../i18n/runtime';
+import { SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON, GROUP_BUNDLE_ICON, RATING_SLOT_1_ICON, RATING_SLOT_2_ICON } from '../../lib/dom/icon-strings';
 import {
   isLibraryGroupByBundleEnabled, setLibraryGroupByBundleEnabled,
   isDualRatingEnabled, getRatingName1, getRatingName2,
   getActiveRatingSlot, setActiveRatingSlot, type RatingSlot,
   isUnifySeasonsEnabled,
-} from '../../lib/settings/preferences';
-import { getTypeLabel, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/constants/media';
+} from '../../lib/storage/preferences';
+import { getTypeLabel, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/media/media-types';
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync } from '../../lib/media/media-status';
-import { fetchMediaData } from '../../lib/media/mediaService';
-import { isSagaComponentRelationType } from '../../lib/media/sagaTypes';
-import { createUnionFind } from '../../lib/shared/union-find';
+import { fetchMediaData } from '../../lib/media/media-page-data';
+import { isSagaComponentRelationType } from '../../lib/media/saga/saga-relation-types';
+import { createUnionFind } from '../../lib/shared/collections/union-find';
 import { groupEditions, groupBundles, refineSagaGroups, averageRating, unifyAnimeSeasons, unifyEventSeasons } from '../../lib/profile/library-grouping';
-import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
-import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
+import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/media/mappers/mapper-utils';
+import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
 import { LibraryCard, LibraryTypeIcon } from './LibraryCard';
 import { VirtualLibraryGrid } from './VirtualLibraryGrid';
-import { buildLibraryStatusEntries } from '../local/utils/catalogGameLinking';
-import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../local/utils/constants';
+import { buildLibraryStatusEntries } from '../../lib/local/catalog-game-linking';
+import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../../lib/local/platforms';
 import { isLocalMediaItemPlayable, toLocalMediaItem } from './library-playability';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -85,7 +88,7 @@ interface LibrarySectionProps {
   // library, neither of which make sense for a page you're just visiting).
   // readOnly disables click-to-edit on every card (see LibraryCard).
   overrideItems?: Items;
-  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+  overrideCatalogMap?: Map<string, CatalogSummary>;
   overrideSagaRelations?: DbMediaRelation[];
   overrideSagaNames?: Record<string, string>;
   readOnly?: boolean;
@@ -107,7 +110,7 @@ export function LibrarySection({
 
   const [items, setItems] = useState<Items | null>(overrideItems ?? null);
   const libraryItems = useMemo(() => normalizeAniListLibraryTypes(items), [items]);
-  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
+  const [catalogMap, setCatalogMap] = useState<Map<string, CatalogSummary>>(overrideCatalogMap ?? new Map());
   const [sagaRelations, setSagaRelations] = useState<DbMediaRelation[]>(overrideSagaRelations ?? []);
   const [sagaNames, setSagaNames] = useState<Record<string, string>>(overrideSagaNames ?? {});
   const [playableResumeIds, setPlayableResumeIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -173,11 +176,35 @@ export function LibrarySection({
     sessionStorage.removeItem(STORAGE_KEYS.pendingLibraryType);
   }, [overrideItems]);
 
+  // Which covers Local already cached to disk (one exists-only IPC call for
+  // the whole library, see useCoverCacheBatch) — those cards load the local
+  // webp instead of hitting the remote CDN on every visit, exactly like
+  // Local's own grids. Misses keep their remote URL.
+  const coverCacheIds = useMemo(
+    () => filterCoverCacheCandidates(libraryItems ? libraryItems.map(item => item.external_id) : []),
+    [libraryItems],
+  );
+  const coverCacheHits = useCoverCacheBatch(coverCacheIds);
+
   // Keep the shortcut strictly in sync with Local / Play's real sources:
   // installed/scannable games for game entries, and a matched next file in
   // the configured category folder for media entries. Until detection ends,
   // no play icon is shown rather than advertising an unavailable action.
+  //
+  // Keyed on the SET of in-progress ids (a stable string), not on the
+  // library/catalog/relations references: the resync loop below replaces
+  // catalogMap once per refreshed entry, and every one of those used to
+  // re-run this whole detection — read_routes, a scan_folder_contents per
+  // category, scan_all_games (registry + directory walks), the metadata
+  // index — for a result that only ever changes when the in-progress set
+  // does. The other inputs are read through a ref, refreshed every render.
+  const inProgressIdsKey = useMemo(() => buildInProgressIdsKey(libraryItems), [libraryItems]);
+  const detectionInputsRef = useRef({ libraryItems, catalogMap, sagaRelations });
   useEffect(() => {
+    detectionInputsRef.current = { libraryItems, catalogMap, sagaRelations };
+  }, [libraryItems, catalogMap, sagaRelations]);
+  useEffect(() => {
+    const { libraryItems, catalogMap, sagaRelations } = detectionInputsRef.current;
     if (readOnly || !libraryItems) {
       setPlayableResumeIds(new Set());
       return;
@@ -243,7 +270,7 @@ export function LibrarySection({
 
     detectPlayableItems().catch(error => console.error('[LibrarySection] Local playability detection failed:', error));
     return () => { cancelled = true; };
-  }, [libraryItems, catalogMap, sagaRelations, readOnly]);
+  }, [inProgressIdsKey, readOnly]);
 
   useEffect(() => {
     if (overrideItems) return;
@@ -252,13 +279,14 @@ export function LibrarySection({
     const load = async () => {
       const [{ items: rawItems, catalog: catalogEntries }, relations] = await Promise.all([
         getCachedLibraryAndCatalog(),
-        getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
+        getCachedMediaRelations(),
       ]);
       // Refreshes the localStorage cache read by getActiveRatingSystem() per-card below.
-      await syncActiveRatingSystem();
+      await syncActiveRatingSystemFromCachedInfo();
       if (cancelled) return;
+      const catalogById = new Map(catalogEntries.map(e => [e.external_id, e]));
       setItems(rawItems);
-      setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
+      setCatalogMap(catalogById);
       setSagaRelations(relations);
       getSagaNames(rawItems.map(i => i.external_id)).then(names => { if (!cancelled) setSagaNames(names); }).catch(() => {});
 
@@ -270,26 +298,26 @@ export function LibrarySection({
       const syncStates = await getSyncStates(inProgressItems.map(i => i.external_id)).catch(() => []);
       const syncStateMap = new Map(syncStates.map(s => [s.external_id, s]));
       const dueForResync = inProgressItems.filter(item => {
-        const catalog = catalogEntries.find(e => e.external_id === item.external_id);
+        const catalog = catalogById.get(item.external_id);
         const sync = syncStateMap.get(item.external_id);
         return needsResync(sync ? { status: catalog?.status, last_synced_at: sync.last_synced_at, sync_failed_count: sync.sync_failed_count } : null);
       });
 
       for (const item of dueForResync) {
         if (cancelled) return;
-        const before = catalogEntries.find(e => e.external_id === item.external_id);
+        const before = catalogById.get(item.external_id);
         await fetchMediaData(item.external_id).catch(() => null);
         const fresh = await getCatalogEntry(item.external_id).catch(() => null);
         if (cancelled) return;
         if (fresh) {
-          setCatalogMap(prev => new Map(prev).set(fresh.external_id, fresh));
+          setCatalogMap(prev => new Map(prev).set(fresh.external_id, toCatalogSummary(fresh)));
           // total_count went up — a new episode/chapter aired.
           const beforeCount = before?.total_count ?? 0;
           const afterCount = fresh.total_count ?? 0;
           if (beforeCount > 0 && afterCount > beforeCount) {
-            const label = item.type === 'manga' || item.type === 'lnovel'
-              ? `Capítulo ${afterCount}`
-              : `Episodio ${afterCount}`;
+            const n = getT().notifications;
+            const label = (item.type === 'manga' || item.type === 'lnovel' ? n.new_chapter : n.new_episode)
+              .replace('{number}', String(afterCount));
             notifyNewEpisode(fresh.title_main || item.external_id, label).catch(() => {});
           }
         }
@@ -459,7 +487,7 @@ export function LibrarySection({
       .map(sec => {
         const suppressIds = sec.isCompletedSection ? undefined : completedIds;
         const editionGroups = groupEditions(sec.items, catalogMap, groupByEdition);
-        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean; hideGroupBadge?: boolean; mediaExternalId?: string }> = editionGroups;
+        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: CatalogSummary; titleOverride?: string; aggregateStats?: boolean; hideGroupBadge?: boolean; mediaExternalId?: string }> = editionGroups;
         if (groupByBundle) {
           cards = groupBundles(cards, catalogMap, sagaRelations, suppressIds);
         }
@@ -735,6 +763,7 @@ export function LibrarySection({
                     readOnly={readOnly}
                     showResumeAction={sec.isCurrently}
                     playableResumeIds={playableResumeIds}
+                    cachedCoverPath={coverCacheHits[item.external_id]}
                     issueRelations={issueRelationsByMedia.get(item.external_id)}
                     ratingSlot={dualRatingEnabled ? ratingSlot : 'rating'}
                   />

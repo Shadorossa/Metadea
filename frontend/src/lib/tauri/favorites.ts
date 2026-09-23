@@ -1,5 +1,5 @@
-import { isTauri, invoke, readStoredJson } from './core';
-import { STORAGE_KEYS } from '../shared/storage-keys';
+import { isTauri, invoke, readStoredJson } from './bridge';
+import { STORAGE_KEYS } from '../storage/storage-keys';
 
 function typeToFavKey(type: string): string {
   return `${type}_fav`;
@@ -7,6 +7,15 @@ function typeToFavKey(type: string): string {
 
 export async function readUserFavorites(): Promise<Record<string, string[]>> {
   return readStoredJson<Record<string, string[]>>('read_user_favorites', STORAGE_KEYS.userFavorite, {});
+}
+
+/** Typed counterpart of readUserFavorites: the same {type: externalId[]}
+ *  map (every known type present, empty or not) as a real object over IPC
+ *  instead of a JSON string parsed on this side. Tauri only — outside
+ *  Tauri it falls back to the localStorage-backed readUserFavorites. */
+export async function readUserFavoritesTyped(): Promise<Record<string, string[]>> {
+  if (!isTauri()) return readUserFavorites();
+  return invoke<Record<string, string[]>>('read_user_favorites_typed');
 }
 
 export async function writeUserFavorites(favorites: Record<string, string[]>): Promise<void> {

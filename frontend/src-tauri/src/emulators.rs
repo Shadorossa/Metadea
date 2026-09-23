@@ -38,10 +38,8 @@ fn emulators_from_db(db: &crate::db::MetadeaDb) -> Result<HashMap<String, Emulat
         })
         .str_err()?;
 
-    for row in rows {
-        if let Ok((platform_id, config)) = row {
-            configs.insert(platform_id, config);
-        }
+    for (platform_id, config) in rows.flatten() {
+        configs.insert(platform_id, config);
     }
     Ok(configs)
 }

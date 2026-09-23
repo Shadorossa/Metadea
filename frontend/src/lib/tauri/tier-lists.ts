@@ -1,4 +1,4 @@
-import { tauriTry, tauriRun, invoke } from './core';
+import { tauriTry, tauriRun, invoke } from './bridge';
 
 export interface TierDef {
   id:    string;

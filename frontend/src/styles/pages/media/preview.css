@@ -8,19 +8,19 @@
   width: 185px;
   box-sizing: border-box;
   padding: 0.4rem 0.6rem;
-  background: var(--bg-elevated, #1a1a2e);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: var(--radius-sm, 6px);
-  color: var(--text-muted, #a0a0b8);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
   font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all var(--anim-fast, 120ms);
+  transition: all var(--anim-fast);
 }
 
 .media-saga-btn:hover {
-  color: var(--text-main, #fff);
-  border-color: var(--accent, #7c6af7);
+  color: var(--text-main);
+  border-color: var(--accent);
   background: rgba(255, 255, 255, 0.07);
 }
 
@@ -29,10 +29,10 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.85) !important;
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 0 !important;
+  padding: 0;
   will-change: backdrop-filter;
 }
 
@@ -76,23 +76,23 @@
   font-weight: 500;
   letter-spacing: inherit;
   text-transform: inherit;
-  color: var(--text-dim, #666);
+  color: var(--text-dim);
   cursor: pointer;
-  transition: color var(--anim-fast, 120ms);
+  transition: color var(--anim-fast);
 }
 
 .saga-strip-tab:hover {
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
 }
 
 .saga-strip-tab--active {
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
 }
 
 /* Dimmer than the main subtitle/title divider - just a subtle separator
    between two same-level tabs, not meant to draw the eye like that one. */
 .saga-strip-divider--tabs {
-  color: var(--text-dim, #666) !important;
+  color: var(--text-dim) !important;
   font-weight: 400 !important;
 }
 
@@ -100,9 +100,9 @@
    (see its own .btn/.hof-btn/... rule) - these are plain text tabs instead,
    so they're deliberately excluded from that treatment. */
 [data-theme="newspaper-dark"] .saga-strip-tab {
-  border: none !important;
+  border: none;
   background: none !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
 [data-theme="newspaper-dark"] .saga-strip-tab--active {
@@ -110,14 +110,14 @@
 }
 
 .saga-strip-divider {
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
   font-weight: bold;
 }
 
 .saga-strip-title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--text-main, #fff);
+  color: var(--text-main);
   font-family: 'Georgia', 'Times New Roman', serif;
   text-transform: none;
   letter-spacing: normal;
@@ -135,7 +135,7 @@
 .saga-strip-status {
   width: 100%;
   text-align: center;
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -305,7 +305,7 @@
 .saga-strip-item-badge {
   font-size: 0.58rem;
   font-weight: 800;
-  color: var(--text-dim, #888);
+  color: var(--text-dim);
   border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 0.1rem 0.4rem;
   border-radius: 2px;
@@ -314,7 +314,7 @@
 
 .saga-strip-item-year {
   font-size: 0.65rem;
-  color: var(--text-muted, #aaa);
+  color: var(--text-muted);
   line-height: 0.9rem;
   min-height: 0.9rem;
 }
@@ -431,7 +431,7 @@
 }
 
 .saga-strip-alternative-pane--current {
-  outline: 2px solid var(--accent, #7c6af7);
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
   z-index: 1;
 }
@@ -545,8 +545,8 @@
 }
 
 .saga-strip-item--current .saga-strip-item-cover {
-  border: 2px solid var(--accent, #7c6af7);
-  box-shadow: 0 0 15px rgba(var(--accent-rgb, 124, 106, 247), 0.4);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.4);
 }
 
 .saga-strip-item-current-indicator {
@@ -555,8 +555,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent, #7c6af7);
-  box-shadow: 0 0 8px var(--accent-glow, #7c6af7);
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
   z-index: 2;
 }
 
@@ -581,7 +581,7 @@
 }
 
 .saga-strip-close:hover {
-  color: var(--accent, #7c6af7);
+  color: var(--accent);
 }
 
 /* Rendered via a portal straight to <body>, positioned in viewport
@@ -598,9 +598,9 @@
   min-width: 220px;
   max-width: 320px;
   padding: 0.75rem 0.9rem;
-  background: var(--bg-elevated, #1b1917);
-  border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
@@ -634,7 +634,7 @@
 }
 
 .saga-arc-hover-row-title {
-  color: var(--text-main, #e3e1db);
+  color: var(--text-main);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -642,5 +642,5 @@
 }
 
 .saga-arc-hover-row-range {
-  color: var(--text-muted, #a0a0b8);
+  color: var(--text-muted);
 }

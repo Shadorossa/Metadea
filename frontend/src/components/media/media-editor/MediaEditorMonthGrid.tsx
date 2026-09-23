@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Translations } from '../../../i18n/index';
-import type { EntryAction } from '../../../lib/media/log-state';
+import type { EntryAction } from '../../../lib/media/editor/library-log-state';
 import type { MonthMediaInfo } from './media-editor-load';
 
 export function MediaEditorMonthGrid({

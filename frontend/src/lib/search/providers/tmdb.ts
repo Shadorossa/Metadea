@@ -1,9 +1,45 @@
-import { readEnvConfig } from '../../tauri';
-import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../index';
-import { SEASON_MONTHS } from '../index';
+import { readEnvConfig } from '../../tauri/env';
+import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../types';
+import { SEASON_MONTHS } from '../types';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
 import { MissingApiKeyError } from '../errors';
+
+// ── Untrusted-JSON guards ─────────────────────────────────────────────────────
+// The response interfaces below describe what TMDB documents, not what a
+// given payload is guaranteed to carry. Each list mapper narrows its rows ONCE
+// through a parse*Row guard (a row that fails is skipped, never thrown on)
+// and is written assertion-free from there.
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null;
+}
+
+function rowsOf(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function stringList(value: unknown): string[] | undefined {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : undefined;
+}
+
+function numberList(value: unknown): number[] | undefined {
+  return Array.isArray(value) ? value.filter((item): item is number => typeof item === 'number') : undefined;
+}
+
+function nonNull<T>(value: T | null): value is T {
+  return value !== null;
+}
 
 interface TmdbMovie {
   id: number;
@@ -18,6 +54,24 @@ interface TmdbMovie {
   origin_country?: string[];
 }
 
+function parseTmdbMovie(raw: unknown): TmdbMovie | null {
+  if (!isRecord(raw)) return null;
+  const id = optionalNumber(raw.id);
+  if (id === undefined) return null;
+  return {
+    id,
+    title: optionalString(raw.title),
+    name: optionalString(raw.name),
+    poster_path: optionalString(raw.poster_path) ?? null,
+    release_date: optionalString(raw.release_date),
+    first_air_date: optionalString(raw.first_air_date),
+    vote_average: optionalNumber(raw.vote_average) ?? 0,
+    genre_ids: numberList(raw.genre_ids),
+    original_language: optionalString(raw.original_language),
+    origin_country: stringList(raw.origin_country),
+  };
+}
+
 // TMDB genre id for "Animation". Japanese-language animation overlaps with
 // AniList's anime catalog, so it's excluded here to avoid duplicate entries
 // across the two providers.
@@ -28,7 +82,7 @@ function isAnime(movie: TmdbMovie): boolean {
 }
 
 interface TmdbPageResponse {
-  results?: TmdbMovie[];
+  results?: unknown[];
   page?: number;
   total_pages?: number;
 }
@@ -163,6 +217,9 @@ export function parseDateParts(dateString?: string): { year: number | null; mont
   // TMDB dates are "YYYY-MM-DD" with no time component — JS parses them as UTC midnight,
   // so local-time methods (getFullYear etc.) can return the previous day in negative offsets.
   const date = new Date(dateString);
+  // A string TMDB shouldn't send (e.g. "unknown") parses to an Invalid Date —
+  // report "no date" rather than three NaNs.
+  if (Number.isNaN(date.getTime())) return { year: null, month: null, day: null };
   return {
     year:  date.getUTCFullYear(),
     month: date.getUTCMonth() + 1,
@@ -289,7 +346,9 @@ async function fetchTmdbPage(
   for (const data of subPages) {
     if (!data) continue;
     results.push(
-      ...(data.results ?? [])
+      ...rowsOf(data.results)
+        .map(parseTmdbMovie)
+        .filter(nonNull)
         .filter(movie => !isAnime(movie))
         .map(movie => mapTmdbMovieToSearchResult(movie, mediaType)),
     );
@@ -331,7 +390,19 @@ export async function searchTvIncludingAnime(query: string, signal: AbortSignal)
   if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
 
   const data = await fetchJson<TmdbPageResponse>(url, { signal, headers }).catch(() => null);
-  return data?.results ?? [];
+  return rowsOf(data?.results).map(parseTvSearchHit).filter(nonNull);
+}
+
+function parseTvSearchHit(raw: unknown): TmdbTvSearchHit | null {
+  if (!isRecord(raw)) return null;
+  const id = optionalNumber(raw.id);
+  if (id === undefined) return null;
+  return {
+    id,
+    name: optionalString(raw.name),
+    first_air_date: optionalString(raw.first_air_date),
+    poster_path: raw.poster_path === null ? null : optionalString(raw.poster_path),
+  };
 }
 
 export interface TmdbPersonSearchHit {
@@ -358,8 +429,22 @@ export async function searchTmdbPeople(query: string, signal?: AbortSignal): Pro
   let url = `${API_ENDPOINTS.TMDB}/search/person?query=${encodeURIComponent(clean)}&page=1&language=${tmdbLocale()}`;
   if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
 
-  const data = await fetchJson<{ results?: TmdbPersonSearchHit[] }>(url, { headers, signal }).catch(() => null);
-  return data?.results ?? [];
+  const data = await fetchJson<{ results?: unknown[] }>(url, { headers, signal }).catch(() => null);
+  return rowsOf(data?.results).map(parsePersonSearchHit).filter(nonNull);
+}
+
+function parsePersonSearchHit(raw: unknown): TmdbPersonSearchHit | null {
+  if (!isRecord(raw)) return null;
+  const id = optionalNumber(raw.id);
+  const name = optionalString(raw.name);
+  if (id === undefined || name === undefined) return null;
+  return {
+    id,
+    name,
+    profile_path: optionalString(raw.profile_path) ?? null,
+    known_for_department: optionalString(raw.known_for_department),
+    popularity: optionalNumber(raw.popularity),
+  };
 }
 
 /** Exact-name fallback for staff/voice actors not present in AniList. */
@@ -455,7 +540,24 @@ interface TmdbSeasonEpisode {
 }
 
 interface TmdbSeasonResponse {
-  episodes?: TmdbSeasonEpisode[];
+  episodes?: unknown[];
+}
+
+function parseSeasonEpisode(raw: unknown): TmdbSeasonEpisode | null {
+  if (!isRecord(raw)) return null;
+  const episodeNumber = optionalNumber(raw.episode_number);
+  if (episodeNumber === undefined) return null;
+  return {
+    episode_number: episodeNumber,
+    name: optionalString(raw.name),
+    still_path: optionalString(raw.still_path) ?? null,
+  };
+}
+
+// A season that failed to fetch and one with no usable episodes are the same
+// thing to every reader below: an empty list.
+function episodesOf(season: TmdbSeasonResponse | null): TmdbSeasonEpisode[] {
+  return rowsOf(season?.episodes).map(parseSeasonEpisode).filter(nonNull);
 }
 
 export interface TmdbEpisodeSummary {
@@ -493,15 +595,15 @@ export async function fetchTmdbEpisodesForSeasons(
   const fetchSeasons = (numbers: number[], language: string) => Promise.all(
     numbers.map(seasonNumber =>
       fetchJson<TmdbSeasonResponse>(buildUrl(seasonNumber, language), { headers })
-        .then(season => ({ seasonNumber, season }))
-        .catch(() => ({ seasonNumber, season: null as TmdbSeasonResponse | null })),
+        .then(season => ({ seasonNumber, episodes: episodesOf(season) }))
+        .catch(() => ({ seasonNumber, episodes: [] as TmdbSeasonEpisode[] })),
     ),
   );
 
   const seasons = await fetchSeasons(seasonNumbers, tmdbLocale());
-  const namesBySeason = new Map(seasons.map(({ seasonNumber, season }) => [
+  const namesBySeason = new Map(seasons.map(({ seasonNumber, episodes }) => [
     seasonNumber,
-    new Map((season?.episodes ?? []).map(ep => [ep.episode_number, ep.name?.trim() || null])),
+    new Map(episodes.map(ep => [ep.episode_number, ep.name?.trim() || null])),
   ]));
 
   // Names use this precedence: English, application language, then the
@@ -510,22 +612,23 @@ export async function fetchTmdbEpisodesForSeasons(
   for (const language of [...new Set(fallbackLanguages)]) {
     if (!language || language === tmdbLocale()) continue;
     const missingSeasonNumbers = seasons
-      .filter(({ seasonNumber, season }) => {
+      .filter(({ seasonNumber, episodes }) => {
         const names = namesBySeason.get(seasonNumber);
-        return season?.episodes?.some(ep => !isInformativeEpisodeName(names?.get(ep.episode_number)));
+        return episodes.some(ep => !isInformativeEpisodeName(names?.get(ep.episode_number)));
       })
       .map(({ seasonNumber }) => seasonNumber);
     if (missingSeasonNumbers.length === 0) break;
 
     const translatedSeasons = await fetchSeasons(missingSeasonNumbers, language);
-    for (const { seasonNumber, season } of translatedSeasons) {
+    for (const { seasonNumber, episodes } of translatedSeasons) {
       const preferredNames = namesBySeason.get(seasonNumber);
       if (!preferredNames) continue;
-      for (const episode of season?.episodes ?? []) {
+      for (const episode of episodes) {
         const translatedName = episode.name?.trim();
+        if (!translatedName) continue;
         const currentName = preferredNames.get(episode.episode_number);
         if (!isInformativeEpisodeName(currentName) && isInformativeEpisodeName(translatedName)) {
-          preferredNames.set(episode.episode_number, translatedName!);
+          preferredNames.set(episode.episode_number, translatedName);
         }
       }
     }
@@ -534,10 +637,9 @@ export async function fetchTmdbEpisodesForSeasons(
   /* Keep preferred-language titles and use subsequent locales only where
    * that episode still has no informative title. */
   const episodes: TmdbEpisodeSummary[] = [];
-  for (const { seasonNumber, season } of seasons) {
-    const list = season?.episodes ?? [];
+  for (const { seasonNumber, episodes: seasonEpisodes } of seasons) {
     const names = namesBySeason.get(seasonNumber);
-    list.forEach((ep, idx) => {
+    seasonEpisodes.forEach((ep, idx) => {
       episodes.push({
         season_number:         seasonNumber,
         episode_number:        ep.episode_number,

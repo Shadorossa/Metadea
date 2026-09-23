@@ -3,7 +3,7 @@ import type { LocalGame } from '../../../lib/tauri';
 import { IconMonitor } from '../ui/icons';
 import type { CoverCache } from '../details/GameDetailPanel';
 import { MediaCardShell } from './MediaCardShell';
-import { getStatusBadge } from '../utils/statusBadge';
+import { getStatusBadge } from '../../../lib/local/status-badge';
 
 interface GameCardProps {
   game:       LocalGame;

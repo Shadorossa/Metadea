@@ -77,43 +77,6 @@
   border-width: 2px;
 }
 
-.local-folder-entry {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  transition: border-color var(--anim-base) var(--anim-ease),
-              background   var(--anim-base) var(--anim-ease);
-}
-
-.local-folder-entry:hover {
-  border-color: var(--accent);
-  background: var(--bg-elevated);
-}
-
-.local-folder-entry-icon { flex-shrink: 0; color: var(--text-dim); }
-.local-folder-entry:hover .local-folder-entry-icon { color: var(--accent); }
-
-.local-folder-entry-info { min-width: 0; flex: 1; }
-
-.local-folder-entry-name {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-main);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.local-folder-entry-meta {
-  font-size: 0.68rem;
-  color: var(--text-dim);
-  margin-top: 0.15rem;
-}
-
 
 
 .local-games-container {

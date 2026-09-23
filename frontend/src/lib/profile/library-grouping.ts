@@ -3,24 +3,25 @@
 //   groupEditions   -> collapses remakes/remasters/ports under one slot
 //   groupBundles    -> collapses a container's owned parts into one card
 //   refineSagaGroups -> merges standalone groups belonging to the same saga
-import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../tauri';
-import { compareByReleaseDate, stripSeasonSuffix } from '../media/mapper-utils';
+import type { CatalogSummary, DbMediaRelation, LibraryEntry } from '../tauri';
+import { compareByReleaseDate, stripSeasonSuffix } from '../media/mappers/mapper-utils';
 import {
   CONTAINS_RELATION_TYPES,
   isSequelRelationType,
-} from '../media/sagaTypes';
-import { parseDelimitedString } from '../shared/string-utils';
-import { createUnionFind } from '../shared/union-find';
+} from '../media/saga/saga-relation-types';
+import { parseDelimitedString } from '../shared/text/string-utils';
+import { createUnionFind } from '../shared/collections/union-find';
 import { buildDirectSagaGraph } from './saga-graph';
-import { isInProgressStatus, SEASON_STATUS_PRIORITY } from '../constants/media';
-import { reconstructSagaOrder } from '../media/sagaGrouping';
+import { isInProgressStatus, SEASON_STATUS_PRIORITY } from '../media/media-types';
+import { reconstructSagaOrder } from '../media/saga/saga-grouping';
+import { indexRelationsByMedia } from './relations-index';
 
 // Groups editions of the same work (remakes, remasters, ports) under one
 // grid slot. Gated behind "Agrupar por ediciones"; saga grouping is separate
 // (refineSagaGroups) since it must bridge works the user doesn't own.
 export function groupEditions<T extends { external_id: string; selected_version: string | null; type: string; started_at: string | null }>(
   sectionItems: T[],
-  catalogMap: Map<string, MediaCatalogEntry>,
+  catalogMap: Map<string, CatalogSummary>,
   includeEditions: boolean,
 ): Array<{ item: T; grouped: T[] }> {
   const byId = new Map(sectionItems.map(i => [i.external_id, i]));
@@ -82,8 +83,9 @@ export function groupEditions<T extends { external_id: string; selected_version:
 // Shared by groupBundles (a remaster of a bundle's own child joins that
 // bundle visually, even with no CONTAINS relation of its own) and
 // refineSagaGroups (a remaster with no saga edge of its own borrows its
-// original's saga identity).
-const EDITION_SOURCE_RELATION_TYPES = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME']);
+// original's saga identity). Exported so relations-scope.ts follows the
+// same edges when it expands the scoped relations fetch outwards.
+export const EDITION_SOURCE_RELATION_TYPES: ReadonlySet<string> = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME']);
 
 // Exported so stats-calculators.ts's groupSagaChains can redirect a saga-
 // less remaster/remake onto its original's saga identity too — same rule
@@ -149,14 +151,14 @@ export function sagaIdentityOf(
 // stale; needs 2+ owned contents plus the container itself already cataloged.
 export function groupBundles<T extends { external_id: string; started_at: string | null }>(
   groups: Array<{ item: T; grouped: T[] }>,
-  catalogMap: Map<string, MediaCatalogEntry>,
+  catalogMap: Map<string, CatalogSummary>,
   relations: DbMediaRelation[],
   // Every completed work's own id, only passed by non-"Completado" sections
   // (undefined there) — a bundle that already has a completed member
   // shouldn't also form an aggregate card among your dropped/pending/
   // paused/in-progress ones; each stays its own individual entry instead.
   suppressIfCompletedElsewhere?: Set<string>,
-): Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry }> {
+): Array<{ item: T; grouped: T[]; bundleMeta?: CatalogSummary }> {
   const rootIndexOf = new Map<string, number>();
   groups.forEach((g, i) => {
     rootIndexOf.set(g.item.external_id, i);
@@ -204,7 +206,7 @@ export function groupBundles<T extends { external_id: string; started_at: string
   }
 
   const consumed = new Set<number>();
-  const bundleGroups: Array<{ item: T; grouped: T[]; bundleMeta: MediaCatalogEntry }> = [];
+  const bundleGroups: Array<{ item: T; grouped: T[]; bundleMeta: CatalogSummary }> = [];
 
   for (const [containerId, childIds] of childIdsByContainer) {
     // Counted by matched children, not root-group indices — an earlier saga
@@ -266,7 +268,7 @@ export function groupBundles<T extends { external_id: string; started_at: string
           ...firstChildMeta,
           external_id: containerId,
           title_main: `${containerId}`,
-          parent_id: undefined,
+          parent_id: null,
         };
       }
     }
@@ -289,8 +291,8 @@ export function groupBundles<T extends { external_id: string; started_at: string
 // entries) so a gap (owning 1,2,3,5 but not 4) doesn't strand 5 on its own.
 // Only touches bare singletons — edition/bundle cards keep their own look.
 export function refineSagaGroups<T extends { external_id: string }>(
-  groups: Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry }>,
-  catalogMap: Map<string, MediaCatalogEntry>,
+  groups: Array<{ item: T; grouped: T[]; bundleMeta?: CatalogSummary }>,
+  catalogMap: Map<string, CatalogSummary>,
   relations: DbMediaRelation[],
   sagaNames: Record<string, string>,
   // Every completed work's own id, only passed by non-"Completado" sections
@@ -298,7 +300,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
   // shouldn't also form an aggregate card among your dropped/pending/
   // paused/in-progress ones; each stays its own individual entry instead.
   suppressIfCompletedElsewhere?: Set<string>,
-): Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> {
+): Array<{ item: T; grouped: T[]; bundleMeta?: CatalogSummary; titleOverride?: string; aggregateStats?: boolean }> {
   const { graph: sagaGraph, directIds: directSagaIds } = buildDirectSagaGraph(relations, catalogMap);
 
   // originalOf[editionId] = the base work it's a remake/remaster/expanded
@@ -467,7 +469,7 @@ export function latestInProgressMember<T extends { status: string | null; starte
 
 export function unifyAnimeSeasons<T extends { external_id: string; status: string | null; started_at?: string | null }>(
   ownedItems: T[],
-  catalogMap: Map<string, MediaCatalogEntry>,
+  catalogMap: Map<string, CatalogSummary>,
   relations: DbMediaRelation[],
   sagaNames: Record<string, string>,
 ): { consumedIds: Set<string>; groups: Array<UnifiedSeasonGroup<T>> } {
@@ -497,8 +499,13 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
 
   const consumedIds = new Set<string>();
   const groups: Array<UnifiedSeasonGroup<T>> = [];
+  // Built lazily: only chains with 2+ owned members need per-member relation
+  // lookups, and one index serves every chain instead of a full scan of the
+  // catalog-wide list per member.
+  let relationsByMedia: Map<string, DbMediaRelation[]> | null = null;
   for (const members of byComponent.values()) {
     if (members.length < 2) continue; // nothing to merge — leave the lone owned season as-is
+    const relationsIndex = (relationsByMedia ??= indexRelationsByMedia(relations));
 
     // Earliest release first as the tie-break, but corrected against the
     // real PREQUEL/SEQUEL chain (reconstructSagaOrder) — plain release-date
@@ -511,7 +518,7 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
     const dateOrderedIds = [...memberIds].sort((a, b) =>
       compareByReleaseDate(catalogMap.get(a) ?? {}, catalogMap.get(b) ?? {})
     );
-    const relsByIndex = dateOrderedIds.map(id => relations.filter(r => r.media_external_id === id));
+    const relsByIndex = dateOrderedIds.map(id => relationsIndex.get(id) ?? []);
     const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
     const byExternalId = new Map(members.map(m => [m.external_id, m]));
     const sorted = orderedIds.map(id => byExternalId.get(id)!);
@@ -547,7 +554,7 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
  *  when one is in progress, otherwise the latest season. */
 export function unifyEventSeasons<T extends { external_id: string; status: string | null; started_at?: string | null }>(
   ownedItems: T[],
-  catalogMap: Map<string, MediaCatalogEntry>,
+  catalogMap: Map<string, CatalogSummary>,
 ): { consumedIds: Set<string>; groups: Array<UnifiedSeasonGroup<T>> } {
   const byLeague = new Map<string, T[]>();
   for (const item of ownedItems) {
