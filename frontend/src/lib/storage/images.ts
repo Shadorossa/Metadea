@@ -76,10 +76,32 @@ async function idbRemove(key: string): Promise<boolean> {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/** localStorage copy of the resolved profile avatar (custom or Google) that
+ *  the navbar paints from synchronously. */
+const PROFILE_AVATAR_CACHE_KEY = 'profile_avatar_cache';
+
+/** The cached "specific photo" (Settings › Appearance), or null. */
+export function readCachedShareAvatar(): string | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage.getItem('share_avatar_cache');
+  } catch {
+    return null;
+  }
+}
+
+/** The cached profile avatar URL, or null (none yet, or storage blocked). */
+export function readCachedProfileAvatar(): string | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage.getItem(PROFILE_AVATAR_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 function syncLocalStorageCache(key: string, dataUrl: string | null): void {
   if (typeof localStorage === 'undefined') return;
   const cacheKey = key === STORAGE_KEYS.profileBannerCustom ? 'profile_banner_cache'
-    : key === STORAGE_KEYS.profileAvatarCustom ? 'profile_avatar_cache'
+    : key === STORAGE_KEYS.profileAvatarCustom ? PROFILE_AVATAR_CACHE_KEY
     : key === STORAGE_KEYS.shareAvatarCustom ? 'share_avatar_cache'
     : null;
   if (!cacheKey) return;

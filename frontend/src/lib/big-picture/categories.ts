@@ -5,7 +5,7 @@
 // the media kinds, Favourites). Pure: see categories.test.ts.
 import type { CategoryId } from '../local/platforms';
 
-export type BigPictureMediaKind = 'anime' | 'series' | 'movies' | 'manga' | 'books';
+export type BigPictureMediaKind = 'anime' | 'series' | 'movies' | 'manga' | 'lnovel' | 'books';
 
 export interface BigPictureProgress {
   current: number;
@@ -52,7 +52,7 @@ export interface BigPictureTab {
 
 export const RECENT_TAB_LIMIT = 30;
 
-const MEDIA_KIND_ORDER: readonly BigPictureMediaKind[] = ['anime', 'series', 'movies', 'manga', 'books'];
+const MEDIA_KIND_ORDER: readonly BigPictureMediaKind[] = ['anime', 'series', 'movies', 'manga', 'lnovel', 'books'];
 
 const MEDIA_KIND_BY_CATEGORY: Partial<Record<CategoryId, BigPictureMediaKind>> = {
   anime: 'anime',
@@ -61,11 +61,12 @@ const MEDIA_KIND_BY_CATEGORY: Partial<Record<CategoryId, BigPictureMediaKind>> =
   manga: 'manga',
   comics: 'manga',
   books: 'books',
-  'light-novel': 'books',
+  'light-novel': 'lnovel',
 };
 
 /** Media kind a Local category groups under in Big Picture (comics join
- *  manga, light novels join books), or undefined for game categories. */
+ *  manga; light novels have their own tab, apart from books), or undefined
+ *  for game categories. */
 export function mediaKindForCategory(category: CategoryId): BigPictureMediaKind | undefined {
   return MEDIA_KIND_BY_CATEGORY[category];
 }

@@ -17,12 +17,12 @@ export const DEFAULT_BIG_PICTURE_PREFERENCES: BigPicturePreferences = {
   navigationSounds: false,
 };
 
-interface StorageLike {
+export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
 
-function defaultStorage(): StorageLike | null {
+export function defaultStorage(): StorageLike | null {
   try {
     return typeof localStorage === 'undefined' ? null : localStorage;
   } catch {

@@ -98,9 +98,39 @@ fn parse_activity_type(raw: Option<&str>) -> Option<activity::ActivityType> {
 
 /// The optional second button: only with a label and an https URL, the two
 /// things Discord validates before showing it.
+/// Discord's text fields take 2–128 characters: shorter is omitted (empty),
+/// longer is cut with an ellipsis.
+fn discord_text(raw: &str) -> String {
+    let text = raw.trim();
+    let count = text.chars().count();
+    if count < 2 {
+        return String::new();
+    }
+    if count <= 128 {
+        return text.to_string();
+    }
+    let mut cut: String = text.chars().take(127).collect();
+    cut.push('…');
+    cut
+}
+
+/// An image Discord can show: an uploaded asset key, or an https URL of at
+/// most 256 characters (Discord's limit). Anything else is dropped.
+fn discord_image(raw: &str) -> Option<String> {
+    let value = raw.trim();
+    if value.is_empty() || value.len() > 256 {
+        return None;
+    }
+    if value.contains("://") {
+        return value.starts_with("https://").then(|| value.to_string());
+    }
+    value.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-').then(|| value.to_string())
+}
+
 fn share_button<'a>(label: &'a str, url: &'a str) -> Option<activity::Button<'a>> {
     let label = label.trim();
-    if label.is_empty() || !url.starts_with("https://") {
+    // Discord: label 1–32 characters, url at most 512.
+    if label.is_empty() || label.chars().count() > 32 || url.len() > 512 || !url.starts_with("https://") {
         return None;
     }
     Some(activity::Button::new(label, url))
@@ -196,12 +226,18 @@ pub fn update_presence(
     button_url: Option<String>,
 ) -> Result<(), String> {
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
-    let large_img = large_image.unwrap_or_else(|| "metadea".to_string());
-    let large_txt = large_text.unwrap_or_else(|| "Metadea".to_string());
-    let small_img = small_image.unwrap_or_default();
-    let small_txt = small_text.unwrap_or_default();
+    // Discord drops (or renders as an empty card, notably in the small
+    // profile popout) an activity with a field outside its limits, so every
+    // field is brought within them here.
+    let details = discord_text(&details);
+    let state = discord_text(&state);
+    let large_img = large_image.as_deref().and_then(discord_image).unwrap_or_else(|| "metadea".to_string());
+    let large_txt = large_text.as_deref().map(discord_text).filter(|t| !t.is_empty()).unwrap_or_else(|| "Metadea".to_string());
+    let small_img = small_image.as_deref().and_then(discord_image).unwrap_or_default();
+    let small_txt = if small_img.is_empty() { String::new() } else { small_text.as_deref().map(discord_text).unwrap_or_default() };
     let button_label = button_label.unwrap_or_default();
     let button_url = button_url.unwrap_or_default();
+    let end_time = end_time.filter(|end| start_time.map_or(true, |start| *end > start));
     send_activity(
         &mut guard,
         &ActivityPayload {
@@ -223,6 +259,26 @@ pub fn update_presence(
 #[cfg(test)]
 mod tests {
     use super::share_button;
+
+    #[test]
+    fn texts_are_kept_within_discords_limits() {
+        assert_eq!(super::discord_text(" a "), "");
+        assert_eq!(super::discord_text("Naruto"), "Naruto");
+        let long = "x".repeat(200);
+        let cut = super::discord_text(&long);
+        assert_eq!(cut.chars().count(), 128);
+        assert!(cut.ends_with('…'));
+    }
+
+    #[test]
+    fn images_must_be_asset_keys_or_short_https_urls() {
+        assert_eq!(super::discord_image("metadea").as_deref(), Some("metadea"));
+        assert_eq!(super::discord_image("https://img/x.jpg").as_deref(), Some("https://img/x.jpg"));
+        assert_eq!(super::discord_image("http://img/x.jpg"), None);
+        assert_eq!(super::discord_image("asset://localhost/x.png"), None);
+        assert_eq!(super::discord_image(&format!("https://{}", "a".repeat(300))), None);
+        assert_eq!(super::discord_image(""), None);
+    }
 
     #[test]
     fn share_button_needs_a_label_and_an_https_url() {

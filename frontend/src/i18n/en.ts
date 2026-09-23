@@ -2512,6 +2512,7 @@ export const en = {
     tab_series: "Series",
     tab_movies: "Movies",
     tab_manga: "Manga & comics",
+    tab_lnovel: "Light novels",
     tab_books: "Books",
     tab_favorites: "Favourites",
     kind_game: "Game",
@@ -2585,6 +2586,10 @@ export const en = {
     settings_pause_combo: "Controller pause menu while playing",
     settings_pause_combo_keys: "Select/Back + Start (hold 1.5 s)",
     settings_pause_combo_hint: "Hold Select (Back) and Start together for 1.5 seconds in a game launched from Metadea to freeze it and open a menu: continue, save state (RetroArch) or quit. Works with Xbox controllers and any pad exposed as XInput (PlayStation pads through Steam Input or DS4Windows).",
+    style_title: "Big Picture style",
+    style_default: "Default",
+    style_ps5: "PS5",
+    style_info: "How Big Picture mode looks. PS5 recreates the PlayStation 5 home screen: the selected game's art fills the screen, with a row of tiles on top and Play in the lower left. Inspired by the PS5ish Playnite theme. Applies the next time Big Picture opens.",
   },
   // Controller pause menu (components/game-pause/, src-tauri/src/game_pause).
   game_pause: {

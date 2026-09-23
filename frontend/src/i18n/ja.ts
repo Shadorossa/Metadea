@@ -2513,6 +2513,7 @@ export const ja: Translations = {
     tab_series: "ドラマ・シリーズ",
     tab_movies: "映画",
     tab_manga: "マンガ・コミック",
+    tab_lnovel: "ライトノベル",
     tab_books: "本",
     tab_favorites: "お気に入り",
     kind_game: "ゲーム",
@@ -2586,6 +2587,10 @@ export const ja: Translations = {
     settings_pause_combo: "プレイ中のコントローラー一時停止メニュー",
     settings_pause_combo_keys: "Select/Back + Start (1.5 秒長押し)",
     settings_pause_combo_hint: "Metadea から起動したゲームで Select (Back) と Start を同時に 1.5 秒押し続けると、ゲームを停止してメニューを開きます: 続ける、ステートを保存 (RetroArch)、終了。Xbox コントローラーと XInput として認識されるコントローラー (Steam Input や DS4Windows 経由の PlayStation コントローラー) に対応しています。",
+    style_title: "Big Picture のスタイル",
+    style_default: "標準",
+    style_ps5: "PS5",
+    style_info: "Big Picture モードの見た目です。PS5 は PlayStation 5 のホーム画面を再現します。選択中のゲームのアートが画面全体に表示され、上にタイルの列、左下に「プレイ」が並びます。Playnite テーマ PS5ish から着想を得ています。次に Big Picture を開いたときに反映されます。",
   },
   // Controller pause menu (components/game-pause/, src-tauri/src/game_pause).
   game_pause: {

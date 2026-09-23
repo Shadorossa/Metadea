@@ -223,6 +223,7 @@ marked *stable*: renaming any of them requires updating this document.
 | `.media-page`, `.local-page`, `.profile-page`, `.settings-page`, `.tier-page`, `.onboarding-page` | Root container of each page. |
 | `.settings-page .settings-section`, `.settings-section-title`, `.settings-hint`, `.settings-divider` | Settings layout blocks. |
 | `.theme-grid`, `.theme-card`, `.theme-card.active` | Built-in background theme picker. |
+| `[data-bp-skin="default"]`, `[data-bp-skin="ps5"]` | Big Picture style (Settings › Appearance), on the Big Picture root (`.bp-root`) and, while Big Picture is open, on `html`. The built-in PS5 skin (`styles/pages/local/big-picture-ps5.css`) is inspired by [PS5ish](https://github.com/davidkgriggs/PS5ish) (MIT), recreated in CSS. |
 | `.ui-themes-section`, `.ui-theme-list`, `.ui-theme-card`, `.ui-theme-card--active` | The user themes section itself. |
 | `.tooltip`-family (`[data-tooltip]`) | Hover tooltips. |
 

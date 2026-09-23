@@ -27,6 +27,13 @@ describe('unifyAnimeSeasons', () => {
     expect(consumedIds.has('anime:3')).toBe(false);
   });
 
+  it('unifies planned seasons among themselves, apart from the watched ones', () => {
+    const { groups } = unifyAnimeSeasons([item('anime:1', 'completed'), item('anime:2', 'planning'), item('anime:3', 'planning')], catalog, relations, {});
+    expect(groups).toHaveLength(1);
+    expect(groups[0].item.external_id).toBe('anime:2');
+    expect(groups[0].grouped.map(g => g.external_id)).toEqual(['anime:3']);
+  });
+
   it('does not merge a lone watched season with a planned one', () => {
     const { groups } = unifyAnimeSeasons([item('anime:1', 'completed'), item('anime:2', 'planning')], catalog, relations, {});
     expect(groups).toHaveLength(0);

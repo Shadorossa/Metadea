@@ -1,0 +1,730 @@
+/* Big Picture — PS5 skin (Settings › Appearance › Big Picture style;
+   lib/big-picture/big-picture-skin.ts). Inspired by PS5ish, David Griggs'
+   Playnite fullscreen theme (https://github.com/davidkgriggs/PS5ish, MIT):
+   nothing of it is copied — the PS5 home screen is recreated here in CSS
+   over Big Picture's own markup, plus the shelf (BigPictureShelf.tsx).
+
+   Scope: `[data-bp-skin="ps5"]` sits on the Big Picture root and, while
+   Big Picture is open, on <html> too, so the controller pause menu and the
+   Ambient screensaver (portalled outside the root) follow it. Every rule
+   below is under that attribute; the default look is untouched.
+
+   Look: the focused game's key art full-bleed behind a dark left/bottom
+   gradient; one row of square tiles near the top-left, the focused one
+   larger with a white outline and a blue glow, its title beside it; the
+   title, a white Play pill and the stats in the lower left; a slim top bar
+   (categories left; controller, avatar and clock right). System fonts only
+   (the CSP allows no remote fonts): Segoe UI Variable, then Segoe UI. */
+
+.bp-root[data-bp-skin='ps5'],
+html[data-bp-skin='ps5'] .game-pause-backdrop,
+html[data-bp-skin='ps5'] .ambient-screen {
+  --ps5-font: 'Segoe UI Variable Display', 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --ps5-blue: #0070d1;
+  --ps5-blue-bright: #3d9bff;
+  --ps5-panel: rgb(22 24 30 / 82%);
+  --ps5-panel-border: rgb(255 255 255 / 10%);
+  --ps5-spring: cubic-bezier(0.3, 1.32, 0.52, 1);
+  --ps5-x: clamp(28px, 3.9vw, 84px);
+
+  /* Theme tokens re-pointed so every shared piece (search, keyboard,
+     notices, the "playing" dim) comes out white-on-dark with blue focus. */
+  --accent: var(--ps5-blue);
+  --accent-glow: rgb(0 112 209 / 45%);
+  --accent-soft: rgb(0 112 209 / 24%);
+  --accent-border: rgb(61 155 255 / 65%);
+  --text-on-accent: #fff;
+  --text-main: #fff;
+  --text-muted: rgb(255 255 255 / 68%);
+  --text-dim: rgb(255 255 255 / 46%);
+  --bg-base: #04060b;
+  --bg-elevated: #1b1e25;
+  --bg-card: #22262e;
+  --bg-primary: #22262e;
+  --border-light: var(--ps5-panel-border);
+  --border-medium: rgb(255 255 255 / 20%);
+
+  font-family: var(--ps5-font);
+}
+
+.bp-root[data-bp-skin='ps5'] {
+  background: #000;
+  color: #fff;
+}
+
+/* ── Hero background ─────────────────────────────────────────────────── */
+
+/* No key art: the cover, blurred and dimmed, fills in. */
+[data-bp-skin='ps5'] .bp-backdrop-layer {
+  inset: -5%;
+  filter: blur(42px) saturate(1.2) brightness(0.62);
+  opacity: 1;
+}
+
+[data-bp-skin='ps5'] .bp-backdrop-layer.is-art {
+  inset: 0;
+  background-position: center 30%;
+  filter: none;
+}
+
+[data-bp-skin='ps5'] .bp-backdrop-layer.is-front {
+  animation: ps5-hero-in 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+[data-bp-skin='ps5'] .bp-backdrop-shade {
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 62%) 0%, rgb(0 0 0 / 18%) 20%, transparent 34%),
+    linear-gradient(90deg, rgb(0 0 0 / 78%) 0%, rgb(0 0 0 / 42%) 34%, transparent 64%),
+    linear-gradient(0deg, rgb(0 0 0 / 88%) 0%, rgb(0 0 0 / 40%) 30%, transparent 56%);
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+
+[data-bp-skin='ps5'] .bp-top {
+  gap: clamp(16px, 1.6vw, 32px);
+  padding: clamp(14px, 2.6vh, 30px) var(--ps5-x) clamp(6px, 1vh, 12px);
+}
+
+[data-bp-skin='ps5'] .bp-tabs {
+  gap: 1rem;
+}
+
+[data-bp-skin='ps5'] .bp-tabs > .bp-glyph {
+  font-size: clamp(0.62rem, 0.7vw, 0.85rem);
+  opacity: 0.8;
+}
+
+[data-bp-skin='ps5'] .bp-tabs-list {
+  gap: clamp(18px, 1.9vw, 40px);
+}
+
+[data-bp-skin='ps5'] .bp-tab {
+  position: relative;
+  padding: 0.3em 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: rgb(255 255 255 / 58%);
+  font-size: clamp(0.95rem, 1.12vw, 1.45rem);
+  font-weight: 500;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 50%);
+}
+
+[data-bp-skin='ps5'] .bp-tab:hover {
+  color: #fff;
+}
+
+[data-bp-skin='ps5'] .bp-tab.is-active {
+  background: none;
+  color: #fff;
+  font-weight: 600;
+}
+
+[data-bp-skin='ps5'] .bp-tab.is-active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -2px;
+  left: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: #fff;
+}
+
+[data-bp-skin='ps5'] .bp-tab-count {
+  display: none;
+}
+
+[data-bp-skin='ps5'] .bp-status {
+  gap: clamp(14px, 1.3vw, 26px);
+}
+
+[data-bp-skin='ps5'] .bp-status-pad {
+  color: rgb(255 255 255 / 78%);
+}
+
+[data-bp-skin='ps5'] .bp-status-pad.is-connected {
+  color: #fff;
+}
+
+/* Icon only, like the console's status row; the name stays in the title. */
+[data-bp-skin='ps5'] .bp-status-pad span {
+  display: none;
+}
+
+[data-bp-skin='ps5'] .bp-status-avatar {
+  display: grid;
+  place-items: center;
+  width: clamp(30px, 2.1vw, 44px);
+  height: clamp(30px, 2.1vw, 44px);
+  overflow: hidden;
+  /* Rounded square, like the console's profile tile — not a circle. */
+  border-radius: 22%;
+  background: linear-gradient(145deg, #2a8cf0, #00439c);
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 22%);
+  color: #fff;
+}
+
+[data-bp-skin='ps5'] .bp-status-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+[data-bp-skin='ps5'] .bp-status-clock {
+  font-size: clamp(1rem, 1.2vw, 1.5rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+[data-bp-skin='ps5'] .bp-exit {
+  width: clamp(30px, 2.1vw, 44px);
+  height: clamp(30px, 2.1vw, 44px);
+  border: none;
+  background: rgb(255 255 255 / 10%);
+}
+
+[data-bp-skin='ps5'] .bp-exit:hover,
+[data-bp-skin='ps5'] .bp-exit:focus-visible {
+  background: #fff;
+  color: #000;
+}
+
+/* ── Main: shelf on top, details at the bottom-left ──────────────────── */
+
+[data-bp-skin='ps5'] .bp-main {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0;
+  padding: 0 var(--ps5-x);
+}
+
+/* Sizes: --tile-f is the focused tile; the others are --tile-k of it. The
+   shelf height leaves room for the focus ring. */
+[data-bp-skin='ps5'] .bp-shelf {
+  --tile-f: clamp(120px, 9.2vw, 210px);
+  --tile-k: 0.56;
+  --tile-s: calc(var(--tile-f) * var(--tile-k));
+  --tile-gap: clamp(10px, 0.78vw, 16px);
+  --label-w: clamp(170px, 13.5vw, 300px);
+
+  position: relative;
+  grid-row: 1;
+  height: calc(var(--tile-f) + 16px);
+  margin-top: clamp(12px, 3.4vh, 48px);
+}
+
+[data-bp-skin='ps5'] .bp-shelf--empty {
+  display: flex;
+  align-items: center;
+}
+
+[data-bp-skin='ps5'] .bp-shelf--empty p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(1rem, 1.3vw, 1.5rem);
+}
+
+[data-bp-skin='ps5'] .bp-shelf-track {
+  position: absolute;
+  inset: 0;
+}
+
+/* Placement: the focused tile at 0; the ones after it past the tile, the
+   title and two gaps; the ones before it off to the left (faded out).
+   --slot/--after come from BigPictureShelf.tsx. */
+[data-bp-skin='ps5'] .bp-tile {
+  --k: var(--tile-k);
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--tile-f);
+  height: var(--tile-f);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transform-origin: 0 0;
+  transform:
+    translate3d(
+      calc(var(--after) * (var(--tile-f) + var(--tile-gap) * 2 + var(--label-w)) + var(--slot) * (var(--tile-s) + var(--tile-gap))),
+      0,
+      0
+    )
+    scale(var(--k));
+  transition: transform 460ms var(--ps5-spring), opacity 280ms ease;
+  will-change: transform;
+}
+
+[data-bp-skin='ps5'] .bp-tile:focus {
+  outline: none;
+}
+
+[data-bp-skin='ps5'] .bp-tile.is-focused {
+  --k: 1;
+
+  z-index: 1;
+}
+
+[data-bp-skin='ps5'] .bp-tile.is-before {
+  opacity: 0;
+  pointer-events: none;
+}
+
+[data-bp-skin='ps5'] .bp-tile-art {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: calc(var(--tile-f) * 0.09);
+  background: rgb(255 255 255 / 8%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+[data-bp-skin='ps5'] .bp-tile-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+}
+
+[data-bp-skin='ps5'] .bp-tile:not(.is-focused) .bp-tile-art {
+  filter: brightness(0.9);
+}
+
+[data-bp-skin='ps5'] .bp-tile:hover .bp-tile-art {
+  filter: none;
+}
+
+/* Focus ring: white, a hair off the art, with a soft blue glow. */
+[data-bp-skin='ps5'] .bp-tile::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border: 3px solid #fff;
+  border-radius: calc(var(--tile-f) * 0.09 + 6px);
+  box-shadow: 0 0 28px 2px rgb(0 112 209 / 55%), inset 0 0 0 1px rgb(0 0 0 / 35%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+[data-bp-skin='ps5'] .bp-tile.is-focused::after {
+  opacity: 1;
+  animation: ps5-ring-glow 2.6s ease-in-out 600ms infinite;
+}
+
+[data-bp-skin='ps5'] .bp-tile-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 0.75rem;
+  color: var(--text-muted);
+  font-size: clamp(0.72rem, 0.8vw, 0.95rem);
+  text-align: center;
+}
+
+[data-bp-skin='ps5'] .bp-tile-fav {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 60%);
+  color: #ff5a7a;
+}
+
+[data-bp-skin='ps5'] .bp-tile .bp-card-progress {
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  height: 4px;
+  background: rgb(255 255 255 / 25%);
+}
+
+/* The focused title, beside the focused tile, centred on the small tiles'
+   row (`translate`, so the entry animation keeps `transform`). */
+[data-bp-skin='ps5'] .bp-shelf-label {
+  position: absolute;
+  top: calc(var(--tile-s) / 2);
+  translate: 0 -50%;
+  left: calc(var(--tile-f) + var(--tile-gap) + 4px);
+  display: -webkit-box;
+  width: var(--label-w);
+  max-height: var(--tile-s);
+  margin: 0;
+  overflow: hidden;
+  font-size: clamp(0.95rem, 1.08vw, 1.4rem);
+  font-weight: 500;
+  line-height: 1.25;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 60%);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  animation: ps5-label-in 320ms ease 120ms both;
+}
+
+[data-bp-skin='ps5'] .bp-details {
+  grid-row: 2;
+  align-self: end;
+  gap: clamp(10px, 1.7vh, 22px);
+  max-width: min(820px, 52vw);
+  padding-bottom: clamp(4px, 1.4vh, 18px);
+  animation: ps5-details-in 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+[data-bp-skin='ps5'] .bp-details-origin {
+  order: 1;
+  gap: 0.6rem;
+  color: rgb(255 255 255 / 76%);
+  font-size: clamp(0.78rem, 0.85vw, 1.05rem);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* Status and favourite as the console's frosted pills: white text, the
+   status colour only as a small dot, same size and shape for every chip. */
+[data-bp-skin='ps5'] .bp-details-status,
+[data-bp-skin='ps5'] .bp-details-fav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.32em 0.9em;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 13%);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%);
+  color: #fff;
+  font-size: 0.92em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  line-height: 1.2;
+}
+
+[data-bp-skin='ps5'] .bp-details-status::before {
+  content: '';
+  width: 0.55em;
+  height: 0.55em;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--bp-status-dot, #fff);
+  box-shadow: 0 0 8px var(--bp-status-dot, transparent);
+}
+
+[data-bp-skin='ps5'] .bp-details-status--completed { --bp-status-dot: var(--color-completed); color: #fff; }
+[data-bp-skin='ps5'] .bp-details-status--progress { --bp-status-dot: var(--color-watching); color: #fff; }
+[data-bp-skin='ps5'] .bp-details-status--planning { --bp-status-dot: var(--color-planning); color: #fff; }
+[data-bp-skin='ps5'] .bp-details-status--paused { --bp-status-dot: var(--color-paused); color: #fff; }
+[data-bp-skin='ps5'] .bp-details-status--dropped { --bp-status-dot: var(--color-dropped); color: #fff; }
+
+[data-bp-skin='ps5'] .bp-details-fav svg {
+  width: 0.95em;
+  height: 0.95em;
+  color: #ff5a7a;
+}
+
+[data-bp-skin='ps5'] .bp-details-title {
+  order: 2;
+  font-size: clamp(2.1rem, 3.5vw, 4.6rem);
+  font-weight: 600;
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 28px rgb(0 0 0 / 55%);
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+[data-bp-skin='ps5'] .bp-primary {
+  order: 3;
+  justify-content: center;
+  min-width: clamp(190px, 13vw, 290px);
+  padding: 0.62em 2em 0.62em 1.2em;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 40%);
+  color: #000;
+  font-size: clamp(1.05rem, 1.3vw, 1.65rem);
+  font-weight: 600;
+  transition: transform 260ms var(--ps5-spring), box-shadow 260ms ease;
+}
+
+[data-bp-skin='ps5'] .bp-primary:hover {
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 35%), 0 10px 30px rgb(0 0 0 / 40%);
+  transform: scale(1.04);
+}
+
+[data-bp-skin='ps5'] .bp-primary .bp-glyph {
+  border-color: transparent;
+  background: rgb(0 0 0 / 10%);
+}
+
+[data-bp-skin='ps5'] .bp-details-stats {
+  order: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(16px, 2.2vw, 44px);
+}
+
+[data-bp-skin='ps5'] .bp-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow: visible;
+  padding: 0;
+  border: none;
+  background: none;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 60%);
+}
+
+[data-bp-skin='ps5'] .bp-stat dt {
+  color: rgb(255 255 255 / 70%);
+  font-size: clamp(0.72rem, 0.78vw, 0.95rem);
+}
+
+[data-bp-skin='ps5'] .bp-stat dd {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.25vw, 1.6rem);
+  font-weight: 600;
+}
+
+[data-bp-skin='ps5'] .bp-stat-bar {
+  position: static;
+  width: clamp(120px, 9vw, 200px);
+  height: 4px;
+  margin-top: 0.35rem;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 22%);
+}
+
+/* ── Hints ───────────────────────────────────────────────────────────── */
+
+[data-bp-skin='ps5'] .bp-bottom {
+  padding: 8px var(--ps5-x) clamp(14px, 2.4vh, 28px);
+}
+
+[data-bp-skin='ps5'] .bp-hints {
+  gap: clamp(14px, 1.6vw, 32px);
+  color: rgb(255 255 255 / 78%);
+  font-size: clamp(0.78rem, 0.85vw, 1.05rem);
+}
+
+[data-bp-skin='ps5'] .bp-glyph {
+  border-color: rgb(255 255 255 / 25%);
+  background: rgb(255 255 255 / 10%);
+}
+
+/* ── Sheets (options, Start menu), notices, search ───────────────────── */
+
+[data-bp-skin='ps5'] .bp-sheet-backdrop {
+  align-items: center;
+  padding-right: var(--ps5-x);
+  background: rgb(0 0 0 / 45%);
+}
+
+[data-bp-skin='ps5'] .bp-sheet {
+  gap: 2px;
+  width: min(460px, 92vw);
+  height: auto;
+  max-height: 82%;
+  padding: 20px 12px 14px;
+  border: 1px solid var(--ps5-panel-border);
+  border-radius: 20px;
+  background: var(--ps5-panel);
+  box-shadow: 0 30px 90px rgb(0 0 0 / 60%);
+  backdrop-filter: blur(26px) saturate(1.3);
+  animation: ps5-pop-in 280ms var(--ps5-spring) both;
+}
+
+[data-bp-skin='ps5'] .bp-sheet-title {
+  margin: 0 0 0.6rem;
+  padding: 0 12px;
+  color: rgb(255 255 255 / 72%);
+  font-size: clamp(0.95rem, 1vw, 1.2rem);
+  font-weight: 600;
+}
+
+[data-bp-skin='ps5'] .bp-sheet-item {
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 12px;
+  font-size: clamp(0.98rem, 1.08vw, 1.3rem);
+}
+
+[data-bp-skin='ps5'] .bp-sheet-item.is-focused {
+  background: var(--ps5-blue);
+  box-shadow: 0 6px 22px rgb(0 112 209 / 40%);
+  color: #fff;
+}
+
+[data-bp-skin='ps5'] .bp-sheet-item.is-focused .bp-sheet-value {
+  color: rgb(255 255 255 / 88%);
+}
+
+[data-bp-skin='ps5'] .bp-sheet-item.is-focused .bp-volume-bar > span {
+  background: #fff;
+}
+
+[data-bp-skin='ps5'] .bp-notice {
+  border-color: var(--ps5-panel-border);
+  background: var(--ps5-panel);
+  backdrop-filter: blur(20px);
+}
+
+[data-bp-skin='ps5'] .bp-search {
+  background: rgb(0 0 0 / 78%);
+  backdrop-filter: blur(20px);
+}
+
+[data-bp-skin='ps5'] .bp-search-field {
+  border-color: var(--ps5-panel-border);
+  background: var(--ps5-panel);
+}
+
+[data-bp-skin='ps5'] .bp-osk-key {
+  border-color: transparent;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 9%);
+}
+
+[data-bp-skin='ps5'] .bp-dim {
+  background: rgb(0 0 0 / 82%);
+  backdrop-filter: blur(16px);
+}
+
+/* ── Controller pause menu (styles/components/game-pause.css) ────────── */
+
+html[data-bp-skin='ps5'] .game-pause-backdrop {
+  background: rgb(0 0 0 / 55%);
+  backdrop-filter: blur(20px);
+  color: #fff;
+}
+
+html[data-bp-skin='ps5'] .game-pause-panel {
+  border-color: var(--ps5-panel-border);
+  border-radius: 22px;
+  background: var(--ps5-panel);
+  box-shadow: 0 30px 90px rgb(0 0 0 / 60%);
+  backdrop-filter: blur(26px) saturate(1.3);
+}
+
+html[data-bp-skin='ps5'] .game-pause-art {
+  aspect-ratio: 1;
+  border-radius: 18px;
+}
+
+html[data-bp-skin='ps5'] .game-pause-art img {
+  object-position: center 22%;
+}
+
+html[data-bp-skin='ps5'] .game-pause-kicker {
+  color: var(--ps5-blue-bright);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+html[data-bp-skin='ps5'] .game-pause-title {
+  font-weight: 600;
+}
+
+html[data-bp-skin='ps5'] .game-pause-action {
+  border: none;
+  border-radius: 12px;
+}
+
+html[data-bp-skin='ps5'] .game-pause-action:hover,
+html[data-bp-skin='ps5'] .game-pause-action:focus-visible,
+html[data-bp-skin='ps5'] .game-pause-action:focus {
+  background: var(--ps5-blue);
+  box-shadow: 0 6px 22px rgb(0 112 209 / 40%);
+  color: #fff;
+}
+
+html[data-bp-skin='ps5'] .game-pause-action--quit:hover,
+html[data-bp-skin='ps5'] .game-pause-action--quit:focus {
+  background: #c62c3b;
+  box-shadow: none;
+}
+
+/* ── Ambient screensaver (styles/components/ambient.css) ─────────────── */
+
+html[data-bp-skin='ps5'] .ambient-clock-time {
+  font-weight: 300;
+}
+
+html[data-bp-skin='ps5'] .ambient-caption {
+  padding: 1rem 1.4rem;
+  border: 1px solid var(--ps5-panel-border);
+  border-radius: 18px;
+  background: rgb(22 24 30 / 62%);
+  backdrop-filter: blur(22px) saturate(1.3);
+  text-shadow: none;
+}
+
+html[data-bp-skin='ps5'] .ambient-work-title {
+  font-weight: 600;
+}
+
+html[data-bp-skin='ps5'] .ambient-now-playing svg {
+  color: var(--ps5-blue-bright);
+}
+
+/* ── Motion ──────────────────────────────────────────────────────────── */
+
+@keyframes ps5-hero-in {
+  from { opacity: 0; transform: scale(1.035); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ps5-label-in {
+  from { opacity: 0; transform: translateX(-10px); }
+}
+
+@keyframes ps5-details-in {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+@keyframes ps5-pop-in {
+  from { opacity: 0; transform: scale(0.94); }
+}
+
+@keyframes ps5-ring-glow {
+  50% { box-shadow: 0 0 40px 6px rgb(0 112 209 / 70%), inset 0 0 0 1px rgb(0 0 0 / 35%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-bp-skin='ps5'] .bp-backdrop-layer.is-front {
+    animation: bp-fade-in 300ms linear both;
+  }
+
+  [data-bp-skin='ps5'] .bp-tile,
+  [data-bp-skin='ps5'] .bp-tile::after,
+  [data-bp-skin='ps5'] .bp-primary {
+    transition: none;
+  }
+
+  [data-bp-skin='ps5'] .bp-tile.is-focused::after,
+  [data-bp-skin='ps5'] .bp-shelf-label,
+  [data-bp-skin='ps5'] .bp-details,
+  [data-bp-skin='ps5'] .bp-sheet {
+    animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  [data-bp-skin='ps5'] .bp-details {
+    max-width: 100%;
+  }
+}

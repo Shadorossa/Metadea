@@ -2513,6 +2513,7 @@ export const ru: Translations = {
     tab_series: "Сериалы",
     tab_movies: "Фильмы",
     tab_manga: "Манга и комиксы",
+    tab_lnovel: "Ранобэ",
     tab_books: "Книги",
     tab_favorites: "Избранное",
     kind_game: "Игра",
@@ -2586,6 +2587,10 @@ export const ru: Translations = {
     settings_pause_combo: "Меню паузы с геймпада во время игры",
     settings_pause_combo_keys: "Select/Back + Start (удерживать 1,5 с)",
     settings_pause_combo_hint: "Удерживайте Select (Back) и Start одновременно 1,5 секунды в игре, запущенной из Metadea, чтобы заморозить её и открыть меню: продолжить, сохранить состояние (RetroArch) или выйти. Работает с геймпадами Xbox и любыми геймпадами, видимыми как XInput (геймпады PlayStation через Steam Input или DS4Windows).",
+    style_title: "Стиль Big Picture",
+    style_default: "Стандартный",
+    style_ps5: "PS5",
+    style_info: "Как выглядит режим Big Picture. PS5 воссоздаёт главный экран PlayStation 5: арт выбранной игры заполняет экран, сверху ряд плиток, слева внизу кнопка «Играть». Вдохновлено темой PS5ish для Playnite. Применяется при следующем открытии Big Picture.",
   },
   // Controller pause menu (components/game-pause/, src-tauri/src/game_pause).
   game_pause: {

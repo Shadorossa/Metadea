@@ -86,7 +86,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: IGDB -->
       <div class="api-platform-form-block hidden" id="api-form-igdb">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title">Twitch / IGDB API</span>
           <button type="button" class="settings-help-btn api-help-btn" data-help="igdb" title={t.settings.env_igdb_help_title} data-i18n-title="settings.env_igdb_help_title">
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
@@ -119,7 +118,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: TMDB -->
       <div class="api-platform-form-block hidden" id="api-form-tmdb">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title">TheMovieDB API</span>
           <button type="button" class="settings-help-btn api-help-btn" data-help="tmdb" title={t.settings.env_tmdb_help_title} data-i18n-title="settings.env_tmdb_help_title">
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
@@ -151,7 +149,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: Steam -->
       <div class="api-platform-form-block hidden" id="api-form-steam">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title">Steam Web API</span>
           <button type="button" class="settings-help-btn api-help-btn" data-help="steam" title={t.settings.env_steam_help_title} data-i18n-title="settings.env_steam_help_title">
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
@@ -173,7 +170,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: AniList -->
       <div class="api-platform-form-block hidden" id="api-form-anilist">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title">AniList Developer API</span>
           <button type="button" class="settings-help-btn api-help-btn" data-help="anilist" title={t.settings.env_anilist_help_title} data-i18n-title="settings.env_anilist_help_title">
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
@@ -195,7 +191,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: MyAnimeList (OAuth client id; the login itself is in Conexiones) -->
       <div class="api-platform-form-block hidden" id="api-form-mal">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title">MyAnimeList API</span>
           <button type="button" class="settings-help-btn api-help-btn" data-help="mal" title={t.mal.env_help_title} data-i18n-title="mal.env_help_title" aria-label={t.mal.env_help_title} data-i18n-aria-label="mal.env_help_title">
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
@@ -217,7 +212,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: Comic Vine -->
       <div class="api-platform-form-block hidden" id="api-form-comicvine">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title">Comic Vine API</span>
           <button type="button" class="settings-help-btn api-help-btn" data-help="comicvine" title={t.settings.env_comicvine_help_title} data-i18n-title="settings.env_comicvine_help_title">
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
@@ -239,7 +233,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: API-Sports -->
       <div class="api-platform-form-block hidden" id="api-form-apisports">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title">API-Sports</span>
           <button type="button" class="settings-help-btn api-help-btn" data-help="apisports" title={t.settings.env_apisports_help_title} data-i18n-title="settings.env_apisports_help_title">
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
@@ -255,7 +248,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: RetroAchievements -->
       <div class="api-platform-form-block hidden" id="api-form-retroachievements">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title">RetroAchievements</span>
           <a class="settings-hint" href="https://retroachievements.org/settings" target="_blank" rel="noopener noreferrer" data-i18n="retro_achievements.settings_get_key">{t.retro_achievements.settings_get_key}</a>
         </div>
         <div class="env-fields env-fields--row">
@@ -274,7 +266,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: Google OAuth client for Drive backups (src-tauri/src/google_drive; docs/BACKUPS.md) -->
       <div class="api-platform-form-block hidden" id="api-form-google">
         <div class="env-service-header env-service-header--api">
-          <span class="api-form-service-title" data-i18n="backup.env_google_title">{t.backup.env_google_title}</span>
         </div>
         <div class="env-fields env-fields--row">
           <div class="env-field">

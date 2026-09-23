@@ -80,6 +80,9 @@ export const STORAGE_KEYS = {
   // Big Picture mode: start-with-the-app and navigation-sound toggles
   // (lib/big-picture/big-picture-preferences.ts).
   bigPicturePreferences: 'metadea_big_picture_preferences',
+  // Big Picture look: 'default' | 'ps5' (lib/big-picture/big-picture-skin.ts,
+  // Settings › Appearance).
+  bigPictureSkin: 'metadea_big_picture_skin',
   // Multi-disc games: the disc last picked to boot, per app_id
   // (lib/local/disc-choice.ts).
   romDiscChoice: 'metadea_rom_disc_choice',

@@ -16,6 +16,10 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 
 ## [Unreleased]
 
+### Added
+
+- **Big Picture:** PS5-style skin (Settings › Appearance), inspired by the PS5ish Playnite theme.
+
 ## [0.7.2] - 2026-09-24
 
 ### Highlights

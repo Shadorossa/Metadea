@@ -1,4 +1,5 @@
 import '../../styles/pages/local/big-picture.css';
+import '../../styles/pages/local/big-picture-ps5.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { ModalShell, modalStack } from '../shared/ModalShell';
@@ -16,6 +17,7 @@ import type { InputDevice } from '../../lib/big-picture/glyphs';
 import { hasMediaRemote, mediaRemoteCountStore, sendMediaRemote, type MediaRemoteCommand } from '../../lib/big-picture/media-remote';
 import { navigateForeignDialog } from '../../lib/big-picture/dialog-pad-navigation';
 import { readBigPicturePreferences, writeBigPicturePreferences } from '../../lib/big-picture/big-picture-preferences';
+import { readBigPictureSkin } from '../../lib/big-picture/big-picture-skin';
 import { isWindowFullscreen, setWindowFullscreen, quitApp } from '../../lib/big-picture/window-mode';
 import { playNavSound, type NavSound } from '../../lib/big-picture/nav-sounds';
 import { markNextProgress, setLibraryFavorite } from '../../lib/big-picture/big-picture-actions';
@@ -28,9 +30,11 @@ import { openMediaEditor } from '../../lib/media/editor/open-media-editor';
 import { useBigPictureItems, platformName, type BigPictureData } from './hooks/useBigPictureItems';
 import { useGamepadFrameLoop } from './hooks/useGamepad';
 import { useFocusedExtras } from './hooks/useFocusedExtras';
+import { useHeroArt } from './hooks/useHeroArt';
 import { createInputLayers, InputLayerContext } from './input-layers';
 import { BigPictureBackdrop } from './BigPictureBackdrop';
 import { BigPictureGrid } from './BigPictureGrid';
+import { BigPictureShelf } from './BigPictureShelf';
 import { BigPictureDetails, primaryActionKind } from './BigPictureDetails';
 import { BigPictureStatus } from './BigPictureStatus';
 import { BigPictureHints, ButtonGlyph, type Hint } from './BigPictureHints';
@@ -46,6 +50,8 @@ const NOTICE_MS = 4000;
 // nothing playable was found (the panel scans its folder first).
 const OPEN_WATCHDOG_MS = 9000;
 const PAGE_ROWS = 3;
+// PS5 skin: LT/RT (Page Up/Down) jump this many tiles along its single row.
+const SHELF_PAGE_TILES = 6;
 const VOLUME_STEP = 0.1;
 
 const PAD_TO_REMOTE: Partial<Record<BigPictureAction, MediaRemoteCommand>> = {
@@ -99,7 +105,15 @@ export default function BigPictureOverlay({ data, onResume, onExit }: BigPicture
   const focusedGame = focused ? gameByKey.get(focused.key) : undefined;
   const extras = useFocusedExtras(focused, focusedGame);
 
-  const [columns, setColumns] = useState(1);
+  // Read once per open: the picker lives in Settings › Appearance.
+  const [skin] = useState(readBigPictureSkin);
+  const ps5 = skin === 'ps5';
+  const heroArt = useHeroArt(tab.items, focusIndex, extras, ps5);
+
+  const [measuredColumns, setColumns] = useState(1);
+  // The PS5 shelf is one row: left/right walk it, up/down stay put.
+  const columns = ps5 ? Math.max(1, tab.items.length) : measuredColumns;
+  const pageStep = ps5 ? SHELF_PAGE_TILES : PAGE_ROWS * columns;
   const [layer, setLayer] = useState<Layer>('browse');
   const [pads, setPads] = useState<ConnectedPad[]>([]);
   const [device, setDevice] = useState<InputDevice>(() => {
@@ -144,6 +158,13 @@ export default function BigPictureOverlay({ data, onResume, onExit }: BigPicture
       if (!wasFullscreen) void setWindowFullscreen(false);
     };
   }, []);
+
+  // Surfaces outside the root (the controller pause menu, the Ambient
+  // screensaver) follow the skin through <html data-bp-skin>.
+  useEffect(() => {
+    document.documentElement.dataset.bpSkin = skin;
+    return () => { delete document.documentElement.dataset.bpSkin; };
+  }, [skin]);
 
   // A reader's/player's Escape leaves window fullscreen first; take it back
   // once the last media surface closes.
@@ -226,7 +247,7 @@ export default function BigPictureOverlay({ data, onResume, onExit }: BigPicture
         return;
       }
       case 'page_prev': case 'page_next':
-        setFocus(focusIndex + (action === 'page_next' ? 1 : -1) * PAGE_ROWS * columns);
+        setFocus(focusIndex + (action === 'page_next' ? 1 : -1) * pageStep);
         return;
       case 'tab_prev': case 'tab_next': {
         const step = action === 'tab_next' ? 1 : -1;
@@ -355,6 +376,8 @@ export default function BigPictureOverlay({ data, onResume, onExit }: BigPicture
 
   const hero = extras?.banner ?? focused?.hero ?? focused?.cover ?? null;
   const loading = !data.mediaRaw && items.length === 0;
+  const emptyLabel = loading ? t.loading : items.length === 0 ? t.empty_library : t.empty_tab;
+  const onCardClick = (index: number) => (index === focusIndex ? focused && activate(focused) : setFocus(index));
 
   return (
     <ModalShell
@@ -362,13 +385,16 @@ export default function BigPictureOverlay({ data, onResume, onExit }: BigPicture
       onClose={onExit}
       label={t.dialog_label}
       panelClassName={`bp-root${dimmed ? ' is-dimmed' : ''}`}
+      panelProps={{ 'data-bp-skin': skin }}
       closeOnEscape={false}
       closeOnBackdrop={false}
       stopPanelPropagation={false}
     >
       <InputLayerContext.Provider value={layers}>
         <div className="bp-shell" ref={rootRef}>
-          <BigPictureBackdrop image={hero} />
+          {ps5
+            ? <BigPictureBackdrop image={heroArt?.url ?? null} art={heroArt?.kind === 'art'} delayMs={0} />
+            : <BigPictureBackdrop image={hero} />}
 
           <header className="bp-top">
             <nav className="bp-tabs" aria-label={t.dialog_label}>
@@ -390,7 +416,7 @@ export default function BigPictureOverlay({ data, onResume, onExit }: BigPicture
                 ))}
               </div>
             </nav>
-            <BigPictureStatus pads={pads} locale={getLangCode()} t={t} />
+            <BigPictureStatus pads={pads} locale={getLangCode()} t={t} avatar={ps5} />
             <button type="button" className="bp-exit" onClick={onExit} aria-label={t.menu_exit} title={t.menu_exit}>
               <X size={22} aria-hidden="true" />
             </button>
@@ -409,16 +435,28 @@ export default function BigPictureOverlay({ data, onResume, onExit }: BigPicture
               profileT={allT.profile}
               kindLabel={focused ? kindLabel(focused) : ''}
             />
-            <BigPictureGrid
-              items={tab.items}
-              focusIndex={focusIndex}
-              domFocus={layer === 'browse' && !dimmed}
-              onColumnsChange={setColumns}
-              onCardClick={index => (index === focusIndex ? focused && activate(focused) : setFocus(index))}
-              onWheelStep={rows => browse(rows > 0 ? 'down' : 'up')}
-              emptyLabel={loading ? t.loading : items.length === 0 ? t.empty_library : t.empty_tab}
-              favoriteLabel={t.favorite_badge}
-            />
+            {ps5 ? (
+              <BigPictureShelf
+                items={tab.items}
+                focusIndex={focusIndex}
+                domFocus={layer === 'browse' && !dimmed}
+                onTileClick={onCardClick}
+                onWheelStep={step => browse(step > 0 ? 'right' : 'left')}
+                emptyLabel={emptyLabel}
+                favoriteLabel={t.favorite_badge}
+              />
+            ) : (
+              <BigPictureGrid
+                items={tab.items}
+                focusIndex={focusIndex}
+                domFocus={layer === 'browse' && !dimmed}
+                onColumnsChange={setColumns}
+                onCardClick={onCardClick}
+                onWheelStep={rows => browse(rows > 0 ? 'down' : 'up')}
+                emptyLabel={emptyLabel}
+                favoriteLabel={t.favorite_badge}
+              />
+            )}
           </main>
 
           <footer className="bp-bottom">

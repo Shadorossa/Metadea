@@ -58,9 +58,10 @@ describe('deriveBigPictureTabs', () => {
     expect(deriveBigPictureTabs([])).toEqual([{ id: 'all', kind: 'all', items: [] }]);
   });
 
-  it('groups comics with manga and light novels with books', () => {
+  it('groups comics with manga and keeps light novels apart from books', () => {
     expect(mediaKindForCategory('comics')).toBe('manga');
-    expect(mediaKindForCategory('light-novel')).toBe('books');
+    expect(mediaKindForCategory('light-novel')).toBe('lnovel');
+    expect(mediaKindForCategory('books')).toBe('books');
     expect(mediaKindForCategory('videojuegos')).toBeUndefined();
   });
 });

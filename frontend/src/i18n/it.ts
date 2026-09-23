@@ -2513,6 +2513,7 @@ export const it: Translations = {
     tab_series: "Serie",
     tab_movies: "Film",
     tab_manga: "Manga e fumetti",
+    tab_lnovel: "Light novel",
     tab_books: "Libri",
     tab_favorites: "Preferiti",
     kind_game: "Gioco",
@@ -2586,6 +2587,10 @@ export const it: Translations = {
     settings_pause_combo: "Menu di pausa con il controller durante il gioco",
     settings_pause_combo_keys: "Select/Back + Start (tieni premuto 1,5 s)",
     settings_pause_combo_hint: "Tieni premuti insieme Select (Back) e Start per 1,5 secondi in un gioco avviato da Metadea per congelarlo e aprire un menu: continua, salva stato (RetroArch) o esci. Funziona con i controller Xbox e qualsiasi controller esposto come XInput (controller PlayStation tramite Steam Input o DS4Windows).",
+    style_title: "Stile di Big Picture",
+    style_default: "Predefinito",
+    style_ps5: "PS5",
+    style_info: "L'aspetto della modalità Big Picture. PS5 ricrea la schermata iniziale di PlayStation 5: l'artwork del gioco selezionato riempie lo schermo, con una fila di riquadri in alto e Gioca in basso a sinistra. Ispirato al tema PS5ish di Playnite. Si applica alla prossima apertura di Big Picture.",
   },
   // Controller pause menu (components/game-pause/, src-tauri/src/game_pause).
   game_pause: {
