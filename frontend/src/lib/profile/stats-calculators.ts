@@ -4,6 +4,8 @@ import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 import { buildEditionMaps, sagaIdentityOf } from './library-grouping';
 import { buildDirectSagaGraph } from './saga-graph';
 import { consumedUnitsOf } from './consumption-units';
+import { effectiveEpisodeTotal, effectiveProgress } from '../anime/filler';
+import { getLoadedFillerInfo } from '../anime/filler-store';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -155,7 +157,10 @@ export function getItemMinutes(item: Items[number], catalogMap: Map<string, Cata
   if (item.type === 'anime' || item.type === 'series') {
     const catalog = catalogMap.get(item.external_id);
     const perEpisodeMinutes = catalog?.time_length || DEFAULT_EPISODE_MINUTES;
-    return consumedUnitsOf(item, item.progress, catalog?.total_count) * perEpisodeMinutes;
+    // Filler: Skipped counts canon episodes only (lib/anime/filler.ts).
+    const filler = item.type === 'anime' ? getLoadedFillerInfo(item.external_id) : undefined;
+    const total = effectiveEpisodeTotal(item, filler, catalog?.total_count);
+    return consumedUnitsOf(item, effectiveProgress(item, filler, catalog?.total_count), total) * perEpisodeMinutes;
   }
   // minutes_spent is per run (the editor rewrites it from the run's own
   // progress); no catalog total in minutes exists for the earlier runs.

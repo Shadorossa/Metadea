@@ -9,6 +9,7 @@ import '../styles/pages/entry.css';
       import { initTauriDatabase } from '../lib/tauri/database';
       import { getAuthToken } from '../lib/tauri/auth';
       import { STORAGE_KEYS } from '../lib/storage/storage-keys';
+      import { bigPictureStartPath, readBigPicturePreferences } from '../lib/big-picture/big-picture-preferences';
 
       // localStorage alone isn't enough here: it lives in the WebView2
       // profile folder, separate from the SQLite DB file — restoring only
@@ -21,8 +22,10 @@ import '../styles/pages/entry.css';
         const session = await getAuthToken();
         const last = localStorage.getItem('metadea_last_visited_path');
         const needsOnboarding = localStorage.getItem(STORAGE_KEYS.onboardingCompleted) !== '1';
+        // "Start in Big Picture mode" (Settings > Preferences) opens Play in it.
+        const bigPicture = bigPictureStartPath(readBigPicturePreferences());
         const destination = session
-          ? (needsOnboarding ? '/welcome' : (last && last !== '/' ? last : '/home'))
+          ? (needsOnboarding ? '/welcome' : (bigPicture ?? (last && last !== '/' ? last : '/home')))
           : '/login';
         window.location.replace(destination);
       });

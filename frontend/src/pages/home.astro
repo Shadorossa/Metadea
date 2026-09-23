@@ -1,11 +1,14 @@
 ---
 import "../styles/pages/home.css";
+import "../styles/components/yearly-bingo.css";
+import "../styles/pages/media/editor/search.css";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { getLang, useTranslations } from "../i18n/index";
 import { ActivityFeedSection } from "../components/home/ActivityFeedSection";
 import { CurrentlySection } from "../components/home/CurrentlySection";
 import { FinishAnniversaryBanner } from "../components/home/FinishAnniversaryBanner";
 import { CalendarSection } from "../components/home/CalendarSection";
+import { BingoHomeSection } from "../components/bingo/BingoHomeSection";
 import AnniversarySkeleton from "../components/home/skeletons/AnniversarySkeleton.astro";
 import CurrentlySkeleton from "../components/home/skeletons/CurrentlySkeleton.astro";
 import CalendarSkeleton from "../components/home/skeletons/CalendarSkeleton.astro";
@@ -96,6 +99,8 @@ const t = useTranslations(lang);
               <CalendarSkeleton slot="fallback" p={t.profile} />
             </CalendarSection>
           </div>
+          <!-- Yearly Bingo: result/create cards Dec 19 – Jan 10, the current board (view-only) the rest of the year. -->
+          <BingoHomeSection client:only="react" />
         </div>
 
         <aside class="home-side-col">

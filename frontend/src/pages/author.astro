@@ -1,6 +1,7 @@
 ---
 import '../styles/pages/media.css';
 import '../styles/pages/character.css';
+import '../styles/pages/creator-works.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getLang, useTranslations } from '../i18n/index';
 import AuthorPage from '../components/author/AuthorPage';
@@ -11,6 +12,6 @@ const t = useTranslations(lang);
 
 <BaseLayout title={`${t.author_page.page_title} — Metadea`} titleKey="author_page.page_title" lang={lang} activePage="search">
   <div class="media-page">
-    <AuthorPage client:load i18n={{ author_page: t.author_page, character: t.character }} />
+    <AuthorPage client:load i18n={{ author_page: t.author_page, character: t.character, creator_completion: t.creator_completion }} />
   </div>
 </BaseLayout>

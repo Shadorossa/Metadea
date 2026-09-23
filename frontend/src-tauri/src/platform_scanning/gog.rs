@@ -147,6 +147,9 @@ fn scan_gog_games_registry() -> Vec<LocalGame> {
             last_played: None,
             installed: Some(true),
             rom_platform: None,
+            discs: Vec::new(),
+            disc_playlist: None,
+            replaced_app_ids: Vec::new(),
         });
     }
 
@@ -215,6 +218,9 @@ pub(super) fn scan_gog_games() -> Vec<LocalGame> {
                                             last_played: None,
                                             installed: Some(true),
                                             rom_platform: None,
+                                            discs: Vec::new(),
+                                            disc_playlist: None,
+                                            replaced_app_ids: Vec::new(),
                                         });
                                     }
                                 }

@@ -20,6 +20,92 @@
   z-index: 5;
 }
 
+/* Clip mode options (PlayerClipPanel), a wider .player-menu. */
+.player-clip-panel {
+  min-width: 260px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.player-clip-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.player-clip-panel__range,
+.player-clip-panel__hint {
+  color: var(--player-fg-muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-clip-panel__hint {
+  margin: 0.1rem 0 0;
+}
+
+.player-clip-panel__group {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.player-clip-panel__group legend {
+  float: left;
+  min-width: 4.5rem;
+  color: var(--player-fg-muted);
+}
+
+.player-clip-panel__group:disabled,
+.player-clip-panel__choice:has(input:disabled) {
+  opacity: 0.45;
+}
+
+.player-clip-panel__toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+}
+
+.player-clip-panel__choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.player-clip-panel__choice input {
+  accent-color: var(--player-accent);
+}
+
+.player-clip-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.player-clip-panel__export {
+  border: 0;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  background: var(--player-accent);
+  color: #111;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.player-clip-panel__export:focus-visible {
+  outline: 2px solid var(--player-fg);
+  outline-offset: 2px;
+}
+
 .player-menu__title {
   padding: 0.35rem 0.6rem 0.45rem;
   font-size: 0.7rem;

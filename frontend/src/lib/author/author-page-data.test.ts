@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AniListStaffDetail } from '../search/providers/anilist';
-import { aniListStaffToRenderData, buildAniListStaffWorks, openLibraryAuthorToRenderData } from './author-page-data';
+import { aniListStaffToRenderData, authorRoleLabel, buildAniListStaffWorks, openLibraryAuthorToRenderData, yearOfPublishDate } from './author-page-data';
 
 type StaffEdge = AniListStaffDetail['staffMedia']['edges'][number];
 
@@ -30,12 +30,12 @@ describe('buildAniListStaffWorks', () => {
     ]);
   });
 
-  it('prefers the english title and falls back to romaji, then a placeholder', () => {
+  it('prefers the english title and falls back to romaji, then empty (the view shows a placeholder)', () => {
     const works = buildAniListStaffWorks(staff([
       edge(5, 'Story', { title: { romaji: 'R', english: 'E' } }),
       edge(6, 'Art', { title: { romaji: null, english: null } }),
     ]));
-    expect(works.map(w => w.title)).toEqual(['E', 'Unknown Title']);
+    expect(works.map(w => w.title)).toEqual(['E', '']);
   });
 });
 
@@ -86,5 +86,36 @@ describe('openLibraryAuthorToRenderData', () => {
     expect(data.image).toBeNull();
     expect(data.biography).toBe('Plain');
     expect(data.birthDate).toBeNull();
+  });
+});
+
+describe('authorRoleLabel', () => {
+  const labels = {
+    author: 'Autor', original_creator: 'Creador original', story_and_art: 'Historia y arte',
+    story: 'Historia', art: 'Arte', original_story: 'Historia original', director: 'Director/a',
+  };
+
+  it('translates known credits and keeps provider-only roles verbatim', () => {
+    expect(authorRoleLabel('AUTHOR', labels)).toBe('Autor');
+    expect(authorRoleLabel('Original Creator, Chief Supervisor', labels)).toBe('Creador original, Chief Supervisor');
+    expect(authorRoleLabel('Story & Art', labels)).toBe('Historia y arte');
+    expect(authorRoleLabel('Art (eps 1-3)', labels)).toBe('Art (eps 1-3)');
+  });
+});
+
+describe('timeline fields', () => {
+  it('carries the AniList start year and score on the 0–10 scale', () => {
+    const works = buildAniListStaffWorks(staff([edge(8, 'Story & Art', { startDate: { year: 1997 }, averageScore: 88 }), edge(9, 'Art')]));
+    expect(works[0].year).toBe(1997);
+    expect(works[0].score).toBe(8.8);
+    expect(works[1].year).toBeUndefined();
+    expect(works[1].score).toBeUndefined();
+  });
+
+  it('reads the year out of an Open Library publish date', () => {
+    expect(yearOfPublishDate('September 21, 1937')).toBe(1937);
+    expect(yearOfPublishDate('1954')).toBe(1954);
+    expect(yearOfPublishDate('unknown')).toBeUndefined();
+    expect(yearOfPublishDate(undefined)).toBeUndefined();
   });
 });

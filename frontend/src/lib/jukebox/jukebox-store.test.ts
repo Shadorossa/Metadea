@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { FavoriteTheme } from '../tauri/jukebox';
 import {
   INITIAL_JUKEBOX_STATE, type JukeboxState,
-  buildShuffleOrder, clampVolume, currentTheme, cycleRepeat, findQueueIndex, nextIndex, prevIndex, themeKey,
+  buildShuffleOrder, clampVolume, currentTheme, effectiveVolume, cycleRepeat, findQueueIndex, nextIndex, prevIndex, themeKey,
   withQueue, withShuffle,
 } from './jukebox-store';
 
@@ -155,5 +155,16 @@ describe('cycleRepeat / clampVolume / currentTheme', () => {
   it('currentTheme reads the loaded entry', () => {
     expect(currentTheme(state({ index: 2 }))).toBe(queue[2]);
     expect(currentTheme(state({ index: 7 }))).toBeNull();
+  });
+});
+
+describe('effectiveVolume', () => {
+  it('scales the user volume by the duck factor, clamped', () => {
+    expect(effectiveVolume(0.8, 1)).toBeCloseTo(0.8);
+    expect(effectiveVolume(0.8, 0.35)).toBeCloseTo(0.28);
+    expect(effectiveVolume(0.8, 0)).toBe(0);
+    expect(effectiveVolume(0.8, 2)).toBeCloseTo(0.8);
+    expect(effectiveVolume(0.8, Number.NaN)).toBeCloseTo(0.8);
+    expect(effectiveVolume(1.5, 0.5)).toBeCloseTo(0.5);
   });
 });

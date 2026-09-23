@@ -27,7 +27,8 @@ pub async fn pick_backup_file(app_handle: tauri::AppHandle) -> Result<Option<Str
     let file = app_handle
         .dialog()
         .file()
-        .add_filter("Metadea backup", &["zip"])
+        // .7z is the current format; .zip backups from older versions still restore.
+        .add_filter("Metadea backup", &["7z", "zip"])
         .blocking_pick_file();
     Ok(file.map(|p| p.to_string()))
 }
@@ -38,8 +39,8 @@ pub async fn pick_save_file(app_handle: tauri::AppHandle) -> Result<Option<Strin
     let file = app_handle
         .dialog()
         .file()
-        .add_filter("ZIP backup", &["zip"])
-        .set_file_name("metadea-backup.zip")
+        .add_filter("Metadea backup", &["7z"])
+        .set_file_name(format!("metadea-backup-{}.7z", chrono::Local::now().format("%Y-%m-%d")))
         .blocking_save_file();
     Ok(file.map(|p| p.to_string()))
 }

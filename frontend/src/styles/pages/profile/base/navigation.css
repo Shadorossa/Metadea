@@ -576,6 +576,12 @@
   min-width: 0;
 }
 
+/* OverviewSection's wrapper around the string-built monthly history — no
+   box of its own, so .monthly-history stays a direct flex child. */
+.profile-monthly-host {
+  display: contents;
+}
+
 
 .stat-help-wrap {
   position: relative;

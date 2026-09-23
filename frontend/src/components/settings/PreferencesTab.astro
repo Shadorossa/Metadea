@@ -15,154 +15,155 @@ const LANGUAGE_NAMES: Record<string, string> = {
 };
 ---
 
-<!-- Tab: Preferencias -->
+<!-- Tab: Preferencias. Compact cards in an auto-fit grid (settings.css › Preferencias).
+     Every id / name / data-* hook here is read by components/settings/mount/*, and
+     data-onboarding-part by components/welcome/mount/onboarding.ts. -->
 <div class="settings-panel hidden" id="panel-preferences">
-  <!-- Sistema de Calificación + Idioma -->
-  <div class="settings-divider settings-divider--row">
-    <div class="settings-section settings-section--fill" data-onboarding-part="library-rating">
-      <h3 class="settings-section-title" data-i18n="settings.rating_system_title">
-        {t.settings.rating_system_title}
-      </h3>
-      <div class="rating-system-picker">
-        <button
-          type="button"
-          class="rating-system-btn"
-          data-value="5-star"
-          data-i18n-title="settings.rating_5star_title"
-          title={t.settings.rating_5star_title}
-          set:html={ICON_STAR}
-        >
-        </button>
-        <button
-          type="button"
-          class="rating-system-btn"
-          data-value="10-dec"
-          data-i18n-title="settings.rating_10dec_title"
-          title={t.settings.rating_10dec_title}
-        >
-          <span class="rating-value-text">10.00</span>
-        </button>
-        <button
-          type="button"
-          class="rating-system-btn"
-          data-value="10"
-          data-i18n-title="settings.rating_10int_title"
-          title={t.settings.rating_10int_title}
-        >
-          <span class="rating-value-text">10</span>
-        </button>
-        <button
-          type="button"
-          class="rating-system-btn"
-          data-value="3-emoji"
-          data-i18n-title="settings.rating_3emoji_title"
-          title={t.settings.rating_3emoji_title}
-          set:html={ICON_RATING_FACES}
-        >
-        </button>
+  <div class="prefs-grid">
+    <!-- Sistema de calificación + doble calificación -->
+    <div class="prefs-card">
+      <div class="settings-section" data-onboarding-part="library-rating">
+        <h3 class="settings-section-title" data-i18n="settings.rating_system_title">
+          {t.settings.rating_system_title}
+        </h3>
+        <div class="rating-system-picker">
+          <button
+            type="button"
+            class="rating-system-btn"
+            data-value="5-star"
+            data-i18n-title="settings.rating_5star_title"
+            title={t.settings.rating_5star_title}
+            set:html={ICON_STAR}
+          >
+          </button>
+          <button
+            type="button"
+            class="rating-system-btn"
+            data-value="10-dec"
+            data-i18n-title="settings.rating_10dec_title"
+            title={t.settings.rating_10dec_title}
+          >
+            <span class="rating-value-text">10.00</span>
+          </button>
+          <button
+            type="button"
+            class="rating-system-btn"
+            data-value="10"
+            data-i18n-title="settings.rating_10int_title"
+            title={t.settings.rating_10int_title}
+          >
+            <span class="rating-value-text">10</span>
+          </button>
+          <button
+            type="button"
+            class="rating-system-btn"
+            data-value="3-emoji"
+            data-i18n-title="settings.rating_3emoji_title"
+            title={t.settings.rating_3emoji_title}
+            set:html={ICON_RATING_FACES}
+          >
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div class="settings-section settings-section--dual-rating settings-section--fill" data-onboarding-part="library-rating">
-      <h3 class="settings-section-title" data-i18n="settings.dual_rating_section_title">
-        {t.settings.dual_rating_section_title}
-      </h3>
-      <div class="settings-checkbox-row dual-rating-toggle-row">
-        <div class="settings-checkbox-group">
+      <div class="settings-section settings-section--dual-rating" data-onboarding-part="library-rating">
+        <h3 class="settings-section-title" data-i18n="settings.dual_rating_section_title">
+          {t.settings.dual_rating_section_title}
+        </h3>
+        <div class="dual-rating-toggle-row">
           <label class="settings-checkbox-label">
             <input type="checkbox" id="dual-rating-enabled" class="settings-checkbox" />
-            <span class="checkbox-label-text" data-i18n="settings.dual_rating_enable"
-              >{t.settings.dual_rating_enable}</span
-            >
+            <span class="checkbox-label-text" data-i18n="settings.dual_rating_enable">{t.settings.dual_rating_enable}</span>
           </label>
+
+          <div id="dual-rating-system-row" class="dual-rating-system-row dual-rating-config hidden">
+            <div class="rating-system-picker" id="rating-system-picker-2">
+              <button
+                type="button"
+                class="rating-system-btn-2"
+                data-value="5-star"
+                title={t.settings.rating_5star_title} data-i18n-title="settings.rating_5star_title"
+                set:html={ICON_STAR}
+              >
+              </button>
+              <button
+                type="button"
+                class="rating-system-btn-2"
+                data-value="10-dec"
+                title={t.settings.rating_10dec_title} data-i18n-title="settings.rating_10dec_title"
+              >
+                <span class="rating-value-text">10.00</span>
+              </button>
+              <button
+                type="button"
+                class="rating-system-btn-2"
+                data-value="10"
+                title={t.settings.rating_10int_title} data-i18n-title="settings.rating_10int_title"
+              >
+                <span class="rating-value-text">10</span>
+              </button>
+              <button
+                type="button"
+                class="rating-system-btn-2"
+                data-value="3-emoji"
+                title={t.settings.rating_3emoji_title} data-i18n-title="settings.rating_3emoji_title"
+                set:html={ICON_RATING_FACES}
+              >
+              </button>
+            </div>
+
+            <!-- Only meaningful for the '10-dec'/'10' systems (a numeric
+                 range) — toggled by dual-rating.ts alongside the picker. -->
+            <div id="dual-rating-range-row" class="dual-rating-range-row hidden">
+              <div class="dual-rating-field">
+                <input
+                  type="number"
+                  id="rating-2-min"
+                  class="settings-modal-input"
+                  placeholder={t.settings.dual_rating_min_label} data-i18n-placeholder="settings.dual_rating_min_label"
+                  step="1"
+                />
+              </div>
+              <div class="dual-rating-field">
+                <input
+                  type="number"
+                  id="rating-2-max"
+                  class="settings-modal-input"
+                  placeholder={t.settings.dual_rating_max_label} data-i18n-placeholder="settings.dual_rating_max_label"
+                  step="1"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div id="dual-rating-system-row" class="dual-rating-system-row dual-rating-config hidden">
-          <div class="rating-system-picker" id="rating-system-picker-2">
-            <button
-              type="button"
-              class="rating-system-btn-2"
-              data-value="5-star"
-              title={t.settings.rating_5star_title} data-i18n-title="settings.rating_5star_title"
-              set:html={ICON_STAR}
-            >
-            </button>
-            <button
-              type="button"
-              class="rating-system-btn-2"
-              data-value="10-dec"
-              title={t.settings.rating_10dec_title} data-i18n-title="settings.rating_10dec_title"
-            >
-              <span class="rating-value-text">10.00</span>
-            </button>
-            <button
-              type="button"
-              class="rating-system-btn-2"
-              data-value="10"
-              title={t.settings.rating_10int_title} data-i18n-title="settings.rating_10int_title"
-            >
-              <span class="rating-value-text">10</span>
-            </button>
-            <button
-              type="button"
-              class="rating-system-btn-2"
-              data-value="3-emoji"
-              title={t.settings.rating_3emoji_title} data-i18n-title="settings.rating_3emoji_title"
-              set:html={ICON_RATING_FACES}
-            >
-            </button>
-          </div>
-
-          <!-- Only meaningful for the '10-dec'/'10' systems (a numeric
-               range) — toggled by dual-rating.ts alongside the picker. -->
-          <div id="dual-rating-range-row" class="dual-rating-range-row hidden">
+        <div id="dual-rating-config" class="dual-rating-config hidden">
+          <div class="dual-rating-name-row">
             <div class="dual-rating-field">
               <input
-                type="number"
-                id="rating-2-min"
+                type="text"
+                id="rating-name-1"
                 class="settings-modal-input"
-                placeholder={t.settings.dual_rating_min_label} data-i18n-placeholder="settings.dual_rating_min_label"
-                step="1"
+                placeholder={t.settings.dual_rating_name1_label} data-i18n-placeholder="settings.dual_rating_name1_label"
+                maxlength="20"
               />
             </div>
             <div class="dual-rating-field">
               <input
-                type="number"
-                id="rating-2-max"
+                type="text"
+                id="rating-name-2"
                 class="settings-modal-input"
-                placeholder={t.settings.dual_rating_max_label} data-i18n-placeholder="settings.dual_rating_max_label"
-                step="1"
+                placeholder={t.settings.dual_rating_name2_label} data-i18n-placeholder="settings.dual_rating_name2_label"
+                maxlength="20"
               />
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="dual-rating-config" class="dual-rating-config hidden">
-        <div class="dual-rating-name-row">
-          <div class="dual-rating-field">
-            <input
-              type="text"
-              id="rating-name-1"
-              class="settings-modal-input"
-              placeholder={t.settings.dual_rating_name1_label} data-i18n-placeholder="settings.dual_rating_name1_label"
-              maxlength="20"
-            />
-          </div>
-          <div class="dual-rating-field">
-            <input
-              type="text"
-              id="rating-name-2"
-              class="settings-modal-input"
-              placeholder={t.settings.dual_rating_name2_label} data-i18n-placeholder="settings.dual_rating_name2_label"
-              maxlength="20"
-            />
           </div>
         </div>
       </div>
     </div>
 
-    <div class="settings-section settings-section--fill" data-onboarding-part="basics-language">
+    <!-- Idioma -->
+    <div class="settings-section prefs-card" data-onboarding-part="basics-language">
       <h3 class="settings-section-title" data-i18n="settings.language_section_title">
         {t.settings.language_section_title}
       </h3>
@@ -182,168 +183,220 @@ const LANGUAGE_NAMES: Record<string, string> = {
         {t.settings.language_hint}
       </p>
     </div>
-  </div>
 
-  <!-- Biblioteca + Contenido -->
-  <div class="settings-divider settings-divider--row" data-onboarding-part="library-options">
-    <div class="settings-section settings-section--fill">
+    <!-- Biblioteca y portadas (mount/activity.ts) -->
+    <div class="settings-section prefs-card" data-onboarding-part="library-options">
       <h3 class="settings-section-title" data-i18n="settings.library_section_title">
         {t.settings.library_section_title}
       </h3>
-      <div class="settings-checkbox-row">
-        <div class="settings-checkbox-group">
-          <div class="settings-checkbox-label-wrapper">
-            <label class="settings-checkbox-label">
-              <input
-                type="checkbox"
-                id="unify-seasons-enabled"
-                class="settings-checkbox"
-              />
-              <span class="checkbox-label-text" data-i18n="settings.unify_seasons_enabled"
-                >{t.settings.unify_seasons_enabled}</span
-              >
-            </label>
-            <button
-              type="button"
-              class="settings-help-btn"
-              data-i18n-title="settings.unify_seasons_hint"
-              title={t.settings.unify_seasons_hint}
-            >
-              <span class="info-indicator" aria-hidden="true">i</span>
-            </button>
-          </div>
+      <div class="prefs-list">
+        <div class="prefs-row">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="unify-seasons-enabled" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="settings.unify_seasons_enabled">{t.settings.unify_seasons_enabled}</span>
+          </label>
+          <button type="button" class="settings-help-btn" data-i18n-title="settings.unify_seasons_hint" title={t.settings.unify_seasons_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
         </div>
-        <div class="settings-checkbox-group">
-          <div class="settings-checkbox-label-wrapper">
-            <label class="settings-checkbox-label">
-              <input
-                type="checkbox"
-                id="unify-seasons-highest-rated-cover"
-                class="settings-checkbox"
-              />
-              <span class="checkbox-label-text" data-i18n="settings.unify_seasons_highest_rated_cover"
-                >{t.settings.unify_seasons_highest_rated_cover}</span
-              >
-            </label>
-            <button
-              type="button"
-              class="settings-help-btn"
-              data-i18n-title="settings.unify_seasons_highest_rated_cover_hint"
-              title={t.settings.unify_seasons_highest_rated_cover_hint}
-            >
-              <span class="info-indicator" aria-hidden="true">i</span>
-            </button>
-          </div>
+        <div class="prefs-row prefs-row--sub">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="unify-seasons-highest-rated-cover" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="settings.unify_seasons_highest_rated_cover">{t.settings.unify_seasons_highest_rated_cover}</span>
+          </label>
+          <button type="button" class="settings-help-btn" data-i18n-title="settings.unify_seasons_highest_rated_cover_hint" title={t.settings.unify_seasons_highest_rated_cover_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
         </div>
-        <div class="settings-checkbox-group">
-          <div class="settings-checkbox-label-wrapper">
-            <label class="settings-checkbox-label">
-              <input
-                type="checkbox"
-                id="completed-manga-issue-cover"
-                class="settings-checkbox"
-              />
-              <span class="checkbox-label-text" data-i18n="settings.completed_manga_issue_cover"
-                >{t.settings.completed_manga_issue_cover}</span
-              >
-            </label>
-            <button
-              type="button"
-              class="settings-help-btn"
-              data-i18n-title="settings.completed_manga_issue_cover_hint"
-              title={t.settings.completed_manga_issue_cover_hint}
-            >
-              <span class="info-indicator" aria-hidden="true">i</span>
-            </button>
-          </div>
+        <div class="prefs-row">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="completed-manga-issue-cover" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="settings.completed_manga_issue_cover">{t.settings.completed_manga_issue_cover}</span>
+          </label>
+          <button type="button" class="settings-help-btn" data-i18n-title="settings.completed_manga_issue_cover_hint" title={t.settings.completed_manga_issue_cover_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
+        </div>
+        <div class="prefs-row">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="prefer-textless-covers" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="settings.prefer_textless_covers">{t.settings.prefer_textless_covers}</span>
+          </label>
+          <button type="button" class="settings-help-btn" data-i18n-title="settings.prefer_textless_covers_hint" title={t.settings.prefer_textless_covers_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
+        </div>
+        <div class="prefs-row prefs-row--sub">
+          <select
+            id="textless-covers-scope"
+            class="settings-inline-select prefs-row-end"
+            data-i18n-aria-label="settings.textless_covers_scope"
+            aria-label={t.settings.textless_covers_scope}
+          >
+            <option value="all" data-i18n="settings.textless_covers_scope_all">{t.settings.textless_covers_scope_all}</option>
+            <option value="screen" data-i18n="settings.textless_covers_scope_screen">{t.settings.textless_covers_scope_screen}</option>
+            <option value="games" data-i18n="settings.textless_covers_scope_games">{t.settings.textless_covers_scope_games}</option>
+          </select>
         </div>
       </div>
     </div>
 
-    <div class="settings-section settings-section--fill">
+    <!-- Contenido y spoilers. Spoiler shield: lib/spoilers/spoiler-settings.ts, mount/spoiler-preferences.ts -->
+    <div class="settings-section prefs-card" data-onboarding-part="library-options">
       <h3 class="settings-section-title" data-i18n="settings.content_section_title">
         {t.settings.content_section_title}
       </h3>
-      <div class="settings-checkbox-row">
-        <div class="settings-checkbox-group">
-          <div class="settings-checkbox-label-wrapper">
+      <div class="prefs-list">
+        <div class="prefs-row">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="activity-adult-content" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="settings.activity_adult_content">{t.settings.activity_adult_content}</span>
+          </label>
+          <button type="button" class="settings-help-btn" data-i18n-title="settings.activity_adult_content_hint" title={t.settings.activity_adult_content_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
+        </div>
+        <div class="prefs-row" id="spoiler-shield-preferences">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="spoiler-shield-enabled" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="spoilers.settings_enabled">{t.spoilers.settings_enabled}</span>
+          </label>
+          <button type="button" class="settings-help-btn" data-i18n-title="spoilers.settings_enabled_hint" title={t.spoilers.settings_enabled_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
+          <select
+            id="spoiler-shield-level"
+            class="settings-inline-select prefs-row-end"
+            data-i18n-aria-label="spoilers.settings_level"
+            aria-label={t.spoilers.settings_level}
+          >
+            <option value="normal" data-i18n="spoilers.settings_level_normal">{t.spoilers.settings_level_normal}</option>
+            <option value="strict" data-i18n="spoilers.settings_level_strict">{t.spoilers.settings_level_strict}</option>
+          </select>
+        </div>
+        <div class="prefs-row prefs-row--sub">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="spoiler-shield-hide-covers" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="spoilers.settings_covers">{t.spoilers.settings_covers}</span>
+          </label>
+          <button type="button" class="settings-help-btn" data-i18n-title="spoilers.settings_covers_hint" title={t.spoilers.settings_covers_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
+        </div>
+        <div class="prefs-row prefs-row--action">
+          <button type="button" id="clear-all-notes-btn" class="settings-danger-btn" data-i18n="settings.clear_notes_btn">
+            {t.settings.clear_notes_btn}
+          </button>
+          <button type="button" class="settings-help-btn" data-i18n-title="settings.clear_notes_hint" title={t.settings.clear_notes_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Big Picture (lib/big-picture/big-picture-preferences.ts, mount/big-picture-preferences.ts) -->
+    <div class="prefs-card">
+      <div class="settings-section" id="big-picture-preferences-section">
+        <h3 class="settings-section-title" data-i18n="big_picture.settings_title">{t.big_picture.settings_title}</h3>
+        <div class="prefs-list">
+          <div class="prefs-row">
             <label class="settings-checkbox-label">
-              <input
-                type="checkbox"
-                id="activity-adult-content"
-                class="settings-checkbox"
-              />
-              <span class="checkbox-label-text" data-i18n="settings.activity_adult_content"
-                >{t.settings.activity_adult_content}</span
-              >
+              <input type="checkbox" id="big-picture-start" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="big_picture.settings_start">{t.big_picture.settings_start}</span>
             </label>
-            <button
-              type="button"
-              class="settings-help-btn"
-              data-i18n-title="settings.activity_adult_content_hint"
-              title={t.settings.activity_adult_content_hint}
-            >
+            <button type="button" class="settings-help-btn" data-i18n-title="big_picture.settings_start_hint" title={t.big_picture.settings_start_hint}>
               <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
-        </div>
-        <div class="settings-checkbox-group">
-          <div class="settings-checkbox-label-wrapper">
-            <button
-              type="button"
-              id="clear-all-notes-btn"
-              class="settings-danger-btn"
-              data-i18n="settings.clear_notes_btn"
-            >
-              {t.settings.clear_notes_btn}
-            </button>
-            <button
-              type="button"
-              class="settings-help-btn"
-              data-i18n-title="settings.clear_notes_hint"
-              title={t.settings.clear_notes_hint}
-            >
+          <div class="prefs-row prefs-row--sub">
+            <label class="settings-checkbox-label">
+              <input type="checkbox" id="big-picture-start-controller" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="big_picture.settings_start_controller">{t.big_picture.settings_start_controller}</span>
+            </label>
+            <button type="button" class="settings-help-btn" data-i18n-title="big_picture.settings_start_controller_hint" title={t.big_picture.settings_start_controller_hint}>
               <span class="info-indicator" aria-hidden="true">i</span>
             </button>
+          </div>
+          <!-- Controller pause menu in games launched from Metadea (src-tauri/src/game_pause);
+               the combo itself is fixed and shown read-only. -->
+          <div class="prefs-row">
+            <label class="settings-checkbox-label">
+              <input type="checkbox" id="big-picture-pause-combo" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="big_picture.settings_pause_combo">{t.big_picture.settings_pause_combo}</span>
+            </label>
+            <button type="button" class="settings-help-btn" data-i18n-title="big_picture.settings_pause_combo_hint" title={t.big_picture.settings_pause_combo_hint}>
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+          </div>
+          <div class="prefs-row prefs-row--sub">
+            <kbd class="settings-combo-keys" data-i18n="big_picture.settings_pause_combo_keys">{t.big_picture.settings_pause_combo_keys}</kbd>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Reproductor: engine (libmpv/VLC), controls mode, opening/ending skip.
-       Stored in lib/player/player-settings.ts; wired by mount/player-preferences.ts -->
-  <div class="settings-divider">
-    <div class="settings-section" id="player-preferences-section" data-onboarding-part="player">
-      <h3 class="settings-section-title" data-i18n="player.window_title">{t.player.window_title}</h3>
-      <div class="player-preferences-grid">
-        <div class="player-preferences-group">
-          <div class="settings-checkbox-label-wrapper player-preferences-group-header">
-            <span class="player-preferences-group-title" data-i18n="player.settings_engine_title">{t.player.settings_engine_title}</span>
-            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_engine_hint" title={t.player.settings_engine_hint}>
+    <!-- Modo TV ambiente (lib/storage/preferences.ts, mount/ambient-mode-preferences.ts) -->
+    <div class="prefs-card">
+      <div class="settings-section" id="ambient-mode-preferences-section">
+        <h3 class="settings-section-title" data-i18n="ambient.settings_title">{t.ambient.settings_title}</h3>
+        <div class="prefs-list">
+          <div class="prefs-row">
+            <label class="settings-checkbox-label">
+              <input type="checkbox" id="ambient-mode-enabled" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="ambient.settings_enabled">{t.ambient.settings_enabled}</span>
+            </label>
+            <button type="button" class="settings-help-btn" data-i18n-title="ambient.settings_enabled_hint" title={t.ambient.settings_enabled_hint}>
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+            <select
+              id="ambient-mode-delay"
+              class="settings-inline-select prefs-row-end"
+              data-i18n-aria-label="ambient.settings_delay"
+              aria-label={t.ambient.settings_delay}
+            >
+              <option value="1" data-i18n="ambient.delay_1">{t.ambient.delay_1}</option>
+              <option value="2" data-i18n="ambient.delay_2">{t.ambient.delay_2}</option>
+              <option value="5" data-i18n="ambient.delay_5">{t.ambient.delay_5}</option>
+              <option value="10" data-i18n="ambient.delay_10">{t.ambient.delay_10}</option>
+            </select>
+          </div>
+          <div class="prefs-row prefs-row--sub">
+            <label class="settings-checkbox-label">
+              <input type="checkbox" id="ambient-mode-jukebox" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="ambient.settings_jukebox">{t.ambient.settings_jukebox}</span>
+            </label>
+            <button type="button" class="settings-help-btn" data-i18n-title="ambient.settings_jukebox_hint" title={t.ambient.settings_jukebox_hint}>
               <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
-          <div class="player-preferences-options">
-            <label class="settings-checkbox-label">
-              <input type="radio" name="playback-engine" value="internal" class="settings-checkbox" />
-              <span class="checkbox-label-text" data-i18n="player.settings_engine_internal">{t.player.settings_engine_internal}</span>
-            </label>
-            <label class="settings-checkbox-label">
-              <input type="radio" name="playback-engine" value="vlc" class="settings-checkbox" />
-              <span class="checkbox-label-text" data-i18n="player.settings_engine_vlc">{t.player.settings_engine_vlc}</span>
-            </label>
+          <div class="prefs-row prefs-row--action">
+            <button
+              type="button"
+              id="ambient-mode-preview"
+              class="btn btn--sm btn--secondary"
+              data-i18n="ambient.preview"
+              data-i18n-title="ambient.preview_hint"
+              title={t.ambient.preview_hint}
+            >{t.ambient.preview}</button>
           </div>
         </div>
+      </div>
+    </div>
 
-        <div class="player-preferences-group">
-          <div class="settings-checkbox-label-wrapper player-preferences-group-header">
-            <span class="player-preferences-group-title" data-i18n="player.settings_controls_title">{t.player.settings_controls_title}</span>
+    <!-- Reproductor (built-in libmpv player): controls mode, opening/ending skip,
+         seek thumbnails and smart tracks. Stored in lib/player/player-settings.ts; wired by
+         mount/player-preferences.ts, which also disables [data-smart-tracks-option]. -->
+    <div class="settings-section prefs-card prefs-card--wide" id="player-preferences-section" data-onboarding-part="player">
+      <h3 class="settings-section-title" data-i18n="player.window_title">{t.player.window_title}</h3>
+      <div class="prefs-columns">
+        <div class="prefs-field">
+          <div class="prefs-row">
+            <span class="prefs-field-title" data-i18n="player.settings_controls_title">{t.player.settings_controls_title}</span>
             <button type="button" class="settings-help-btn" data-i18n-title="player.settings_controls_hint" title={t.player.settings_controls_hint}>
               <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
-          <div class="player-preferences-options">
+          <div class="prefs-options">
             <label class="settings-checkbox-label">
               <input type="radio" name="player-controls-mode" value="overlay" class="settings-checkbox" />
               <span class="checkbox-label-text" data-i18n="player.settings_controls_overlay">{t.player.settings_controls_overlay}</span>
@@ -353,16 +406,25 @@ const LANGUAGE_NAMES: Record<string, string> = {
               <span class="checkbox-label-text" data-i18n="player.settings_controls_docked">{t.player.settings_controls_docked}</span>
             </label>
           </div>
+          <div class="prefs-row">
+            <label class="settings-checkbox-label">
+              <input type="checkbox" id="player-seek-thumbnails" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_thumbnails">{t.player.settings_thumbnails}</span>
+            </label>
+            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_thumbnails_hint" title={t.player.settings_thumbnails_hint}>
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+          </div>
         </div>
 
-        <div class="player-preferences-group">
-          <div class="settings-checkbox-label-wrapper player-preferences-group-header">
-            <span class="player-preferences-group-title" data-i18n="player.settings_skip_title">{t.player.settings_skip_title}</span>
+        <div class="prefs-field">
+          <div class="prefs-row">
+            <span class="prefs-field-title" data-i18n="player.settings_skip_title">{t.player.settings_skip_title}</span>
             <button type="button" class="settings-help-btn" data-i18n-title="player.settings_skip_hint" title={t.player.settings_skip_hint}>
               <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
-          <div class="player-preferences-options">
+          <div class="prefs-options">
             <label class="settings-checkbox-label">
               <input type="radio" name="player-skip-mode" value="button" class="settings-checkbox" />
               <span class="checkbox-label-text" data-i18n="player.settings_skip_button">{t.player.settings_skip_button}</span>
@@ -375,6 +437,68 @@ const LANGUAGE_NAMES: Record<string, string> = {
               <input type="radio" name="player-skip-mode" value="off" class="settings-checkbox" />
               <span class="checkbox-label-text" data-i18n="player.settings_skip_off">{t.player.settings_skip_off}</span>
             </label>
+          </div>
+        </div>
+
+        <div class="prefs-field">
+          <div class="prefs-row">
+            <label class="settings-checkbox-label">
+              <input type="checkbox" id="player-smart-tracks" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_tracks_smart">{t.player.settings_tracks_smart}</span>
+            </label>
+            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_smart_hint" title={t.player.settings_tracks_smart_hint}>
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+          </div>
+          <div class="prefs-row prefs-row--sub prefs-row--wrap" data-smart-tracks-option>
+            <label class="prefs-row-label" for="player-sub-language" data-i18n="player.settings_tracks_sub_language">{t.player.settings_tracks_sub_language}</label>
+            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_sub_language_hint" title={t.player.settings_tracks_sub_language_hint}>
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+            <select id="player-sub-language" class="settings-inline-select prefs-row-end">
+              <option value="app" data-i18n="player.settings_tracks_sub_language_app">{t.player.settings_tracks_sub_language_app}</option>
+              {LOCALES.map(code => <option value={code}>{LANGUAGE_NAMES[code] ?? code}</option>)}
+            </select>
+          </div>
+          <div class="prefs-sub" data-smart-tracks-option>
+            <div class="prefs-row">
+              <span class="prefs-field-title" data-i18n="player.settings_tracks_fallback">{t.player.settings_tracks_fallback}</span>
+              <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_fallback_hint" title={t.player.settings_tracks_fallback_hint}>
+                <span class="info-indicator" aria-hidden="true">i</span>
+              </button>
+            </div>
+            <div class="prefs-options prefs-options--inline">
+              <label class="settings-checkbox-label">
+                <input type="radio" name="player-sub-fallback" value="english" class="settings-checkbox" />
+                <span class="checkbox-label-text" data-i18n="player.settings_tracks_fallback_english">{t.player.settings_tracks_fallback_english}</span>
+              </label>
+              <label class="settings-checkbox-label">
+                <input type="radio" name="player-sub-fallback" value="none" class="settings-checkbox" />
+                <span class="checkbox-label-text" data-i18n="player.settings_tracks_fallback_none">{t.player.settings_tracks_fallback_none}</span>
+              </label>
+            </div>
+          </div>
+          <div class="prefs-sub" data-smart-tracks-option>
+            <div class="prefs-row">
+              <span class="prefs-field-title" data-i18n="player.settings_tracks_anime_audio">{t.player.settings_tracks_anime_audio}</span>
+              <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_anime_audio_hint" title={t.player.settings_tracks_anime_audio_hint}>
+                <span class="info-indicator" aria-hidden="true">i</span>
+              </button>
+            </div>
+            <div class="prefs-options prefs-options--inline">
+              <label class="settings-checkbox-label">
+                <input type="radio" name="player-anime-audio" value="japanese" class="settings-checkbox" />
+                <span class="checkbox-label-text" data-i18n="player.settings_tracks_anime_audio_japanese">{t.player.settings_tracks_anime_audio_japanese}</span>
+              </label>
+              <label class="settings-checkbox-label">
+                <input type="radio" name="player-anime-audio" value="preferred" class="settings-checkbox" />
+                <span class="checkbox-label-text" data-i18n="player.settings_tracks_anime_audio_preferred">{t.player.settings_tracks_anime_audio_preferred}</span>
+              </label>
+              <label class="settings-checkbox-label">
+                <input type="radio" name="player-anime-audio" value="default" class="settings-checkbox" />
+                <span class="checkbox-label-text" data-i18n="player.settings_tracks_anime_audio_default">{t.player.settings_tracks_anime_audio_default}</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>

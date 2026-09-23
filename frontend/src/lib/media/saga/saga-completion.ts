@@ -6,6 +6,8 @@
 import type { SagaEntry } from '../../anilist/saga';
 import type { Translations } from '../../../i18n/types';
 import { interpolate } from '../../shared/text/interpolate';
+import { effectiveEpisodeTotal, effectiveProgress } from '../../anime/filler';
+import { getLoadedFillerInfo } from '../../anime/filler-store';
 
 export type SagaUnitLabel = 'episodes' | 'chapters' | 'volumes' | 'issues' | 'works';
 
@@ -13,6 +15,8 @@ export interface SagaCompletionLibraryRow {
   status: string | null;
   progress: number;
   progress_2?: number;
+  /** Anime "Filler: Skipped" (lib/anime/filler.ts). */
+  skip_filler?: number;
 }
 
 export interface SagaCompletionCatalogRow {
@@ -94,8 +98,11 @@ function entryUnits(
   if (totalCount == null || totalCount <= 0) {
     return { type, completed, consumed: completed ? 1 : 0, total: 1, hasLibraryRow: !!library };
   }
-  const progress = Math.max(0, Math.min(library?.progress ?? 0, totalCount));
-  return { type, completed, consumed: completed ? totalCount : progress, total: totalCount, hasLibraryRow: !!library };
+  // Filler: Skipped weighs the anime by its canon episodes only.
+  const filler = type === 'anime' ? getLoadedFillerInfo(entry.externalId) : undefined;
+  const total = effectiveEpisodeTotal(library, filler, totalCount) ?? totalCount;
+  const progress = Math.max(0, Math.min(effectiveProgress(library, filler, totalCount), total));
+  return { type, completed, consumed: completed ? total : progress, total, hasLibraryRow: !!library };
 }
 
 // A panel with several entries is one work shown in alternative cuts or

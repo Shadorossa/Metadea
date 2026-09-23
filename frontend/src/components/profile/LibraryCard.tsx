@@ -6,12 +6,13 @@ import {
 } from 'lucide-react';
 import { getCatalogEntry, wrapAssetUrl, type CatalogSummary, type LibraryEntry, type DbMediaRelation } from '../../lib/tauri';
 import { getT } from '../../i18n/runtime';
-import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
+import { getActiveRatingSystem, formatRatingHtml, type RatingSystem } from '../../lib/media/rating-utils';
 import { getRating2System, getRating2Max, type RatingSlot, isUnifySeasonsHighestRatedCoverEnabled, isCompletedMangaIssueCoverEnabled } from '../../lib/storage/preferences';
 import { CALENDAR_ICON } from '../../lib/dom/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/text/format-date';
 import { averageRating, latestInProgressMember } from '../../lib/profile/library-grouping';
 import { toMediumCover, toSmallCover } from '../../lib/media/small-cover';
+import { CoverImage } from '../shared/CoverImage';
 import { stripSeasonSuffix } from '../../lib/media/mappers/mapper-utils';
 import { isInProgressStatus, pickAggregateStatus } from '../../lib/media/media-types';
 import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../../lib/local/platforms';
@@ -97,7 +98,7 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, mediaExternalId, catalogMap, p, readOnly, ratingSlot = 'rating', showResumeAction, playableResumeIds, issueRelations, cachedCoverPath }: {
+export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupingUi, mediaExternalId, catalogMap, p, readOnly, ratingSlot = 'rating', rating2Scale, showResumeAction, playableResumeIds, issueRelations, cachedCoverPath }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: CatalogSummary;
@@ -124,6 +125,9 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   /** Settings > Preferencias' opt-in "doble calificación" selector, forwarded from
    * LibrarySection — which field the badge shows and which one the editor opens on. */
   ratingSlot?: RatingSlot;
+  /** How rating_2 is shown on someone else's profile (their system and
+   *  range); the viewer's own Settings > Preferencias otherwise. */
+  rating2Scale?: { system: RatingSystem; max: number };
   /** Show the quick action only in the library's in-progress sections. */
   showResumeAction?: boolean;
   /** External IDs confirmed playable by Local / Play. */
@@ -208,6 +212,9 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     : !dynamicCover && !bundleMeta && cachedCoverPath
       ? wrapAssetUrl(cachedCoverPath)
       : toMediumCover(dynamicCover || (bundleMeta?.cover_url ?? meta?.cover_url ?? ''));
+  // Whose cover that is, for the textless swap ("Prefer clean covers"): only
+  // the work's own cover — never a reading-issue or active-season cover.
+  const coverWorkId = readingIssueCover || dynamicCover ? null : (bundleMeta?.external_id ?? item.external_id);
 
   // Same "which season is actually active" pick as inProgressCover above —
   // the card's own `item` is always the earliest-release season (see
@@ -250,12 +257,14 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     const isAggregate = !!bundleMeta || !!aggregateStats;
     const isSecondaryRating = ratingSlot === 'rating_2';
     const members = aggregateMembers;
+    const system = isSecondaryRating ? (rating2Scale?.system ?? getRating2System()) : getActiveRatingSystem();
+    const max = isSecondaryRating ? (rating2Scale?.max ?? getRating2Max()) : 10;
     if (isAggregate) {
       const displayScore = (hideGroupingUi && customGeneralRating !== null) ? customGeneralRating : averageRating(members, ratingSlot);
-      return formatRatingHtml(displayScore, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
+      return formatRatingHtml(displayScore, system, 'library-card-rating', max);
     }
-    return formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
-  }, [bundleMeta, aggregateStats, aggregateMembers, ratingSlot, item.rating, item.rating_2, hideGroupingUi, customGeneralRating]);
+    return formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, system, 'library-card-rating', max);
+  }, [bundleMeta, aggregateStats, aggregateMembers, ratingSlot, rating2Scale, item.rating, item.rating_2, hideGroupingUi, customGeneralRating]);
 
   const dateStr = useMemo(() => {
     const earliestDate = (dates: (string | null | undefined)[]): string => {
@@ -346,7 +355,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
         )}
         <a className="library-card-thumb" href={mediaUrl} onClick={e => e.stopPropagation()}>
           {cover
-            ? <img src={cover} alt={title} loading="lazy" decoding="async" />
+            ? <CoverImage externalId={coverWorkId} src={cover} alt={title} loading="lazy" decoding="async" />
             : <div className="library-card-no-cover"><span>{title.slice(0, 2).toUpperCase()}</span></div>}
         </a>
         <div className="library-card-info">

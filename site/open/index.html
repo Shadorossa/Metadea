@@ -60,7 +60,7 @@
     // Mirrors the validation in frontend/src-tauri/src/deep_link.rs and
     // frontend/src/lib/deep-link/deep-link-routes.ts: only these shapes are
     // ever turned into a metadea:// URL, anything else is shown as invalid.
-    var LOCATOR = /^(home|media\/[a-z]+:[A-Za-z0-9_-]+|character\/[a-z]+:[A-Za-z0-9_-]+|profile\/[A-Za-z0-9_-]+)$/;
+    var LOCATOR = /^(home|media\/[a-z]+:[A-Za-z0-9_-]+|character\/[a-z]+:[A-Za-z0-9_-]+|company\/[a-z]+(?:-[a-z]+)?:[A-Za-z0-9_-]+|profile\/[A-Za-z0-9_-]+)$/;
     var FALLBACK_DELAY_MS = 1500;
 
     var to = new URLSearchParams(location.search).get('to') || '';

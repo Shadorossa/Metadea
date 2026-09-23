@@ -317,7 +317,7 @@ export const DETAIL_STAFF_QUERY = `
         edges {
           staffRole
           node {
-            id type format title { romaji english } coverImage { medium }
+            id type format title { romaji english } coverImage { medium } startDate { year } averageScore
           }
         }
       }

@@ -100,6 +100,7 @@ export async function saveMediaEditorLogs({
       finished_at:      entryLog.finishedAt || null,
       reconsumption_count: entryLog.reconsumptionCount,
       reconsuming:      entryLog.reconsuming ? 1 : 0,
+      skip_filler:      entryLog.skipFiller === undefined ? undefined : entryLog.skipFiller ? 1 : 0,
     });
 
     if (logId === externalId) {

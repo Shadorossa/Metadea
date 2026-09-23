@@ -17,6 +17,7 @@ export * from './lists';
 export * from './tier-lists';
 export * from './catalog';
 export * from './characters';
+export * from './character-reactions';
 export * from './actors';
 export * from './favorite-images';
 export * from './igdb';

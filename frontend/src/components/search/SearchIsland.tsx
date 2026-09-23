@@ -92,11 +92,14 @@ const PERSIST_DEBOUNCE_MS = 300;
 interface Props {
   initialQuery?: string;
   initialType?: MediaType;
+  /** The server-rendered strings (build-time locale), only used until the
+   *  island hydrates; after that the user's language (getT()) wins. */
   i18n: SearchTranslations;
 }
 
-export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
+export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n: ssrI18n }: Props) {
   const isMounted = useHydrated();
+  const i18n = isMounted ? getT().search : ssrI18n;
   const navSlot = useNavSlot();
   const [query, setQuery]         = useState(initialQuery);
   const [mediaType, setMediaType] = useState<MediaType>(initialType);

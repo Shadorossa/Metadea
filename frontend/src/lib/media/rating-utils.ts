@@ -79,6 +79,23 @@ export function averageScoreSuffix(system: RatingSystem, max = 10): string {
   return system === '10-dec' || system === '10' ? ` / ${max}` : ' / 5';
 }
 
+/** A 0-1 normalised rating (taste compatibility pairs) in the given
+ *  system, with its suffix: "4.5 / 5", "9 / 10", "😊 (8.0)". */
+export function formatUnitRating(value: number, system: RatingSystem): string {
+  return formatAverageScore(value * 10, system) + averageScoreSuffix(system);
+}
+
+/** A 0-1 rating difference split into number and compact scale ("1.8",
+ *  "/5") so the scale can be styled smaller — the emoji system has no
+ *  meaningful "difference" emoji, so it reads as a decimal out of 10. */
+export function unitRatingDiffParts(value: number, system: RatingSystem): { value: string; suffix: string } {
+  const diffSystem: RatingSystem = system === '3-emoji' ? '10-dec' : system;
+  return {
+    value: formatAverageScore(value * 10, diffSystem),
+    suffix: averageScoreSuffix(diffSystem).replace(/\s+/g, ''),
+  };
+}
+
 // Fills each star to its exact fraction (e.g. a 4.25-star rating fills the
 // 5th star to 25%, not just rounded to the nearest half) — an empty-star
 // outline sits underneath, with a full star laid directly on top of it and

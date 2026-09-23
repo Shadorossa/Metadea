@@ -54,6 +54,14 @@
   filter: brightness(0) invert(1);
 }
 
+/* Wide wordmark centred in a square transparent canvas (GG.deals): a wide
+   box + object-fit: cover crops it to the wordmark band. */
+.footer-logo--wordmark {
+  height: 50%;
+  aspect-ratio: 6;
+  object-fit: cover;
+}
+
 @media (max-width: 640px) {
   .app-footer {
     padding: 1.5rem 1rem;

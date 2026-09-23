@@ -4,6 +4,7 @@
 
 import { clampSpeed, SEEK_END_MARGIN_SECONDS, type PlayerKeyAction } from '../../lib/player/keymap';
 import type { PlayerStatus } from '../../lib/player/player-status';
+import { markManualCycle } from '../../lib/player/track-memory';
 import {
   playerCycleTrack, playerFrameStep, playerNext, playerPrev, playerScreenshot, playerSeek, playerSetFullscreen, playerSetMute,
   playerSetSpeed, playerSetSubDelay, playerSetVolume, playerStopClose, playerTogglePause,
@@ -87,6 +88,8 @@ export function runPlayerAction(action: PlayerKeyAction, context: PlayerActionCo
       swallow(playerSetSpeed(clampSpeed(status.speed + action.delta)));
       break;
     case 'cycle_track':
+      // A hand-picked track: remembered for the series (track-memory).
+      markManualCycle(action.kind);
       swallow(playerCycleTrack(action.kind));
       break;
     case 'seek_fraction':

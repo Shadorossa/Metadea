@@ -8,12 +8,15 @@ use serde::Serialize;
 
 pub const SCREENSHOT_EVENT: &str = "local-screenshot-saved";
 pub const EPISODE_WATCHED_EVENT: &str = "local-episode-watched";
+/// Break reminder / clock alert while a game runs (game_break_reminder.rs).
+pub const GAME_BREAK_EVENT: &str = "local-game-break-reminder";
 /// Raised app-wide when the toast page's Undo button is pressed.
 pub const TOAST_ACTION_EVENT: &str = "toast://action";
 
 const WINDOW_LABEL: &str = "screenshot-toast";
 const SCREENSHOT_VISIBLE_MS: u64 = 3_200;
 const EPISODE_WATCHED_VISIBLE_MS: u64 = 8_000;
+const GAME_BREAK_VISIBLE_MS: u64 = 8_000;
 
 #[derive(Clone, Serialize)]
 pub(super) struct ScreenshotToastPayload {
@@ -176,6 +179,13 @@ fn show_toast(app_handle: &tauri::AppHandle, pending: PendingToast, visible_ms: 
 pub(super) fn show_screenshot_toast(app_handle: &tauri::AppHandle, payload: ScreenshotToastPayload) {
     let Ok(payload) = serde_json::to_value(payload) else { return };
     show_toast(app_handle, PendingToast { event: SCREENSHOT_EVENT, payload, interactive: false }, SCREENSHOT_VISIBLE_MS);
+}
+
+/// "You've been playing <title> for 2 h — time for a short break?" or a
+/// clock alert: click-through, never focused, over fullscreen games too.
+pub fn show_game_break_toast(app_handle: &tauri::AppHandle, payload: impl Serialize) {
+    let Ok(payload) = serde_json::to_value(payload) else { return };
+    show_toast(app_handle, PendingToast { event: GAME_BREAK_EVENT, payload, interactive: false }, GAME_BREAK_VISIBLE_MS);
 }
 
 /// "<work> · <episode> marked as watched" with an Undo button; `token` comes

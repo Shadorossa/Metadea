@@ -1,5 +1,6 @@
 import type { MediaType, SearchPage, SearchFilters, SearchResult } from '../../types';
-import { isAdultContentEnabled, isUnifySeasonsEnabled } from '../../../storage/preferences';
+import { isUnifySeasonsEnabled } from '../../../storage/preferences';
+import { aniListAdultVariable } from '../../exclusion-filters';
 import { API_ENDPOINTS } from '../../../api/endpoints';
 import { graphqlPost } from '../../../api/client';
 import { isRecord, rowsOf, hasNextPageOf } from './json-guards';
@@ -61,7 +62,7 @@ export async function searchAniList(
   // Adult content is opt-in (Settings → Actividad). Off by default: filter to
   // isAdult: false. When enabled, omit the filter entirely (null) so both
   // adult and non-adult results are returned.
-  const isAdult = isAdultContentEnabled() ? null : false;
+  const isAdult = aniListAdultVariable();
   const wantsRelations = anilistType === 'ANIME' && isUnifySeasonsEnabled();
   const query = wantsRelations
     ? (format ? SEARCH_QUERY_WITH_FORMAT_ANIME : SEARCH_QUERY_ANIME)
@@ -82,7 +83,7 @@ export async function topRatedAniList(
   page = 1,
   filters?: SearchFilters,
 ): Promise<SearchPage> {
-  const isAdult = isAdultContentEnabled() ? null : false;
+  const isAdult = aniListAdultVariable();
   const wantsRelations = anilistType === 'ANIME' && isUnifySeasonsEnabled();
   const query = wantsRelations
     ? (format ? TOP_RATED_QUERY_WITH_FORMAT_ANIME : TOP_RATED_QUERY_ANIME)

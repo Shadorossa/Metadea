@@ -1,7 +1,8 @@
-//! emulator_configs.screenshots_dir: the folder the platform's emulator
-//! writes its screenshots to. '' means "detect it from the executable's
-//! layout" (emulators::default_screenshots_dirs); the Local detail panel
-//! lists that folder next to Steam's and Metadea's own captures.
+//! emulator_configs.screenshots_dir: an override of the folder the
+//! platform's emulator writes its screenshots to, for emulators the
+//! auto-detection table (emulators::default_screenshots_dirs) does not know.
+//! It is only a SOURCE: folders::emulator_captures moves every capture out of
+//! it into $PICTURES/Metadea/<game>/.
 
 use rusqlite::{Result as SqlResult, Transaction};
 

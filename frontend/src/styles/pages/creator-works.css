@@ -1,0 +1,482 @@
+/* Creator completion (company + author pages): the header meter reuses the
+   SagaCompletionBar .saga-completion rules (media/preview.css) and only
+   re-aligns them for a page header; the work state treatment below is
+   shared by .company-work-card and the author page's .media-relation-card
+   (components/shared/CreatorWorkState.tsx). */
+
+.saga-completion.creator-completion {
+  width: min(100%, 560px);
+  margin: 1rem 0 0;
+  padding: 0;
+  outline: none;
+}
+
+.saga-completion.creator-completion .saga-completion-tooltip {
+  left: 0;
+  transform: none;
+}
+
+/* ── Work states ─────────────────────────────────────────────────────────── */
+
+.creator-work {
+  position: relative;
+}
+
+.creator-work--completed {
+  border-color: var(--accent-border);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+
+.creator-work--missing {
+  opacity: 0.72;
+  transition: opacity var(--anim-fast);
+}
+
+.creator-work--missing:hover,
+.creator-work--missing:focus-visible {
+  opacity: 1;
+}
+
+.creator-work-tag {
+  position: absolute;
+  z-index: 3;
+  bottom: 0.4rem;
+  right: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}
+
+.creator-work-tag--completed {
+  background: var(--accent);
+  color: var(--bg-card);
+  font-size: 0.7rem;
+}
+
+.creator-work-tag--planned {
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.creator-work-progress {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.creator-work-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+/* Length unknown (a game): a steady half-strength bar says "started". */
+.creator-work-progress--unknown .creator-work-progress-fill {
+  opacity: 0.45;
+}
+
+/* ── Grid | Timeline switch (components/shared/CreatorViewSwitch.tsx) ───── */
+
+.creator-view-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.creator-view-divider {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
+.creator-view-tab {
+  padding: 0.15rem 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color var(--anim-fast);
+}
+
+.creator-view-tab:hover,
+.creator-view-tab:focus-visible {
+  color: var(--text-main);
+  outline: none;
+}
+
+.creator-view-tab.active {
+  color: var(--accent);
+}
+
+/* The author page's own filter row (it has no other filters). */
+.author-works-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.author-works-toolbar .creator-view-switch {
+  margin-left: auto;
+}
+
+.author-works-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+/* ── Career timeline (components/shared/CareerTimeline.tsx) ─────────────────
+   Geometry mirrors the constants at the top of CareerTimeline.tsx: 72×108
+   covers, 116px rows, columns absolutely placed on a fixed-width track. */
+
+.career-timeline {
+  --career-gold: var(--color-gold-soft, #fbbf24);
+  --career-gold-deep: var(--color-gold, #f59e0b);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.career-timeline-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 28px;
+}
+
+.career-timeline-summary {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.career-timeline-nav {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.career-timeline-arrow {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color var(--anim-fast), opacity var(--anim-fast);
+}
+
+.career-timeline-arrow:hover:not(:disabled),
+.career-timeline-arrow:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.career-timeline-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.career-timeline-scroller {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: var(--radius-md);
+  cursor: grab;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+  user-select: none;
+}
+
+.career-timeline-scroller:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.career-timeline-scroller--dragging {
+  cursor: grabbing;
+}
+
+.career-timeline-scroller--dragging .career-work {
+  pointer-events: none;
+}
+
+.career-timeline-track {
+  position: relative;
+}
+
+.career-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  margin-top: 6px;
+  background: var(--border-color);
+}
+
+.career-column {
+  position: absolute;
+}
+
+.career-column-stack {
+  position: relative;
+}
+
+.career-year-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -30px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.career-year-marker::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 1px;
+  height: 6px;
+  background: var(--text-dim);
+}
+
+.career-decade {
+  position: absolute;
+  width: 0;
+  border-left: 1px dashed var(--border-color);
+  pointer-events: none;
+}
+
+.career-decade-label {
+  position: absolute;
+  top: 0;
+  left: 6px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.career-work {
+  position: absolute;
+  width: 72px;
+  height: 108px;
+  display: block;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+  -webkit-user-drag: none;
+}
+
+.career-work-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  transition: border-color var(--anim-fast), transform var(--anim-fast);
+}
+
+.career-work-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.career-work-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.career-work-flag {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  z-index: 2;
+  font-size: 0.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.12rem 0.3rem;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--text-main);
+}
+
+.career-work .creator-work-tag {
+  bottom: 0.25rem;
+  right: 0.25rem;
+}
+
+.career-work:hover,
+.career-work:focus-visible {
+  z-index: 5;
+  outline: none;
+}
+
+.career-work:hover .career-work-cover,
+.career-work:focus-visible .career-work-cover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.career-work:focus-visible .career-work-cover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* The creator-work state classes land on the link; the ring belongs on the
+   cover, like the grid's. */
+.career-work.creator-work--completed {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.career-work.creator-work--completed .career-work-cover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-border);
+}
+
+/* Title + year above the cover on hover / focus. */
+.career-work-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 6;
+  transform: translate(-50%, 4px);
+  width: max-content;
+  max-width: 200px;
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--anim-fast), transform var(--anim-fast), visibility var(--anim-fast);
+}
+
+.career-work:hover .career-work-tip,
+.career-work:focus-visible .career-work-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.career-work-tip-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.career-work-tip-year {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+/* ── Masterpieces (score ≥ 8): gold halo + ★ badge ─────────────────────── */
+
+.career-work--masterpiece::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: calc(var(--radius-sm) + 3px);
+  background: radial-gradient(ellipse at center, var(--career-gold) 0%, transparent 72%);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--career-gold) 55%, transparent);
+  opacity: 0.75;
+  animation: career-halo 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.career-work--masterpiece .career-work-cover {
+  border-color: color-mix(in srgb, var(--career-gold) 70%, transparent);
+}
+
+.career-work-star {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--career-gold-deep);
+  color: #1a1204;
+  font-size: 0.65rem;
+  line-height: 1;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--career-gold) 70%, transparent);
+  pointer-events: none;
+}
+
+@keyframes career-halo {
+  0%, 100% {
+    opacity: 0.45;
+    box-shadow: 0 0 6px 1px color-mix(in srgb, var(--career-gold) 40%, transparent);
+  }
+  50% {
+    opacity: 0.9;
+    box-shadow: 0 0 16px 4px color-mix(in srgb, var(--career-gold) 65%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .career-work--masterpiece::before {
+    animation: none;
+    opacity: 0.75;
+  }
+
+  .career-work-cover,
+  .career-work-tip {
+    transition: none;
+  }
+}

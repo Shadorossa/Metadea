@@ -11,9 +11,12 @@ import { wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import { typeIconMap } from '../../lib/dom/icon-strings';
 import { toSmallCover } from '../../lib/media/small-cover';
+import { CoverImage } from '../shared/CoverImage';
 import { isAniListType, syncToAniList } from '../../lib/media/anilist-sync';
 import { isUnifySeasonsEnabled } from '../../lib/storage/preferences';
 import { unifyAnimeSeasons } from '../../lib/profile/library-grouping';
+import { effectiveProgress, nextCanonEpisode, skipsFiller } from '../../lib/anime/filler';
+import { getLoadedFillerInfo } from '../../lib/anime/filler-store';
 import {
   readHomeSnapshot,
   sameIds,
@@ -55,6 +58,13 @@ const groupsKey = (groups: TypeGroup[]) =>
 // (CurrentlyCardItem / TypeGroup live in lib/home/home-snapshot.ts, since
 // the snapshot persists them.)
 
+// A single entry's shown count: its own progress, or — when set to "Filler:
+// Skipped" — the canon episodes up to it (lib/anime/filler.ts). The filler
+// map is loaded together with the home data (library-data-cache).
+function canonProgress(entry: LibraryEntry): number {
+  return effectiveProgress(entry, getLoadedFillerInfo(entry.external_id));
+}
+
 export function CurrentlySection() {
   const t = getT().home;
   // client:only island: the snapshot can seed the very first render.
@@ -84,7 +94,7 @@ export function CurrentlySection() {
             linkId: entry.external_id,
             trackedEntry: entry,
             coverUrl: catalogMap.get(entry.external_id)?.cover_url ?? null,
-            displayProgress: entry.progress,
+            displayProgress: canonProgress(entry),
           })),
           ...seasonGroups.map(group => {
             const orderedMembers = [group.item, ...group.grouped];
@@ -107,7 +117,7 @@ export function CurrentlySection() {
           linkId: entry.external_id,
           trackedEntry: entry,
           coverUrl: catalogMap.get(entry.external_id)?.cover_url ?? null,
-          displayProgress: entry.progress,
+          displayProgress: canonProgress(entry),
         }));
       }
 
@@ -183,10 +193,17 @@ export function CurrentlySection() {
       const changed: LibraryEntry[] = [];
 
       if (!card.seasonMembers) {
-        const progress = Math.max(0, card.trackedEntry.progress + delta);
+        // Filler: Skipped → + jumps to the next canon episode; the stored
+        // (and synced) progress stays the real episode number.
+        const info = getLoadedFillerInfo(card.trackedEntry.external_id);
+        const current = card.trackedEntry.progress;
+        const stepped = delta > 0 && skipsFiller(card.trackedEntry, info)
+          ? nextCanonEpisode(current, info).episode ?? current + delta
+          : current + delta;
+        const progress = Math.max(0, stepped);
         if (progress === card.trackedEntry.progress) return prev;
         updatedTracked = { ...card.trackedEntry, progress };
-        newDisplayProgress = progress;
+        newDisplayProgress = canonProgress(updatedTracked);
         changed.push(updatedTracked);
       } else {
         // The general count moves by delta, then gets redistributed across
@@ -251,7 +268,8 @@ export function CurrentlySection() {
                   href={`/media?id=${encodeURIComponent(item.linkId)}`}
                 >
                   {item.coverUrl
-                    ? <img
+                    ? <CoverImage
+                        externalId={item.linkId}
                         className="home-currently-cover"
                         src={wrapAssetUrl(toSmallCover(item.coverUrl))}
                         alt=""

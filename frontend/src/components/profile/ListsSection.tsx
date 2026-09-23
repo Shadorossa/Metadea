@@ -10,6 +10,7 @@ import { getCachedUserInfo } from '../../lib/profile/user-info';
 import { beginGlobalLoading } from '../../lib/dom/global-loading';
 import { ListsGrid } from './lists/ListsGrid';
 import { ListDetail } from './lists/ListDetail';
+import { TierProfileSection } from '../tier/TierProfileSection';
 
 /* ── Top-level ──────────────────────────────────────────────────────────── */
 
@@ -107,6 +108,9 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
   const activeList = activeListKey ? customLists.find(l => l.key === activeListKey) : null;
 
   return (
+    <>
+    {/* Tier lists aren't in the synced public profile yet: owner view only. */}
+    {!readOnly && <TierProfileSection />}
     <div className="lists-page-layout">
       <ListsGrid
         customLists={customLists}
@@ -148,5 +152,6 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
         )}
       </div>
     </div>
+    </>
   );
 }

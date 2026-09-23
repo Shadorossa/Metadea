@@ -95,11 +95,6 @@ export async function searchCharactersDb(query: string): Promise<CharacterEntry[
   return tauriCmd<CharacterEntry[]>('search_characters_db', [], { query });
 }
 
-export async function setCharacterReaction(externalId: string, reaction: string | null): Promise<void> {
-  await tauriRun('set_character_reaction', { externalId, reaction });
-  invalidateCharactersCache();
-}
-
 export async function deleteCharacter(externalId: string): Promise<void> {
   await tauriRun('delete_character', { externalId });
   invalidateCharactersCache();

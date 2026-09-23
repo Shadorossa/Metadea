@@ -28,6 +28,9 @@ pub enum DeepLinkTarget {
     Media { external_id: String },
     /// `metadea://character/<id>` — a character page id, e.g. `a:12345`.
     Character { id: String },
+    /// `metadea://company/<id>` — a company page id, e.g. `igdb:1020` or
+    /// `anilist-studio:11`.
+    Company { id: String },
     /// `metadea://profile/<user>` — another user's public profile.
     Profile { user: String },
     /// `metadea://home`
@@ -72,6 +75,18 @@ fn is_prefixed_id(value: &str) -> bool {
     };
     !prefix.is_empty()
         && prefix.bytes().all(|b| b.is_ascii_lowercase())
+        && is_plain_id(id)
+}
+
+/// Company page ids: like `is_prefixed_id`, but the provider may carry one
+/// hyphenated qualifier (`anilist-studio:11`, `tmdb-network:213`).
+fn is_company_id(value: &str) -> bool {
+    let Some((prefix, id)) = value.split_once(':') else {
+        return false;
+    };
+    let parts: Vec<&str> = prefix.split('-').collect();
+    parts.len() <= 2
+        && parts.iter().all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_lowercase()))
         && is_plain_id(id)
 }
 
@@ -172,6 +187,14 @@ pub fn parse_deep_link(raw: &str) -> Result<DeepLinkTarget, DeepLinkError> {
             let id = id.ok_or(DeepLinkError::MissingId)?;
             if is_prefixed_id(id) {
                 Ok(DeepLinkTarget::Character { id: id.to_string() })
+            } else {
+                Err(DeepLinkError::InvalidId(id.to_string()))
+            }
+        }
+        "company" => {
+            let id = id.ok_or(DeepLinkError::MissingId)?;
+            if is_company_id(id) {
+                Ok(DeepLinkTarget::Company { id: id.to_string() })
             } else {
                 Err(DeepLinkError::InvalidId(id.to_string()))
             }
@@ -303,6 +326,32 @@ mod tests {
             parse_deep_link("metadea://profile/Shadorossa-01_x"),
             Ok(DeepLinkTarget::Profile { user: "Shadorossa-01_x".into() })
         );
+    }
+
+    #[test]
+    fn parses_company_ids_with_an_optional_qualifier() {
+        for id in ["igdb:1020", "anilist-studio:11", "tmdb-company:420", "tmdb-network:213", "comicvine:31"] {
+            assert_eq!(
+                parse_deep_link(&format!("metadea://company/{id}")),
+                Ok(DeepLinkTarget::Company { id: id.into() })
+            );
+        }
+        for raw in [
+            "metadea://company/anilist-studio-x:1",
+            "metadea://company/-studio:1",
+            "metadea://company/anilist-:1",
+            "metadea://company/Igdb:1",
+            "metadea://company/igdb:1/x",
+            "metadea://company/igdb",
+            "metadea://company/igdb:../x",
+        ] {
+            assert!(
+                matches!(parse_deep_link(raw), Err(DeepLinkError::InvalidId(_))),
+                "{raw} should be rejected, got {:?}",
+                parse_deep_link(raw)
+            );
+        }
+        assert_eq!(parse_deep_link("metadea://company"), Err(DeepLinkError::MissingId));
     }
 
     #[test]

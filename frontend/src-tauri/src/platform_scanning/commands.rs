@@ -73,6 +73,11 @@ pub async fn scan_all_games(
 
     let conn = local_db.conn.lock().str_err()?;
 
+    // Old per-disc / per-.bin entries fold into their multi-disc set first,
+    // so the links read below already reflect the merge.
+    let meta_root = app_handle.path().app_data_dir().ok().map(|dir| dir.join("metadata"));
+    crate::rom_disc_merge::merge_replaced_entries(&conn, meta_root.as_deref(), &all);
+
     // Populate external_id from local_game_links
     let links = crate::game_links::lookup_game_links(&conn);
     let mut seen: Vec<(String, String, String)> = Vec::with_capacity(all.len());

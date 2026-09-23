@@ -50,6 +50,8 @@ pub enum MpvEvent {
     Shutdown,
     StartFile,
     FileLoaded,
+    /// A seek (or the initial load) finished and its first frame is out.
+    PlaybackRestart,
     EndFile(EndFileReason),
     PropertyChange { name: String, value: PropertyValue },
     Other,

@@ -7,6 +7,7 @@ import { fetchOpenLibAuthorFullDetail, bookIdFromWorkKey, type OpenLibAuthorDeta
 import { mapExternalFormatToType } from '../media/mappers/mapper-utils';
 import { needsResync } from '../media/media-status';
 import { parseCSV } from '../shared/text/string-utils';
+import type { Translations } from '../../i18n/types';
 import {
   getAuthor,
   getAuthorWorks,
@@ -26,6 +27,10 @@ export interface AuthorWorkCard {
   title: string;
   cover?: string | null;
   role?: string | null;
+  /** Release year, when the provider gives one (career timeline). */
+  year?: number;
+  /** Provider average on the app's 0–10 scale (scoreGlobal). */
+  score?: number;
 }
 
 export interface AuthorRenderData {
@@ -40,9 +45,24 @@ export interface AuthorRenderData {
   works: AuthorWorkCard[];
 }
 
+/** Why the page couldn't load — the view turns it into `author_page.errors.*`. */
+export type AuthorLoadErrorReason = 'invalid_id' | 'tmdb_unavailable' | 'unsupported_provider' | 'not_found' | 'failed';
+
 export type AuthorPageLoadResult =
   | { status: 'ready'; data: AuthorRenderData }
-  | { status: 'error'; message: string };
+  | {
+    status: 'error';
+    reason: AuthorLoadErrorReason;
+    /** `unsupported_provider`: the provider prefix; `not_found`: the source
+     *  name (AniList/OpenLibrary); `failed`: the technical error, if any. */
+    detail?: string;
+  };
+
+class AuthorLoadError extends Error {
+  constructor(readonly reason: AuthorLoadErrorReason, readonly detail?: string) {
+    super(reason);
+  }
+}
 
 // Purely local reconstruction — used both when sync_state says a resync
 // isn't due yet, and as a graceful degrade if a due live fetch fails but a
@@ -106,7 +126,7 @@ function rolePriorityIndex(r: string): number {
 // same work. Grouped by media id so every role it found lands on one
 // card instead.
 export function buildAniListStaffWorks(staff: AniListStaffDetail): AuthorWorkCard[] {
-  const worksByMediaId = new Map<string, { url: string; title: string; cover: string | null; roles: string[] }>();
+  const worksByMediaId = new Map<string, { url: string; title: string; cover: string | null; roles: string[]; year?: number; score?: number }>();
   for (const edge of staff.staffMedia?.edges || []) {
     const role = pickDisplayRole(edge.staffRole || '');
     if (role === null) continue;
@@ -117,8 +137,17 @@ export function buildAniListStaffWorks(staff: AniListStaffDetail): AuthorWorkCar
     if (existing) {
       if (!existing.roles.includes(role)) existing.roles.push(role);
     } else {
-      const title = item.title.english || item.title.romaji || 'Unknown Title';
-      worksByMediaId.set(key, { url: `/media?id=${key}`, title, cover: item.coverImage?.medium || null, roles: [role] });
+      // Empty when AniList has no title at all — the view shows its
+      // translated "unknown title" placeholder.
+      const title = item.title.english || item.title.romaji || '';
+      worksByMediaId.set(key, {
+        url: `/media?id=${key}`,
+        title,
+        cover: item.coverImage?.medium || null,
+        roles: [role],
+        year: item.startDate?.year ?? undefined,
+        score: item.averageScore ? item.averageScore / 10 : undefined,
+      });
     }
   }
   return Array.from(worksByMediaId.values()).map(w => ({
@@ -126,6 +155,8 @@ export function buildAniListStaffWorks(staff: AniListStaffDetail): AuthorWorkCar
     title: w.title,
     cover: w.cover,
     role: [...w.roles].sort((a, b) => rolePriorityIndex(a) - rolePriorityIndex(b)).join(', '),
+    year: w.year,
+    score: w.score,
   }));
 }
 
@@ -142,6 +173,12 @@ export function aniListStaffToRenderData(staff: AniListStaffDetail): AuthorRende
   };
 }
 
+/** "September 21, 1937" → 1937; undefined when there's no 4-digit year. */
+export function yearOfPublishDate(date: string | undefined): number | undefined {
+  const match = date ? /\b(\d{4})\b/.exec(date) : null;
+  return match ? Number(match[1]) : undefined;
+}
+
 export function openLibraryAuthorToRenderData(author: OpenLibAuthorDetail): AuthorRenderData {
   // OpenLibrary uses -1 as a sentinel for "explicitly no photo" rather than
   // omitting the field (same gotcha as fetchOpenLibAuthor, openlibrary.ts)
@@ -154,6 +191,7 @@ export function openLibraryAuthorToRenderData(author: OpenLibAuthorDetail): Auth
     title: work.title,
     cover: work.covers?.length ? `https://covers.openlibrary.org/b/id/${work.covers[0]}-M.jpg` : null,
     role: 'AUTHOR',
+    year: yearOfPublishDate(work.first_publish_date),
   }));
   return {
     name: author.name,
@@ -167,9 +205,35 @@ export function openLibraryAuthorToRenderData(author: OpenLibAuthorDetail): Auth
   };
 }
 
+// Credits the app knows how to translate (author_page.roles); AniList's
+// other staff roles ("Chief Supervisor", ...) are provider text and show as-is.
+const ROLE_LABEL_KEYS: Record<string, keyof Translations['author_page']['roles']> = {
+  'author': 'author',
+  'original creator': 'original_creator',
+  'story & art': 'story_and_art',
+  'story': 'story',
+  'art': 'art',
+  'original story': 'original_story',
+  'director': 'director',
+};
+
+/** A work card's role line in the UI language: each comma-separated credit
+ *  that is a known role is translated, anything else is kept verbatim. */
+export function authorRoleLabel(role: string, labels: Translations['author_page']['roles']): string {
+  return role.split(',').map(part => part.trim()).filter(Boolean).map(part => {
+    const key = ROLE_LABEL_KEYS[part.toLowerCase()];
+    return key ? labels[key] : part;
+  }).join(', ');
+}
+
+/** `anime:21` out of the card's `/media?id=anime:21` link. */
+export function authorWorkExternalId(work: Pick<AuthorWorkCard, 'url'>): string {
+  return work.url.slice('/media?id='.length);
+}
+
 function toDbRelations(works: AuthorWorkCard[]): AuthorWorkRelation[] {
   return works.map(w => ({
-    media_external_id: w.url.slice('/media?id='.length),
+    media_external_id: authorWorkExternalId(w),
     role: w.role,
     title: w.title,
     cover: w.cover,
@@ -180,7 +244,7 @@ function toDbRelations(works: AuthorWorkCard[]): AuthorWorkRelation[] {
 // aliases/biography, previously never cached at all) and its works list.
 async function fetchLiveAniListStaff(externalId: string, idVal: string): Promise<AuthorRenderData | null> {
   const staffId = parseInt(idVal.slice(1), 10);
-  if (isNaN(staffId)) throw new Error('Invalid AniList staff numerical ID');
+  if (isNaN(staffId)) throw new AuthorLoadError('invalid_id');
 
   const staff = await fetchAniListStaffDetail(staffId);
   if (!staff) return null;
@@ -224,8 +288,8 @@ async function fetchLiveOpenLibraryAuthor(externalId: string, idVal: string): Pr
   return data;
 }
 
-export async function loadAuthorPageData(externalId: string, tmdbUnavailableMessage: string): Promise<AuthorPageLoadResult> {
-  if (!externalId) return { status: 'error', message: 'Invalid or missing Author ID parameter' };
+export async function loadAuthorPageData(externalId: string): Promise<AuthorPageLoadResult> {
+  if (!externalId) return { status: 'error', reason: 'invalid_id' };
 
   try {
     const parts = externalId.split(':');
@@ -240,10 +304,10 @@ export async function loadAuthorPageData(externalId: string, tmdbUnavailableMess
       // TMDB doesn't have its own person-detail page/fetch built yet —
       // fail clearly instead of falling through to the AniList branch
       // below with a mismatched id.
-      throw new Error(tmdbUnavailableMessage);
+      throw new AuthorLoadError('tmdb_unavailable');
     }
     if (provider !== 'person' && provider !== 'author') {
-      throw new Error(`Unsupported author provider: ${provider}`);
+      throw new AuthorLoadError('unsupported_provider', provider);
     }
 
     // sync_state gates the live fetch the same way the character page does —
@@ -271,7 +335,7 @@ export async function loadAuthorPageData(externalId: string, tmdbUnavailableMess
         markSyncFailed(externalId, 'Live fetch returned no data').catch(() => {});
         data = await localAuthorToRenderData(externalId, localAuthor);
       } else {
-        throw new Error(provider === 'person' ? 'AniList staff member not found' : 'OpenLibrary author details not found');
+        throw new AuthorLoadError('not_found', provider === 'person' ? 'AniList' : 'OpenLibrary');
       }
     } else {
       // Not due for a resync and a local copy already exists — skip the
@@ -282,7 +346,8 @@ export async function loadAuthorPageData(externalId: string, tmdbUnavailableMess
     return { status: 'ready', data };
   } catch (err: unknown) {
     console.error(err);
-    const message = err instanceof Error ? err.message : '';
-    return { status: 'error', message: message || 'Error communicating with external API' };
+    if (err instanceof AuthorLoadError) return { status: 'error', reason: err.reason, detail: err.detail };
+    const detail = err instanceof Error ? err.message : '';
+    return { status: 'error', reason: 'failed', detail: detail || undefined };
   }
 }

@@ -81,3 +81,19 @@ describe('isValidDeepLinkTarget', () => {
     expect(isValidDeepLinkTarget({ kind: 'character', id: 'ms:5256c8a2-ab_c' })).toBe(true);
   });
 });
+
+describe('company targets', () => {
+  it('opens the company page and accepts one hyphenated qualifier', () => {
+    expect(targetToPath({ kind: 'company', id: 'anilist-studio:11' })).toBe('/company?id=anilist-studio%3A11');
+    expect(buildDeepLink({ kind: 'company', id: 'igdb:1020' })).toBe('metadea://company/igdb:1020');
+    expect(buildShareUrl({ kind: 'company', id: 'tmdb-network:213' })).toBe(`${SHARE_URL_BASE}?to=company/tmdb-network:213`);
+    expect(parseDeepLinkTarget({ kind: 'company', id: 'tmdb-company:420' })).toEqual({ kind: 'company', id: 'tmdb-company:420' });
+  });
+
+  it('rejects what deep_link.rs rejects', () => {
+    for (const id of ['anilist-studio-x:1', '-studio:1', 'anilist-:1', 'Igdb:1', 'igdb:1/x', 'igdb', 'igdb:../x']) {
+      expect(isValidDeepLinkTarget({ kind: 'company', id })).toBe(false);
+    }
+    expect(parseDeepLinkTarget({ kind: 'company' })).toBeNull();
+  });
+});

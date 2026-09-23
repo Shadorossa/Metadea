@@ -1,0 +1,199 @@
+/* Overview > Monthly history > character view: the three character
+   reaction lists (CharacterReactionsPanel.tsx) as ●—●—● with counts, and
+   the panel each one opens (portrait grid reuses the .fav-card styles). */
+
+.char-reactions {
+  --char-reaction-like: var(--color-success-soft);
+  --char-reaction-interest: var(--accent);
+  --char-reaction-dislike: var(--color-error);
+  padding: 1.25rem 0.5rem 0.5rem;
+}
+
+.char-reactions-track {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.char-reactions-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  width: 84px;
+}
+
+/* Joins two nodes at their centre height (node is 48px tall). */
+.char-reactions-line {
+  flex: 1;
+  min-width: 24px;
+  height: 2px;
+  margin-top: 23px;
+  margin-inline: -18px;
+  background: linear-gradient(90deg, var(--border-color), color-mix(in srgb, var(--accent) 30%, var(--border-color)), var(--border-color));
+  border-radius: 1px;
+}
+
+.char-reactions-node {
+  --tone: var(--accent);
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--tone) 45%, var(--border-color));
+  background: color-mix(in srgb, var(--tone) 10%, var(--bg-card));
+  color: var(--tone);
+  cursor: pointer;
+  transition: transform var(--anim-fast) ease, background var(--anim-fast) ease, box-shadow var(--anim-fast) ease;
+}
+
+.char-reactions-node--like { --tone: var(--char-reaction-like); }
+.char-reactions-node--interest { --tone: var(--char-reaction-interest); }
+.char-reactions-node--dislike { --tone: var(--char-reaction-dislike); }
+
+.char-reactions-node:hover,
+.char-reactions-node.active {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--tone) 22%, var(--bg-card));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--tone) 25%, transparent);
+}
+
+.char-reactions-node:focus-visible {
+  outline: 2px solid var(--tone);
+  outline-offset: 3px;
+}
+
+.char-reactions-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  text-align: center;
+}
+
+.char-reactions-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.char-reactions-count {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Panel ──────────────────────────────────────────────────────────────── */
+
+.char-reactions-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.char-reactions-modal {
+  width: min(960px, 100%);
+  max-height: min(88vh, 960px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem 1.5rem;
+  box-sizing: border-box;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  outline: none;
+}
+
+.char-reactions-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.char-reactions-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 14%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
+}
+
+.char-reactions-modal-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.char-reactions-modal-close {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.char-reactions-modal-close:hover {
+  color: var(--text-main);
+  border-color: var(--accent);
+}
+
+.char-reactions-grid {
+  max-width: none;
+}
+
+.char-reaction-card.is-dragging {
+  opacity: 0.5;
+}
+
+.char-reaction-move-btn:hover {
+  color: var(--accent);
+}
+
+.char-reactions-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.char-reactions-empty p {
+  margin: 0;
+}
+
+.char-reactions-empty-hint {
+  margin-top: 0.35rem !important;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}

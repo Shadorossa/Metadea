@@ -400,3 +400,10 @@
 #char-stats-list .media-stat-item:last-child {
   border-bottom: none !important;
 }
+
+/* Spoiler shield banner (components/spoilers/SpoilerShield.tsx) under the
+   character's names. */
+.character-hero-right-col .spoiler-banner {
+  margin: 1rem 0 0;
+  text-align: left;
+}

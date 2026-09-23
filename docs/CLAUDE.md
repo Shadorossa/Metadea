@@ -52,7 +52,7 @@ Todo string que el usuario ve pasa por el sistema i18n (`frontend/src/i18n/`).
 |---|---|---|
 | `pages/` | Un `.astro` por ruta; estructura, sin lógica larga | kebab-case |
 | `layouts/` | `BaseLayout.astro` | PascalCase |
-| `components/<área>/` | Componentes React/Astro del área (`media`, `character`, `author`, `local`, `profile`, `search`, `settings`, `admin`, `home`, `reader`, `player`, `notifications`, `tier`, `social`) | `PascalCase.tsx` |
+| `components/<área>/` | Componentes React/Astro del área (`media`, `character`, `author`, `company`, `local`, `profile`, `search`, `settings`, `admin`, `home`, `reader`, `player`, `notifications`, `tier`, `social`, `bingo`, `spoilers`) | `PascalCase.tsx` |
 | `components/<área>/hooks/` | Hooks de esa área | `useX.ts` |
 | `components/<área>/mount/` | Montajes imperativos desde `.astro` (`createRoot`, wiring DOM de settings) | kebab-case |
 | `components/media/{media-page,media-editor,pr-editor}/` | Secciones, hooks y estado de cada componente grande | mezcla: `PascalCase.tsx` para vistas, kebab-case para lógica |
@@ -61,14 +61,15 @@ Todo string que el usuario ve pasa por el sistema i18n (`frontend/src/i18n/`).
 | `lib/tauri/` | Capa IPC: un módulo por dominio de comandos Rust (`bridge.ts` es el `invoke`) | kebab-case |
 | `lib/errors/` | `error-codes.ts` (espejo de `src-tauri/src/error_codes.rs`) y `formatAppError` — traduce los códigos `E_*` que devuelven los comandos Rust | kebab-case |
 | `lib/player/` | Reproductor integrado (libmpv): cola, reglas de progreso, keymap, estado del modal, presencia | kebab-case |
-| `lib/deep-link/` | Rutas `metadea://` (`deep-link-routes`), listener y copia de enlaces | kebab-case |
+| `lib/deep-link/` | Rutas `metadea://` (`deep-link-routes`), listener, copia de enlaces y enlaces con vista previa (`share-link` + `share-link-codec`, códec duplicado en el repo `metadea-web` con `share-link-fixtures.json` como tabla de paridad) | kebab-case |
 | `lib/media/` | Dominio de obras; subcarpetas `mappers/`, `saga/`, `editions/`, `episodes/`, `themes/`, `editor/` | kebab-case |
 | `lib/local/` | Biblioteca local: `folder-match`, `season-resolve`, `playback-service`, `discord-presence`, `platforms` | kebab-case |
-| `lib/character/`, `lib/author/`, `lib/profile/`, `lib/github/`, `lib/search/`, `lib/anilist/`, `lib/social/`, `lib/reader/` | Un dominio por carpeta; un provider grande se parte en carpeta (`lib/search/providers/anilist/`: `queries`, `types`, `mappers`, `client`, `detail`, `search`, con `index.ts` como única superficie pública) | kebab-case |
+| `lib/character/`, `lib/author/`, `lib/company/`, `lib/profile/`, `lib/bingo/`, `lib/github/`, `lib/search/`, `lib/anilist/`, `lib/social/`, `lib/reader/`, `lib/anime/` | Un dominio por carpeta (`lib/anime/filler*.ts`: relleno de AnimeFillerList, totales/progreso efectivos, `nextCanonEpisode`); un provider grande se parte en carpeta (`lib/search/providers/anilist/`: `queries`, `types`, `mappers`, `client`, `detail`, `search`, con `index.ts` como única superficie pública) | kebab-case |
 | `lib/api/` | HTTP, endpoints, rate limiter, `urls.ts` | kebab-case |
 | `lib/storage/` | localStorage/IndexedDB: `storage-keys`, `preferences`, `images` | kebab-case |
 | `lib/dom/` | Helpers de DOM sin React: `toast`, `modal-utils`, `global-loading`, `icon-strings` | kebab-case |
 | `lib/notifications/` | Notificaciones del SO | kebab-case |
+| `lib/spoilers/` | Escudo antispoilers: franquicias protegidas (biblioteca + relaciones de la caché de visita), comparación de progreso, líneas de stats sensibles, late debuts, ajustes y reveals (sesión / franquicia en localStorage); la UI común en `components/spoilers/` | kebab-case |
 | `lib/shared/{text,collections,state}/` | Utilidades puras por familia | kebab-case |
 | `lib/i18n-dom/` | Re-traducción en cliente de los marcadores `data-i18n*` y el script inline de `<head>` que resuelve el idioma antes de pintar (lo monta `components/i18n/LocaleBootstrap.astro`) | kebab-case |
 | `i18n/` | `en.ts` es la fuente de verdad (idioma de referencia; fallback en runtime); `runtime.ts` (`getT`) para cliente, `index.ts` para `.astro` | — |
@@ -84,9 +85,13 @@ Reglas: `lib/` no importa React ni nada de `components/`; nada de nombres genér
 | `acl_coverage.rs` | Test: cada comando de `generate_handler!` está en `permissions/*.toml` y viceversa |
 | `db.rs`, `migrations/` | Apertura de SQLite, vistas, índices; migraciones por versión |
 | `player/` | Motor libmpv (FFI, event loop, ventana de vídeo, comandos `player_*`) |
-| `folders/` | Diálogos, rutas, lanzamiento de juegos/emuladores, VLC, capturas, toast de episodio |
-| `platform_scanning/`, `igdb/` | Escaneo de Steam/Epic/GOG/EA/Xbox/ROMs; cliente y caché de IGDB |
+| `folders/` | Diálogos, rutas, lanzamiento de juegos/emuladores, capturas, toast de episodio |
+| `platform_scanning/`, `igdb/` | Escaneo de Steam/Epic/GOG/EA/Xbox/ROMs (juegos multidisco y `.m3u` en `multi_disc.rs`; fusión de entradas antiguas por disco en `rom_disc_merge.rs`); cliente y caché de IGDB |
+| `game_pause/` | Menú de pausa con mando (Select/Back + Start 1,5 s): XInput, suspender/reanudar el emulador de la sesión (`game_sessions.rs`), Continuar / Guardar estado / Salir |
+| `saves/` | Gestor de partidas de emuladores: carpeta central, tabla por emulador (redirect RetroArch / mirror), historial, sync con Drive (ver `docs/SAVES.md`) |
 | `deep_link.rs` | Esquema `metadea://` (validación de rutas, foco de ventana) |
+| `company_catalog/` | Páginas de compañía (`/company?id=igdb:…`, `anilist-studio:…`, `tmdb-company:…`, `tmdb-network:…`, `comicvine:…`): IGDB/AniList/TMDB con las claves del usuario, caché `company_cache` (TTL 7 días) y fallback al catálogo local (`media_by_company`) |
+| `anime_filler/` | Relleno de anime desde AnimeFillerList.com (HTML, sin API): índice semanal, episodios por serie (en emisión: semanal; terminada: solo manual), 1 petición/s, backoff de un día ante 403/429; tablas `filler_*` |
 | `<dominio>.rs` | Un archivo por dominio de comandos (`user_library`, `media_catalog`, `characters`, `backup`, …) |
 
 Reglas: **todo `#[tauri::command]` nuevo se añade a `permissions/*.toml`** (lo exige
@@ -98,6 +103,7 @@ nunca texto** — el frontend lo traduce con `formatAppError` (ver `DEVELOPMENT_
 | Carpeta | Qué contiene |
 |---|---|
 | `site/` | Sitio estático sin build (GitHub Pages): `open/` redirige `https://…/open/?to=…` a `metadea://` para enlaces compartidos |
+| (repo `metadea-web`) | Worker `metadea` (`https://metadea.metadea.workers.dev`): API, imágenes y la ruta `/<t>/<id>/<slug>/<packed>` de enlaces compartidos con vista previa Open Graph (`src/routes/share.ts`); `open/` queda como fallback |
 | `docs/` | Este mapa y `DEVELOPMENT_RULES.md` |
 | `catalog/`, `scripts/`, `workers/` | Propuestas del catálogo comunitario, scripts de build de la base de datos y workers |
 

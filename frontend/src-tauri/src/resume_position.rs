@@ -1,8 +1,7 @@
-// Where VLC's own playback position was last seen for an episode that
-// hasn't been marked watched yet — lets "Reproducir" relaunch VLC with
-// --start-time instead of always starting an episode over from 0. See
-// db.rs migration 43's own comment for why this needs to be a persisted
-// table rather than in-memory state (vlc-session.ts on the frontend).
+// Where the built-in player's position was last seen for an episode that
+// hasn't been marked watched yet — lets "Reproducir" reopen it at that
+// second instead of always starting an episode over from 0. Persisted (see
+// migration 43) so it survives closing the app, not just the player.
 use crate::db::ToStringErr;
 use rusqlite::OptionalExtension;
 

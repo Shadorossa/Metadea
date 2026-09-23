@@ -12,6 +12,8 @@ export interface PlayerTrack {
   lang: string | null;
   selected: boolean;
   is_default: boolean;
+  // mpv `forced` flag (signs / foreign-parts-only subtitles); absent from older payloads.
+  forced?: boolean;
   codec: string | null;
   external: boolean;
 }
@@ -47,6 +49,9 @@ export interface PlayerSessionInfo {
   // controls window can resolve skip segments for what is playing.
   external_id: string | null;
   episode_numbers: number[];
+  // Queue episodes that are filler when the entry is "Filler: Skipped"
+  // (lib/player/filler-next.ts); empty otherwise.
+  filler_episodes?: number[];
 }
 
 export interface PlayerTrackChanged {

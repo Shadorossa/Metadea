@@ -1,0 +1,121 @@
+/* Tier list cards and mini previews — /tier index and the profile's Lists
+   tab (components/tier/TierListPreview.tsx, TierProfileSection.tsx). */
+
+.tier-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  overflow: hidden;
+  transition: border-color var(--anim-fast), transform var(--anim-fast);
+}
+
+.tier-card:hover,
+.tier-card:focus-within { border-color: var(--accent); }
+.tier-card--busy { opacity: 0.6; pointer-events: none; }
+
+.tier-card-link { display: block; color: inherit; text-decoration: none; }
+.tier-card-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.tier-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem 0.7rem;
+}
+
+.tier-card-title {
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tier-card--compact .tier-card-title { display: block; padding: 0.45rem 0.6rem; font-size: 0.8rem; }
+
+.tier-card-meta { font-size: 0.72rem; color: var(--text-dim); }
+
+.tier-card-rename {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.tier-badge {
+  align-self: flex-start;
+  margin-top: 0.2rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.tier-card-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  opacity: 0;
+  transition: opacity var(--anim-fast);
+}
+
+.tier-card:hover .tier-card-actions,
+.tier-card:focus-within .tier-card-actions { opacity: 1; }
+
+@media (hover: none) {
+  .tier-card-actions { opacity: 1; }
+}
+
+.tier-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 132px;
+  padding: 1px;
+  background: var(--bg-base);
+}
+
+.tier-preview-row { display: flex; height: 32px; background: var(--bg-primary); }
+
+.tier-preview-label {
+  flex: 0 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tier-preview-items { display: flex; overflow: hidden; }
+.tier-preview-img { flex: 0 0 22px; width: 22px; height: 32px; display: block; }
+.tier-preview-img--empty { background: var(--bg-elevated); }
+
+.tier-profile { margin-bottom: 1.25rem; }
+.tier-profile-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.6rem; }
+.tier-profile-title { margin: 0; font-size: 0.95rem; color: var(--text-main); }
+
+.tier-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { formatClock, formatClockPair, formatSignedSeconds, formatSpeed } from './format-time';
 import { formatCaptureTimecode, isPlayerError, playerErrorCode } from './player-status';
-import { parsePlaybackEngine, parseControlsMode } from './player-settings';
+import { parseControlsMode } from './player-settings';
 
 describe('formatClock', () => {
   it('formats minutes and hours', () => {
@@ -42,11 +42,7 @@ describe('small formatters', () => {
     expect(playerErrorCode(new Error('x'))).toBe('unknown');
   });
 
-  it('parses the engine setting with a safe default', () => {
-    expect(parsePlaybackEngine('vlc')).toBe('vlc');
-    expect(parsePlaybackEngine('internal')).toBe('internal');
-    expect(parsePlaybackEngine(null)).toBe('internal');
-    expect(parsePlaybackEngine('garbage')).toBe('internal');
+  it('parses the controls mode setting with a safe default', () => {
     expect(parseControlsMode('docked')).toBe('docked');
     expect(parseControlsMode(undefined)).toBe('overlay');
   });

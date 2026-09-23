@@ -372,6 +372,32 @@
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+/* Big Picture entry (BigPictureButton) — sits right after the name search;
+   the negative margin pulls it closer than the tab bar's own 2rem gap. */
+.local-bigpicture-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: -1.25rem;
+  padding: 0.42rem 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color var(--anim-fast) var(--anim-ease), color var(--anim-fast) var(--anim-ease);
+}
+
+.local-bigpicture-btn:hover,
+.local-bigpicture-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .local-tab {
   position: relative;
   display: inline-grid;

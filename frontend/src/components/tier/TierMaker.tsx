@@ -1,334 +1,225 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  getTierList, updateTierListTiers, addItemToTierList,
-  setTierListPlacements, searchCatalog,
-} from '../../lib/tauri';
-import type { TierDef, TierListItemFull } from '../../lib/tauri';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { getT } from '../../i18n/runtime';
+import { useTierEditor } from './hooks/useTierEditor';
+import { useTierLibraryData } from './hooks/useTierLibraryData';
+import { useShortcuts } from '../shared/hooks/useShortcuts';
+import { TierBoardView, type BoardUpdate } from './TierBoardView';
+import { TierToolbar } from './TierToolbar';
+import { TierPoolFiller } from './TierPoolFiller';
+import { MediaSearchPopup } from '../search-popups/MediaSearchPopup';
+import { CharacterSearchPopup } from '../search-popups/CharacterSearchPopup';
+import {
+  POOL_ID, addToPool, boardItemIds, moveItems, removeItems, resetBoard, sendToPool, type TierItemMeta,
+} from '../../lib/tier/tier-board';
+import { tierCanRedo, tierCanUndo, TIER_DESCRIPTION_MAX_LENGTH, TIER_NAME_MAX_LENGTH } from '../../lib/tier/tier-editor-state';
+import type { TierCandidate } from '../../lib/tier/tier-candidates';
+import { tierShareData } from '../../lib/tier/tier-share';
+import { readShareOwner, tierListImageFileName, type ShareImageInput } from '../../lib/share-image';
+import { wrapAssetUrl } from '../../lib/tauri/bridge';
+import { selectDisplayCover, textlessCoverStore, textlessOf, TEXTLESS_DISABLED } from '../../lib/media/textless-covers';
+import { averageScoreSuffix, formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
+import { showToast } from '../../lib/dom/toast';
+import type { SearchResult } from '../../lib/search/types';
 
-interface Entry {
-  external_id: string;
-  title_main:  string | null;
-  cover_url:   string | null;
-  media_type:  string | null;
-}
+// /tier/new?id=… — the TierMaker-style editor. Board logic is pure
+// (lib/tier/tier-board.ts); this component wires the reducer (undo/redo,
+// autosave via useTierEditor), selection, the add-items dialog and the
+// share image (lib/share-image via ShareImageButton in the toolbar).
 
-interface Tier extends TierDef {
-  items: Entry[];
-}
-
-interface State {
-  id:    string | null;
-  name:  string;
-  type:  string;
-  tiers: Tier[];
-  pool:  Entry[];
-}
-
-function getTierListId(): string | null {
+function readListId(): string | null {
   if (typeof window === 'undefined') return null;
   return new URLSearchParams(window.location.search).get('id');
 }
 
-function toEntry(item: TierListItemFull): Entry {
-  return {
-    external_id: item.external_id,
-    title_main:  item.title_main,
-    cover_url:   item.cover_url,
-    media_type:  item.media_type,
-  };
-}
-
-function CoverCard({ entry, faded, small, draggable, onDragStart, onDragEnd }: {
-  entry: Entry; faded?: boolean; small?: boolean;
-  draggable?: boolean;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
-}) {
-  const name = entry.title_main ?? entry.external_id;
-  return (
-    <div
-      className={`tier-card${small ? ' tier-card--sm' : ''}${faded ? ' tier-card--faded' : ''}`}
-      title={name}
-      draggable={draggable}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-    >
-      {entry.cover_url
-        ? <img src={entry.cover_url} alt={name} draggable={false} />
-        : <div className="tier-card-placeholder"><span>{name.slice(0, 2).toUpperCase()}</span></div>
-      }
-    </div>
-  );
+/** Cover for the share image: the textless version when that preference resolved
+ *  one, and local character images as asset URLs. */
+function exportCover(id: string, cover: string): string {
+  const snapshot = textlessCoverStore.snapshot(id);
+  if (snapshot !== TEXTLESS_DISABLED) {
+    const display = selectDisplayCover({ original: cover, manual: textlessCoverStore.manualCover(id), textless: textlessOf(snapshot), enabled: true });
+    if (display.src) return display.src;
+  }
+  return wrapAssetUrl(cover);
 }
 
 export default function TierMaker() {
-  const t = getT().tier;
-  const tierListId = getTierListId();
+  const tAll = getT();
+  const t = tAll.tier;
+  const [listId] = useState(readListId);
+  const editor = useTierEditor(listId);
+  const { state, dispatch, meta, addMeta, settings, setSettings, listType } = editor;
+  const board = state.draft.board;
+  const library = useTierLibraryData(editor.status === 'ready');
 
-  const [state, setState] = useState<State>({ id: null, name: '', type: 'works', tiers: [], pool: [] });
-  const [loading, setLoading]       = useState(true);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<string | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerQuery, setPickerQuery] = useState('');
-  const [pickerResults, setPickerResults] = useState<Entry[]>([]);
+  const [selection, setSelection] = useState<Set<string>>(() => new Set());
+  const [fillerOpen, setFillerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  // Doesn't need re-renders — read by commitDrop on drop.
-  const dragSrc = useRef<{ itemId: string; fromTier: string | 'pool' } | null>(null);
+  const onBoard: BoardUpdate = useCallback((update, coalesceKey) => {
+    dispatch({ type: 'board', update, coalesceKey, at: coalesceKey ? Date.now() : undefined });
+  }, [dispatch]);
 
-  useEffect(() => {
-    if (!tierListId) { setLoading(false); return; }
-    getTierList(tierListId)
-      .then(detail => {
-        if (!detail) { setLoading(false); return; }
-        const tiers: Tier[] = detail.tiers.map(td => ({
-          ...td,
-          items: detail.items.filter(i => i.tier_key === td.id).map(toEntry),
-        }));
-        const pool = detail.items.filter(i => i.tier_key === 'pool').map(toEntry);
-        setState({ id: detail.id, name: detail.name, type: detail.list_type, tiers, pool });
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [tierListId]);
+  const onItems = useMemo(() => new Set(boardItemIds(board)), [board]);
+  // A selection only means ids still on the board (undo can remove them).
+  const liveSelection = useMemo(() => new Set([...selection].filter(id => onItems.has(id))), [selection, onItems]);
 
-  // Persist the current tier/pool assignment for every item
-  const persistPlacements = useCallback((next: State) => {
-    if (!next.id) return;
-    const placements = [
-      ...next.pool.map((e, pos) => ({ external_id: e.external_id, tier_key: 'pool', position: pos })),
-      ...next.tiers.flatMap(t => t.items.map((e, pos) => ({ external_id: e.external_id, tier_key: t.id, position: pos }))),
-    ];
-    setTierListPlacements(next.id, placements).catch(() => {});
-  }, []);
-
-  const commitDrop = useCallback((toId: string) => {
-    const src = dragSrc.current;
-    if (!src || src.fromTier === toId) return;
-    const { itemId, fromTier } = src;
-
-    setState(prev => {
-      const entry: Entry | null =
-        fromTier === 'pool'
-          ? prev.pool.find(e => e.external_id === itemId) ?? null
-          : prev.tiers.find(t => t.id === fromTier)?.items.find(e => e.external_id === itemId) ?? null;
-      if (!entry) return prev;
-
-      const newTiers = prev.tiers.map(t => {
-        let items = [...t.items];
-        if (t.id === fromTier) items = items.filter(e => e.external_id !== itemId);
-        if (t.id === toId)     items = [...items, entry!];
-        return { ...t, items };
-      });
-      let newPool = [...prev.pool];
-      if (fromTier === 'pool') newPool = newPool.filter(e => e.external_id !== itemId);
-      if (toId === 'pool')     newPool = [...newPool, entry];
-
-      const next = { ...prev, tiers: newTiers, pool: newPool };
-      persistPlacements(next);
-      return next;
-    });
-  }, [persistPlacements]);
-
-  // Native HTML5 drag & drop — the browser/OS renders the drag ghost that
-  // tracks the cursor, entirely outside our own render loop, so it can't
-  // stutter. Unlike the old pointer-based version, there's no ghost element
-  // to position and no document.elementFromPoint() call (itself a
-  // layout-forcing call) on every pointer move — dragover already tells us
-  // exactly which tier/pool container the cursor is over, via ordinary
-  // event handlers on each drop zone.
-  const handleDragStart = (e: React.DragEvent, entry: Entry, fromTier: string | 'pool') => {
-    dragSrc.current = { itemId: entry.external_id, fromTier };
-    if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', entry.external_id);
+  const ratingLabels = useMemo(() => {
+    const system = getActiveRatingSystem();
+    const labels = new Map<string, string>();
+    for (const entry of library.entries) {
+      if (entry.rating === null || entry.rating <= 0 || !onItems.has(entry.external_id)) continue;
+      labels.set(entry.external_id, t.your_rating.replace('{rating}', formatAverageScore(entry.rating, system) + averageScoreSuffix(system)));
     }
-    setDraggingId(entry.external_id);
-  };
+    return labels;
+  }, [library.entries, onItems, t.your_rating]);
 
-  // Fires whether the drag ended on a valid drop target or not (e.g.
-  // released outside any tier/pool) — always cleans up either way, same as
-  // it did on pointerup before.
-  const handleDragEnd = () => {
-    dragSrc.current = null;
-    setDraggingId(null);
-    setDropTarget(null);
-  };
+  const addCandidates = useCallback((candidates: ReadonlyArray<Pick<TierCandidate, 'id' | 'title' | 'cover' | 'type'>>) => {
+    const fresh = candidates.filter(c => !onItems.has(c.id));
+    if (fresh.length === 0) { showToast(t.nothing_new); return; }
+    addMeta(fresh.map(c => [c.id, { title: c.title, cover: c.cover, type: c.type } satisfies TierItemMeta]));
+    onBoard(b => addToPool(b, fresh.map(c => c.id)).board);
+    showToast(t.added_toast.replace('{count}', String(fresh.length)), 'success');
+  }, [onItems, addMeta, onBoard, t]);
 
-  const handleDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault(); // required for this to be a valid drop target
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    if (dropTarget !== targetId) setDropTarget(targetId);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    commitDrop(targetId);
-  };
-
-  const onLabelChange = (tierId: string, v: string) =>
-    setState(prev => {
-      const next = { ...prev, tiers: prev.tiers.map(t => t.id === tierId ? { ...t, label: v } : t) };
-      if (next.id) updateTierListTiers(next.id, next.tiers.map(({ id, label, color }) => ({ id, label, color }))).catch(() => {});
-      return next;
+  // The multi-select search popup confirms several results in one loop:
+  // batch them into one pool addition (and one toast).
+  const pendingSearch = useRef<Array<Pick<TierCandidate, 'id' | 'title' | 'cover' | 'type'>>>([]);
+  const addSearchResult = (result: SearchResult) => {
+    pendingSearch.current.push({ id: result.externalId, title: result.titleMain || null, cover: result.coverUrl, type: result.type });
+    if (pendingSearch.current.length > 1) return;
+    queueMicrotask(() => {
+      const batch = pendingSearch.current;
+      pendingSearch.current = [];
+      addCandidates(batch);
     });
-
-  const onColorChange = (tierId: string, v: string) =>
-    setState(prev => {
-      const next = { ...prev, tiers: prev.tiers.map(t => t.id === tierId ? { ...t, color: v } : t) };
-      if (next.id) updateTierListTiers(next.id, next.tiers.map(({ id, label, color }) => ({ id, label, color }))).catch(() => {});
-      return next;
-    });
-
-  // ── Picker (add works) ────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (!showPicker || state.type === 'characters') return;
-    const q = pickerQuery.trim();
-    if (!q) { setPickerResults([]); return; }
-    let cancelled = false;
-    searchCatalog(q).then(results => {
-      if (cancelled) return;
-      const existingIds = new Set([...state.pool, ...state.tiers.flatMap(t => t.items)].map(e => e.external_id));
-      setPickerResults(
-        results
-          .filter(r => !existingIds.has(r.external_id))
-          .slice(0, 30)
-          .map(r => ({ external_id: r.external_id, title_main: r.title_main ?? null, cover_url: r.cover_url ?? null, media_type: r.type }))
-      );
-    }).catch(() => setPickerResults([]));
-    return () => { cancelled = true; };
-  }, [showPicker, pickerQuery, state.type, state.pool, state.tiers]);
-
-  const addWork = async (entry: Entry) => {
-    if (!state.id) return;
-    await addItemToTierList(state.id, entry.external_id).catch(() => {});
-    setState(prev => ({ ...prev, pool: [...prev.pool, entry] }));
-    setPickerResults(prev => prev.filter(r => r.external_id !== entry.external_id));
   };
 
-  if (loading) return <div className="tier-loading">…</div>;
+  useShortcuts('page', [
+    { id: 'tier.undo', keys: 'mod+z', description: 'shortcuts.editor_undo', when: () => tierCanUndo(state), handler: () => dispatch({ type: 'undo' }) },
+    { id: 'tier.redo', keys: ['mod+y', 'mod+shift+z'], description: 'shortcuts.editor_redo', when: () => tierCanRedo(state), handler: () => dispatch({ type: 'redo' }) },
+  ], { enabled: editor.status === 'ready' });
 
-  if (!tierListId || !state.id) {
+  const { draft } = state;
+  const buildShareImage = useCallback(async (): Promise<ShareImageInput> => ({
+    kind: 'tierList',
+    owner: readShareOwner(),
+    data: tierShareData(draft.board, meta, {
+      title: draft.name.trim() || t.share_untitled,
+      description: draft.description,
+      resolveCover: exportCover,
+    }),
+  }), [draft, meta, t.share_untitled]);
+
+  if (editor.status === 'loading') return <div className="tier-state">{t.loading}</div>;
+  if (editor.status !== 'ready') {
     return (
-      <div className="tier-loading">
-        <a href="/tier" className="tier-maker-back">{t.back}</a>
+      <div className="tier-state">
+        <p>{editor.status === 'missing' ? t.not_found : t.load_failed}</p>
+        <a href="/tier" className="tier-btn">{t.back}</a>
       </div>
     );
   }
 
-  const { tiers, pool } = state;
+  const selectedIds = [...liveSelection];
+  const clearSelection = () => setSelection(new Set());
+  const hasRanked = board.rows.some(r => r.items.length > 0);
 
   return (
-    <div className="tier-maker-layout">
-      <div className="tier-maker-header">
-        <a href="/tier" className="tier-maker-back">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-          {t.back}
-        </a>
-        <span className="tier-maker-page-title">{state.name}</span>
-        <button type="button" className="tier-maker-add-btn" onClick={() => setShowPicker(true)}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          {t.add_works}
-        </button>
-      </div>
+    <div className="tier-editor">
+      <a href="/tier" className="tier-back">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+        {t.back}
+      </a>
 
-      <div className="tier-maker-body">
-        {/* Tiers */}
-        <div className="tier-rows-wrap">
-          <div className="tier-rows">
-            {tiers.map(tier => (
-              <div
-                key={tier.id}
-                className={`tier-row${dropTarget === tier.id ? ' tier-row--over' : ''}`}
-                onDragOver={e => handleDragOver(e, tier.id)}
-                onDrop={e => handleDrop(e, tier.id)}
-              >
-                <div className="tier-label" style={{ background: tier.color }}>
-                  <input className="tier-label-input" value={tier.label} maxLength={4}
-                    onChange={e => onLabelChange(tier.id, e.target.value)} />
-                  <input type="color" className="tier-color-input" value={tier.color}
-                    onChange={e => onColorChange(tier.id, e.target.value)} />
-                </div>
-                <div className="tier-items">
-                  {tier.items.map(entry => (
-                    <CoverCard
-                      key={entry.external_id}
-                      entry={entry}
-                      faded={draggingId === entry.external_id}
-                      draggable
-                      onDragStart={e => handleDragStart(e, entry, tier.id)}
-                      onDragEnd={handleDragEnd}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+      <header className="tier-editor-head">
+        <input
+          className="tier-title-input"
+          value={state.draft.name}
+          maxLength={TIER_NAME_MAX_LENGTH}
+          placeholder={t.title_ph}
+          aria-label={t.title_ph}
+          onChange={e => dispatch({ type: 'text', field: 'name', value: e.target.value, at: Date.now() })}
+        />
+        <textarea
+          className="tier-description-input"
+          value={state.draft.description}
+          maxLength={TIER_DESCRIPTION_MAX_LENGTH}
+          rows={1}
+          placeholder={t.description_ph}
+          aria-label={t.description_ph}
+          onChange={e => dispatch({ type: 'text', field: 'description', value: e.target.value, at: Date.now() })}
+        />
+      </header>
 
-          {/* Pool */}
-          <div
-            className={`tier-pool${dropTarget === 'pool' ? ' tier-pool--over' : ''}`}
-            onDragOver={e => handleDragOver(e, 'pool')}
-            onDrop={e => handleDrop(e, 'pool')}
+      <TierToolbar
+        t={t}
+        canUndo={tierCanUndo(state)}
+        canRedo={tierCanRedo(state)}
+        settings={settings}
+        isPublic={state.draft.isPublic}
+        shareLabel={tAll.share_image.button_label}
+        shareFileName={tierListImageFileName(state.draft.name.trim() || t.share_untitled)}
+        buildShareImage={buildShareImage}
+        saveStatus={editor.saveStatus}
+        saveError={editor.saveError}
+        hasRanked={hasRanked}
+        onAddItems={() => setFillerOpen(true)}
+        onUndo={() => dispatch({ type: 'undo' })}
+        onRedo={() => dispatch({ type: 'redo' })}
+        onSettings={setSettings}
+        onPublic={value => dispatch({ type: 'public', value })}
+        onReset={() => { if (confirm(t.reset_confirm)) onBoard(resetBoard); }}
+        onRetrySave={() => { void editor.saveNow(); }}
+      />
+
+      {selectedIds.length > 0 ? (
+        <div className="tier-selection-bar" role="region" aria-label={t.selection_count.replace('{count}', String(selectedIds.length))}>
+          <span className="tier-selection-count">{t.selection_count.replace('{count}', String(selectedIds.length))}</span>
+          <select
+            aria-label={t.move_selection_to}
+            value=""
+            onChange={e => { const to = e.target.value; if (to) { onBoard(b => moveItems(b, selectedIds, to)); clearSelection(); } }}
           >
-            <p className="tier-pool-label">
-              {pool.length === 0 ? t.pool_empty : t.pool_unclassified.replace('{count}', String(pool.length))}
-            </p>
-            <div className="tier-pool-grid">
-              {pool.map(entry => (
-                <CoverCard
-                  key={entry.external_id}
-                  entry={entry}
-                  faded={draggingId === entry.external_id}
-                  draggable
-                  onDragStart={e => handleDragStart(e, entry, 'pool')}
-                  onDragEnd={handleDragEnd}
-                />
-              ))}
-            </div>
-          </div>
+            <option value="">{t.move_selection_to}</option>
+            {board.rows.map((row, i) => <option key={row.id} value={row.id}>{row.label || String(i + 1)}</option>)}
+            <option value={POOL_ID}>{t.pool_title}</option>
+          </select>
+          <button type="button" className="tier-btn" onClick={() => { onBoard(b => sendToPool(b, selectedIds)); clearSelection(); }}>{t.send_to_pool}</button>
+          <button type="button" className="tier-btn tier-btn--danger" onClick={() => { onBoard(b => removeItems(b, selectedIds)); clearSelection(); }}>{t.remove_selected}</button>
+          <button type="button" className="tier-link-btn" onClick={clearSelection}>{t.clear_selection}</button>
         </div>
-      </div>
+      ) : (
+        <p className="tier-hint">{t.board_hint}</p>
+      )}
 
-      {showPicker && (
-        <div className="tier-picker-backdrop" onClick={() => setShowPicker(false)}>
-          <div className="tier-picker-modal" onClick={e => e.stopPropagation()}>
-            <div className="tier-picker-header">
-              <input
-                className="tier-picker-search"
-                type="text"
-                placeholder={t.add_works_search_ph}
-                value={pickerQuery}
-                onChange={e => setPickerQuery(e.target.value)}
-                autoFocus
-              />
-              <button type="button" className="tier-picker-close" onClick={() => setShowPicker(false)}>✕</button>
-            </div>
-            <div className="tier-picker-results">
-              {state.type === 'characters'
-                ? <p className="tier-picker-empty">{t.characters_soon}</p>
-                : pickerResults.length === 0
-                  ? <p className="tier-picker-empty">{pickerQuery.trim() ? t.add_works_no_results : ''}</p>
-                  : (
-                    <div className="tier-picker-grid">
-                      {pickerResults.map(entry => (
-                        <button key={entry.external_id} type="button" className="tier-picker-item"
-                          onClick={() => addWork(entry)} title={entry.title_main ?? entry.external_id}>
-                          <CoverCard entry={entry} small />
-                        </button>
-                      ))}
-                    </div>
-                  )
-              }
-            </div>
-          </div>
-        </div>
+      <TierBoardView
+        board={board}
+        meta={meta}
+        ratingLabels={ratingLabels}
+        settings={settings}
+        selection={liveSelection}
+        onSelectionChange={setSelection}
+        onBoard={onBoard}
+        t={t}
+      />
+
+      {fillerOpen && (
+        <TierPoolFiller
+          listType={listType}
+          library={library}
+          exclude={onItems}
+          onAdd={addCandidates}
+          onOpenSearch={() => { setFillerOpen(false); setSearchOpen(true); }}
+          onClose={() => setFillerOpen(false)}
+          t={t}
+          p={tAll.profile}
+        />
+      )}
+      {searchOpen && listType === 'works' && (
+        <MediaSearchPopup multiSelect closeOnSelect={false} excludeIds={[...onItems]} onSelect={addSearchResult} onClose={() => setSearchOpen(false)} />
+      )}
+      {searchOpen && listType === 'characters' && (
+        <CharacterSearchPopup closeOnSelect={false} excludeIds={[...onItems]} onSelect={addSearchResult} onClose={() => setSearchOpen(false)} />
       )}
     </div>
   );

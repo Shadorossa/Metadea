@@ -182,6 +182,7 @@ pub fn sync_video_bounds(app: &AppHandle) {
 /// unmounting) produce exactly one `player://ended`: the one carrying the
 /// real position.
 pub async fn teardown(app: &AppHandle, reason: &str) {
+    super::thumbnails::cancel_current(app);
     let mut payload = EndedPayload { reason: reason.to_string(), playlist_index: -1, ..Default::default() };
     let mut was_open = false;
     let mut stopped_at: Option<(String, f64)> = None;

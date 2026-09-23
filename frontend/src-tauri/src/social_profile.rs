@@ -8,7 +8,10 @@
 // hydrate_social_profile does a full replace (DELETE + re-INSERT) scoped to
 // one social_user_id every time it's called — the caller (profile-sync.ts's
 // UserProfileView flow) gates how often that happens (once a day per
-// visited profile), not this module.
+// visited profile), not this module. The library rows carry the owner's
+// real time spent, second rating, re-runs and chosen cover when their app
+// synced them (None otherwise), and the activity rows every journey kind
+// (start / progress / complete + occurrence), not only completions.
 //
 // Every read here resolves title/cover/type via a LEFT JOIN against YOUR
 // OWN media_catalog/characters — that's the single source of truth for
@@ -38,6 +41,21 @@ pub struct SocialLibraryInput {
     pub tags: Option<Vec<String>>,
     pub status: Option<String>,
     pub progress: Option<f64>,
+    // Synced by apps with the profile-parity sync; absent (None) for a
+    // profile an older app uploaded — the frontend keeps its estimates then.
+    #[serde(default)]
+    pub rating_2: Option<f64>,
+    #[serde(default)]
+    pub progress_2: Option<f64>,
+    #[serde(default)]
+    pub minutes_spent: Option<f64>,
+    #[serde(default)]
+    pub reconsumption_count: Option<i64>,
+    #[serde(default)]
+    pub reconsuming: Option<i64>,
+    /// The owner's chosen cover for this work (their cover preference).
+    #[serde(default)]
+    pub preferred_cover: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -54,6 +72,9 @@ pub struct SocialActivityInput {
     pub progress_start: Option<i64>,
     #[serde(rename = "progressEnd")]
     pub progress_end: Option<i64>,
+    /// Which completion a 'complete' event is (1 = first, 2 = first re-run...).
+    #[serde(default)]
+    pub occurrence: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,6 +96,12 @@ pub struct SocialLibraryItem {
     pub tags: Option<Vec<String>>,
     pub status: Option<String>,
     pub progress: Option<f64>,
+    pub rating_2: Option<f64>,
+    pub progress_2: Option<f64>,
+    pub minutes_spent: Option<f64>,
+    pub reconsumption_count: Option<i64>,
+    pub reconsuming: Option<i64>,
+    pub preferred_cover: Option<String>,
     pub title_main: Option<String>,
     pub cover_url: Option<String>,
     pub media_type: Option<String>,
@@ -89,6 +116,7 @@ pub struct SocialActivityItem {
     pub timestamp: String,
     pub progress_start: Option<i64>,
     pub progress_end: Option<i64>,
+    pub occurrence: Option<i64>,
     pub title_main: Option<String>,
     pub cover_url: Option<String>,
 }
@@ -116,6 +144,8 @@ pub struct SocialListInfo {
     pub item_count: i64,
 }
 
+// Arity is dictated by the frontend `invoke("hydrate_social_profile", …)` contract.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn hydrate_social_profile(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -124,42 +154,59 @@ pub async fn hydrate_social_profile(
     activity: Vec<SocialActivityInput>,
     monthly_history: std::collections::HashMap<String, Vec<String>>,
     lists: Vec<SocialListInput>,
+    // Their like / interest / dislike character lists; None = not shared.
+    character_reactions: Option<crate::character_reactions::SocialCharacterReactionsInput>,
 ) -> Result<(), String> {
     let mut conn = state.conn.lock().str_err()?;
+    hydrate(&mut conn, &social_user_id, &library, &activity, &monthly_history, &lists)?;
+    crate::character_reactions::hydrate_social(&mut conn, &social_user_id, character_reactions.as_ref())
+}
+
+pub(crate) fn hydrate(
+    conn: &mut rusqlite::Connection,
+    social_user_id: &str,
+    library: &[SocialLibraryInput],
+    activity: &[SocialActivityInput],
+    monthly_history: &std::collections::HashMap<String, Vec<String>>,
+    lists: &[SocialListInput],
+) -> Result<(), String> {
     let tx = conn.transaction().str_err()?;
 
-    tx.execute("DELETE FROM social_user_list WHERE social_user_id = ?1", [&social_user_id]).str_err()?;
-    for item in &library {
+    tx.execute("DELETE FROM social_user_list WHERE social_user_id = ?1", [social_user_id]).str_err()?;
+    for item in library {
         // JSON-encoded, matching user_library.rs's own tags column — this is
         // a Vec<String>, not a flat string.
         let tags_json = item.tags.as_ref().map(|t| serde_json::to_string(t).unwrap_or_default());
         tx.execute(
             "INSERT OR IGNORE INTO social_user_list
-             (social_user_id, external_id, rating, started_at, finished_at, notes, tags, status, progress)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+             (social_user_id, external_id, rating, started_at, finished_at, notes, tags, status, progress,
+              rating_2, progress_2, minutes_spent, reconsumption_count, reconsuming, preferred_cover)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
             rusqlite::params![
                 social_user_id, item.external_id, item.rating,
                 item.started_at, item.finished_at, item.notes, tags_json,
                 item.status, item.progress,
+                item.rating_2, item.progress_2, item.minutes_spent,
+                item.reconsumption_count, item.reconsuming, item.preferred_cover,
             ],
         ).str_err()?;
     }
 
-    tx.execute("DELETE FROM social_user_activity WHERE social_user_id = ?1", [&social_user_id]).str_err()?;
-    for event in &activity {
+    tx.execute("DELETE FROM social_user_activity WHERE social_user_id = ?1", [social_user_id]).str_err()?;
+    for event in activity {
         tx.execute(
             "INSERT OR IGNORE INTO social_user_activity
-             (social_user_id, external_id, media_type, event_type, progress_start, progress_end, date, timestamp)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+             (social_user_id, external_id, media_type, event_type, progress_start, progress_end, date, timestamp, occurrence)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             rusqlite::params![
                 social_user_id, event.external_id, event.media_type, event.event_type,
-                event.progress_start, event.progress_end, event.date, event.timestamp,
+                event.progress_start, event.progress_end, event.date, event.timestamp, event.occurrence,
             ],
         ).str_err()?;
     }
 
-    tx.execute("DELETE FROM social_monthly_history WHERE social_user_id = ?1", [&social_user_id]).str_err()?;
-    for (month, ids) in &monthly_history {
+    tx.execute("DELETE FROM social_monthly_history WHERE social_user_id = ?1", [social_user_id]).str_err()?;
+    for (month, ids) in monthly_history {
         for (pos, id) in ids.iter().enumerate() {
             tx.execute(
                 "INSERT OR IGNORE INTO social_monthly_history (social_user_id, external_id, month, position)
@@ -169,9 +216,9 @@ pub async fn hydrate_social_profile(
         }
     }
 
-    tx.execute("DELETE FROM social_user_list_items WHERE social_user_id = ?1", [&social_user_id]).str_err()?;
-    tx.execute("DELETE FROM social_user_lists WHERE social_user_id = ?1", [&social_user_id]).str_err()?;
-    for list in &lists {
+    tx.execute("DELETE FROM social_user_list_items WHERE social_user_id = ?1", [social_user_id]).str_err()?;
+    tx.execute("DELETE FROM social_user_lists WHERE social_user_id = ?1", [social_user_id]).str_err()?;
+    for list in lists {
         tx.execute(
             "INSERT OR IGNORE INTO social_user_lists (social_user_id, key, name, description, is_fav)
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -221,7 +268,9 @@ pub(crate) fn load_social_library(
     let mut stmt = conn.prepare(
         "SELECT sl.external_id, sl.rating, sl.started_at, sl.finished_at, sl.notes, sl.tags,
                 sl.status, sl.progress,
-                COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url), mc.type
+                COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url), mc.type,
+                sl.rating_2, sl.progress_2, sl.minutes_spent, sl.reconsumption_count, sl.reconsuming,
+                sl.preferred_cover
          FROM social_user_list sl
          LEFT JOIN media_catalog mc ON mc.external_id = sl.external_id
          LEFT JOIN characters c ON c.external_id = sl.external_id
@@ -244,6 +293,12 @@ pub(crate) fn load_social_library(
             title_main:  r.get(8)?,
             cover_url:   r.get(9)?,
             media_type:  r.get(10)?,
+            rating_2:            r.get(11)?,
+            progress_2:          r.get(12)?,
+            minutes_spent:       r.get(13)?,
+            reconsumption_count: r.get(14)?,
+            reconsuming:         r.get(15)?,
+            preferred_cover:     r.get(16)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
     Ok(collected)
@@ -273,7 +328,7 @@ pub(crate) fn load_social_activity(
     let mut stmt = conn.prepare(
         "SELECT sa.external_id, sa.event_type, sa.media_type, sa.date, sa.timestamp,
                 sa.progress_start, sa.progress_end,
-                COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url)
+                COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url), sa.occurrence
          FROM social_user_activity sa
          LEFT JOIN media_catalog mc ON mc.external_id = sa.external_id
          LEFT JOIN characters c ON c.external_id = sa.external_id
@@ -293,6 +348,7 @@ pub(crate) fn load_social_activity(
             progress_end:   r.get(6)?,
             title_main:     r.get(7)?,
             cover_url:      r.get(8)?,
+            occurrence:     r.get(9)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
     Ok(collected)
@@ -428,4 +484,69 @@ pub(crate) fn load_social_list_items(
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
     Ok(collected)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn library_input(json: &str) -> SocialLibraryInput {
+        serde_json::from_str(json).unwrap()
+    }
+
+    #[test]
+    fn hydrate_round_trips_the_parity_fields() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let mut conn = db.conn.lock().unwrap();
+        let library = vec![
+            library_input(
+                r#"{"external_id":"game:1","rating":8,"started_at":null,"finished_at":"2026-09-01","notes":null,
+                    "tags":["rpg"],"status":"completed","progress":12,"rating_2":7.5,"progress_2":0,
+                    "minutes_spent":750,"reconsumption_count":1,"reconsuming":0,
+                    "preferred_cover":"https://images.igdb.com/igdb/image/upload/t_cover_big/abc.jpg"}"#,
+            ),
+            // What an older app's profile carries: none of the new keys.
+            library_input(
+                r#"{"external_id":"anime:5","rating":null,"started_at":null,"finished_at":null,"notes":null,
+                    "tags":null,"status":"watching","progress":3}"#,
+            ),
+        ];
+        let activity: Vec<SocialActivityInput> = serde_json::from_str(
+            r#"[
+                {"externalId":"game:1","type":"start","mediaType":"game","date":"2026-09-01","timestamp":"2026-09-01T10:00:00Z"},
+                {"externalId":"game:1","type":"complete","mediaType":"game","date":"2026-09-01","timestamp":"2026-09-01T10:00:00Z","occurrence":2},
+                {"externalId":"anime:5","type":"progress","mediaType":"anime","date":"2026-09-03","timestamp":"2026-09-03T20:00:00Z","progressStart":1,"progressEnd":3}
+            ]"#,
+        ).unwrap();
+
+        hydrate(&mut conn, "alice", &library, &activity, &HashMap::new(), &[]).unwrap();
+
+        let mut items = load_social_library(&conn, "alice").unwrap();
+        items.sort_by(|a, b| a.external_id.cmp(&b.external_id));
+        let game = &items[1];
+        assert_eq!(game.external_id, "game:1");
+        assert_eq!(game.minutes_spent, Some(750.0));
+        assert_eq!(game.rating_2, Some(7.5));
+        assert_eq!(game.reconsumption_count, Some(1));
+        assert_eq!(game.reconsuming, Some(0));
+        assert_eq!(game.tags.as_deref(), Some(&["rpg".to_string()][..]));
+        assert_eq!(
+            game.preferred_cover.as_deref(),
+            Some("https://images.igdb.com/igdb/image/upload/t_cover_big/abc.jpg"),
+        );
+        let anime = &items[0];
+        assert_eq!((anime.minutes_spent, anime.rating_2, anime.preferred_cover.as_deref()), (None, None, None));
+
+        // A start and a completion logged in the same second both survive.
+        let events = load_social_activity(&conn, "alice").unwrap();
+        let mut kinds: Vec<(&str, Option<i64>)> = events.iter().map(|e| (e.event_type.as_str(), e.occurrence)).collect();
+        kinds.sort();
+        assert_eq!(kinds, vec![("complete", Some(2)), ("progress", None), ("start", None)]);
+
+        // A re-hydrate fully replaces this profile's rows.
+        hydrate(&mut conn, "alice", &library[1..], &[], &HashMap::new(), &[]).unwrap();
+        assert_eq!(load_social_library(&conn, "alice").unwrap().len(), 1);
+        assert!(load_social_activity(&conn, "alice").unwrap().is_empty());
+    }
 }

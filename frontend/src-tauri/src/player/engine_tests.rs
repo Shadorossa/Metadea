@@ -101,6 +101,7 @@ fn open_builds_the_playlist_and_arms_the_start_offset() {
             titles: vec![],
             external_id: None,
             episode_numbers: vec![],
+            filler_episodes: vec![],
             capture_dir: std::env::temp_dir(),
         })
         .unwrap();
@@ -153,6 +154,7 @@ fn screenshot_name_uses_the_current_queue_index_and_position() {
             titles: vec![],
             external_id: None,
             episode_numbers: vec![],
+            filler_episodes: vec![],
             capture_dir: PathBuf::from("/captures"),
         })
         .unwrap();
@@ -272,6 +274,7 @@ mod real_library_tests {
                 titles: vec![],
                 external_id: None,
                 episode_numbers: vec![],
+                filler_episodes: vec![],
                 capture_dir: std::env::temp_dir(),
             })
             .unwrap();

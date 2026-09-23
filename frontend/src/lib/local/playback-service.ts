@@ -7,32 +7,29 @@
 // this moves ownership up to a module-level singleton (survives navigation
 // the same way any other imported module's state does under Astro's
 // ClientRouter, which swaps DOM without tearing down the JS module graph)
-// that keeps polling VLC and saving progress regardless of what's mounted.
-//
-// Two engines sit behind the same API: the built-in libmpv player
-// (`internal`, default — progress arrives as `player://*` events, no
-// polling) and VLC (`vlc`, the original HTTP-polling path, kept verbatim as
-// the fallback when libmpv is not installed or the user prefers VLC).
+// that keeps tracking the built-in player and saving progress regardless of
+// what's mounted. Progress arrives as `player://*` events from the libmpv
+// engine (no polling).
 import {
   saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, getEpisodeHistory, deleteEpisodeHistoryEntry, deleteLibraryEntry,
   type LibraryEntry,
 } from '../tauri';
 import { getResumePosition, saveResumePosition, clearResumePosition } from '../tauri/resume-position';
-import { playFileWithVlc, getVlcPlaybackStatus, sendVlcCommand, type VlcPlaybackStatus } from '../tauri/anime-local';
 import {
   playerEngineAvailable, playerOpen, playerSetPause, playerNext, playerStopClose, playerGetStatus,
   listenPlayerStatus, listenPlayerTrackChanged, listenPlayerEnded, showEpisodeWatchedToast, listenToastAction,
 } from '../tauri/player';
 import { undoEpisodeMark, type EpisodeMarkSnapshot } from './episode-undo';
+import { completionEpisode, isFillerEpisode, skipsFiller } from '../anime/filler';
+import { getLoadedFillerInfo, loadAllFillerInfo } from '../anime/filler-store';
 import type { PlayerEnded, PlayerStatus } from '../player/player-status';
 import { buildPresenceSnapshot, shouldResendPresence, type PresenceSnapshot } from '../player/presence-sync';
-import { getControlsMode, getPlaybackEngine, type PlaybackEngine } from '../player/player-settings';
+import { getControlsMode } from '../player/player-settings';
 import { closePlayerModal, openPlayerModal } from '../player/player-modal-state';
 import {
-  AUTO_MARK_THRESHOLD, hasReachedWatchedThreshold, indicesToMarkOnAdvance, positionFraction, shouldPersistResumePosition,
+  hasReachedWatchedThreshold, indicesToMarkOnAdvance, positionFraction, shouldPersistResumePosition,
 } from '../player/progress-rules';
 import { isSameFile } from '../player/queue';
-import { showToast } from '../dom/toast';
 import { getT } from '../../i18n/runtime';
 import { syncToAniList, isAniListType } from '../media/anilist-sync';
 import { toMediumCover } from '../media/small-cover';
@@ -61,7 +58,6 @@ export interface PlaybackState {
   position:      number; // 0-1, current file
   time:          number; // seconds, current file
   length:        number; // seconds, current file
-  engine:        PlaybackEngine;
 }
 
 export interface StartPlaybackTarget {
@@ -81,70 +77,6 @@ const START_STATUS_BY_TYPE: Record<string, string> = {
   manga: 'reading', lnovel: 'reading', book: 'reading',
 };
 
-// The 80 % "watched" rule itself lives in lib/player/progress-rules.ts
-// (shared with the built-in player); AUTO_MARK_THRESHOLD is re-imported
-// here for the VLC path below.
-const POLL_INTERVAL_MS = 3000;
-// A sharp `time` drop while still `playing` — required, unconditionally, for
-// ANY track-boundary detection below. This is what makes detection
-// self-limiting: once a boundary fires, lastKnownTime resets near 0, so the
-// very next tick's real (small) time can't be "less than lastKnownTime - 10"
-// again until playback has actually advanced close to a real boundary once
-// more. Without this gate, comparing VLC's reported filename alone against
-// what we expect turned out to be exactly this fragile: the moment it
-// mismatched for ANY reason (encoding, casing, a VLC build that formats it
-// differently), it mismatched on every single poll tick forever, racing
-// through the entire queue in seconds and marking every episode watched —
-// a real regression this app shipped, not a hypothetical. A missed
-// detection now just means one episode doesn't auto-mark (recoverable
-// manually); it can never again mass-complete a whole season on its own.
-const TRACK_BOUNDARY_DROP_SECONDS = 10;
-// Same self-limiting spirit as TRACK_BOUNDARY_DROP_SECONDS, applied to how
-// far a single tick's boundary detection is allowed to cascade-mark
-// episodes watched. VLC's single-instance mode silently forwards a new
-// "Reproducir" onto whatever VLC window is already open instead of actually
-// launching this app's own controlled instance (see playFileWithVlc's own
-// comment) — if that pre-existing window still had a much later episode of
-// the same show loaded from an earlier session, status.filename can match
-// far ahead in the current queue on the very first tick, and without a cap
-// here every episode in between gets marked watched at once.
-//
-// The cap itself is grounded in real elapsed wall-clock time, not a fixed
-// count: actually watching N episodes takes real minutes per episode no
-// matter what queue/filename VLC reports, so however much time has
-// genuinely passed since the last episode was marked is a hard ceiling on
-// how many *could* have legitimately finished since then. 60s/episode is
-// deliberately far below any real episode's runtime — it only exists to
-// reject "5 episodes finished in the same 3-second poll tick" outright,
-// never to slow down a real catch-up after the app was actually away for a
-// while (laptop sleep, minimized for hours, ...), which this still allows
-// in full once enough time has genuinely elapsed.
-const MIN_MS_PER_EPISODE = 60_000;
-
-function fileBasename(path: string): string {
-  return path.split(/[\\/]/).pop() ?? path;
-}
-
-// True once VLC has moved on from `current` to some other file in the
-// queue. The time-drop gate above is mandatory; filename (when VLC's status
-// reports one) or duration is only the disambiguator for "is this actually
-// a different file, or did the user just rewind to the start of this one" —
-// never the sole signal.
-function detectTrackBoundary(status: VlcPlaybackStatus, current: PlaybackQueueItem, knownLength: number): boolean {
-  if (!(status.time < lastKnownTime - TRACK_BOUNDARY_DROP_SECONDS)) return false;
-  if (status.filename) {
-    return status.filename !== fileBasename(current.filePath);
-  }
-  // VLC's status can transiently report length as 0 (or otherwise bogus)
-  // right after a seek or a pause/resume — exactly what scrubbing around to
-  // grab a screenshot looks like — which used to read as "different file,
-  // different duration" and misfire a track-boundary advance for a seek
-  // that never actually left the current episode. A real length comparison
-  // only means anything once both readings are plausible durations.
-  if (status.length <= 0 || knownLength <= 0) return false;
-  return Math.abs(status.length - knownLength) > 2;
-}
-
 // The reactive (subscribe/useSyncExternalStore) half of this module's
 // pub/sub — internal code below still reads/writes the plain `state`
 // variable directly everywhere, same as before; the store only mirrors it
@@ -153,9 +85,8 @@ function detectTrackBoundary(status: VlcPlaybackStatus, current: PlaybackQueueIt
 export const playbackStore = createExternalStore<PlaybackState | null>(null);
 
 let state: PlaybackState | null = null;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-// Mirrors of per-session state pollTick needs across ticks — reset whenever
-// the active episode changes (queue advance or a fresh startQueuePlayback).
+// Per-session mirrors of the engine's last report — reset whenever the
+// active episode changes (queue advance or a fresh startQueuePlayback).
 let lastKnownTime = 0;
 let markedEpisode: number | null = null;
 // What Discord last got - see lib/player/presence-sync.ts for when a new
@@ -164,11 +95,6 @@ let lastPresence: PresenceSnapshot | null = null;
 // Screenshot-style label per queue entry (S01E02 / M01), computed once per
 // session in startQueuePlayback and reused for Discord's episode line.
 let sessionEpisodeLabels: string[] = [];
-// Wall-clock time (Date.now(), not video position) of the last episode
-// actually marked watched — see MIN_MS_PER_EPISODE's own comment. Seeded on
-// every fresh startQueuePlayback so the very first episode's own real
-// runtime counts against the cap too, not just episodes after the first.
-let lastMarkedAt = 0;
 // The one auto-mark the native toast's Undo button can still revert (the
 // toast shows a single notice at a time, so only the latest is kept). The
 // token travels through the toast window and back in `toast://action`.
@@ -185,12 +111,12 @@ function notify() {
 }
 
 // Persists just enough to rebuild the bar after an F5 — a full reload wipes
-// this module's in-memory `state` even though VLC itself (a separate
-// process) is still actually playing, which is what made the NowPlayingBar
-// (and the "reproduciendo" indicator) vanish on refresh despite playback
-// continuing underneath it. sessionStorage (not localStorage): scoped to
-// this tab's lifetime, same as never persisting across a real app restart —
-// there's no VLC session left to reattach to by then anyway.
+// this module's in-memory `state` even though the engine (Rust side) is
+// still actually playing, which is what made the NowPlayingBar (and the
+// "reproduciendo" indicator) vanish on refresh despite playback continuing
+// underneath it. sessionStorage (not localStorage): scoped to this tab's
+// lifetime, same as never persisting across a real app restart — there's
+// no player session left to reattach to by then anyway.
 const STORAGE_KEY = 'metadea_now_playing_v1';
 
 function persistState(next: PlaybackState | null) {
@@ -264,7 +190,6 @@ function ensureToastListener(): Promise<void> {
 async function markEpisodeWatched(episodeNumber: number, positionSecs = lastKnownTime): Promise<void> {
   if (!state || markedEpisode === episodeNumber) return;
   markedEpisode = episodeNumber;
-  lastMarkedAt = Date.now();
 
   const { externalId, libraryEntry, totalCount, title } = state;
   // Read before the first await: a mark fired from the session's own end
@@ -282,7 +207,12 @@ async function markEpisodeWatched(episodeNumber: number, positionSecs = lastKnow
   // is what completes a work here — not just "progress caught up to
   // total_count" in the abstract, since that could also come from a manual
   // edit elsewhere that isn't "just finished watching."
-  const finishing = totalCount != null && totalCount > 0 && episodeNumber >= totalCount;
+  // An anime set to "Filler: Skipped" finishes at its last canon/mixed
+  // episode (lib/anime/filler.ts); the filler map is warmed at session start.
+  const completeAt = libraryEntry.type === 'anime'
+    ? completionEpisode(libraryEntry, getLoadedFillerInfo(externalId), totalCount)
+    : totalCount;
+  const finishing = completeAt != null && completeAt > 0 && episodeNumber >= completeAt;
   const nextStatus = finishing
     ? 'completed'
     : libraryEntry.status === 'planning'
@@ -352,14 +282,10 @@ async function markEpisodeWatched(episodeNumber: number, positionSecs = lastKnow
     showEpisodeWatchedToast(title, episodeLabel, token)
       .catch(err => console.error('Failed to show the watched toast', err));
   } catch (err) {
-    // Don't block the next poll tick from retrying on a transient save error.
+    // Don't block the next status tick from retrying on a transient save error.
     markedEpisode = null;
     console.error('Failed to auto-mark episode watched', err);
   }
-}
-
-function stopPolling() {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
 // Sends a presence only when it materially changed: status flips go out
@@ -367,8 +293,7 @@ function stopPolling() {
 // duration that becomes known or a real drift of the timestamps re-sends,
 // tick jitter does not. Timestamps are only ever sent with a known
 // duration (mpv reports 0 until the demuxer knows - that used to freeze
-// Discord at 00:00). `speed` stretches the remaining time (mpv only; VLC
-// callers leave it at 1).
+// Discord at 00:00). `speed` stretches the remaining time.
 function updateDiscordForTick(episodeNumber: number, statusState: PlaybackStatus, time: number, length: number, speed = 1) {
   if (!state) return;
   const coverUrl = state.cover && state.cover.startsWith('http') ? toMediumCover(state.cover) : undefined;
@@ -387,6 +312,7 @@ function updateDiscordForTick(episodeNumber: number, statusState: PlaybackStatus
     startTime: next.startTime,
     endTime: next.endTime,
     coverUrl,
+    share: state.externalId ? { externalId: state.externalId, title: state.title, coverUrl: state.cover } : undefined,
   });
 }
 
@@ -403,93 +329,21 @@ function persistStopPosition(episodeNumber: number, time: number, length: number
 }
 
 function finishSession() {
-  stopPolling();
   endedSignal = null;
   lastPresence = null;
   clearPlaybackPresence();
   setState(null);
 }
 
-async function pollTick(): Promise<void> {
-  if (!state) { stopPolling(); return; }
-  const current = state.queue[state.queueIndex];
-  if (!current) { finishSession(); return; }
-
-  const status = await getVlcPlaybackStatus().catch(() => null);
-  if (!state) return; // stopped/changed while the request was in flight
-
-  if (!status || (status.state !== 'playing' && status.state !== 'paused')) {
-    // VLC stopped responding (closed) or moved to "stopped"/ended — this is
-    // exactly the tick that would observe "episode finished", so it can't
-    // just bail without checking: use the last known time/length, since a
-    // "stopped" status often no longer reports a meaningful position.
-    if (state.length > 0 && (lastKnownTime / state.length) >= AUTO_MARK_THRESHOLD) {
-      await markEpisodeWatched(current.episodeNumber);
-    }
-    finishSession();
-    return;
-  }
-
-  if (detectTrackBoundary(status, current, state.length)) {
-    // VLC moved on to some other file in the queue on its own. Searches
-    // forward for exactly which one instead of just assuming +1 — a missed
-    // poll tick (very short episodes, a slow tick) could mean VLC is
-    // actually two or more files ahead of where we last knew, in which case
-    // every episode in between also finished and gets marked too, not just
-    // the one active on the previous tick.
-    const queue = state.queue;
-    const fromIndex = state.queueIndex;
-    const matchIndex = status.filename
-      ? queue.findIndex((q, i) => i > fromIndex && fileBasename(q.filePath) === status.filename)
-      : -1;
-    const uncappedNext = matchIndex !== -1 ? matchIndex : fromIndex + 1;
-    // However many episodes real time actually allows for since the last
-    // one was marked, at minimum 1 — a genuinely missed tick or two still
-    // catches up in full once that much time has passed for real.
-    const maxPlausible = Math.max(1, Math.floor((Date.now() - lastMarkedAt) / MIN_MS_PER_EPISODE));
-    const nextIndex = Math.min(uncappedNext, fromIndex + maxPlausible);
-    for (let i = fromIndex; i < nextIndex && i < queue.length; i++) {
-      await markEpisodeWatched(queue[i].episodeNumber);
-    }
-    if (!state || nextIndex >= queue.length) { finishSession(); return; }
-    lastKnownTime = 0;
-    markedEpisode = null;
-    setState({ ...state, queueIndex: nextIndex, status: 'playing', position: 0, time: 0, length: 0 });
-    return; // next tick reads the new file's real values
-  }
-
-  lastKnownTime = status.time;
-
-  // Keeps the resume point fresh while it's still worth resuming from — no
-  // point persisting it once we're about to auto-mark this episode watched
-  // anyway (markEpisodeWatched clears it right after).
-  if (status.position < AUTO_MARK_THRESHOLD) {
-    saveResumePosition(state.externalId, current.episodeNumber, status.time).catch(() => {});
-  }
-
-  updateDiscordForTick(current.episodeNumber, status.state as PlaybackStatus, status.time, status.length);
-  setState({ ...state, status: status.state as PlaybackStatus, position: status.position, time: status.time, length: status.length });
-
-  if (status.position >= AUTO_MARK_THRESHOLD) {
-    markEpisodeWatched(current.episodeNumber);
-  }
-}
-
-function ensurePolling() {
-  if (pollTimer) return;
-  pollTimer = setInterval(() => { pollTick().catch(() => {}); }, POLL_INTERVAL_MS);
-}
-
 // ── Built-in player (libmpv) event path ─────────────────────────────────────
-// Mirrors pollTick's decisions, fed by `player://*` events instead of a
-// timer. The engine reports the exact playlist index, so track changes need
-// no filename/time heuristics; the 80 % rule and the cascade-mark on a
-// multi-file jump are the same shared progress-rules.
+// Fed by `player://*` events. The engine reports the exact playlist index,
+// so track changes need no filename/time heuristics; the 80 % rule and the
+// cascade-mark on a multi-file jump live in lib/player/progress-rules.ts.
 
 let internalListening: Promise<void> | null = null;
 
 function handleInternalIndexChange(newIndex: number) {
-  if (!state || state.engine !== 'internal') return;
+  if (!state) return;
   if (newIndex === state.queueIndex) return;
   const fromIndex = state.queueIndex;
   const reached = hasReachedWatchedThreshold(lastKnownTime, state.length);
@@ -504,7 +358,7 @@ function handleInternalIndexChange(newIndex: number) {
 }
 
 function handleInternalStatus(status: PlayerStatus) {
-  if (!state || state.engine !== 'internal') return;
+  if (!state) return;
   if (status.state === 'idle') return; // nothing loaded yet
   if (status.playlist_index >= 0 && status.playlist_index !== state.queueIndex) {
     handleInternalIndexChange(status.playlist_index);
@@ -540,7 +394,7 @@ function handleInternalEnded(ended: PlayerEnded) {
   closePlayerModal();
   endedSignal?.();
   endedSignal = null;
-  if (!state || state.engine !== 'internal') return;
+  if (!state) return;
   // The payload carries mpv's own final position (the throttled ticks may
   // be a quarter second stale) and which queue entry it belonged to.
   const index = ended.playlist_index >= 0 && ended.playlist_index < state.queue.length ? ended.playlist_index : state.queueIndex;
@@ -553,7 +407,7 @@ function handleInternalEnded(ended: PlayerEnded) {
 }
 
 // Registered once per page load; the handlers ignore events whenever no
-// internal session is active, so nothing needs tearing down.
+// session is active, so nothing needs tearing down.
 function ensureInternalListeners(): Promise<void> {
   if (!internalListening) {
     internalListening = Promise.all([
@@ -568,27 +422,26 @@ function ensureInternalListeners(): Promise<void> {
   return internalListening;
 }
 
-// `internal` unless the user picked VLC or libmpv cannot be loaded — the
-// latter is announced once per attempt so a missing DLL is never silent.
-async function resolvePlaybackEngine(): Promise<PlaybackEngine> {
-  if (getPlaybackEngine() === 'vlc') return 'vlc';
-  if (await playerEngineAvailable()) return 'internal';
-  showToast(getT().player.engine_unavailable_fallback, { backgroundColor: 'var(--color-gold)', durationMs: 6000 });
-  return 'vlc';
+// The built-in player is the only engine: a missing libmpv rejects the
+// launch with a translated message (shown by the caller) instead of failing
+// silently. An old stored "engine = vlc" preference is never read.
+async function ensureEngineAvailable(): Promise<void> {
+  if (await playerEngineAvailable()) return;
+  throw new Error(getT().player.engine_unavailable);
 }
 
 export async function startQueuePlayback(target: StartPlaybackTarget): Promise<void> {
   if (target.queue.length === 0) return;
+  await ensureEngineAvailable();
   const first = target.queue[0];
-  // Resumes from wherever VLC's position was last saved for this exact
-  // episode instead of always starting at 0 — survives fully closing VLC,
-  // since it's read from the DB, not in-memory state.
+  // Resumes from wherever the player's position was last saved for this
+  // exact episode instead of always starting at 0 — survives fully closing
+  // the player, since it's read from the DB, not in-memory state.
   const resumeSeconds = await getResumePosition(target.externalId, first.episodeNumber).catch(() => null);
 
   lastKnownTime = 0;
   markedEpisode = null;
   lastPresence = null;
-  lastMarkedAt = Date.now();
 
   const pad = (value: number) => String(value).padStart(2, '0');
   const seriesEpisodeLabels = target.type === 'series'
@@ -609,68 +462,60 @@ export async function startQueuePlayback(target: StartPlaybackTarget): Promise<v
 
   sessionEpisodeLabels = screenshotEpisodeLabels;
 
-  const engine = await resolvePlaybackEngine();
+  void loadAllFillerInfo();
   const baseState = {
     externalId: target.externalId, type: target.type, title: target.title, cover: target.cover,
     libraryEntry: target.libraryEntry, totalCount: target.totalCount,
     queue: target.queue, queueIndex: 0, status: 'playing' as const, position: 0, time: 0, length: 0,
   };
 
-  if (engine === 'internal') {
-    await ensureInternalListeners();
-    await playerOpen({
-      queue: target.queue.map(q => q.filePath),
-      startIndex: 0,
-      startSeconds: resumeSeconds ?? null,
-      workName: target.title,
-      episodeLabels: screenshotEpisodeLabels,
-      titles: target.queue.map(q => q.episodeTitle ?? ''),
-      externalId: target.externalId,
-      episodeNumbers: target.queue.map(q => q.episodeNumber),
-      overlay: getControlsMode() === 'overlay',
-    });
-    setState({ ...baseState, engine: 'internal' });
-    // The player is a modal over the current page (like the comic reader),
-    // rendered by NowPlayingBar while this store says so; closing it stops
-    // the engine (PlayerStage), which in turn ends the session here.
-    openPlayerModal();
-    return;
-  }
-
-  await playFileWithVlc(
-    target.queue.map(q => q.filePath),
-    resumeSeconds ?? undefined,
-    target.title,
-    screenshotEpisodeLabels,
-  );
-
-  setState({ ...baseState, engine: 'vlc' });
-  ensurePolling();
+  await ensureInternalListeners();
+  // "Filler: Skipped": the controls window has no filler store, so it gets
+  // the queue's filler episodes and offers the next canon one instead of
+  // rolling into them (lib/player/filler-next.ts).
+  const fillerInfo = (await loadAllFillerInfo()).get(target.externalId);
+  const fillerEpisodes = skipsFiller(target.libraryEntry, fillerInfo, target.totalCount)
+    ? target.queue.map(q => q.episodeNumber).filter(episode => isFillerEpisode(fillerInfo, episode))
+    : [];
+  await playerOpen({
+    queue: target.queue.map(q => q.filePath),
+    startIndex: 0,
+    startSeconds: resumeSeconds ?? null,
+    workName: target.title,
+    episodeLabels: screenshotEpisodeLabels,
+    titles: target.queue.map(q => q.episodeTitle ?? ''),
+    externalId: target.externalId,
+    episodeNumbers: target.queue.map(q => q.episodeNumber),
+    fillerEpisodes,
+    overlay: getControlsMode() === 'overlay',
+  });
+  setState(baseState);
+  // The player is a modal over the current page (like the comic reader),
+  // rendered by NowPlayingBar while this store says so; closing it stops
+  // the engine (PlayerStage), which in turn ends the session here.
+  openPlayerModal();
 }
 
 export function pausePlayback(): void {
   if (!state) return;
-  if (state.engine === 'internal') playerSetPause(true).catch(() => {});
-  else sendVlcCommand('pl_forcepause').catch(() => {});
+  playerSetPause(true).catch(() => {});
   setState({ ...state, status: 'paused' });
 }
 
 export function resumePlayback(): void {
   if (!state) return;
-  if (state.engine === 'internal') playerSetPause(false).catch(() => {});
-  else sendVlcCommand('pl_forceresume').catch(() => {});
+  playerSetPause(false).catch(() => {});
   setState({ ...state, status: 'playing' });
 }
 
-// Optimistic — mirrors pollTick's own track-boundary branch so the UI
-// doesn't wait out a full poll interval to reflect the skip. The next real
-// tick just confirms VLC's actual (by-then-matching) status.
+// Optimistic — mirrors handleInternalIndexChange so the UI doesn't wait for
+// the engine's next report to reflect the skip; that report then just
+// confirms the (by-then-matching) index.
 export function skipToNext(): void {
   if (!state || state.queueIndex >= state.queue.length - 1) return;
   const current = state.queue[state.queueIndex];
-  if (state.engine === 'internal') playerNext().catch(() => {});
-  else sendVlcCommand('pl_next').catch(() => {});
-  if (state.length > 0 && (lastKnownTime / state.length) >= AUTO_MARK_THRESHOLD) {
+  playerNext().catch(() => {});
+  if (hasReachedWatchedThreshold(lastKnownTime, state.length)) {
     markEpisodeWatched(current.episodeNumber).catch(() => {});
   }
   lastKnownTime = 0;
@@ -680,39 +525,32 @@ export function skipToNext(): void {
 
 export function stopPlayback(): void {
   if (!state) return;
-  if (state.engine === 'internal') {
-    // Teardown answers with `player://ended` carrying mpv's exact position;
-    // handleInternalEnded persists it and finishes the session. The event
-    // and the invoke's own resolution arrive over separate IPC paths, so
-    // the fallback (what the last tick knew) only runs once the event has
-    // had a fair chance to land — i.e. the engine was already gone.
-    closePlayerModal();
-    const ended = new Promise<void>(resolve => { endedSignal = resolve; });
-    const timeout = new Promise<void>(resolve => { setTimeout(resolve, ENDED_WAIT_MS); });
-    playerStopClose('stopped')
-      .catch(() => {})
-      .then(() => Promise.race([ended, timeout]))
-      .then(() => {
-        if (!state) return;
-        const current = state.queue[state.queueIndex];
-        if (current) persistStopPosition(current.episodeNumber, lastKnownTime, state.length);
-        finishSession();
-      });
-    return;
-  }
-  const current = state.queue[state.queueIndex];
-  if (current) persistStopPosition(current.episodeNumber, lastKnownTime, state.length);
-  sendVlcCommand('pl_stop').catch(() => {});
-  finishSession();
+  // Teardown answers with `player://ended` carrying mpv's exact position;
+  // handleInternalEnded persists it and finishes the session. The event
+  // and the invoke's own resolution arrive over separate IPC paths, so
+  // the fallback (what the last tick knew) only runs once the event has
+  // had a fair chance to land — i.e. the engine was already gone.
+  closePlayerModal();
+  const ended = new Promise<void>(resolve => { endedSignal = resolve; });
+  const timeout = new Promise<void>(resolve => { setTimeout(resolve, ENDED_WAIT_MS); });
+  playerStopClose('stopped')
+    .catch(() => {})
+    .then(() => Promise.race([ended, timeout]))
+    .then(() => {
+      if (!state) return;
+      const current = state.queue[state.queueIndex];
+      if (current) persistStopPosition(current.episodeNumber, lastKnownTime, state.length);
+      finishSession();
+    });
 }
 
 // Runs once, at module load (client-side only — Astro's server pass never
 // gets here) — rehydrates `state` from whatever was persisted right before
-// the page reloaded, but only if VLC itself confirms it's still actually
-// playing that same file. Restoring blind (or on VLC being closed/moved on
-// to something else in the meantime) would show a "reproduciendo" bar for a
-// session that no longer exists — the whole point is showing reality, not a
-// stale guess dressed up as one.
+// the page reloaded, but only if the engine itself confirms it's still
+// actually playing that same file. Restoring blind (or on the player being
+// closed/moved on to something else in the meantime) would show a
+// "reproduciendo" bar for a session that no longer exists — the whole point
+// is showing reality, not a stale guess dressed up as one.
 async function restorePersistedSession(): Promise<void> {
   let saved: PlaybackState | null = null;
   try {
@@ -721,40 +559,28 @@ async function restorePersistedSession(): Promise<void> {
   } catch { /* sessionStorage unavailable */ }
   if (!saved) return;
 
-  const current = saved.queue[saved.queueIndex];
-  if (!current) { persistState(null); return; }
+  // A session saved by an older build that played through external VLC
+  // (`engine: 'vlc'`) has nothing left to reattach to; the field itself is
+  // dropped either way.
+  const { engine: legacyEngine, ...session } = saved as PlaybackState & { engine?: string };
+  const current = session.queue?.[session.queueIndex];
+  if (legacyEngine === 'vlc' || !current) { persistState(null); return; }
 
-  if (saved.engine === 'internal') {
-    // The built-in player lives in the same process, so its status is the
-    // authority on whether this session is still real.
-    const status = await playerGetStatus();
-    const alive = !!status && status.state !== 'idle' && isSameFile(status.path, current.filePath);
-    if (!alive) { persistState(null); return; }
-    lastKnownTime = status.position_secs;
-    lastMarkedAt = Date.now();
-    state = {
-      ...saved,
-      status: status.state === 'paused' ? 'paused' : 'playing',
-      position: positionFraction(status.position_secs, status.duration_secs),
-      time: status.position_secs,
-      length: status.duration_secs,
-    };
-    notify();
-    await ensureInternalListeners();
-    return;
-  }
-
-  const status = await getVlcPlaybackStatus().catch(() => null);
-  const stillSameFile = !!status
-    && (status.state === 'playing' || status.state === 'paused')
-    && (!status.filename || status.filename === fileBasename(current.filePath));
-  if (!status || !stillSameFile) { persistState(null); return; }
-
-  lastKnownTime = status.time;
-  lastMarkedAt = Date.now();
-  state = { ...saved, engine: saved.engine ?? 'vlc', status: status.state as PlaybackStatus, position: status.position, time: status.time, length: status.length };
+  // The built-in player lives in the same process, so its status is the
+  // authority on whether this session is still real.
+  const status = await playerGetStatus();
+  const alive = !!status && status.state !== 'idle' && isSameFile(status.path, current.filePath);
+  if (!alive) { persistState(null); return; }
+  lastKnownTime = status.position_secs;
+  state = {
+    ...session,
+    status: status.state === 'paused' ? 'paused' : 'playing',
+    position: positionFraction(status.position_secs, status.duration_secs),
+    time: status.position_secs,
+    length: status.duration_secs,
+  };
   notify();
-  ensurePolling();
+  await ensureInternalListeners();
 }
 
 restorePersistedSession();

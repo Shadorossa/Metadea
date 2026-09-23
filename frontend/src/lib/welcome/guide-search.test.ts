@@ -16,7 +16,7 @@ describe('normalizeForSearch', () => {
 
 describe('queryTerms / matchesTerms', () => {
   it('splits the query into normalised words', () => {
-    expect(queryTerms('  Reproductor  VLC ')).toEqual(['reproductor', 'vlc']);
+    expect(queryTerms('  Reproductor  Libmpv ')).toEqual(['reproductor', 'libmpv']);
     expect(queryTerms('   ')).toEqual([]);
   });
 
@@ -29,7 +29,7 @@ describe('queryTerms / matchesTerms', () => {
 
 describe('filterSections', () => {
   const sections = [
-    { id: 'player', text: 'Reproductor de vídeo libmpv VLC' },
+    { id: 'player', text: 'Reproductor de vídeo libmpv' },
     { id: 'roms', text: 'Emuladores y ROMs' },
     { id: 'reader', text: 'Leer cómics' },
   ];

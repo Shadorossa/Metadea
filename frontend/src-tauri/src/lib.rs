@@ -1,10 +1,14 @@
 mod acl_coverage;
 mod actors;
 mod aniskip;
+mod anime_filler;
 mod auth;
 mod backup;
+mod google_drive;
 mod characters;
+mod character_reactions;
 mod companies;
+mod company_catalog;
 mod staff;
 mod comicvine;
 mod comic_reader;
@@ -16,7 +20,10 @@ mod episode_history;
 mod error_codes;
 mod favorite_images;
 mod folders;
+mod game_break_reminder;
 mod game_links;
+mod game_pause;
+mod game_sessions;
 mod github;
 mod http;
 mod anilist;
@@ -43,12 +50,18 @@ mod reading_progress;
 mod resume_position;
 mod continue_watching;
 mod retro_achievements;
+mod rom_disc_merge;
 mod rom_rename;
+mod saves;
 mod sagas;
 mod share_image;
 mod story_arcs;
 mod social_profile;
 mod steam;
+mod taste_compatibility;
+mod textless_covers;
+mod wallpapers;
+mod time_to_beat;
 mod sync_state;
 mod tier_lists;
 mod user_library;
@@ -58,6 +71,7 @@ mod utils;
 mod discord;
 mod ui_themes;
 mod vestigial_cleanup;
+mod yearly_bingo;
 #[cfg(test)]
 mod ipc_size_probe;
 
@@ -102,6 +116,7 @@ pub fn run() {
                 ),
             };
             db::seed_fav_lists(&metadea_db);
+            character_reactions::seed_character_reaction_lists(&metadea_db);
 
             // Dev-only: imports catalog/**.json proposal files sitting next to
             // the repo checkout, so a developer's own local db reflects them
@@ -125,11 +140,20 @@ pub fn run() {
 
             app.manage(metadea_db);
             app.manage(folders::ScreenshotToastState::default());
+            // Game sessions: re-attach/close what a previous run left open.
+            app.manage(game_sessions::GameSessionsState::default());
+            game_sessions::start(app.handle());
+            game_break_reminder::start(app.handle());
+            game_pause::start(app.handle());
             app.manage(player::PlayerEngineState::default());
+            app.manage(player::ThumbnailState::default());
+            app.manage(player::ClipState::default());
+            player::spawn_thumbnail_cache_cleanup(app.handle());
             let discord = discord::DiscordState::new();
             discord.start_background();
             app.manage(discord);
             deep_link::install(app.handle());
+            google_drive::start_scheduler(app.handle().clone());
 
             if let Some(window) = app.get_webview_window("main") {
                 if let Some(icon) = app.default_window_icon() {
@@ -163,17 +187,46 @@ pub fn run() {
             folders::launch_game,
             folders::start_playtime_session,
             folders::stop_game_process,
+            game_sessions::get_active_game_sessions,
+            game_sessions::get_game_play_stats,
+            game_break_reminder::get_break_reminder_settings,
+            game_break_reminder::set_break_reminder_settings,
+            game_pause::game_pause_current,
+            game_pause::game_pause_continue,
+            game_pause::game_pause_quit,
+            game_pause::game_pause_save_state,
+            game_pause::get_game_pause_settings,
+            game_pause::set_game_pause_enabled,
+            rom_disc_merge::take_rom_disc_merge_summary,
             folders::open_external_url,
-            folders::play_file_with_vlc,
             folders::screenshot_toast_ready,
             folders::show_episode_watched_toast,
             folders::episode_toast_action,
             folders::get_local_screenshots,
-            folders::get_emulator_screenshots,
+            folders::import_emulator_screenshots,
             backup::export_backup,
             backup::prepare_restore,
-            folders::get_vlc_playback_status,
-            folders::send_vlc_command,
+            backup::inspect_backup,
+            backup::cancel_backup_operation,
+            backup::get_local_backup_state,
+            google_drive::google_drive_status,
+            google_drive::google_drive_link,
+            google_drive::google_drive_cancel_link,
+            google_drive::google_drive_unlink,
+            google_drive::google_drive_set_options,
+            google_drive::google_drive_list,
+            google_drive::google_drive_upload_now,
+            google_drive::google_drive_restore,
+            saves::saves_get_settings,
+            saves::saves_set_settings,
+            saves::saves_list_game,
+            saves::saves_set_label,
+            saves::saves_restore_version,
+            saves::saves_archive,
+            saves::saves_open_folder,
+            saves::saves_import_existing,
+            saves::saves_sync_now,
+            saves::saves_backup_estimate,
             share_image::fetch_image_data_url,
             share_image::save_image_file,
             igdb_env::read_env_config,
@@ -198,6 +251,10 @@ pub fn run() {
             comicvine::comicvine_get_issues,
             comicvine::comicvine_get_issue,
             comicvine::comicvine_get_issues_cast,
+            comicvine::comicvine_search_story_arcs,
+            comicvine::comicvine_get_story_arc,
+            comicvine::comicvine_get_issues_batch,
+            comicvine::comicvine_story_arcs_for_volume,
             episode_history::save_episode_history_entry,
             episode_history::get_episode_history,
             episode_history::delete_episode_history_entry,
@@ -205,6 +262,8 @@ pub fn run() {
             resume_position::save_resume_position,
             resume_position::clear_resume_position,
             continue_watching::get_continue_watching_sources,
+            yearly_bingo::get_yearly_bingo,
+            yearly_bingo::set_yearly_bingo,
             reading_progress::get_reading_progress,
             reading_progress::save_reading_progress,
             reading_progress::clear_reading_progress,
@@ -318,7 +377,11 @@ pub fn run() {
             characters::get_all_characters_light,
             characters::search_characters_db,
             characters::delete_character,
-            characters::set_character_reaction,
+            character_reactions::set_character_reaction,
+            character_reactions::get_character_reaction,
+            character_reactions::get_character_reactions,
+            character_reactions::reorder_character_reactions,
+            character_reactions::get_social_character_reactions,
             characters::get_character_merges,
             characters::get_character_merge_target,
             characters::save_character_merges,
@@ -335,6 +398,17 @@ pub fn run() {
             actors::find_actor_by_exact_name,
             companies::get_media_companies,
             companies::save_media_companies,
+            company_catalog::get_company_page,
+            company_catalog::load_more_company_works,
+            time_to_beat::get_time_to_beat,
+            time_to_beat::get_cached_time_to_beat,
+            anime_filler::filler_get_index,
+            anime_filler::filler_ensure_show,
+            anime_filler::filler_get_info,
+            anime_filler::filler_set_link,
+            anime_filler::filler_remove_link,
+            textless_covers::resolve_textless_covers,
+            wallpapers::resolve_wallpapers,
             favorite_images::save_favorite_custom_image,
             favorite_images::get_all_favorite_custom_images,
             favorite_images::get_favorite_custom_image,
@@ -351,6 +425,7 @@ pub fn run() {
             social_profile::get_social_activity_light,
             social_profile::get_social_monthly_history_light,
             social_profile::get_social_list_items_light,
+            taste_compatibility::get_taste_compatibility,
             steam::steam_achievements_download,
             steam::steam_get_cached_achievements,
             steam::steam_get_owned_games,
@@ -385,10 +460,8 @@ pub fn run() {
             tier_lists::get_all_tier_lists,
             tier_lists::get_tier_list,
             tier_lists::delete_tier_list,
-            tier_lists::update_tier_list_tiers,
-            tier_lists::add_item_to_tier_list,
-            tier_lists::remove_item_from_tier_list,
-            tier_lists::set_tier_list_placements,
+            tier_lists::save_tier_list,
+            tier_lists::duplicate_tier_list,
             sync_state::get_sync_state,
             sync_state::get_sync_states,
             sync_state::mark_synced,
@@ -422,6 +495,14 @@ pub fn run() {
             player::player_set_fullscreen,
             player::player_is_fullscreen,
             player::player_focus_overlay,
+            player::player_thumbnails_start,
+            player::player_thumbnail_at,
+            player::player_thumbnails_stop,
+            player::player_clip_export,
+            player::player_clip_cancel,
+            player::player_set_ab_loop,
+            player::player_clip_reveal,
+            player::player_clip_open_folder,
             aniskip::aniskip_get_segments,
             aniskip::get_catalog_mal_id,
             aniskip::set_catalog_mal_id,
@@ -443,10 +524,19 @@ pub fn run() {
             ui_themes::open_ui_themes_folder,
             ui_themes::export_ui_theme_starter,
         ])
-        .run(tauri::generate_context!());
-    if let Err(e) = result {
-        eprintln!("Metadea could not start: {e}");
-        std::process::exit(1);
+        .build(tauri::generate_context!());
+    match result {
+        // A game paused from the controller menu is never left suspended
+        // when Metadea exits (src/game_pause).
+        Ok(app) => app.run(|_, event| {
+            if let tauri::RunEvent::Exit = event {
+                game_pause::resume_all();
+            }
+        }),
+        Err(e) => {
+            eprintln!("Metadea could not start: {e}");
+            std::process::exit(1);
+        }
     }
 }
 

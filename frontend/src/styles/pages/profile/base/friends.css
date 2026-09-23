@@ -318,3 +318,33 @@
   text-align: center;
 }
 
+
+/* Someone else's followers/following arrive a page at a time. */
+.friends-load-more-row {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0 1.5rem;
+}
+
+.friends-load-more-btn {
+  min-width: 140px;
+  padding: 0.55rem 1.3rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--anim-fast), color var(--anim-fast);
+}
+
+.friends-load-more-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.friends-load-more-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}

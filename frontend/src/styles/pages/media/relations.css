@@ -857,6 +857,25 @@
   filter: none;
 }
 
+/* GG.deals' logo is a wide wordmark centred in a square transparent canvas:
+   a wide box + object-fit: cover crops it to the wordmark band. */
+.media-store-icon--ggdeals {
+  height: 16px;
+  max-height: none;
+  width: auto;
+  aspect-ratio: 6;
+  object-fit: cover;
+}
+
+/* Separates the official stores from the GG.deals price comparison. */
+.media-store-links-divider {
+  width: 1px;
+  height: 16px;
+  background: currentColor;
+  color: var(--text-muted, currentColor);
+  opacity: 0.5;
+}
+
 .media-store-fallback {
   display: grid;
   width: 24px;

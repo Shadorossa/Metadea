@@ -3,6 +3,7 @@ import type { MediaPageData } from '../../../lib/media/types';
 import type { Translations } from '../../../i18n/index';
 import { toMediumCover } from '../../../lib/media/small-cover';
 import { setMediaPagePresence, clearMediaPagePresence } from '../../../lib/local/discord-presence';
+import { shareableWorkFromPage } from '../../../lib/deep-link/share-link';
 
 export function useDiscordPresence(data: MediaPageData | null, _discordT: Translations['discord']) {
   useEffect(() => {
@@ -14,10 +15,13 @@ export function useDiscordPresence(data: MediaPageData | null, _discordT: Transl
       typeLabel: data.titleMain,
       coverUrl,
       externalId: data.externalId,
+      share: shareableWorkFromPage(data),
     });
 
     return () => {
       clearMediaPagePresence();
     };
-  }, [data?.externalId, data?.titleMain, data?.cover]);
+    // Fields listed one by one: an unrelated page-data update must not
+    // resend the presence.
+  }, [data?.externalId, data?.titleMain, data?.cover, data?.bannerImage, data?.releaseYear, data?.genreDots, data?.scoreGlobal]);
 }

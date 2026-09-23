@@ -3,6 +3,10 @@ import { flushSync } from 'react-dom';
 import { debugScanInfo, type LocalGame } from '../../../lib/tauri';
 import { scanGamesWithSteam } from '../../../lib/local/steam-merge';
 import { romDisplayTitle } from '../../../lib/local/rom-name-parser';
+import { takeRomDiscMergeSummary } from '../../../lib/tauri/roms';
+import { showToast } from '../../../lib/dom/toast';
+import { interpolateTranslation } from '../../../lib/i18n-dom/apply-translations';
+import { getT } from '../../../i18n/runtime';
 
 // A scanned ROM's `name` is the raw file stem (see emulator_roms.rs) — the
 // clean title shows from the very first render, before any IGDB match.
@@ -30,6 +34,15 @@ export function useLocalGames() {
         const list: LocalGame[] = withRomDisplayNames(Array.isArray(g) ? g : []);
         setGames(list);
         setGamesState(list.length === 0 ? 'empty' : 'done');
+        // Old per-disc entries folded into their multi-disc set by this
+        // scan (rom_disc_merge.rs): told once.
+        takeRomDiscMergeSummary()
+          .then(summary => {
+            if (summary && summary.entries > 0) {
+              showToast(interpolateTranslation(getT().local.discs_merged_toast, { games: summary.games, entries: summary.entries }), 'success');
+            }
+          })
+          .catch(() => {});
       })
       .catch((e: unknown) => {
         setScanError(typeof e === 'string' ? e : String(e));

@@ -214,6 +214,14 @@ describe('display / sort helpers', () => {
     expect(entries).toEqual([gameEntry, catalogEntry]);
   });
 
+  it('sortEntries shortestToBeat puts the shortest cached length first and unknown lengths last', () => {
+    const linked: StatusEntry = { kind: 'game', game: game('Zelda', { external_id: 'game:9' }) };
+    const unknown: StatusEntry = { kind: 'game', game: game('Alpha') };
+    const beat = new Map([['game:9', 3600], ['game:2', 7200]]);
+    expect(sortEntries([unknown, catalogEntry, linked], 'shortestToBeat', () => undefined, beat)).toEqual([linked, catalogEntry, unknown]);
+    expect(sortEntries([linked, unknown], 'shortestToBeat', () => undefined)).toEqual([unknown, linked]);
+  });
+
   it('entryKey is stable per item, preferring app_id then install_path then name', () => {
     expect(entryKey(gameEntry)).toBe('g-55');
     expect(entryKey({ kind: 'game', game: game('X', { install_path: 'C:/x' }) })).toBe('g-C:/x');

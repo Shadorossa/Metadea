@@ -1377,3 +1377,17 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 
+
+/* "Link copied" popup (profile headers' "Copy web profile link",
+   user-profile.css): a printed notice — square double rule, serif, no glow. */
+[data-theme="newspaper-dark"] .web-link-copied-toast {
+  border: 3px double var(--border-color);
+  border-radius: 0;
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  box-shadow: none;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}

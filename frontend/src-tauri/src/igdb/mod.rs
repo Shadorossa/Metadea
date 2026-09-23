@@ -14,6 +14,7 @@ mod search;
 
 pub use batch::*;
 pub use cache::*;
+pub(crate) use auth::get_twitch_token;
 pub(crate) use client::*;
 pub use detail::*;
 pub use images::*;

@@ -1,20 +1,25 @@
+import type { ReactNode } from 'react';
 import type { CharacterAlias } from '../../../lib/character/character-aliases';
 import type { CharacterStrings } from '../../../lib/character/character-stat-labels';
+import type { CharacterReaction } from '../../../lib/character/character-reactions';
 import { attributeUrl } from '../../../lib/character/character-page-urls';
 import { CharacterActionRow } from './CharacterActionRow';
+import { SpoilerChip } from '../../spoilers/SpoilerShield';
 
 interface LeftColProps {
   t: CharacterStrings;
   name: string;
   avatarUrl: string | null;
   isFavorite: boolean;
-  reaction: string | null;
+  reaction: CharacterReaction | null;
   onToggleFavorite: () => void;
-  onReaction: (reaction: string) => void;
+  onReaction: (reaction: CharacterReaction) => void;
   onEditAvatar: () => void;
+  /** Set while the spoiler shield blurs the portrait (a late debut). */
+  avatarSpoiler?: { label: string | null; onReveal: () => void };
 }
 
-export function CharacterHeroLeftCol({ t, name, avatarUrl, isFavorite, reaction, onToggleFavorite, onReaction, onEditAvatar }: LeftColProps) {
+export function CharacterHeroLeftCol({ t, name, avatarUrl, isFavorite, reaction, onToggleFavorite, onReaction, onEditAvatar, avatarSpoiler }: LeftColProps) {
   return (
     <div className="character-hero-left-col">
       <CharacterActionRow
@@ -27,9 +32,10 @@ export function CharacterHeroLeftCol({ t, name, avatarUrl, isFavorite, reaction,
       <div className="character-avatar-frame">
         <div className="character-avatar-wrap" id="char-avatar-container">
           {avatarUrl
-            ? <img src={attributeUrl(avatarUrl)} alt={name} className="character-avatar-img" />
+            ? <img src={attributeUrl(avatarUrl)} alt={name} className={`character-avatar-img${avatarSpoiler ? ' spoiler-blur' : ''}`} />
             : <div className="character-avatar-placeholder">{t.no_image}</div>}
         </div>
+        {avatarSpoiler && avatarUrl && <SpoilerChip onReveal={avatarSpoiler.onReveal} label={avatarSpoiler.label ?? undefined} />}
         <button className="char-avatar-edit-btn" id="char-avatar-edit-btn" title={t.edit_image} onClick={onEditAvatar}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -45,9 +51,11 @@ interface RightColProps {
   name: string;
   nameNative: string | null;
   aliases: CharacterAlias[];
+  /** Extra notes under the names (the spoiler shield banner). */
+  children?: ReactNode;
 }
 
-export function CharacterHeroRightCol({ name, nameNative, aliases }: RightColProps) {
+export function CharacterHeroRightCol({ name, nameNative, aliases, children }: RightColProps) {
   return (
     <div className="character-hero-right-col">
       <div className="character-name-row">
@@ -66,6 +74,7 @@ export function CharacterHeroRightCol({ name, nameNative, aliases }: RightColPro
           ))}
         </div>
       </div>
+      {children}
     </div>
   );
 }

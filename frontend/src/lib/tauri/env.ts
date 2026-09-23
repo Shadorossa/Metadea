@@ -15,6 +15,9 @@ export interface EnvConfig {
   ra_api_key?:         string;
   // MyAnimeList OAuth client id (lib/mal).
   mal_client_id?:      string;
+  // Google OAuth client for Drive backups; overrides the build-time one (lib/tauri/google-drive).
+  google_client_id?:     string;
+  google_client_secret?: string;
 }
 
 export async function readEnvConfig(): Promise<EnvConfig> {

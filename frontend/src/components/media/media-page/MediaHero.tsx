@@ -5,6 +5,9 @@ import { CONTAINS_RELATION_TYPES } from '../../../lib/media/saga/saga-relation-t
 import { IconPlus, IconCheck, IconLayers, IconHeart, IconRefresh, IconLink } from '../../local/ui/icons';
 import { getT } from '../../../i18n/runtime';
 import { StarRating, StatusDropdown } from './MediaPageControls';
+import { CompanyName, PublisherLine } from './CompanyLinks';
+import { CoverImage } from '../../shared/CoverImage';
+import { SpoilerChip } from '../../spoilers/SpoilerShield';
 
 interface Props {
   data: MediaPageData;
@@ -27,6 +30,9 @@ interface Props {
   onToggleFavorite: () => void;
   onStatusChange: (next: string) => void;
   onRate: (stars: number) => void;
+  /** Set while the spoiler shield blurs this cover (a later, unstarted
+   *  season with the "hide covers" setting on): reveals it. */
+  coverSpoiler?: () => void;
 }
 
 export function MediaHero({
@@ -50,6 +56,7 @@ export function MediaHero({
   onToggleFavorite: handleToggleFavorite,
   onStatusChange: handleStatusChange,
   onRate: handleRate,
+  coverSpoiler,
 }: Props) {
   // Only certain edition types get redirected to their base game and blocked
   // from being logged separately. Expansions are allowed as independent entries
@@ -69,6 +76,7 @@ export function MediaHero({
   // relation itself is the only reliable signal.
   const isBundle = data.relations.filter(r => !!r.relationType && CONTAINS_RELATION_TYPES.includes(r.relationType)).length >= 2;
   const isUneditable = isBlockedEdition || isBundle;
+  const developer = data.companies?.find(c => c.role === 'developer');
   // "Copy link" lives in MediaPage (handleCopyLink) so the `l` shortcut and
   // this button share one handler.
   const deepLinkText = getT().deep_link;
@@ -123,8 +131,10 @@ export function MediaHero({
             </button>
           )}
         </div>
-        {data.companies?.find(c => c.role === 'developer') && (
-          <div className="media-banner-developer-badge">{data.companies.find(c => c.role === 'developer')!.name}</div>
+        {developer && (
+          <div className="media-banner-developer-badge">
+            <CompanyName company={developer} mediaType={data.type} />
+          </div>
         )}
 
         <div className="media-hero-body">
@@ -184,7 +194,7 @@ export function MediaHero({
               )}
             >
               {displayCover && (
-                <img className="media-cover-img cover-image-fill" src={displayCover} alt={data.titleMain} />
+                <CoverImage externalId={data.externalId} className={`media-cover-img cover-image-fill${coverSpoiler ? ' spoiler-blur' : ''}`} src={displayCover} alt={data.titleMain} />
               )}
               <div className="media-cover-overlay">
                 <div className="media-cover-overlay-inner">
@@ -210,6 +220,8 @@ export function MediaHero({
                 </div>
               </div>
             </div>
+              {/* Outside the cover button: revealing must not open the editor. */}
+              {coverSpoiler && displayCover && <SpoilerChip onReveal={coverSpoiler} />}
               {!previewMode && (
                 // Same dual write MediaEditorModal's own heart button makes
                 // on save (saveLibraryEntry's is_favorite column, then
@@ -263,7 +275,7 @@ export function MediaHero({
                 {data.genreTagDots && <span className="media-genres-tags">{data.genreTagDots}</span>}
               </div>
             )}
-            {data.metaLines?.[0] && <p className="media-studios-label">{data.metaLines[0]}</p>}
+            {data.metaLines?.[0] && <PublisherLine line={data.metaLines[0]} companies={data.companies} mediaType={data.type} />}
             {data.metaLines?.[1] && <p className="media-cover-meta">{data.metaLines[1]}</p>}
             {data.metaLines?.[2] && <p className="media-cover-meta">{data.metaLines[2]}</p>}
           </div>

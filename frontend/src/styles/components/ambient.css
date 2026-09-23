@@ -1,0 +1,241 @@
+/* ── Ambient TV mode (components/ambient/, lib/ambient/) ────────────────────
+   Full-viewport screensaver above everything: the player (600), toasts
+   (9999) and the crop editor (20000). Always dark, whatever the UI theme —
+   it is a TV picture, not part of the page. */
+
+.ambient-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30000;
+  overflow: hidden;
+  background: #050507;
+  color: #f4f4f5;
+  cursor: none;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: ambient-fade-in 1.2s ease both;
+}
+
+.ambient-screen * {
+  cursor: none;
+}
+
+.ambient-screen.is-leaving {
+  animation: ambient-fade-out 0.7s ease both;
+}
+
+/* No wallpaper at all: just the clock over the UI theme's own background,
+   with a slow drifting accent glow. */
+.ambient-screen.is-empty {
+  background: var(--bg-base, #050507);
+  color: var(--text-main, #f4f4f5);
+}
+
+.ambient-screen.is-empty .ambient-shade {
+  display: none;
+}
+
+.ambient-screen.is-empty .ambient-clock,
+.ambient-screen.is-empty .ambient-caption {
+  text-shadow: none;
+}
+
+.ambient-idle-gradient {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 50% at 30% 30%, color-mix(in srgb, var(--accent, #c084fc) 16%, transparent) 0%, transparent 70%),
+    radial-gradient(45% 55% at 70% 70%, color-mix(in srgb, var(--accent, #c084fc) 10%, transparent) 0%, transparent 70%);
+  animation: ambient-idle-drift 40s ease-in-out infinite alternate;
+}
+
+@keyframes ambient-idle-drift {
+  from { transform: translate(-4%, -3%) rotate(0deg); }
+  to { transform: translate(4%, 3%) rotate(8deg); }
+}
+
+/* ── Slides ─────────────────────────────────────────────────────────────── */
+
+.ambient-stage,
+.ambient-slide {
+  position: absolute;
+  inset: 0;
+}
+
+/* Each new slide mounts on top and fades in over the previous one. */
+.ambient-slide {
+  overflow: hidden;
+  animation: ambient-fade-in 2s ease both;
+}
+
+.ambient-slide-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* AniList banners (~1900×400) are centre-cropped to fill the screen; the
+   vignette hides how soft that makes them. */
+.ambient-slide-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 75% 70% at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.72) 100%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.35) 0%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+/* Ken Burns: four slow pan/zoom paths, long enough to still be moving while
+   the next slide fades in. */
+.ambient-kb {
+  transform-origin: center;
+  animation-duration: 15s;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  will-change: transform;
+}
+
+.ambient-kb--0 { animation-name: ambient-kb-0; }
+.ambient-kb--1 { animation-name: ambient-kb-1; }
+.ambient-kb--2 { animation-name: ambient-kb-2; }
+.ambient-kb--3 { animation-name: ambient-kb-3; }
+.ambient-kb--soft { animation-name: ambient-kb-soft; }
+
+@keyframes ambient-kb-0 {
+  from { transform: scale(1.05) translate(-1.5%, -1%); }
+  to { transform: scale(1.2) translate(1.5%, 1%); }
+}
+
+@keyframes ambient-kb-1 {
+  from { transform: scale(1.2) translate(2%, 0); }
+  to { transform: scale(1.06) translate(-2%, -1%); }
+}
+
+@keyframes ambient-kb-2 {
+  from { transform: scale(1.08) translate(0, 2%); }
+  to { transform: scale(1.22) translate(-1%, -2%); }
+}
+
+@keyframes ambient-kb-3 {
+  from { transform: scale(1.22) translate(-2%, 1.5%); }
+  to { transform: scale(1.08) translate(1.5%, -1%); }
+}
+
+/* Banners: already magnified by the crop, so only a slight centred zoom. */
+@keyframes ambient-kb-soft {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.07); }
+}
+
+@keyframes ambient-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ambient-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Readability for the clock and the caption over any picture. */
+.ambient-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.45) 0%, transparent 22%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 30%);
+}
+
+/* ── Clock ──────────────────────────────────────────────────────────────── */
+
+.ambient-clock {
+  position: absolute;
+  top: clamp(1.5rem, 4vh, 3rem);
+  right: clamp(1.5rem, 4vw, 3.5rem);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
+}
+
+.ambient-clock-time {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.ambient-clock-date {
+  font-size: clamp(0.85rem, 1.3vw, 1.15rem);
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* "miércoles, 23 de septiembre" → "Miércoles, 23 de septiembre": only the
+   first letter (capitalize would also turn "de" into "De"). */
+.ambient-clock-date::first-letter {
+  text-transform: uppercase;
+}
+
+/* ── Caption ────────────────────────────────────────────────────────────── */
+
+.ambient-caption {
+  position: absolute;
+  left: clamp(1.5rem, 4vw, 3.5rem);
+  bottom: clamp(1.5rem, 5vh, 3.5rem);
+  max-width: min(46rem, 70vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+}
+
+.ambient-work {
+  animation: ambient-fade-in 1.6s ease 1s both;
+}
+
+.ambient-work-title {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.9rem);
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ambient-work-meta {
+  margin: 0.2rem 0 0;
+  font-size: clamp(0.8rem, 1.1vw, 1rem);
+  opacity: 0.72;
+}
+
+.ambient-now-playing {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.82rem;
+  /* Dimmed through the colour: the fade-in animation owns opacity. */
+  color: rgba(244, 244, 245, 0.72);
+  animation: ambient-fade-in 1.2s ease both;
+}
+
+.ambient-now-playing span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Reduced motion: crossfades only, nothing pans or zooms. */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-kb,
+  .ambient-idle-gradient {
+    animation: none;
+  }
+}

@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Translations } from '../../../i18n/index';
 import { loadCharacterPageData, type CharacterPageData } from '../../../lib/character/character-page-data';
 import { characterSavedMatchesPage } from '../../../lib/character/character-page-id';
 import { getFavoriteCustomImage, setCharacterReaction, syncFavorites, wrapAssetUrl } from '../../../lib/tauri';
+import { toggleReaction, type CharacterReaction } from '../../../lib/character/character-reactions';
+import { formatAppError } from '../../../lib/errors/format-error';
+import { showToast } from '../../../lib/dom/toast';
+import { getT } from '../../../i18n/runtime';
 import { openFavoriteImageEditor } from '../../profile/mount/favorite-image-editor';
 import { CharacterPageView } from './CharacterPageView';
+import { useCharacterSpoilers } from './useCharacterSpoilers';
 
 interface Props {
   i18n: Pick<Translations, 'character'>;
@@ -24,7 +29,10 @@ export default function CharacterPage({ i18n }: Props) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [reloadToken, setReloadToken] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [reaction, setReaction] = useState<string | null>(null);
+  const [reaction, setReaction] = useState<CharacterReaction | null>(null);
+  // Latest reaction for rapid clicks (each toggles from the last one, not
+  // from a stale render's value) and the rollback target on a failed write.
+  const reactionRef = useRef<CharacterReaction | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,6 +52,7 @@ export default function CharacterPage({ i18n }: Props) {
       const { data } = result;
       setIsFavorite(data.isFavorite);
       setReaction(data.reaction);
+      reactionRef.current = data.reaction;
       setAvatarUrl(data.customImageUrl || data.stickyImage);
       setState(prev => ({ status: 'ready', data, loadCount: prev.status === 'ready' ? prev.loadCount + 1 : 0 }));
     }).catch((err: unknown) => {
@@ -67,6 +76,9 @@ export default function CharacterPage({ i18n }: Props) {
   }, []);
 
   const data = state.status === 'ready' ? state.data : null;
+  // Spoiler shield (lib/spoilers/): the editor opened from this page is
+  // never shielded — only the page itself.
+  const spoiler = useCharacterSpoilers(data);
 
   const handleToggleFavorite = useCallback(async () => {
     if (!data) return;
@@ -75,12 +87,23 @@ export default function CharacterPage({ i18n }: Props) {
     await syncFavorites('character', data.externalId, next).catch(console.error);
   }, [data, isFavorite]);
 
-  const handleReaction = useCallback(async (r: string) => {
+  // Optimistic: the button flips at once and flips back if the write fails.
+  const handleReaction = useCallback(async (clicked: CharacterReaction) => {
     if (!data) return;
-    const next = reaction === r ? null : r;
+    const previous = reactionRef.current;
+    const next = toggleReaction(previous, clicked);
+    reactionRef.current = next;
     setReaction(next);
-    await setCharacterReaction(data.externalId, next).catch(console.error);
-  }, [data, reaction]);
+    try {
+      await setCharacterReaction(data.externalId, next);
+    } catch (err) {
+      if (reactionRef.current === next) {
+        reactionRef.current = previous;
+        setReaction(previous);
+      }
+      showToast(formatAppError(err, getT()), 'error');
+    }
+  }, [data]);
 
   const handleEditAvatar = useCallback(async () => {
     if (!data) return;
@@ -126,6 +149,7 @@ export default function CharacterPage({ i18n }: Props) {
           onReaction={handleReaction}
           onEditAvatar={handleEditAvatar}
           onEdit={handleEdit}
+          spoiler={spoiler}
         />
       )}
     </>

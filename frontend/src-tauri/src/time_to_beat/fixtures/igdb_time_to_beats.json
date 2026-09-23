@@ -1,0 +1,5 @@
+[
+  { "id": 11, "game_id": 1942, "hastily": 108000, "normally": 180000, "completely": 360000, "count": 412 },
+  { "id": 12, "game_id": 7346, "hastily": 136800, "normally": 216000, "count": 58 },
+  { "id": 13, "game_id": 99999, "count": 0 }
+]

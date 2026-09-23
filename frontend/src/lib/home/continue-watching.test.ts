@@ -49,6 +49,14 @@ describe('pickLastWatched', () => {
     expect(item).toMatchObject({ externalId: 'anime:3', episodeNumber: 10, seasonNumber: null, positionSeconds: 0, durationSeconds: null, framePath: null });
   });
 
+  it('lets the caller skip filler after a finished episode', () => {
+    const item = pickLastWatched(
+      { ...empty, history: [{ external_id: 'anime:20', episode_number: 135, watched_at: '2026-09-23 08:00:00' }] },
+      (id, finished) => (id === 'anime:20' && finished === 135 ? 142 : finished + 1),
+    );
+    expect(item).toMatchObject({ externalId: 'anime:20', episodeNumber: 142, positionSeconds: 0 });
+  });
+
   it('reads SQLite UTC timestamps and ISO strings alike', () => {
     expect(parseDbTimestamp('2026-09-23 08:00:00')).toBe(Date.UTC(2026, 8, 23, 8));
     expect(parseDbTimestamp('2026-09-23T08:00:00.000Z')).toBe(Date.UTC(2026, 8, 23, 8));

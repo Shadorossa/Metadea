@@ -17,6 +17,7 @@ export function SortModeSelect({ value, onChange }: { value: SortMode; onChange:
       <option value="alpha">{t.sort_alpha}</option>
       <option value="lastPlayed">{t.sort_last_played}</option>
       <option value="playtime">{t.sort_playtime}</option>
+      <option value="shortestToBeat">{t.sort_shortest_to_beat}</option>
     </select>
   );
 }

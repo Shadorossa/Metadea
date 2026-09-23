@@ -17,6 +17,7 @@ import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { VirtualCardGrid } from './ui/VirtualCardGrid';
 import { SortModeSelect } from './ui/SortModeSelect';
+import { useCachedBeatSeconds } from './hooks/useCachedBeatSeconds';
 import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
 import { LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from '../../lib/local/platforms';
 import { catalogReleaseTimestampMs } from '../../lib/media/mappers/mapper-utils';
@@ -263,6 +264,11 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // Same sort control Videojuegos gives its own launcher sections (see
   // GamesGrid) — one shared preference across every platform here too.
   const [sortMode, setSortMode] = useState<SortMode>('alpha');
+  const sortsByLength = sortMode === 'shortestToBeat';
+  const beatSeconds = useCachedBeatSeconds(sortsByLength, sortsByLength
+    ? [...items.map(i => i.externalId), ...steamBacklog.map(g => g.external_id), ...steamPlanning.map(g => g.external_id)]
+        .filter((id): id is string => !!id)
+    : []);
   const backlogByPlatform = useMemo(() => {
     const map = new Map<PlatformId, LocalGame[]>();
     for (const g of steamBacklog) {
@@ -302,7 +308,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
             ]
           : [];
         const merged = [...platformBacklogGames, ...additionalPlatformEntries];
-        const sorted = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById));
+        const sorted = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById), beatSeconds);
         const entries: SectionEntry[] = sorted.map(e => e.kind === 'game'
           ? { kind: 'steam' as const, game: e.game, libraryStatus: e.libraryStatus }
           : { kind: 'catalog' as const, item: e.item, launchGame: e.launchGame }
@@ -338,7 +344,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
       }))
       .filter(s => s.entries.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, resolvedCatalogMapById, sortMode]);
+  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, resolvedCatalogMapById, sortMode, beatSeconds]);
 
   // One bulk exists-check for every catalog card this grid is about to
   // render, instead of each LocalMediaCard racing its own get_cached_cover

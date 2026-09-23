@@ -1,5 +1,8 @@
 ---
+// Settings › Backup: local .7z export/restore and Google Drive backups.
+// Structure only; behaviour lives in components/settings/mount/backup-*.ts.
 import type { Translations } from "../../i18n/index";
+import "../../styles/pages/settings-backup.css";
 
 interface Props {
   t: Translations;
@@ -9,16 +12,176 @@ const { t } = Astro.props;
 
 <div class="settings-panel hidden" id="panel-backup">
   <div class="settings-section">
-    <h3 class="settings-section-title" data-i18n="settings.backup_title">{t.settings.backup_title}</h3>
-    <p class="settings-hint" data-i18n="settings.backup_hint">{t.settings.backup_hint}</p>
-    <div class="settings-backup-actions">
-      <button type="button" class="settings-save-btn" id="settings-backup-export-btn" data-i18n="settings.backup_export">
-        {t.settings.backup_export}
-      </button>
-      <button type="button" class="settings-save-btn" id="settings-backup-import-btn" data-i18n="settings.backup_import">
-        {t.settings.backup_import}
-      </button>
+    <h3 class="settings-section-title" data-i18n="backup.title">{t.backup.title}</h3>
+    <p class="settings-hint" data-i18n="backup.intro">{t.backup.intro}</p>
+    <!-- Game saves in every backup (src-tauri/src/saves/backup.rs; mount/saves-settings.ts). -->
+    <div class="backup-saves-sync-row backup-saves-include">
+      <label class="settings-checkbox-label">
+        <input type="checkbox" id="saves-backup-include" class="settings-checkbox" />
+        <span class="checkbox-label-text" data-i18n="saves.backup_include">{t.saves.backup_include}</span>
+      </label>
+      <span class="settings-help-btn" tabindex="0" role="img" title={t.saves.backup_include_info} data-i18n-title="saves.backup_include_info" aria-label={t.saves.backup_include_info} data-i18n-aria-label="saves.backup_include_info">
+        <span class="info-indicator" aria-hidden="true">i</span>
+      </span>
+      <span class="backup-meta" id="saves-backup-estimate"></span>
     </div>
-    <p class="settings-hint settings-backup-status" id="settings-backup-status" aria-live="polite"></p>
   </div>
+
+  <!-- Shown after a restore that cleared credentials: restart on the user's click. -->
+  <div class="backup-notice backup-notice--warning" id="backup-restart-notice" role="status" hidden>
+    <p id="backup-restart-text"></p>
+    <button type="button" class="btn btn--sm btn--primary" id="backup-restart-btn" data-i18n="backup.restore_restart_now">
+      {t.backup.restore_restart_now}
+    </button>
+  </div>
+
+  <!-- One progress bar for every operation (only one runs at a time). -->
+  <div class="backup-progress" id="backup-progress" hidden>
+    <div class="backup-progress-head">
+      <span class="backup-progress-label" id="backup-progress-label" aria-live="polite"></span>
+      <span class="backup-progress-percent" id="backup-progress-percent"></span>
+    </div>
+    <div class="backup-progress-track" id="backup-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="backup-progress-label">
+      <div class="backup-progress-fill" id="backup-progress-fill"></div>
+    </div>
+    <button type="button" class="btn btn--sm btn--ghost backup-progress-cancel" id="backup-cancel-btn" data-i18n="backup.cancel">{t.backup.cancel}</button>
+  </div>
+
+  <div class="backup-cards">
+    <!-- Local backup -->
+    <section class="backup-card" aria-labelledby="backup-local-title">
+      <header class="backup-card-header">
+        <span class="backup-card-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01M10 16h.01"/>
+          </svg>
+        </span>
+        <div class="backup-card-heading">
+          <h4 class="backup-card-title" id="backup-local-title" data-i18n="backup.local_title">{t.backup.local_title}</h4>
+          <p class="settings-hint" data-i18n="backup.local_hint">{t.backup.local_hint}</p>
+        </div>
+      </header>
+      <p class="backup-meta" id="backup-local-last" data-i18n="backup.last_export_never">{t.backup.last_export_never}</p>
+      <div class="backup-actions">
+        <button type="button" class="btn btn--primary" id="backup-export-btn" data-backup-action data-i18n="backup.export">{t.backup.export}</button>
+        <button type="button" class="btn btn--secondary" id="backup-import-btn" data-backup-action data-i18n="backup.import">{t.backup.import}</button>
+      </div>
+      <p class="backup-status" id="backup-local-status" aria-live="polite"></p>
+    </section>
+
+    <!-- Google Drive -->
+    <section class="backup-card" aria-labelledby="backup-drive-title">
+      <header class="backup-card-header">
+        <span class="backup-card-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+          </svg>
+        </span>
+        <div class="backup-card-heading">
+          <h4 class="backup-card-title" id="backup-drive-title" data-i18n="backup.drive_title">{t.backup.drive_title}</h4>
+          <p class="settings-hint" data-i18n="backup.drive_hint">{t.backup.drive_hint}</p>
+        </div>
+      </header>
+
+      <p class="backup-notice" id="backup-drive-unconfigured" hidden>
+        <a href="/settings?tab=environment&platform=google" data-i18n="backup.drive_not_configured">{t.backup.drive_not_configured}</a>
+      </p>
+
+      <div class="backup-drive-state" id="backup-drive-unlinked" hidden>
+        <div class="backup-actions">
+          <button type="button" class="btn btn--primary" id="backup-drive-link-btn" data-backup-action data-i18n="backup.drive_link">{t.backup.drive_link}</button>
+        </div>
+        <div class="backup-linking" id="backup-drive-linking" role="status" hidden>
+          <span class="backup-spinner" aria-hidden="true"></span>
+          <span data-i18n="backup.drive_linking">{t.backup.drive_linking}</span>
+          <button type="button" class="btn btn--sm btn--ghost" id="backup-drive-cancel-link-btn" data-i18n="backup.cancel">{t.backup.cancel}</button>
+        </div>
+      </div>
+
+      <div class="backup-drive-state" id="backup-drive-linked" hidden>
+        <div class="backup-account">
+          <span class="backup-account-avatar" aria-hidden="true">
+            <img id="backup-drive-avatar" alt="" referrerpolicy="no-referrer" hidden />
+            <span id="backup-drive-initial"></span>
+          </span>
+          <div class="backup-account-text">
+            <strong id="backup-drive-name"></strong>
+            <span id="backup-drive-email"></span>
+          </div>
+          <button type="button" class="btn btn--sm btn--ghost backup-btn--danger-ghost" id="backup-drive-unlink-btn" data-backup-action data-i18n="backup.drive_unlink">{t.backup.drive_unlink}</button>
+        </div>
+
+        <p class="backup-meta" id="backup-drive-last" data-i18n="backup.drive_last_upload_never">{t.backup.drive_last_upload_never}</p>
+        <p class="backup-status backup-status--error" id="backup-drive-error" role="alert" hidden></p>
+
+        <div class="backup-options">
+          <label class="backup-field" for="backup-drive-schedule">
+            <span class="env-label" data-i18n="backup.drive_schedule_label">{t.backup.drive_schedule_label}</span>
+            <select class="form-select" id="backup-drive-schedule">
+              <option value="off" data-i18n="backup.schedule_off">{t.backup.schedule_off}</option>
+              <option value="daily" data-i18n="backup.schedule_daily">{t.backup.schedule_daily}</option>
+              <option value="weekly" data-i18n="backup.schedule_weekly">{t.backup.schedule_weekly}</option>
+            </select>
+          </label>
+          <label class="backup-field" for="backup-drive-keep">
+            <span class="env-label" data-i18n="backup.drive_keep_label">{t.backup.drive_keep_label}</span>
+            <input class="env-input backup-keep-input" type="number" id="backup-drive-keep" min="1" max="50" step="1" inputmode="numeric" />
+          </label>
+        </div>
+        <p class="settings-hint" data-i18n="backup.drive_schedule_hint">{t.backup.drive_schedule_hint}</p>
+
+        <div class="backup-actions">
+          <button type="button" class="btn btn--primary" id="backup-drive-upload-btn" data-backup-action data-i18n="backup.drive_upload_now">{t.backup.drive_upload_now}</button>
+        </div>
+        <p class="backup-status" id="backup-drive-status" aria-live="polite"></p>
+
+        <!-- Emulator saves on Drive (src-tauri/src/saves/drive.rs; behaviour in mount/saves-settings.ts). -->
+        <div class="backup-saves-sync">
+          <div class="backup-saves-sync-row">
+            <label class="settings-checkbox-label">
+              <input type="checkbox" id="saves-drive-toggle" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="saves.drive_toggle">{t.saves.drive_toggle}</span>
+            </label>
+            <span class="settings-help-btn" tabindex="0" role="img" title={t.saves.drive_info} data-i18n-title="saves.drive_info" aria-label={t.saves.drive_info} data-i18n-aria-label="saves.drive_info">
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </span>
+          </div>
+          <p class="settings-hint" data-i18n="saves.drive_private">{t.saves.drive_private}</p>
+          <p class="backup-meta" id="saves-drive-last" data-i18n="saves.drive_last_sync_never">{t.saves.drive_last_sync_never}</p>
+          <div class="backup-actions">
+            <button type="button" class="btn btn--secondary" id="saves-drive-sync-btn" data-i18n="saves.drive_sync_now">{t.saves.drive_sync_now}</button>
+          </div>
+          <p class="backup-status" id="saves-drive-status" aria-live="polite"></p>
+        </div>
+
+        <div class="backup-remote">
+          <div class="backup-remote-head">
+            <h5 class="backup-remote-title" data-i18n="backup.drive_remote_title">{t.backup.drive_remote_title}</h5>
+            <button type="button" class="btn btn--sm btn--ghost" id="backup-drive-refresh-btn" data-i18n="backup.drive_remote_refresh">{t.backup.drive_remote_refresh}</button>
+          </div>
+          <ul class="backup-remote-list" id="backup-drive-list"></ul>
+          <p class="settings-hint" id="backup-drive-list-empty" data-i18n="backup.drive_remote_empty" hidden>{t.backup.drive_remote_empty}</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Restore confirmation (native modal dialog: focus trap + Escape). -->
+  <dialog class="backup-confirm" id="backup-confirm-dialog" aria-labelledby="backup-confirm-title" aria-describedby="backup-confirm-body">
+    <div class="backup-confirm-icon" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>
+      </svg>
+    </div>
+    <h3 class="backup-confirm-title" id="backup-confirm-title" data-i18n="backup.confirm_title">{t.backup.confirm_title}</h3>
+    <p class="backup-confirm-body" id="backup-confirm-body" data-i18n="backup.confirm_body">{t.backup.confirm_body}</p>
+    <div class="backup-confirm-details">
+      <strong id="backup-confirm-date"></strong>
+      <span id="backup-confirm-meta"></span>
+    </div>
+    <div class="backup-confirm-actions">
+      <button type="button" class="btn btn--secondary" id="backup-confirm-cancel" data-i18n="backup.confirm_cancel">{t.backup.confirm_cancel}</button>
+      <button type="button" class="btn backup-btn--danger" id="backup-confirm-accept" data-i18n="backup.confirm_accept">{t.backup.confirm_accept}</button>
+    </div>
+  </dialog>
 </div>

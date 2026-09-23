@@ -1,6 +1,5 @@
 // Queue navigation helpers shared by the overlay UI and playback-service.
-// Paths are compared by basename, case-insensitively, the same way the VLC
-// screenshot watcher matches "what is playing" to the queue.
+// Paths are compared by basename, case-insensitively.
 
 export function fileBasename(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;

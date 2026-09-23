@@ -40,6 +40,12 @@ pub struct LibraryEntry {
     pub reconsumption_count: i64,
     #[serde(default)]
     pub reconsuming: i32,
+    // "Filler: Watched / Skipped" (1 = skipped; migrations/anime_filler.rs).
+    // Optional on the way in: a payload without it (an older frontend, an
+    // auto-mark save that spreads a partial entry) keeps the stored value
+    // instead of resetting it; always Some on the way out.
+    #[serde(default)]
+    pub skip_filler: Option<i32>,
 }
 
 fn default_user() -> String {
@@ -50,7 +56,7 @@ const SELECT_BASE: &str = "
     SELECT id, user_id, external_id, type, status, rating, progress, progress_2,
            minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
            selected_platform, selected_version, started_at, finished_at, rating_2,
-           reconsumption_count, reconsuming
+           reconsumption_count, reconsuming, skip_filler
     FROM user_library
     WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)";
 
@@ -81,6 +87,7 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibraryEntry> {
         rating_2:         row.get(19)?,
         reconsumption_count: row.get::<_, Option<i64>>(20)?.unwrap_or(0),
         reconsuming:      row.get::<_, Option<i32>>(21)?.unwrap_or(0),
+        skip_filler:      Some(row.get::<_, Option<i32>>(22)?.unwrap_or(0)),
     })
 }
 
@@ -231,6 +238,7 @@ pub(crate) fn save_library_entry_in(
     if let Some(prev) = &existing {
         if entry.id.is_empty() { entry.id = prev.id.clone(); }
         entry.added_at = prev.added_at.clone();
+        if entry.skip_filler.is_none() { entry.skip_filler = prev.skip_filler; }
     }
 
     let totals = load_work_totals(&conn, &entry.external_id)?;
@@ -249,8 +257,8 @@ pub(crate) fn save_library_entry_in(
             id, user_id, external_id, type, status, rating, progress, progress_2,
             minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
             selected_platform, selected_version, started_at, finished_at, rating_2,
-            reconsumption_count, reconsuming
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
+            reconsumption_count, reconsuming, skip_filler
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
         rusqlite::params![
             &entry.id, &entry.user_id, &entry.external_id, &entry.entry_type,
             &entry.status, &entry.rating, entry.progress, entry.progress_2,
@@ -258,7 +266,7 @@ pub(crate) fn save_library_entry_in(
             &tags_json, &entry.notes, &entry.added_at, &entry.updated_at,
             &entry.selected_platform, &entry.selected_version,
             &entry.started_at, &entry.finished_at, &entry.rating_2,
-            entry.reconsumption_count, entry.reconsuming,
+            entry.reconsumption_count, entry.reconsuming, entry.skip_filler.unwrap_or(0),
         ],
     ).str_err()?;
 
@@ -308,7 +316,7 @@ mod reconsumption_tests {
             tags: None, notes: None, added_at: None, updated_at: None,
             selected_platform: None, selected_version: None,
             started_at: Some("2020-01-01".into()), finished_at: Some("2020-02-01".into()),
-            reconsumption_count: 0, reconsuming: 0,
+            reconsumption_count: 0, reconsuming: 0, skip_filler: None,
         }
     }
 

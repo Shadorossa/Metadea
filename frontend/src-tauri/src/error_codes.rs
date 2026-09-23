@@ -44,6 +44,29 @@ pub const RESTORE_MARKER_INVALID: &str = "E_RESTORE_MARKER_INVALID";
 pub const RESTORE_STAGE_MISSING: &str = "E_RESTORE_STAGE_MISSING";
 pub const RESTORE_MOVE_CURRENT: &str = "E_RESTORE_MOVE_CURRENT";
 pub const RESTORE_ACTIVATE: &str = "E_RESTORE_ACTIVATE";
+// 7z backups (src/backup). HASH_MISMATCH is a file whose size or SHA-256
+// differs from the manifest; SCHEMA_NEWER a backup from a newer Metadea.
+pub const BACKUP_BUSY: &str = "E_BACKUP_BUSY";
+pub const BACKUP_CANCELLED: &str = "E_BACKUP_CANCELLED";
+pub const BACKUP_SNAPSHOT: &str = "E_BACKUP_SNAPSHOT";
+pub const BACKUP_DB_INVALID: &str = "E_BACKUP_DB_INVALID";
+pub const BACKUP_ARCHIVE_WRITE: &str = "E_BACKUP_ARCHIVE_WRITE";
+pub const BACKUP_ARCHIVE_INVALID: &str = "E_BACKUP_ARCHIVE_INVALID";
+pub const BACKUP_HASH_MISMATCH: &str = "E_BACKUP_HASH_MISMATCH";
+pub const BACKUP_SCHEMA_NEWER: &str = "E_BACKUP_SCHEMA_NEWER";
+pub const BACKUP_TOO_LARGE: &str = "E_BACKUP_TOO_LARGE";
+
+// Google Drive backups (src/google_drive). AUTH covers a refused consent,
+// a rejected code exchange/refresh and a 401; NOT_LINKED is no stored account.
+pub const GDRIVE_NOT_CONFIGURED: &str = "E_GDRIVE_NOT_CONFIGURED";
+pub const GDRIVE_NOT_LINKED: &str = "E_GDRIVE_NOT_LINKED";
+pub const GDRIVE_AUTH: &str = "E_GDRIVE_AUTH";
+pub const GDRIVE_STATE_MISMATCH: &str = "E_GDRIVE_STATE_MISMATCH";
+pub const GDRIVE_LOGIN_TIMEOUT: &str = "E_GDRIVE_LOGIN_TIMEOUT";
+pub const GDRIVE_LOGIN_CANCELLED: &str = "E_GDRIVE_LOGIN_CANCELLED";
+pub const GDRIVE_NETWORK: &str = "E_GDRIVE_NETWORK";
+pub const GDRIVE_API: &str = "E_GDRIVE_API";
+pub const GDRIVE_NOT_FOUND: &str = "E_GDRIVE_NOT_FOUND";
 
 pub const GITHUB_SESSION_EXPIRED: &str = "E_GITHUB_SESSION_EXPIRED";
 pub const GITHUB_API: &str = "E_GITHUB_API";
@@ -92,6 +115,66 @@ pub const UI_THEME_OPEN_FOLDER: &str = "E_UI_THEME_OPEN_FOLDER";
 pub const THEME_VIDEO_DOWNLOAD: &str = "E_THEME_VIDEO_DOWNLOAD";
 pub const THEME_VIDEO_CANCELLED: &str = "E_THEME_VIDEO_CANCELLED";
 
+// Company pages (src/company_catalog). KEYS_MISSING is IGDB/TMDB without the
+// user's credentials and nothing in the local catalog to fall back on.
+pub const COMPANY_ID_INVALID: &str = "E_COMPANY_ID_INVALID";
+pub const COMPANY_NOT_FOUND: &str = "E_COMPANY_NOT_FOUND";
+pub const COMPANY_KEYS_MISSING: &str = "E_COMPANY_KEYS_MISSING";
+pub const COMPANY_API: &str = "E_COMPANY_API";
+
+// Comic Vine story-arc import (src/comicvine.rs). KEY_MISSING is no Comic
+// Vine API key in Settings; API is a non-2xx or unparseable response.
+pub const COMICVINE_KEY_MISSING: &str = "E_COMICVINE_KEY_MISSING";
+pub const COMICVINE_NETWORK: &str = "E_COMICVINE_NETWORK";
+pub const COMICVINE_API: &str = "E_COMICVINE_API";
+
+// Yearly Bingo (src/yearly_bingo.rs). LOCKED is a board write outside its
+// edit window (Dec 20 of the previous year – Jan 10, local date); INVALID is
+// an out-of-range year, too many cells, or a duplicate/blank work.
+pub const BINGO_LOCKED: &str = "E_BINGO_LOCKED";
+pub const BINGO_INVALID: &str = "E_BINGO_INVALID";
+
+// Character reactions (src/character_reactions.rs): a reaction other than
+// like / interest / dislike / none.
+pub const CHARACTER_REACTION_INVALID: &str = "E_CHARACTER_REACTION_INVALID";
+
+// Tier lists (src/tier_lists.rs): the list was deleted (e.g. in another
+// window) while an editor still had it open.
+pub const TIER_LIST_NOT_FOUND: &str = "E_TIER_LIST_NOT_FOUND";
+
+// Emulator save manager (src/saves). ROOT_INVALID is a saves folder that is
+// relative, a drive root, a file or inside the app data folder; PATH_UNSAFE
+// a save id or Drive name that would leave its folder; IO a failed copy,
+// move or manifest write.
+pub const SAVES_ROOT_INVALID: &str = "E_SAVES_ROOT_INVALID";
+pub const SAVES_PATH_UNSAFE: &str = "E_SAVES_PATH_UNSAFE";
+pub const SAVES_NOT_FOUND: &str = "E_SAVES_NOT_FOUND";
+pub const SAVES_IO: &str = "E_SAVES_IO";
+pub const SAVES_LABEL_TOO_LONG: &str = "E_SAVES_LABEL_TOO_LONG";
+pub const SAVES_OPEN_FOLDER: &str = "E_SAVES_OPEN_FOLDER";
+
+// Anime filler lists (src/anime_filler): the local cache could not be read
+// or written, or a link was rejected (bad slug, negative offset).
+pub const FILLER_DB: &str = "E_FILLER_DB";
+pub const FILLER_INVALID_LINK: &str = "E_FILLER_INVALID_LINK";
+
+// Player clips (src/player/clip): ENCODING_UNSUPPORTED is a libmpv built
+// without encoding (`o`); NO_SOURCE a stream or nothing playing.
+pub const CLIP_ENCODING_UNSUPPORTED: &str = "E_CLIP_ENCODING_UNSUPPORTED";
+pub const CLIP_ENCODE_FAILED: &str = "E_CLIP_ENCODE_FAILED";
+pub const CLIP_BUSY: &str = "E_CLIP_BUSY";
+pub const CLIP_NO_SOURCE: &str = "E_CLIP_NO_SOURCE";
+pub const CLIP_CANCELLED: &str = "E_CLIP_CANCELLED";
+pub const CLIP_PATH_INVALID: &str = "E_CLIP_PATH_INVALID";
+
+// Controller pause menu (src/game_pause): NOT_PAUSED an action on a menu
+// that is already closed; SAVE_STATE RetroArch's network command could not
+// be sent (or is not enabled); SETTINGS the settings file write.
+pub const GAME_PAUSE_NOT_PAUSED: &str = "E_GAME_PAUSE_NOT_PAUSED";
+pub const GAME_PAUSE_SAVE_STATE: &str = "E_GAME_PAUSE_SAVE_STATE";
+pub const GAME_PAUSE_SETTINGS: &str = "E_GAME_PAUSE_SETTINGS";
+pub const GAME_PAUSE_FAILED: &str = "E_GAME_PAUSE_FAILED";
+
 /// Every code above, for the parity tests below (the TS side parses the
 /// consts themselves — see lib/errors/error-codes.test.ts).
 #[cfg(test)]
@@ -128,6 +211,24 @@ pub const ALL: &[&str] = &[
     RESTORE_STAGE_MISSING,
     RESTORE_MOVE_CURRENT,
     RESTORE_ACTIVATE,
+    BACKUP_BUSY,
+    BACKUP_CANCELLED,
+    BACKUP_SNAPSHOT,
+    BACKUP_DB_INVALID,
+    BACKUP_ARCHIVE_WRITE,
+    BACKUP_ARCHIVE_INVALID,
+    BACKUP_HASH_MISMATCH,
+    BACKUP_SCHEMA_NEWER,
+    BACKUP_TOO_LARGE,
+    GDRIVE_NOT_CONFIGURED,
+    GDRIVE_NOT_LINKED,
+    GDRIVE_AUTH,
+    GDRIVE_STATE_MISMATCH,
+    GDRIVE_LOGIN_TIMEOUT,
+    GDRIVE_LOGIN_CANCELLED,
+    GDRIVE_NETWORK,
+    GDRIVE_API,
+    GDRIVE_NOT_FOUND,
     GITHUB_SESSION_EXPIRED,
     GITHUB_API,
     GITHUB_NETWORK,
@@ -157,6 +258,35 @@ pub const ALL: &[&str] = &[
     UI_THEME_OPEN_FOLDER,
     THEME_VIDEO_DOWNLOAD,
     THEME_VIDEO_CANCELLED,
+    COMPANY_ID_INVALID,
+    COMPANY_NOT_FOUND,
+    COMPANY_KEYS_MISSING,
+    COMPANY_API,
+    COMICVINE_KEY_MISSING,
+    COMICVINE_NETWORK,
+    COMICVINE_API,
+    BINGO_LOCKED,
+    BINGO_INVALID,
+    CHARACTER_REACTION_INVALID,
+    TIER_LIST_NOT_FOUND,
+    SAVES_ROOT_INVALID,
+    SAVES_PATH_UNSAFE,
+    SAVES_NOT_FOUND,
+    SAVES_IO,
+    SAVES_LABEL_TOO_LONG,
+    SAVES_OPEN_FOLDER,
+    FILLER_DB,
+    FILLER_INVALID_LINK,
+    CLIP_ENCODING_UNSUPPORTED,
+    CLIP_ENCODE_FAILED,
+    CLIP_BUSY,
+    CLIP_NO_SOURCE,
+    CLIP_CANCELLED,
+    CLIP_PATH_INVALID,
+    GAME_PAUSE_NOT_PAUSED,
+    GAME_PAUSE_SAVE_STATE,
+    GAME_PAUSE_SETTINGS,
+    GAME_PAUSE_FAILED,
 ];
 
 /// `"E_CODE: detail"` — the detail is technical (an io/zip/reqwest error),

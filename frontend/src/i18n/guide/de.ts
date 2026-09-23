@@ -239,14 +239,14 @@ export const guideDe: Translations['guide'] = {
     },
     tier_lists: {
       title: "Tier Lists",
-      intro: "Ordne Werke in Stufen von S bis F ein – oder in Stufen, denen du selbst Namen und Farben gibst.",
+      intro: "Ordne Werke oder Charaktere im TierMaker-Stil ein: Zeilen von S bis F, die du umbenennen, umfärben, hinzufügen, entfernen und umsortieren kannst.",
       steps: {
-        s1: "Öffne Tier list und erstelle eine neue.",
-        s2: "Füge Werke aus deinem Katalog hinzu; sie warten im Bereich „Nicht eingeordnet“.",
-        s3: "Ziehe jedes Werk in seine Stufe. Klicke auf den Namen oder die Farbe einer Stufe, um sie zu ändern.",
+        s1: "Öffne Tier list in der Navigationsleiste und erstelle eine Liste mit Werken oder Charakteren.",
+        s2: "Fülle die Ablage aus deiner Bibliothek (Filter oder Schnellfüllungen wie „alles Abgeschlossene aus 2024“), deinen Listen und Sagas, deinen Charakteren oder einer Suche.",
+        s3: "Zieh Cover in die Zeilen oder wähle mehrere aus und drücke 1–9. Ein Doppelklick legt ein Cover zurück in die Ablage.",
       },
       tips: {
-        t1: "Tier Lists für Charaktere und die Community-Suche kommen bald.",
+        t1: "Jede Änderung wird automatisch gespeichert, Strg+Z macht sie rückgängig. „Als Bild speichern“ exportiert das Board als PNG, „In meinem Profil zeigen“ listet es im Tab Listen deines Profils.",
       },
     },
     stats: {
@@ -308,8 +308,7 @@ export const guideDe: Translations['guide'] = {
       steps: {
         s1: "Wähle unter Einstellungen › Emulatoren einen Hersteller und eine Konsole.",
         s2: "Wähle den Emulator und seine Programmdatei, die Startparameter ({ROM} wird durch die Datei ersetzt) und deinen ROM-Ordner.",
-        s3: "Lege optional die gesuchten ROM-Erweiterungen fest (leer = die üblichen) sowie den Screenshot-Ordner des Emulators.",
-        s4: "Öffne Play › Spiele: Deine ROMs erscheinen mit bereinigten Namen und IGDB-Daten.",
+        s3: "Öffne Play › Spiele: Deine ROMs erscheinen mit bereinigten Namen und IGDB-Daten.",
       },
       tips: {
         t1: "„ROM-Dateinamen automatisch bereinigen“ benennt Dateien in ein ordentliches Format um (und ihre Spielstände gleich mit). Ein Hinweis erlaubt dir einige Sekunden lang, das rückgängig zu machen.",
@@ -347,15 +346,15 @@ export const guideDe: Translations['guide'] = {
     },
     screenshots: {
       title: "Screenshots",
-      intro: "Der Bereich „Screenshots“ eines Werks sammelt Aufnahmen aus drei Quellen: die, die du in Metadea machst, deine Steam-Screenshots und den Aufnahmeordner deines Emulators.",
+      intro: "Der Bereich „Screenshots“ eines Werks sammelt seine Aufnahmen aus Bilder › Metadea › <Werk> und bei Steam-Spielen deine Steam-Screenshots.",
       steps: {
         s1: "Drücke im integrierten Player F12, um ein Bild zu speichern. Es landet unter Bilder › Metadea › <Werk>, benannt nach Folge und Zeitpunkt.",
         s2: "Klicke im Comic-Reader mit der rechten Maustaste auf eine Seite und wähle „Seite speichern (PNG)“.",
-        s3: "Für Emulatoren legst du den Screenshot-Ordner jeder Konsole unter Einstellungen › Emulatoren fest oder lässt ihn leer, damit er erkannt wird.",
+        s3: "Bei Emulatoren machst du Screenshots wie gewohnt: Solange ein aus Metadea gestartetes Spiel läuft, wird jede Aufnahme nach Bilder › Metadea › <Spiel> verschoben, und ein Hinweis bestätigt es.",
       },
       tips: {
-        t1: "Der Aufnahmeordner wird für Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu und PPSSPP automatisch erkannt.",
-        t2: "Emulator-Aufnahmen werden nach Spiel gefiltert; passt keine, werden die neuesten Aufnahmen mit einem Hinweis angezeigt.",
+        t1: "Der Aufnahmeordner des Emulators wird für Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu, PPSSPP, Cemu und RPCS3 erkannt; für andere Emulatoren legst du ihn unter Einstellungen › Emulatoren (erweitert) fest.",
+        t2: "Aufnahmen eines Spiels, die schon im Ordner des Emulators lagen, werden beim ersten Öffnen des Spiels dorthin verschoben.",
       },
     },
     launching: {
@@ -374,9 +373,9 @@ export const guideDe: Translations['guide'] = {
     },
     player: {
       title: "Der Videoplayer",
-      intro: "Lokale Folgen und Filme laufen im integrierten Player von Metadea (libmpv), der sich deinen Fortschritt von selbst merkt. Wenn du lieber VLC nutzt, geht das auch.",
+      intro: "Lokale Folgen und Filme laufen im integrierten Player von Metadea (libmpv), der sich deinen Fortschritt von selbst merkt.",
       steps: {
-        s1: "Wähle den Player unter Einstellungen › Einstellungen › Videoplayer: integriert (libmpv) oder VLC (extern).",
+        s1: "Nichts zu installieren: Der Player (libmpv) wird mit Metadea mitgeliefert.",
         s2: "Wähle die Steuerung: über dem Video eingeblendet oder in einer festen Leiste unter dem Video.",
         s3: "Drücke in Play bei einer Folge auf „Abspielen“. Der Rest der Staffel wird in die Warteschlange gestellt; mit Q siehst du die Warteschlange.",
         s4: "Über die Menüs wechselst du Tonspur, Untertitel und Geschwindigkeit (0,5× bis 2×).",
@@ -385,7 +384,7 @@ export const guideDe: Translations['guide'] = {
       },
       tips: {
         t1: "Ein Klick auf das Video pausiert, ein Doppelklick schaltet auf Vollbild.",
-        t2: "Kann libmpv nicht geladen werden, nutzt Metadea automatisch VLC und sagt dir Bescheid.",
+        t2: "Kann libmpv nicht geladen werden, sagt Metadea dir Bescheid, statt das Video zu öffnen.",
         t3: "Mit der letzten Folge wird das Werk abgeschlossen und seine Fortsetzung zu deinen ausstehenden Werken hinzugefügt.",
         t4: "Discord zeigt, was du schaust, mit einem Countdown der verbleibenden Zeit.",
       },
@@ -413,7 +412,6 @@ export const guideDe: Translations['guide'] = {
       },
       tips: {
         t1: "Die Abschnitte stammen aus den Kapiteln der Datei (MKV) und bei Anime von AniSkip; gibt es beides, haben die Kapitel Vorrang.",
-        t2: "Das funktioniert nur im integrierten Player, nicht in VLC.",
       },
     },
     reader_comics: {
@@ -569,7 +567,7 @@ export const guideDe: Translations['guide'] = {
       title: "Oberflächen-Themes (Skins)",
       intro: "Skins gestalten ganz Metadea neu. Es sind Ordner mit einer theme.json-Datei und optional CSS, die du selbst erstellen oder von anderen bekommen kannst.",
       steps: {
-        s1: "Drücke unter Einstellungen › Erscheinungsbild › Community-Themes (Skins) auf „Theme-Ordner öffnen“.",
+        s1: "Drücke unter Einstellungen › Plugins › Oberflächen-Themes auf „Theme-Ordner öffnen“.",
         s2: "Kopiere einen Theme-Ordner dorthin (oder drücke „Beispiel-Theme erstellen“) und drücke „Neu laden“.",
         s3: "Drücke beim gewünschten Theme auf „Aktivieren“. Es bleibt auch nach einem Neustart aktiv.",
         s4: "Wenn du ein eigenes erstellst, aktiviere „Änderungen beobachten“, um deine Anpassungen alle zwei Sekunden zu sehen.",
@@ -620,11 +618,12 @@ export const guideDe: Translations['guide'] = {
     },
     backup: {
       title: "Wo deine Daten liegen und Sicherungen",
-      intro: "Alles wird in einer Datenbank in deinem Benutzerordner gespeichert (unter Windows %APPDATA%\\com.metadea.app). Eine Sicherung kopiert diesen Ordner in eine einzige ZIP-Datei.",
+      intro: "Alles wird in einer Datenbank in deinem Benutzerordner gespeichert (unter Windows %APPDATA%\\com.metadea.app). Eine Sicherung ist eine einzelne .7z-Datei mit dieser Datenbank, deinen eigenen Bildern und Skins; Caches bleiben draußen, weil sie neu geladen werden.",
       steps: {
-        s1: "Öffne Einstellungen › Sicherung und drücke „Daten exportieren“. Speichere die ZIP-Datei außerhalb des Datenordners von Metadea.",
-        s2: "Zum Wiederherstellen drückst du „Daten importieren“ und wählst eine ZIP-Datei. Metadea speichert zuerst eine Kopie deiner aktuellen Daten neben dem Ordner und startet dann neu, um die Sicherung anzuwenden.",
+        s1: "Öffne Einstellungen › Sicherung und drücke „Sicherung erstellen“. Speichere die .7z-Datei außerhalb des Datenordners von Metadea.",
+        s2: "Zum Wiederherstellen drückst du „Aus Datei wiederherstellen“ und wählst eine .7z-Datei (oder eine .zip aus älteren Versionen). Metadea prüft jede Datei, speichert eine Kopie deiner aktuellen Daten neben dem Ordner und startet dann neu, um die Sicherung anzuwenden.",
         s3: "„Ordner öffnen“ unter Einstellungen › Umgebung › Lokale Pfade öffnet den Datenordner.",
+        s4: "Verknüpfe im selben Tab Google Drive, um Sicherungen in einen privaten App-Ordner hochzuladen, sofort oder automatisch täglich bzw. wöchentlich; jede davon lässt sich aus der Liste wiederherstellen.",
       },
       tips: {
         t1: "Niemand sonst hat eine Kopie deiner Bibliothek: Mach vor großen Änderungen und ab und zu eine Sicherung.",

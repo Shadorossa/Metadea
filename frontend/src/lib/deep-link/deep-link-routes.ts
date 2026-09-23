@@ -12,6 +12,9 @@
 export type DeepLinkTarget =
   | { kind: 'media'; external_id: string }
   | { kind: 'character'; id: string }
+  // Company page id: provider with an optional qualifier (`igdb:1020`,
+  // `anilist-studio:11`, `tmdb-network:213`) — see lib/company/company-page-id.
+  | { kind: 'company'; id: string }
   | { kind: 'profile'; user: string }
   | { kind: 'home' }
   // `metadea://auth/mal?code=…&state=…` — MyAnimeList's OAuth return. Rust
@@ -20,10 +23,17 @@ export type DeepLinkTarget =
   | { kind: 'auth_mal'; code: string; state: string };
 
 export const DEEP_LINK_SCHEME = 'metadea';
+// Fallback share page (site/open/): plain `?to=` redirect, no preview.
 export const SHARE_URL_BASE = 'https://shadorossa.github.io/Metadea/open/';
+// Rich share links with a Discord/Open Graph preview (built by share-link.ts,
+// served by the metadea-web Worker's share route, src/routes/share.ts).
+// Published through the Cloudflare Pages project `metadea` (metadea-web/share-pages),
+// which forwards to the `metadea` Worker; old workers.dev links keep working.
+export const SHARE_LINK_BASE = 'https://metadea.pages.dev';
 
 const PREFIXED_ID = /^[a-z]+:[A-Za-z0-9_-]+$/;
 const PLAIN_ID = /^[A-Za-z0-9_-]+$/;
+const COMPANY_ID = /^[a-z]+(?:-[a-z]+)?:[A-Za-z0-9_-]+$/;
 // RFC 3986 unreserved characters, bounded like deep_link.rs's MAX_AUTH_CODE_LEN.
 const AUTH_CODE = /^[A-Za-z0-9_.~-]{1,4096}$/;
 
@@ -31,6 +41,7 @@ export function isValidDeepLinkTarget(target: DeepLinkTarget): boolean {
   switch (target.kind) {
     case 'media': return PREFIXED_ID.test(target.external_id);
     case 'character': return PREFIXED_ID.test(target.id);
+    case 'company': return COMPANY_ID.test(target.id);
     case 'profile': return PLAIN_ID.test(target.user);
     case 'home': return true;
     case 'auth_mal': return AUTH_CODE.test(target.code) && PLAIN_ID.test(target.state);
@@ -43,6 +54,7 @@ export function targetToPath(target: DeepLinkTarget): string {
   switch (target.kind) {
     case 'media': return `/media?id=${encodeURIComponent(target.external_id)}`;
     case 'character': return `/character?id=${encodeURIComponent(target.id)}`;
+    case 'company': return `/company?id=${encodeURIComponent(target.id)}`;
     case 'profile': return `/user?id=${encodeURIComponent(target.user)}`;
     case 'home': return '/home';
     case 'auth_mal': return '/settings';
@@ -55,6 +67,7 @@ function targetToLocator(target: DeepLinkTarget): string {
   switch (target.kind) {
     case 'media': return `media/${target.external_id}`;
     case 'character': return `character/${target.id}`;
+    case 'company': return `company/${target.id}`;
     case 'profile': return `profile/${target.user}`;
     case 'home': return 'home';
     case 'auth_mal': return `auth/mal?code=${target.code}&state=${target.state}`;
@@ -97,6 +110,10 @@ export function parseDeepLinkTarget(payload: unknown): DeepLinkTarget | null {
     case 'character':
       if (typeof value.id !== 'string') return null;
       target = { kind: 'character', id: value.id };
+      break;
+    case 'company':
+      if (typeof value.id !== 'string') return null;
+      target = { kind: 'company', id: value.id };
       break;
     case 'profile':
       if (typeof value.user !== 'string') return null;

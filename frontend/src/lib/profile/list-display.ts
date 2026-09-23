@@ -14,7 +14,16 @@ export function nextUntitledListName(existingNames: string[], base: string): str
   return `${base} ${n}`;
 }
 
-export interface ListItemDisplay { cover: string; isEpItem: boolean; url: string; epBadge: string | null; title: string }
+export interface ListItemDisplay {
+  cover: string;
+  /** The work whose own cover `cover` is (null for a custom image, a
+   *  character or an episode) — what the textless-cover swap keys on. */
+  coverWorkId: string | null;
+  isEpItem: boolean;
+  url: string;
+  epBadge: string | null;
+  title: string;
+}
 
 export type ListSortMode = 'custom' | 'alphabetical' | 'release';
 
@@ -72,5 +81,6 @@ export function resolveListItemDisplay(
       epBadge = sNum > 0 ? `T${sNum} E${epNum}` : `Ep. ${epNum}`;
     }
   }
-  return { cover, isEpItem, url, epBadge, title };
+  const coverWorkId = custom || isCharItem || isEpItem ? null : item.external_id;
+  return { cover, coverWorkId, isEpItem, url, epBadge, title };
 }

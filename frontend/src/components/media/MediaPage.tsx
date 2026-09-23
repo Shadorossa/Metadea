@@ -23,6 +23,7 @@ import { CONTAINS_RELATION_TYPES } from '../../lib/media/saga/saga-relation-type
 import { digitToDbRating } from '../../lib/media/rating-digit';
 import { isAniListType, syncToAniList } from '../../lib/media/anilist-sync';
 import { copyDeepLink } from '../../lib/deep-link/copy-deep-link';
+import { shareableWorkFromPage } from '../../lib/deep-link/share-link';
 import { showToast } from '../../lib/dom/toast';
 import { useShortcuts } from '../shared/hooks/useShortcuts';
 
@@ -43,6 +44,12 @@ import { MediaRelationsSection, EPISODE_PAGE_SIZE, type RelationsTab } from './m
 import { MediaStatsColumn } from './media-page/MediaStatsColumn';
 import { MediaCastSection, type CharTab } from './media-page/MediaCastSection';
 import { MediaScoresSection } from './media-page/MediaScoresSection';
+import { useMediaSpoilers } from './media-page/useMediaSpoilers';
+import { useEpisodeFiller } from './media-page/useEpisodeFiller';
+import { FillerAttribution, FillerEpisodesToolbar } from './media-page/FillerEpisodesToolbar';
+import { completionEpisode, nextCanonEpisode, skipsFiller } from '../../lib/anime/filler';
+import { formatAppError } from '../../lib/errors/format-error';
+import { SpoilerShield } from '../spoilers/SpoilerShield';
 
 
 // ── MediaPage ──────────────────────────────────────────────────────────────
@@ -114,6 +121,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     setThemes,
   });
   const customImagesMap = useCustomImages(currentId, previewMode);
+  // Spoiler shield (lib/spoilers/): off in preview mode — a proposal's own
+  // content is never hidden from its author.
+  const spoilers = useMediaSpoilers({ currentId, previewMode, data, animeSeasonChain, episodes });
   const { friendsScores, friendsLoading } = useFriendsScores(currentId, previewMode);
   const [ratingSystem,       setRatingSystem]       = useState<RatingSystem>(getActiveRatingSystem());
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
@@ -141,6 +151,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     applyDeleted,
     rollback,
   } = useLibraryEntry(currentId, data?.type);
+  // AnimeFillerList badges, "Hide filler" and the Watched/Skipped choice
+  // (lib/anime/filler.ts).
+  const filler = useEpisodeFiller({ currentId, previewMode, data, episodeOffset });
   const isEventCompetition = data?.type === 'event'
     && /^event:apisports:(football|basketball):\d+$/.test(currentId);
 
@@ -388,14 +401,16 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     }
   }, [isFavorited, updateLocal, applySaved, rollback, currentId]);
 
-  // "Copy link" — puts the https share form of this work's deep link
-  // (buildShareUrl, the one Discord/chats accept) on the clipboard. Shared
-  // by the hero's button and the `l` shortcut.
+  // "Copy link" — puts the https share link of this work on the clipboard:
+  // the rich preview link (share-link.ts) built from the loaded page data,
+  // or the plain /open/ redirect while it is still loading. Shared by the
+  // hero's button and the `l` shortcut.
   const handleCopyLink = useCallback(async () => {
     const deepLinkText = getT().deep_link;
-    const copied = await copyDeepLink({ kind: 'media', external_id: currentId });
+    const work = data && data.externalId === currentId ? shareableWorkFromPage(data) : undefined;
+    const copied = await copyDeepLink({ kind: 'media', external_id: currentId }, work);
     showToast(copied ? deepLinkText.copied : deepLinkText.copy_failed, copied ? 'success' : 'error');
-  }, [currentId]);
+  }, [currentId, data]);
 
   // `+` / `-`: progress ±1 through the same quick-edit persistence as the
   // hero (saveLibraryEntry + applySaved) followed by the editor's AniList
@@ -404,10 +419,17 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     if (!data) return;
     const current = libEntry?.progress ?? 0;
     const total = data.totalCount && data.totalCount > 0 ? data.totalCount : null;
-    const next = Math.max(0, total ? Math.min(total, current + delta) : current + delta);
+    // Filler: Skipped → `+` jumps to the next canon/mixed episode and the
+    // entry completes at its last one. Progress stays the real episode number.
+    const skipping = skipsFiller(libEntry, filler.ownInfo, total);
+    const stepped = skipping && delta === 1
+      ? nextCanonEpisode(current, filler.ownInfo, total).episode ?? (total ?? current + 1)
+      : current + delta;
+    const next = Math.max(0, total ? Math.min(total, stepped) : stepped);
     if (next === current) return;
     const overrides: Partial<LibraryEntry> = { progress: next };
-    if (total && next >= total && data.status !== 'NOT_YET_RELEASED' && libStatus !== 'completed') overrides.status = 'completed';
+    const completeAt = completionEpisode(libEntry, filler.ownInfo, total);
+    if (completeAt && next >= completeAt && data.status !== 'NOT_YET_RELEASED' && libStatus !== 'completed') overrides.status = 'completed';
     const draft = updateLocal(overrides);
     try {
       const saved = await saveLibraryEntry(draft);
@@ -424,7 +446,36 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       console.error('Failed to save progress:', e);
       rollback();
     }
-  }, [data, libEntry, libStatus, currentId, updateLocal, applySaved, rollback]);
+  }, [data, libEntry, libStatus, currentId, updateLocal, applySaved, rollback, filler.ownInfo]);
+
+  // "Filler: Watched / Skipped" from the episodes toolbar. Display and
+  // counting only; nothing is synced to AniList/MAL.
+  const handleSkipFillerChange = useCallback(async (skip: boolean) => {
+    const draft = updateLocal({ skip_filler: skip ? 1 : 0 });
+    try {
+      applySaved(await saveLibraryEntry(draft));
+    } catch (e) {
+      rollback();
+      showToast(formatAppError(e, getT()), 'error');
+    }
+  }, [updateLocal, applySaved, rollback]);
+
+  // Hiding filler reshapes the pages, so it goes back to the first one.
+  const fillerView = { ...filler, setHideFiller: (hide: boolean) => { filler.setHideFiller(hide); setRelationPage(1); } };
+  const fillerSection = filler.applies ? {
+    view: fillerView,
+    toolbar: (
+      <FillerEpisodesToolbar
+        t={tm.filler}
+        currentId={currentId}
+        view={fillerView}
+        entry={inLibrary ? libEntry : null}
+        total={data?.totalCount}
+        onSkipFillerChange={skip => void handleSkipFillerChange(skip)}
+      />
+    ),
+    footer: filler.anyFiller ? <FillerAttribution t={tm.filler} slug={filler.ownInfo?.slug} /> : null,
+  } : undefined;
 
   // ── Keyboard shortcuts (page context) ────────────────────────────────────
   // Only while nothing sits on top of the page: the editors register their
@@ -651,6 +702,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         onToggleFavorite={handleToggleFavorite}
         onStatusChange={handleStatusChange}
         onRate={handleRate}
+        coverSpoiler={spoilers.coverHidden ? spoilers.revealCover : undefined}
       />
 
       {/* Body: 3 columnas — Datos (the 3rd column) always renders now (at
@@ -668,11 +720,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
                 <p className="section-label">{tm.section_synopsis}</p>
                 <div className="media-section-header-line" />
               </div>
-              <div
-                ref={descriptionRef}
-                className={`media-description-text${descriptionOverflows ? ' has-overflow' : ''}`}
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.description) }}
-              />
+              <SpoilerShield hidden={spoilers.synopsisHidden} onReveal={spoilers.revealSynopsis}>
+                <div
+                  ref={descriptionRef}
+                  className={`media-description-text${descriptionOverflows ? ' has-overflow' : ''}${spoilers.synopsisPending ? ' spoiler-shield-pending' : ''}`}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.description) }}
+                />
+              </SpoilerShield>
             </>
           )}
         </div>
@@ -701,9 +755,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           hasThemes={hasThemes}
           displayCover={displayCover}
           onPlayTheme={setPlayingTheme}
+          spoilers={spoilers}
+          filler={fillerSection}
         />
 
-        <MediaStatsColumn data={data} t={tm} ratingSystem={ratingSystem} />
+        <MediaStatsColumn
+          data={data}
+          t={tm}
+          ratingSystem={ratingSystem}
+          timeToBeat={previewMode ? undefined : {
+            t: getT().time_to_beat,
+            // Games and VNs log hours played in `progress`.
+            playedMinutes: libEntry?.progress ? libEntry.progress * 60 : undefined,
+          }}
+        />
       </div>
 
       {/* Personajes + Usuarios — side by side, Usuarios pinned to the same
@@ -725,6 +790,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
               setCharacterPage={setCharacterPage}
               customImagesMap={customImagesMap}
               showUsers={showUsers}
+              spoilers={spoilers}
             />
           )}
 

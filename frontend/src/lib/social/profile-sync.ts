@@ -1,5 +1,6 @@
 // Once-a-day upload of the current user's public snapshot (bio, rating
-// system, theme, recent activity) to the metadea-web server — same pattern
+// system, theme, name font, library with real time spent, journey, cover
+// choices — see profile-sync-payload.ts) to the metadea-web server — same pattern
 // as syncCommunityCatalog in BaseLayout.astro (localStorage timestamp gate,
 // prompted on Home once per local calendar day). Only runs for a real
 // Google-linked session; the local "offline_token" mode has no server
@@ -9,6 +10,19 @@ import { getAuthToken, getUserInfo, saveUserInfo, readUserJourneyTyped, getAllLi
 import { STORAGE_KEYS } from '../storage/storage-keys';
 import { getImage } from '../storage/images';
 import { decodeJwtPayload } from '../profile/media-type-label';
+import { readCoverPreferences } from '../media/cover-preferences';
+import { getCharacterReactions } from '../tauri/character-reactions';
+import { getYearlyBingo, type YearlyBingoData } from '../tauri/yearly-bingo';
+import { getCachedLibraryAndCatalog, getCachedMediaRelations } from '../profile/library-data-cache';
+import { buildWebProfileSummary, webProfileSyncFields, type WebProfileSummaryPayload } from './web-profile-payload';
+import {
+  getWebProfilePublicChoice, isDualRatingEnabled, getRatingName1, getRatingName2, getRating2System, getRating2Min, getRating2Max,
+} from '../storage/preferences';
+import {
+  buildLibraryPayload, buildJourneyPayload, buildCoverPreferencesPayload, buildDualRatingPayload, normalizeNameFont,
+  buildCharacterReactionsPayload, buildBingoPayload,
+  type LibraryPayloadItem, type JourneyPayloadEvent, type CharacterReactionsPayload, type BingoPayloadYear,
+} from './profile-sync-payload';
 
 export const PROFILE_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_ACTIVITY_ENTRIES = 30;
@@ -34,7 +48,7 @@ function recordAttempt(record: SyncAttemptRecord): void {
 // Flattens the day-grouped journey into a single recency-sorted list — the
 // feed just needs "what happened, when", not the day-bucket structure the
 // local Profile page's calendar view uses it for.
-async function compileRecentActivity(): Promise<unknown[]> {
+async function compileActivity(): Promise<{ activity: unknown[]; journey: JourneyPayloadEvent[] }> {
   const journey = await readUserJourneyTyped().catch(() => []);
   const flat = journey.flatMap(day =>
     day.events
@@ -42,27 +56,64 @@ async function compileRecentActivity(): Promise<unknown[]> {
       .map(event => ({ date: day.date, ...event }))
   );
   flat.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  return flat.slice(0, MAX_ACTIVITY_ENTRIES);
+  // `activity` (the feed's 30 latest completions) and `journey` (every
+  // kind, last year — the public profile's heatmap/activity/pace).
+  return { activity: flat.slice(0, MAX_ACTIVITY_ENTRIES), journey: buildJourneyPayload(journey) };
 }
 
-// Trimmed to what a viewer/importer needs — id (+ type, so it doesn't have
-// to be re-derived by parsing the id string), status/progress (so another
-// device can restore a real library, not just a title list), score, dates,
-// review text, tags. Still leaves out genuinely per-machine bookkeeping
-// (minutes_spent, selected_platform/version, ...) nobody else has a use for.
-async function compileLibrary(): Promise<unknown[]> {
+// The whole library (the Worker keeps it as this device's snapshot) with
+// real time spent and re-runs — see buildLibraryPayload.
+async function compileLibrary(): Promise<LibraryPayloadItem[]> {
   const entries = await getAllLibraryEntries().catch(() => []);
-  return entries.map(e => ({
-    external_id: e.external_id,
-    type:        e.type,
-    status:      e.status,
-    progress:    e.progress,
-    rating:      e.rating,
-    started_at:  e.started_at,
-    finished_at: e.finished_at,
-    notes:       e.notes,
-    tags:        e.tags,
-  }));
+  return buildLibraryPayload(entries, isDualRatingEnabled());
+}
+
+// Like / interest / dislike character lists. null when they can't be read
+// — the field is then left out so the server keeps what it had.
+async function compileCharacterReactions(): Promise<CharacterReactionsPayload | null> {
+  try {
+    return buildCharacterReactionsPayload(await getCharacterReactions());
+  } catch {
+    return null;
+  }
+}
+
+// Yearly Bingo boards of the current and previous year (whichever exist),
+// with their result once in the result phase. null when a board or the
+// library can't be read — the field is then left out so the server keeps
+// what it had instead of publishing an empty board or a zeroed result.
+async function compileBingo(now: Date): Promise<BingoPayloadYear[] | null> {
+  try {
+    const year = now.getFullYear();
+    const [current, previous, library] = await Promise.all([
+      getYearlyBingo(year),
+      getYearlyBingo(year - 1),
+      getAllLibraryEntries(),
+    ]);
+    const boards = [current, previous].filter((board): board is YearlyBingoData => board !== null);
+    return buildBingoPayload(boards, library, now);
+  } catch {
+    return null;
+  }
+}
+
+// Public web profile summary (stats, genres, time by medium, titles/covers
+// of the works the page shows) — only compiled while the owner has the web
+// profile on. null when it can't be: the field is then left out so the
+// server keeps what it had, and a failed library load (which the profile
+// cache reports as an empty library) never publishes zeros.
+async function compileWebProfile(
+  library: readonly LibraryPayloadItem[],
+  favorites: Readonly<Record<string, readonly string[] | undefined>>,
+  journey: JourneyPayloadEvent[],
+): Promise<WebProfileSummaryPayload | null> {
+  try {
+    const [{ items, catalog }, relations] = await Promise.all([getCachedLibraryAndCatalog(), getCachedMediaRelations()]);
+    if (items.length === 0 && library.length > 0) return null;
+    return buildWebProfileSummary({ items, catalog, relations, favorites, journey });
+  } catch {
+    return null;
+  }
 }
 
 // Custom lists (Favoritos/curated lists from the Listas tab) — not the
@@ -120,9 +171,9 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
   }
 
   try {
-    const [info, activity, library, favorites, monthlyHistory, lists, customAvatar, customBanner, shareAvatar] = await Promise.all([
+    const [info, { activity, journey }, library, favorites, monthlyHistory, lists, customAvatar, customBanner, shareAvatar, characterReactions, bingo] = await Promise.all([
       getUserInfo().catch(() => ({} as Record<string, unknown>)),
-      compileRecentActivity(),
+      compileActivity(),
       compileLibrary(),
       readUserFavoritesTyped().catch(() => ({})),
       readMonthlyHistoryTyped().catch(() => ({})),
@@ -130,6 +181,8 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
       getImage(STORAGE_KEYS.profileAvatarCustom).catch(() => null),
       getImage(STORAGE_KEYS.profileBannerCustom).catch(() => null),
       getImage(STORAGE_KEYS.shareAvatarCustom).catch(() => null),
+      compileCharacterReactions(),
+      compileBingo(new Date()),
     ]);
 
     // Social cards use the image chosen for sharing first, falling back to
@@ -137,6 +190,10 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
     // was configured.
     const displayName = (info.display_name as string | undefined)?.trim() || session.username;
     const avatarData = shareAvatar || customAvatar || (payload.avatar as string | null) || null;
+    const webProfileChoice = getWebProfilePublicChoice();
+    const webProfile = webProfileChoice === true
+      ? await compileWebProfile(library, favorites, journey)
+      : null;
 
     // Request body keys match the Turso column names 1:1 (see
     // saveProfileSnapshot in metadea-web) — info.theme is user_profile's own
@@ -160,6 +217,23 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
         favorites,
         monthly_history: monthlyHistory,
         lists,
+        name_font: normalizeNameFont(info.font),
+        journey,
+        cover_preferences: buildCoverPreferencesPayload(
+          readCoverPreferences(),
+          new Set(library.map(item => item.external_id)),
+        ),
+        dual_rating: buildDualRatingPayload({
+          enabled: isDualRatingEnabled(),
+          name1: getRatingName1(''),
+          name2: getRatingName2(''),
+          system2: getRating2System(),
+          min2: getRating2Min(),
+          max2: getRating2Max(),
+        }),
+        ...(characterReactions ? { character_reactions: characterReactions } : {}),
+        ...(bingo ? { bingo } : {}),
+        ...webProfileSyncFields(webProfileChoice, webProfile),
       }),
     });
 

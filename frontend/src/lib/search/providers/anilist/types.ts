@@ -210,6 +210,10 @@ export interface AniListStaffDetail {
         format: string | null;
         title: { romaji: string | null; english: string | null };
         coverImage: { medium: string | null } | null;
+        /** For the author page's career timeline. */
+        startDate?: { year: number | null } | null;
+        /** 0–100. */
+        averageScore?: number | null;
       };
     }[];
   };

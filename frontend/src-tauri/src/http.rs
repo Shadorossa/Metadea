@@ -1,12 +1,12 @@
 // The one reqwest client for the whole app. Built once and reused so every
 // caller shares a connection pool and TLS setup instead of paying for a
 // fresh one per request (igdb.rs and comicvine.rs each used to cache their
-// own; GitHub/AniList/VLC calls built a throwaway client every time).
+// own; GitHub/AniList calls built a throwaway client every time).
 //
 // The default User-Agent is required by Comic Vine, which rejects requests
 // without one; other APIs ignore it, and a call site can still override it
 // per request (github.rs does). Per-request `.timeout(..)` also still wins
-// over the 15s default (the VLC status polls use 2s).
+// over the 15s default.
 use std::sync::OnceLock;
 use std::time::Duration;
 

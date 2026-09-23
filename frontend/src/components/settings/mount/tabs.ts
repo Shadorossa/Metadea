@@ -1,4 +1,11 @@
-function activateTab(tab: string) {
+// Tabs that were folded into another one: old deep links still land right.
+const TAB_ALIASES: Record<string, string> = {
+  novedades: 'environment',
+  accesibilidad: 'accessibility',
+};
+
+function activateTab(requested: string) {
+  const tab = TAB_ALIASES[requested] ?? requested;
   const btn = document.querySelector<HTMLButtonElement>(`.settings-tab[data-tab="${tab}"]`);
   if (!btn) return;
   document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));

@@ -3,11 +3,11 @@ import { useHydrated } from '../shared/hooks/useHydrated';
 import type { Translations } from '../../i18n/index';
 import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'motion/react';
-import { listenGameSessionEnded, addPlaytimeHours, deleteLibraryEntry, type LocalGame, type CatalogEntryLike } from '../../lib/tauri';
+import { deleteLibraryEntry, type LocalGame, type CatalogEntryLike } from '../../lib/tauri';
 import { beginLocalVisit, endLocalVisit } from '../../lib/local/local-read-cache';
 import { runMetadataFetch, cancelMetadataFetch } from '../../lib/local/metadata-fetch';
 import { getT } from '../../i18n/runtime';
-import { IconGame, IconVNovel, IconAnime, IconManga, IconNovel, IconBook, IconComic, IconSeries, IconMovie } from '../local/ui/icons';
+import { CATEGORY_ICONS } from './ui/category-icons';
 
 import { CATEGORIES, LAUNCHER_ORDER, LOCAL_CATEGORY_TO_SEARCH_TYPE, type CategoryId, type PlatformId } from '../../lib/local/platforms';
 import { useLocalGames }        from './hooks/useLocalGames';
@@ -38,6 +38,8 @@ import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
 import { GamesGrid } from './GamesGrid';
+import { BigPictureButton } from '../big-picture/BigPictureButton';
+import { BigPictureMode, type BigPictureResumeRequest } from '../big-picture/BigPictureMode';
 
 // ssrLocal: the page's own server-side `t.local` (local.astro has the request
 // language via useTranslations) — used for the strings rendered before mount
@@ -85,6 +87,14 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   const { selection, setCatalogSelection, setGameSelection, openPendingSelection, clearSelection } = useLocalPanelSelection(activeCategory);
   const [resumeExternalId, setResumeExternalId] = useState<string | null>(null);
   const handledResumeRef = useRef<string | null>(null);
+  // Big Picture's A on a work: the same resume path as ?resume= below, so the
+  // work opens through its own detail panel's native Continue/Read action.
+  const [resumeRequest, setResumeRequest] = useState<BigPictureResumeRequest | null>(null);
+  const requestResume = useCallback((request: BigPictureResumeRequest) => {
+    handledResumeRef.current = null;
+    setActiveCategory(request.category);
+    setResumeRequest({ ...request });
+  }, []);
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
@@ -122,22 +132,10 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   useEffect(() => { if (activeCategory === 'videojuegos' && gamesState === 'idle') loadGames(); }, [activeCategory, gamesState, loadGames]);
   useRomAutoRename(gamesState, loadGames);
 
-  // Keeps the hours-played log up to date on its own — a game launched from
-  // GameDetailPanel's "Jugar" button (see startPlaytimeSession there) fires
-  // this, whenever it actually exits, with the real elapsed session time.
-  // Mounted for as long as the Local page itself is (covers both
-  // Videojuegos and Visual Novel, whichever category was active when the
-  // game was launched), not tied to any one open panel — a session can run
-  // for hours after the panel that started it was closed.
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    listenGameSessionEnded(({ external_id, hours }) => {
-      if (hours >= 15.0 / 3600.0) {
-        addPlaytimeHours(external_id, hours).then(refetchMedia).catch(console.error);
-      }
-    }).then(fn => { unlisten = fn; });
-    return () => unlisten?.();
-  }, [refetchMedia]);
+  // Playtime is recorded by Rust when a game session ends
+  // (src-tauri/src/game_sessions.rs), on whatever page the user is; the
+  // 'refresh-profile-library' listener below refetches when it was
+  // (lib/local/game-session-state.ts fires it).
 
   // saveLibraryEntry (lib/tauri/library.ts) fires this exact event after
   // EVERY library write, from wherever it happens — the collaborative
@@ -481,8 +479,8 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   useEffect(() => {
     if (!mediaRaw) return;
     const url = new URL(window.location.href);
-    const externalId = url.searchParams.get('resume');
-    const requestedCategory = url.searchParams.get('type') as CategoryId | null;
+    const externalId = resumeRequest?.externalId ?? url.searchParams.get('resume');
+    const requestedCategory = resumeRequest?.category ?? url.searchParams.get('type') as CategoryId | null;
     if (!externalId || !requestedCategory || activeCategory !== requestedCategory || handledResumeRef.current === externalId) return;
     const isGameCategory = requestedCategory === 'videojuegos' || requestedCategory === 'visual-novel';
     if (isGameCategory && (gamesState === 'idle' || gamesState === 'loading')) return;
@@ -510,7 +508,7 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
       }
     }, 0);
   }, [
-    mediaRaw, activeCategory, activeCategoryItems, pendingGameItems, gamesState, games,
+    mediaRaw, activeCategory, activeCategoryItems, pendingGameItems, gamesState, games, resumeRequest,
     vnSteamGames, catalogMapById, pathCache, setGameSelection, openPendingSelection, setCatalogSelection,
   ]);
 
@@ -537,19 +535,6 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   const coverCacheHits = useCoverCacheBatch(pendingCoverIds);
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
-
-
-  const CATEGORY_ICONS: Record<CategoryId, React.ReactElement> = {
-    'videojuegos': <IconGame />,
-    'visual-novel': <IconVNovel />,
-    'anime': <IconAnime />,
-    'manga': <IconManga />,
-    'light-novel': <IconNovel />,
-    'books': <IconBook />,
-    'comics': <IconComic />,
-    'series': <IconSeries />,
-    'movies': <IconMovie />,
-  };
 
   const tabBar = (
     <div className="local-tab-bar">
@@ -582,6 +567,7 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
         onChange={e => setFilterName(e.target.value)}
         onKeyDown={onSearchKeyDown}
       />
+      <BigPictureButton />
     </div>
   );
 
@@ -594,6 +580,7 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
           the instant navSlot resolves, is exactly what read as "the navbar
           itself shifting." Nothing beats a flash in the wrong place. */}
       {navSlot && createPortal(tabBar, navSlot)}
+      <BigPictureMode data={{ games, mediaRaw, pathCache, coverCache, catalogMapById }} onResume={requestResume} />
 
       {metaSelector && !metaProgress && (
         <MetaTypeSelector onConfirm={handleFetchMetadata} onCancel={() => setMetaSelector(false)} />

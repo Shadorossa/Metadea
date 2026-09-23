@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1020,
+    "name": "FromSoftware",
+    "description": "FromSoftware is a Japanese video game developer and publisher.",
+    "country": 392,
+    "start_date": 531187200,
+    "logo": { "id": 1, "image_id": "cl5ab" },
+    "websites": [{ "id": 9, "url": "https://www.fromsoftware.jp" }],
+    "developed": [7018, 1942, 119133],
+    "published": [7018, 555]
+  }
+]

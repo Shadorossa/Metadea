@@ -10,24 +10,14 @@ interface EmulatorConfig {
   rom_folder: string;
   /** Kept for database compatibility; emulator sessions are always process-monitored. */
   tracking_mode: string;
-  /** Extensions the ROM scanner considers (lowercase, no dot); [] = platform default. */
+  /** Read-only: the chosen emulator's compatible extensions, which the ROM
+   *  scanner uses (emulators::scan_rom_extensions). Never edited here. */
   rom_extensions: string[];
   /** Emulator screenshot folder; '' = auto-detected from the executable's layout. */
   screenshots_dir: string;
 }
 
 const EMPTY_CONFIG: EmulatorConfig = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process', rom_extensions: [], screenshots_dir: '' };
-
-// "  .NSP, xci ;Iso" -> ["nsp", "xci", "iso"] — same normalization Rust
-// applies on write (emulators::normalize_extensions).
-function parseExtensionList(raw: string): string[] {
-  const out: string[] = [];
-  for (const token of raw.split(/[,;\s]+/)) {
-    const ext = token.trim().replace(/^\.+/, '').toLowerCase();
-    if (ext && !out.includes(ext)) out.push(ext);
-  }
-  return out;
-}
 
 interface EmulatorsData {
   [platformId: string]: EmulatorConfig;
@@ -163,8 +153,6 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       pendingChanges[platformId].emulator_name = input.value;
     } else if (input.id.includes('launch-args')) {
       pendingChanges[platformId].launch_args = input.value;
-    } else if (input.id.includes('rom-extensions')) {
-      pendingChanges[platformId].rom_extensions = parseExtensionList(input.value);
     } else if (input.id.includes('screenshots-dir')) {
       pendingChanges[platformId].screenshots_dir = input.value.trim();
     }
@@ -295,8 +283,6 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       } else if (input.id.includes('launch-args')) {
         const savedValue = emulatorsData[platformId]?.launch_args || '';
         input.value = savedValue;
-      } else if (input.id.includes('rom-extensions')) {
-        input.value = (emulatorsData[platformId]?.rom_extensions ?? []).join(', ');
       } else if (input.id.includes('screenshots-dir')) {
         input.value = emulatorsData[platformId]?.screenshots_dir ?? '';
       } else if (input.id.includes('rom-folder')) {

@@ -3,6 +3,7 @@ import type { CatalogSummary, ListInfo } from '../../../lib/tauri';
 import type { CharacterEntry } from '../../../lib/tauri/characters';
 import { getT } from '../../../i18n/runtime';
 import { fallbackGradient } from '../../../lib/profile/list-display';
+import { CoverImage } from '../../shared/CoverImage';
 
 type P = ReturnType<typeof getT>['profile'];
 
@@ -31,7 +32,7 @@ export function ListCard({ list, catalogMap, charactersMap, customImagesMap, p, 
       <div className={`list-card-collage${list.preview_ids.length === 0 ? ' list-card-collage--empty' : ''}`}>
         {list.preview_ids.length > 0
           ? (coverUrl
-              ? <img className="list-card-collage-img" src={coverUrl} alt="" loading="lazy" decoding="async" />
+              ? <CoverImage externalId={firstCustom || isCharacters ? null : firstId} className="list-card-collage-img" src={coverUrl} alt="" loading="lazy" decoding="async" />
               : <div className="list-card-collage-img list-card-collage-fallback" style={{ background: fallbackGradient(firstMeta?.type) }} />)
           : <span className="list-card-empty-icon">{isCharacters ? '👤' : isEpisodes ? '📺' : '📋'}</span>}
       </div>

@@ -178,31 +178,7 @@
 
 /* Settings › Keyboard shortcuts (KeyboardShortcutsSection.tsx) */
 /* Pre-hydration placeholder for KeyboardShortcutsSection: roughly the height
-   of the hint + global bindings list + button, so nothing jumps on mount. */
+   of the hint + global bindings list, so nothing jumps on mount. */
 .settings-shortcuts-pending {
-  min-height: 15rem;
-}
-
-.settings-shortcuts-actions {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.settings-shortcuts-open-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.85rem;
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 0.78rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--anim-fast), border-color var(--anim-fast);
-}
-.settings-shortcuts-open-btn:hover {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  border-color: var(--accent);
+  min-height: 12.5rem;
 }

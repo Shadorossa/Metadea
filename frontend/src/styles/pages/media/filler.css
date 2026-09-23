@@ -1,0 +1,313 @@
+/* Anime filler lists (AnimeFillerList.com): episode card accents and pills,
+   the episodes toolbar ("Hide filler", Watched/Skipped, link control), its
+   link popover and the attribution line. Filler is red (--color-error),
+   mixed canon/filler blue (--color-info). */
+
+/* ── Episode cards ─────────────────────────────────────────────────────── */
+
+.media-relation-card.media-episode--filler {
+  border-color: color-mix(in srgb, var(--color-error) 45%, var(--border-color));
+  box-shadow: inset 3px 0 0 var(--color-error);
+}
+
+.media-relation-card.media-episode--mixed {
+  border-color: color-mix(in srgb, var(--color-info) 45%, var(--border-color));
+  box-shadow: inset 3px 0 0 var(--color-info);
+}
+
+.media-relation-card.media-episode--filler .media-relation-card-overlay {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-error) 22%, transparent), transparent 70%),
+    linear-gradient(to right, transparent 0%, rgba(var(--bg-card-rgb), 0.65) 80%);
+}
+
+.media-relation-card.media-episode--mixed .media-relation-card-overlay {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--color-info) 22%, transparent), transparent 70%),
+    linear-gradient(to right, transparent 0%, rgba(var(--bg-card-rgb), 0.65) 80%);
+}
+
+.media-filler-pill {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.55rem;
+  z-index: 3;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  cursor: help;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.media-filler-pill--filler {
+  color: #fff;
+  background: var(--color-error);
+}
+
+.media-filler-pill--mixed {
+  color: #fff;
+  background: var(--color-info);
+}
+
+.media-filler-pill--anime_canon {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  border: 1px solid var(--border-medium);
+  box-shadow: none;
+}
+
+/* ── Toolbar above the grid ────────────────────────────────────────────── */
+
+.media-filler-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.media-filler-hide {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  color: var(--text-main);
+}
+
+.media-filler-hide input {
+  accent-color: var(--color-error);
+}
+
+.media-filler-progress {
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.media-filler-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.media-filler-link-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 16rem;
+}
+
+.media-filler-link-pending {
+  font-style: italic;
+}
+
+.media-filler-link-btn,
+.media-filler-popover-btn {
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: border-color var(--anim-fast) var(--anim-ease), color var(--anim-fast) var(--anim-ease);
+}
+
+.media-filler-link-btn:hover,
+.media-filler-popover-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.media-filler-popover-btn:disabled {
+  opacity: var(--opacity-40);
+  cursor: default;
+}
+
+/* ── Watched / Skipped (toolbar and library editor) ────────────────────── */
+
+.media-filler-choice {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.media-filler-choice-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.62rem;
+}
+
+.media-filler-choice-buttons {
+  display: inline-flex;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.media-filler-choice-btn {
+  padding: 0.18rem 0.6rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.media-filler-choice-btn + .media-filler-choice-btn {
+  border-left: 1px solid var(--border-medium);
+}
+
+.media-filler-choice-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--text-main);
+}
+
+.media-filler-choice-total {
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Link popover ──────────────────────────────────────────────────────── */
+
+.media-filler-popover {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 30;
+  width: min(20rem, calc(100vw - 2rem));
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  color: var(--text-main);
+}
+
+.media-filler-popover-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.media-filler-popover-search,
+.media-filler-popover-offset input {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-size: 0.75rem;
+}
+
+.media-filler-popover-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.media-filler-popover-result {
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.74rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.media-filler-popover-result:hover,
+.media-filler-popover-result.is-selected {
+  background: var(--accent-soft);
+}
+
+.media-filler-popover-empty {
+  margin: 0;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.media-filler-popover-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.media-filler-popover-selected-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.media-filler-popover-offset {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.media-filler-popover-offset input {
+  width: 5.5rem;
+}
+
+.media-filler-popover-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.media-filler-popover-spacer {
+  flex: 1;
+}
+
+.media-filler-popover-btn--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.media-filler-popover-btn--primary:hover:not(:disabled) {
+  color: var(--text-on-accent);
+  filter: brightness(1.1);
+}
+
+/* ── Attribution ───────────────────────────────────────────────────────── */
+
+.media-filler-attribution {
+  margin: 0.5rem 0 0;
+  font-size: 0.62rem;
+  text-align: right;
+}
+
+.media-filler-attribution a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.media-filler-attribution a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}

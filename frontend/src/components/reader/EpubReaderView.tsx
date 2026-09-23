@@ -6,6 +6,9 @@ import { useEpubBook } from './hooks/useEpubBook';
 import { useEpubLayout } from './hooks/useEpubLayout';
 import { EpubTocPanel } from './EpubTocPanel';
 import { EpubTypographyPanel } from './EpubTypographyPanel';
+import { ReaderNightControls } from './ReaderNightControls';
+import { EinkRefreshFlash } from './EinkPageLayer';
+import { useEinkMode } from './hooks/useEinkMode';
 import type { ReaderProps } from './reader-props';
 import { addEpubBookmark, deleteEpubBookmark, getEpubBookmarks, type EpubBookmark } from '../../lib/tauri/epub-reader';
 import { saveEpubReadingProgress } from '../../lib/tauri/comic-reader';
@@ -17,6 +20,8 @@ import { setReadingPresence, clearReadingPresence } from '../../lib/local/discor
 import { toMediumCover } from '../../lib/media/small-cover';
 import { IconX } from '../local/ui/icons';
 import { getT } from '../../i18n/runtime';
+import { useMediaRemote } from '../shared/hooks/useMediaRemote';
+import { readerRemoteAction } from '../../lib/big-picture/media-remote';
 
 const PROGRESS_SAVE_DEBOUNCE_MS = 600;
 
@@ -34,6 +39,12 @@ export function EpubReaderView({
   const { isClosing, close: handleClose } = useClosingTransition(onClose);
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useReaderFullscreen();
   useReaderActiveClass();
+  const eink = useEinkMode('epub');
+  const { palette: einkPalette, filterId: einkFilterId, filterMarkup: einkFilterMarkup } = eink;
+  const einkChapter = useMemo(
+    () => (eink.prefs.enabled ? { palette: einkPalette, filterId: einkFilterId, filterMarkup: einkFilterMarkup } : null),
+    [eink.prefs.enabled, einkPalette, einkFilterId, einkFilterMarkup],
+  );
 
   const [prefs, setPrefs] = useState<ReaderPreferences>(() => loadReaderPreferences(localStorageOrNull()));
   const [tocOpen, setTocOpen] = useState(false);
@@ -72,7 +83,7 @@ export function EpubReaderView({
   const onExternalLink = useCallback((url: string) => { openExternalUrl(url).catch(err => console.error('Failed to open link', err)); }, []);
 
   const layout = useEpubLayout({
-    hostRef, chapter, chapterKey: `${book?.book_id ?? ''}:${chapterIndex}`, target, prefs, onBoundary, onInternalLink, onExternalLink,
+    hostRef, chapter, chapterKey: `${book?.book_id ?? ''}:${chapterIndex}`, target, prefs, eink: einkChapter, onBoundary, onInternalLink, onExternalLink,
   });
   layoutRef.current = layout;
   const { state: position, next, prev, goStart, goEnd, goToFraction } = layout;
@@ -178,6 +189,17 @@ export function EpubReaderView({
     return () => window.removeEventListener('keydown', onKey);
   }, [settingsOpen, tocOpen, exitFullscreen, handleClose, toggleFullscreen, loadState, onBoundary, next, prev, goStart, goEnd, prefs, updatePrefs]);
 
+  // Big Picture's gamepad: D-pad/A turn pages, LB/RB change chapter, B
+  // closes without the fullscreen-first step of Escape.
+  useMediaRemote(command => {
+    const action = readerRemoteAction(command);
+    if (action === 'close') { handleClose(); return; }
+    if (loadState !== 'ready') return;
+    if (action === 'page_prev') prev();
+    else if (action === 'page_next') next();
+    else onBoundary(action === 'chapter_prev' ? 'prev' : 'next');
+  });
+
   const handleStandBy = () => {
     onStandBy?.(chapterIndex, book?.chapters.length ?? 1, book?.chapters.length ?? 1);
     handleClose();
@@ -188,7 +210,8 @@ export function EpubReaderView({
       overlay={false}
       onClose={handleClose}
       label={title}
-      panelClassName={`comic-reader-overlay epub-reader-overlay epub-theme-${prefs.theme}${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}`}
+      panelClassName={`comic-reader-overlay epub-reader-overlay epub-theme-${prefs.theme}${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}${eink.prefs.enabled ? ' reader-eink' : ''}`}
+      panelProps={{ style: eink.panelStyle }}
       closeOnEscape={false}
       closeOnBackdrop={false}
       stopPanelPropagation={false}
@@ -207,6 +230,7 @@ export function EpubReaderView({
             <button type="button" className={`comic-reader-header-btn${tocOpen ? ' is-active' : ''}`} onClick={() => { setTocOpen(o => !o); setSettingsOpen(false); }} title={t.epub_toc_toggle} aria-label={t.epub_toc_toggle} aria-pressed={tocOpen}>
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
+            <ReaderNightControls prefs={eink.prefs} onChange={eink.update} />
             <button type="button" className={`comic-reader-header-btn${settingsOpen ? ' is-active' : ''}`} onClick={() => { setSettingsOpen(o => !o); setTocOpen(false); }} title={t.epub_settings_toggle} aria-label={t.epub_settings_toggle} aria-pressed={settingsOpen}>
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
@@ -276,6 +300,10 @@ export function EpubReaderView({
         <div className="comic-reader-progress-bar">
           <div className="comic-reader-progress-fill" style={{ width: `${percent * 100}%` }} />
         </div>
+      )}
+
+      {loadState === 'ready' && (
+        <EinkRefreshFlash turnKey={`${chapterIndex}:${position.page}`} active={eink.prefs.enabled && eink.prefs.refreshFlash} />
       )}
 
       {toastMsg && (

@@ -1,53 +1,74 @@
-import { useState, useEffect } from 'react';
-import { getAllTierLists, getCatalogEntriesByIds, createTierList, deleteTierList } from '../../lib/tauri';
-import type { TierListInfo, CatalogSummary } from '../../lib/tauri';
+import { useEffect, useMemo, useState } from 'react';
+import { createTierList, deleteTierList, duplicateTierList, getAllTierLists, type TierListInfo } from '../../lib/tauri/tier-lists';
+import { renameTierList } from '../../lib/tier/tier-list-actions';
+import { TIER_NAME_MAX_LENGTH } from '../../lib/tier/tier-editor-state';
+import { formatAppError } from '../../lib/errors/format-error';
+import { showToast } from '../../lib/dom/toast';
 import { getT } from '../../i18n/runtime';
-import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { IconTrash } from '../local/ui/icons';
+import { ModalShell } from '../shared/ModalShell';
+import { TierListPreview } from './TierListPreview';
+
+// /tier — the user's tier lists, most recently edited first, each with a
+// mini preview of its top rows. Create, rename, duplicate and delete here;
+// everything else happens in the editor (/tier/new?id=…).
+
+function editorHref(id: string): string {
+  return `/tier/new?id=${encodeURIComponent(id)}`;
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value.includes('T') ? value : value.replace(' ', 'T') + 'Z');
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+}
 
 export default function TierIndex() {
-  const t = getT().tier;
-
-  const [search, setSearch]     = useState('');
-  const [lists, setLists]       = useState<TierListInfo[]>([]);
-  const [catalogMap, setCatalogMap] = useState<Map<string, CatalogSummary>>(new Map());
-  const [loading, setLoading]   = useState(true);
-
+  const tAll = getT();
+  const t = tAll.tier;
+  const [lists, setLists] = useState<TierListInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName]       = useState('');
-  const [newType, setNewType]       = useState<'works' | 'characters'>('works');
-  const [creating, setCreating]     = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [newType, setNewType] = useState<'works' | 'characters'>('works');
+  const [creating, setCreating] = useState(false);
 
-  const load = () => {
-    // Only the collage covers are read from the catalog — fetched for the
-    // preview ids alone instead of the whole table.
-    getAllTierLists()
-      .then(async tierLists => {
-        const previewIds = [...new Set(tierLists.flatMap(list => list.preview_ids))];
-        const catalog = await getCatalogEntriesByIds(previewIds).catch(() => [] as CatalogSummary[]);
-        setLists(tierLists);
-        setCatalogMap(new Map(catalog.map(e => [e.external_id, e])));
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+  const reload = () => getAllTierLists().then(setLists).finally(() => setLoading(false));
+  useEffect(() => { void reload(); }, []);
+
+  const visible = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    return q ? lists.filter(l => l.name.toLowerCase().includes(q) || l.description.toLowerCase().includes(q)) : lists;
+  }, [lists, filter]);
+
+  const fail = (err: unknown) => {
+    console.error('tier list action failed', err);
+    showToast(`${t.action_failed} ${formatAppError(err, tAll)}`, 'error');
   };
 
-  useEffect(load, []);
+  const run = async (id: string, action: () => Promise<unknown>) => {
+    setBusyId(id);
+    try { await action(); await reload(); } catch (err) { fail(err); } finally { setBusyId(null); }
+  };
 
-  const handleDelete = async (list: TierListInfo, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDelete = (list: TierListInfo) => {
     if (!confirm(t.delete_confirm)) return;
-    setDeletingId(list.id);
-    try {
-      await deleteTierList(list.id);
-      setLists(prev => prev.filter(l => l.id !== list.id));
-    } catch (err) {
-      console.error('delete_tier_list error', err);
-    } finally {
-      setDeletingId(null);
-    }
+    void run(list.id, () => deleteTierList(list.id));
+  };
+
+  const handleDuplicate = (list: TierListInfo) => {
+    void run(list.id, () => duplicateTierList(list.id, t.duplicate_name.replace('{name}', list.name).slice(0, TIER_NAME_MAX_LENGTH)));
+  };
+
+  const commitRename = () => {
+    if (!renaming) return;
+    const { id, name } = renaming;
+    setRenaming(null);
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === lists.find(l => l.id === id)?.name) return;
+    void run(id, () => renameTierList(id, trimmed));
   };
 
   const handleCreate = async () => {
@@ -56,133 +77,119 @@ export default function TierIndex() {
     setCreating(true);
     try {
       const id = await createTierList(name, newType);
-      window.location.href = `/tier/new?id=${encodeURIComponent(id)}`;
-    } catch (e) {
-      console.error('create_tier_list error', e);
+      window.location.assign(editorHref(id));
+    } catch (err) {
+      fail(err);
       setCreating(false);
     }
   };
 
+  const openCreate = () => { setNewName(''); setShowCreate(true); };
+
   return (
     <div className="tier-index">
-      <div className="tier-index-header">
-        <h1 suppressHydrationWarning className="tier-index-title">{t.title}</h1>
-        <button type="button" className="tier-index-create-btn" onClick={() => setShowCreate(true)}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          {t.create}
-        </button>
-      </div>
+      <header className="tier-index-header">
+        <h1 className="tier-index-title">{t.title}</h1>
+        <button type="button" className="tier-btn tier-btn--primary" onClick={openCreate}>+ {t.create}</button>
+      </header>
 
-      <div className="tier-index-search-wrap">
-        <svg className="tier-index-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/>
-        </svg>
+      {lists.length > 0 && (
         <input
-          className="tier-index-search"
-          type="text"
-          placeholder={t.search_ph}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+          className="tier-index-filter"
+          type="search"
+          value={filter}
+          placeholder={t.filter_ph}
+          aria-label={t.filter_ph}
+          onChange={e => setFilter(e.target.value)}
         />
-      </div>
-
-      {search ? (
-        <div className="tier-index-empty">
-          <p>{t.search_soon}</p>
-        </div>
-      ) : loading ? (
-        <div className="tier-loading">…</div>
-      ) : lists.length === 0 ? (
-        <div className="tier-index-empty">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.25">
-            <rect x="3" y="3" width="18" height="5" rx="1"/>
-            <rect x="3" y="10" width="18" height="5" rx="1"/>
-            <rect x="3" y="17" width="18" height="5" rx="1"/>
-          </svg>
-          <p>{t.no_saved_lists}</p>
-          <button type="button" className="tier-index-create-btn" onClick={() => setShowCreate(true)}>
-            {t.create_first}
-          </button>
-        </div>
-      ) : (
-        <div className="tier-index-grid">
-          {lists.map(list => (
-            <a key={list.id} className="tier-index-card" href={`/tier/new?id=${encodeURIComponent(list.id)}`}>
-              <button
-                type="button"
-                className="tier-index-card-delete-btn"
-                onClick={e => handleDelete(list, e)}
-                disabled={deletingId === list.id}
-                title={t.delete_title}
-                aria-label={t.delete_title}
-              >
-                <IconTrash />
-              </button>
-              <div className="tier-index-card-collage">
-                {list.preview_ids.length > 0
-                  ? list.preview_ids.map((id, i) => {
-                      const meta = catalogMap.get(id);
-                      const cover = meta?.cover_url;
-                      const fallback = HOF_GRADIENTS[meta?.type ?? 'anime'] ?? 'linear-gradient(160deg,#374151,#1f2937)';
-                      return cover
-                        ? <img key={i} className="tier-index-card-collage-img cover-image-fill" src={cover} alt="" loading="lazy" />
-                        : <div key={i} className="tier-index-card-collage-img tier-index-card-collage-fallback" style={{ background: fallback }} />;
-                    })
-                  : <span className="tier-index-card-empty-icon">🏆</span>
-                }
-              </div>
-              <div className="tier-index-card-info">
-                <span className="tier-index-card-title">{list.name}</span>
-                <span className="tier-index-card-meta">
-                  {list.list_type === 'characters' ? t.type_characters : t.type_works} · {list.item_count}
-                </span>
-              </div>
-            </a>
-          ))}
-        </div>
       )}
 
-      {showCreate && (
-        <div className="tier-create-backdrop" onClick={() => !creating && setShowCreate(false)}>
-          <div className="tier-create-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="tier-create-modal-title">{t.create_modal_title}</h3>
+      {loading ? (
+        <div className="tier-state">{t.loading}</div>
+      ) : lists.length === 0 ? (
+        <div className="tier-state">
+          <p>{t.no_saved_lists}</p>
+          <button type="button" className="tier-btn tier-btn--primary" onClick={openCreate}>{t.create_first}</button>
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="tier-state"><p>{t.no_matches.replace('{query}', filter.trim())}</p></div>
+      ) : (
+        <ul className="tier-index-grid">
+          {visible.map(list => (
+            <li key={list.id} className={`tier-card${busyId === list.id ? ' tier-card--busy' : ''}`}>
+              <a className="tier-card-link" href={editorHref(list.id)} aria-label={list.name}>
+                <TierListPreview list={list} />
+              </a>
+              <div className="tier-card-info">
+                {renaming?.id === list.id ? (
+                  <input
+                    className="tier-card-rename"
+                    value={renaming.name}
+                    maxLength={TIER_NAME_MAX_LENGTH}
+                    aria-label={t.rename_aria}
+                    autoFocus
+                    onChange={e => setRenaming({ id: list.id, name: e.target.value })}
+                    onBlur={commitRename}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') commitRename();
+                      if (e.key === 'Escape') setRenaming(null);
+                    }}
+                  />
+                ) : (
+                  <a className="tier-card-title" href={editorHref(list.id)}>{list.name}</a>
+                )}
+                <span className="tier-card-meta">
+                  {list.list_type === 'characters' ? t.type_characters : t.type_works}
+                  {' · '}{t.items_count.replace('{count}', String(list.item_count))}
+                  {formatDate(list.updated_at) && <> {' · '}{t.updated.replace('{date}', formatDate(list.updated_at))}</>}
+                </span>
+                {list.is_public && <span className="tier-badge">{t.public_badge}</span>}
+              </div>
+              <div className="tier-card-actions" role="group" aria-label={t.card_menu}>
+                <button type="button" className="tier-icon-btn" aria-label={t.rename} title={t.rename} disabled={busyId !== null}
+                  onClick={() => setRenaming({ id: list.id, name: list.name })}>
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                </button>
+                <button type="button" className="tier-icon-btn" aria-label={t.duplicate} title={t.duplicate} disabled={busyId !== null}
+                  onClick={() => handleDuplicate(list)}>
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M8 8h11v11H8zM5 16V5h11" /></svg>
+                </button>
+                <button type="button" className="tier-icon-btn tier-icon-btn--danger" aria-label={t.delete_title} title={t.delete_title} disabled={busyId !== null}
+                  onClick={() => handleDelete(list)}>
+                  <IconTrash />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
-            <label className="tier-create-label">{t.name_label}</label>
-            <input
-              className="tier-create-input"
-              type="text"
-              placeholder={t.name_ph}
-              maxLength={60}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              autoFocus
-            />
-
-            <label className="tier-create-label">{t.type_label}</label>
-            <select
-              className="tier-create-input"
-              value={newType}
-              onChange={e => setNewType(e.target.value as 'works' | 'characters')}
-            >
+      <ModalShell
+        open={showCreate}
+        onClose={() => { if (!creating) setShowCreate(false); }}
+        label={t.create_modal_title}
+        overlayClassName="tier-modal-overlay"
+        panelClassName="tier-modal tier-create"
+      >
+        <form onSubmit={e => { e.preventDefault(); void handleCreate(); }}>
+          <h2 className="tier-modal-title">{t.create_modal_title}</h2>
+          <label className="tier-field tier-field--wide">
+            <span>{t.name_label}</span>
+            <input type="text" placeholder={t.name_ph} maxLength={TIER_NAME_MAX_LENGTH} value={newName} autoFocus onChange={e => setNewName(e.target.value)} />
+          </label>
+          <label className="tier-field tier-field--wide">
+            <span>{t.type_label}</span>
+            <select value={newType} onChange={e => setNewType(e.target.value as 'works' | 'characters')}>
               <option value="works">{t.type_works}</option>
               <option value="characters">{t.type_characters}</option>
             </select>
-
-            <div className="tier-create-actions">
-              <button type="button" className="tier-create-btn tier-create-btn--primary"
-                disabled={!newName.trim() || creating} onClick={handleCreate}>
-                {t.create_confirm}
-              </button>
-              <button type="button" className="tier-create-btn tier-create-btn--ghost"
-                disabled={creating} onClick={() => setShowCreate(false)}>
-                {t.create_cancel}
-              </button>
-            </div>
+          </label>
+          <div className="tier-modal-actions">
+            <button type="button" className="tier-btn" disabled={creating} onClick={() => setShowCreate(false)}>{t.create_cancel}</button>
+            <button type="submit" className="tier-btn tier-btn--primary" disabled={!newName.trim() || creating}>{t.create_confirm}</button>
           </div>
-        </div>
-      )}
+        </form>
+      </ModalShell>
     </div>
   );
 }

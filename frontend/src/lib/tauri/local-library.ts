@@ -16,6 +16,10 @@ export interface LocalGame {
   // the company-level grouping ("nintendo"/"playstation"/"xbox"), so this is
   // what launchGame needs to find the right EmulatorConfig to run it with.
   rom_platform?:     string;
+  // Multi-disc sets (platform_scanning/multi_disc.rs): every disc in boot
+  // order (install_path is the first) and the set's .m3u, when it has one.
+  discs?:            string[];
+  disc_playlist?:    string | null;
 }
 
 export interface SteamOwnedGame {

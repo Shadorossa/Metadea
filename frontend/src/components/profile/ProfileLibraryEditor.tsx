@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { getT } from '../../i18n/runtime';
 import { AnimatePresence } from 'motion/react';
 import { MediaEditorModal } from '../media/MediaEditorModal';
 import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations, patchCachedRelations, inferProgressStatus } from '../../lib/media/media-page-data';
 import type { LibraryEntry, CatalogEntryLike } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
-import type { Translations } from '../../i18n/index';
 import type { RatingSlot } from '../../lib/storage/preferences';
 
 interface OpenEditorEvent extends Event {
@@ -32,13 +32,11 @@ interface EditorState {
   initialActiveLogId?: string;
 }
 
-interface Props {
-  i18n: Translations['media'];
-}
-
-export function ProfileLibraryEditor({ i18n }: Props) {
+// Strings come from the user's language at runtime (getT()), never from the
+// page's build-time props: the static build renders in the reference locale.
+export function ProfileLibraryEditor() {
   const [state, setState] = useState<EditorState | null>(null);
-  const t = i18n;
+  const t = getT().media;
   // Tracks which id the most recent open-editor event asked for, so a
   // background fetch that resolves after the user has since opened a
   // *different* entry knows not to patch the sessionStorage cache — see

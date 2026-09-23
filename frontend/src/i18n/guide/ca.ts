@@ -238,14 +238,14 @@ export const guideCa: Translations['guide'] = {
     },
     tier_lists: {
       title: "Tier lists",
-      intro: "Classifica obres en nivells de la S a la F, o en nivells amb el nom i el color que tu triïs.",
+      intro: "Classifica obres o personatges a l'estil TierMaker: files de la S a la F que pots reanomenar, acolorir, afegir, treure i reordenar.",
       steps: {
-        s1: "Obre Tier list i crea'n una de nova.",
-        s2: "Afegeix obres del teu catàleg; esperen a la zona «Sense classificar».",
-        s3: "Arrossega cada obra al seu nivell. Fes clic al nom o al color d'un nivell per canviar-lo.",
+        s1: "Obre Tier list a la barra de navegació i crea una llista d'obres o de personatges.",
+        s2: "Omple el banc d'elements des de la biblioteca (filtres o emplenaments ràpids com «tot el completat del 2024»), les teves llistes i sagues, els teus personatges o una cerca.",
+        s3: "Arrossega les portades a les files, o selecciona'n diverses i prem 1–9. Fes doble clic en una portada per tornar-la al banc.",
       },
       tips: {
-        t1: "Les tier lists de personatges i la cerca a la comunitat arribaran aviat.",
+        t1: "Cada canvi es desa sol i Ctrl+Z el desfà. «Desar com a imatge» exporta el tauler en PNG i «Mostrar al meu perfil» la mostra a la pestanya Llistes del teu perfil.",
       },
     },
     stats: {
@@ -307,8 +307,7 @@ export const guideCa: Translations['guide'] = {
       steps: {
         s1: "A Ajustos › Emuladors, tria una empresa i una consola.",
         s2: "Tria l'emulador i el seu executable, els arguments d'inici ({ROM} se substitueix pel fitxer) i la carpeta de ROM.",
-        s3: "Si vols, indica les extensions de ROM que cal buscar (buit = les habituals) i la carpeta de captures de l'emulador.",
-        s4: "Obre Play › Videojocs: les teves ROM apareixen amb noms nets i dades d'IGDB.",
+        s3: "Obre Play › Videojocs: les teves ROM apareixen amb noms nets i dades d'IGDB.",
       },
       tips: {
         t1: "«Netejar noms de ROM automàticament» reanomena els fitxers amb un format endreçat (i també les partides desades). Un avís et permet desfer-ho durant uns segons.",
@@ -346,15 +345,15 @@ export const guideCa: Translations['guide'] = {
     },
     screenshots: {
       title: "Captures de pantalla",
-      intro: "La secció «Captures de pantalla» d'una obra reuneix captures de tres llocs: les que fas a Metadea, les teves captures de Steam i la carpeta de captures del teu emulador.",
+      intro: "La secció «Captures de pantalla» d'una obra reuneix les seves captures d'Imatges › Metadea › <obra> i, als jocs de Steam, les teves captures de Steam.",
       steps: {
         s1: "Prem F12 al reproductor integrat per desar un fotograma. Es guarda a Imatges › Metadea › <obra>, amb l'episodi i el minut al nom.",
         s2: "Al lector de còmics, fes clic dret en una pàgina i tria «Desa la pàgina (PNG)».",
-        s3: "Per als emuladors, defineix la carpeta de captures de cada consola a Ajustos › Emuladors, o deixa-la buida perquè es detecti.",
+        s3: "Als emuladors, fes captures com sempre: mentre s'executa un joc iniciat des de Metadea, cada captura es mou a Imatges › Metadea › <joc> i un avís ho confirma.",
       },
       tips: {
-        t1: "La carpeta de captures es detecta automàticament per a Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu i PPSSPP.",
-        t2: "Les captures dels emuladors es filtren pel joc; si no n'hi coincideix cap, es mostren les recents amb una nota.",
+        t1: "La carpeta de captures de l'emulador es detecta automàticament per a Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu, PPSSPP, Cemu i RPCS3; per a altres emuladors, indica-la a Ajustos › Emuladors (avançat).",
+        t2: "Les captures d'un joc que ja eren a la carpeta de l'emulador s'hi mouen la primera vegada que obres el joc.",
       },
     },
     launching: {
@@ -373,9 +372,9 @@ export const guideCa: Translations['guide'] = {
     },
     player: {
       title: "El reproductor de vídeo",
-      intro: "Els episodis i les pel·lícules locals es reprodueixen al reproductor integrat de Metadea (libmpv), que desa el progrés tot sol. Si ho prefereixes, pots fer servir VLC.",
+      intro: "Els episodis i les pel·lícules locals es reprodueixen al reproductor integrat de Metadea (libmpv), que desa el progrés tot sol.",
       steps: {
-        s1: "Tria el reproductor a Ajustos › Preferències › Reproductor de vídeo: integrat (libmpv) o VLC (extern).",
+        s1: "No cal instal·lar res: el reproductor (libmpv) ve amb Metadea.",
         s2: "Tria els controls: superposats al vídeo o en una barra fixa a sota.",
         s3: "Prem «Reproduir» en un episodi de Play. La resta de la temporada es posa a la cua; prem Q per veure-la.",
         s4: "Fes servir els menús per canviar la pista d'àudio, els subtítols i la velocitat (de 0,5× a 2×).",
@@ -384,7 +383,7 @@ export const guideCa: Translations['guide'] = {
       },
       tips: {
         t1: "Fes clic al vídeo per posar-lo en pausa i doble clic per a la pantalla completa.",
-        t2: "Si no es pot carregar libmpv, Metadea fa servir VLC automàticament i t'ho diu.",
+        t2: "Si no es pot carregar libmpv, Metadea t'ho diu en lloc d'obrir el vídeo.",
         t3: "Acabar l'últim episodi completa l'obra i afegeix la seva seqüela als teus pendents.",
         t4: "Discord mostra què estàs mirant amb un compte enrere del temps que queda.",
       },
@@ -412,7 +411,6 @@ export const guideCa: Translations['guide'] = {
       },
       tips: {
         t1: "Els segments surten dels capítols del fitxer (MKV) i, per a l'anime, d'AniSkip; quan hi ha tots dos, manen els capítols.",
-        t2: "Només funciona al reproductor integrat, no a VLC.",
       },
     },
     reader_comics: {
@@ -568,7 +566,7 @@ export const guideCa: Translations['guide'] = {
       title: "Temes de la interfície (skins)",
       intro: "Les skins canvien l'estil de tot Metadea. Són carpetes amb un fitxer theme.json i, opcionalment, CSS, que pots fer tu mateix o aconseguir d'altres persones.",
       steps: {
-        s1: "A Ajustos › Aparença › Temes de la comunitat, prem «Obrir la carpeta de temes».",
+        s1: "A Ajustos › Plugins › Temes d'interfície, prem «Obrir la carpeta de temes».",
         s2: "Copia-hi la carpeta d'un tema (o prem «Crear tema d'exemple») i prem «Recarregar».",
         s3: "Prem «Activar» al tema que vulguis. Es manté actiu després de reiniciar.",
         s4: "Si en fas un de propi, activa «Vigilar canvis» per veure les teves modificacions cada dos segons.",
@@ -619,11 +617,12 @@ export const guideCa: Translations['guide'] = {
     },
     backup: {
       title: "On són les teves dades i còpies de seguretat",
-      intro: "Tot es desa en una base de dades a la teva carpeta d'usuari (a Windows, %APPDATA%\\com.metadea.app). Una còpia de seguretat copia aquesta carpeta en un únic fitxer ZIP.",
+      intro: "Tot es desa en una base de dades a la teva carpeta d'usuari (a Windows, %APPDATA%\\com.metadea.app). Una còpia de seguretat és un únic fitxer .7z amb aquesta base de dades, les imatges personalitzades i les skins; les memòries cau queden fora perquè es tornen a baixar.",
       steps: {
-        s1: "Obre Ajustos › Còpia de seguretat i prem «Exportar dades». Desa el ZIP fora de la carpeta de dades de Metadea.",
-        s2: "Per restaurar, prem «Importar dades» i tria un ZIP. Metadea primer desa una còpia de les dades actuals al costat de la carpeta i després es reinicia per aplicar la còpia de seguretat.",
+        s1: "Obre Ajustos › Còpia de seguretat i prem «Crea una còpia». Desa el .7z fora de la carpeta de dades de Metadea.",
+        s2: "Per restaurar, prem «Restaura des d'un fitxer» i tria un .7z (o un .zip de versions anteriors). Metadea comprova cada fitxer, desa una còpia de les dades actuals al costat de la carpeta i es reinicia per aplicar la còpia.",
         s3: "«Obrir carpeta» a Ajustos › Entorn › Rutes locals obre la carpeta de dades.",
+        s4: "Vincula Google Drive a la mateixa pestanya per pujar còpies a una carpeta privada de l'app, al moment o automàticament cada dia o cada setmana; pots restaurar-ne qualsevol des de la llista.",
       },
       tips: {
         t1: "Ningú més té una còpia de la teva biblioteca: fes una còpia de seguretat abans de canvis grans i de tant en tant.",

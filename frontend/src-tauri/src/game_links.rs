@@ -3,7 +3,7 @@
 // "was this game actually seen recently" bookkeeping that decides when a
 // link is stale and when a previously-scanned game should still show up
 // even though no live source currently reports it. Split out of folders.rs,
-// which was otherwise a mix of file-browsing, VLC playback, and this.
+// which was otherwise a mix of file-browsing, playback, and this.
 use crate::db::ToStringErr;
 
 #[tauri::command]
@@ -143,6 +143,7 @@ pub fn restore_missing_seen_games(
                 name, launcher, app_id, external_id: None,
                 install_path: None, playtime_minutes: None, last_played: None,
                 installed: Some(false), rom_platform: None,
+                discs: Vec::new(), disc_playlist: None, replaced_app_ids: Vec::new(),
             }
         })
         .collect()

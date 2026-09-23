@@ -273,6 +273,101 @@ body.player-overlay-body {
   pointer-events: none;
 }
 
+/* ── Clip selection (scissors) ─────────────────────────────────────────
+   Drawn over the seek bar only while clip mode is on; the bar's own
+   track/fill/thumb rules above are untouched. */
+.player-clip-selection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.player-clip-selection__span {
+  position: absolute;
+  top: 50%;
+  height: 8px;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--player-accent) 35%, transparent);
+  outline: 1px solid var(--player-accent);
+}
+
+.player-clip-selection__handle {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  border-radius: 3px;
+  background: var(--player-accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.45);
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* ── Seek-bar hover preview ─────────────────────────────────────────────
+   Frame + time (+ chapter) floating above the bar; positioned from JS
+   (lib/player/seek-preview.ts clamps it inside the player) and out of
+   the layout flow, so the bar itself never moves. */
+.player-seek-preview {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.player-seek-preview__frame {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--player-panel-border);
+  background-color: var(--player-panel);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.player-seek-preview__frame--loading {
+  background-image: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.08) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: player-seek-preview-shimmer 1.2s linear infinite;
+}
+
+@keyframes player-seek-preview-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-seek-preview__frame--loading {
+    animation: none;
+  }
+}
+
+.player-seek-preview__time,
+.player-seek-preview__chapter {
+  max-width: 100%;
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  background: var(--player-panel);
+  color: var(--player-fg);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-seek-preview__chapter {
+  color: var(--player-fg-muted);
+}
+
 /* ── Volume ───────────────────────────────────────────────────────────── */
 .player-volume {
   display: flex;
@@ -329,6 +424,36 @@ body.player-overlay-body {
   border-color: #fff;
   color: #000;
   outline: none;
+}
+
+/* "Next canon episode" card (Filler: Skipped), above the skip pill. */
+.player-filler-next {
+  position: absolute;
+  right: 1rem;
+  bottom: 9rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  max-width: min(360px, calc(100% - 2rem));
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--player-radius);
+  background: var(--player-panel);
+  border: 1px solid var(--player-panel-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.player-filler-next__text {
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.player-filler-next__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* Segments on the seek bar: a thin translucent band per interval. */

@@ -2,6 +2,8 @@ import type { LibraryEntry, CatalogSummary, DayJourney } from '../tauri';
 import type { Translations } from '../../i18n';
 import { isInProgressStatus } from '../media/media-types';
 import { getNonEditionItems } from './stats-calculators';
+import { effectiveEpisodeTotal, effectiveProgress } from '../anime/filler';
+import { getLoadedFillerInfo } from '../anime/filler-store';
 
 // ── Duration rules ───────────────────────────────────────────────────────────
 //
@@ -116,8 +118,10 @@ export function estimateItemRemaining(item: LibraryEntry, catalog: CatalogSummar
 
   // Unit-counted work (episodes / chapters / volumes / pages / issues).
   const usesVolumes = item.type === 'lnovel';
-  const total = usesVolumes ? catalog?.total_count_2 : catalog?.total_count;
-  const progress = Math.max(0, (usesVolumes ? item.progress_2 : item.progress) ?? 0);
+  // Anime set to "Filler: Skipped": canon episodes only (lib/anime/filler.ts).
+  const filler = item.type === 'anime' ? getLoadedFillerInfo(item.external_id) : undefined;
+  const total = usesVolumes ? catalog?.total_count_2 : effectiveEpisodeTotal(item, filler, catalog?.total_count);
+  const progress = Math.max(0, (usesVolumes ? item.progress_2 : effectiveProgress(item, filler, catalog?.total_count)) ?? 0);
   const hasTotal = typeof total === 'number' && total > 0;
   const remainingUnits = hasTotal
     ? Math.max(0, total - progress)

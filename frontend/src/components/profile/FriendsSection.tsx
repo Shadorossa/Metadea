@@ -1,10 +1,11 @@
-// "Amigos" tab on the profile page — who follows you and who you follow.
-// Both lists come from the caller's own account (no :userId param — see the
-// backend route's own doc comment), so this never needs to know whose
-// profile it's showing.
+// "Amigos" tab on the profile page — who follows you and who you follow
+// (your own account's lists, with unfollow), or, on someone else's profile,
+// their public followers/following (GET /api/follows/:userId/…, paged).
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { getFollowers, getFollowing, unfollowUser, type UserSearchResult } from '../../lib/social/users';
+import {
+  getFollowers, getFollowing, getUserFollowPage, unfollowUser, type FollowPage, type UserSearchResult,
+} from '../../lib/social/users';
 import { getT } from '../../i18n/runtime';
 import { beginGlobalLoading } from '../../lib/dom/global-loading';
 import { IconX } from '../local/ui/icons';
@@ -53,9 +54,111 @@ function FriendsList({ users, emptyText, children }: {
   );
 }
 
-export function FriendsSection() {
+type Direction = 'followers' | 'following';
+
+interface LoadedPage {
+  users: UserSearchResult[];
+  total: number;
+  nextCursor: string | null;
+}
+
+/** Someone else's profile (`readOnly` + their `userId`): their public
+ *  followers/following, a page at a time. Without a userId the tab shows
+ *  the unavailable state. */
+export function FriendsSection({ readOnly, userId }: { readOnly?: boolean; userId?: string | null } = {}) {
+  if (readOnly) return <PublicFriends userId={userId ?? null} />;
+  return <OwnFriends />;
+}
+
+function PublicFriends({ userId }: { userId: string | null }) {
   const p = getT().profile;
-  const [tab, setTab] = useState<'followers' | 'following'>('followers');
+  const [tab, setTab] = useState<Direction>('followers');
+  // undefined = still loading; a null list = the server couldn't serve it.
+  const [pages, setPages] = useState<Record<Direction, LoadedPage | null> | undefined>(userId ? undefined : { followers: null, following: null });
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const endLoading = beginGlobalLoading();
+    const toPage = (page: FollowPage | null): LoadedPage | null =>
+      page && { users: page.results, total: page.total, nextCursor: page.nextCursor };
+    Promise.all([
+      getUserFollowPage(userId, 'followers').catch(() => null),
+      getUserFollowPage(userId, 'following').catch(() => null),
+    ])
+      .then(([followers, following]) => {
+        if (!cancelled) setPages({ followers: toPage(followers), following: toPage(following) });
+      })
+      .finally(endLoading);
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const loadMore = async () => {
+    const current = pages?.[tab];
+    if (!userId || !current?.nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    const next = await getUserFollowPage(userId, tab, current.nextCursor).catch(() => null);
+    setLoadingMore(false);
+    if (!next) return;
+    setPages(prev => prev && {
+      ...prev,
+      [tab]: { users: [...(prev[tab]?.users ?? []), ...next.results], total: next.total, nextCursor: next.nextCursor },
+    });
+  };
+
+  if (!pages) return <div className="friends-layout" />;
+  if (!pages.followers && !pages.following) {
+    return (
+      <div className="friends-layout">
+        <div className="friends-empty-state"><p>{p.friends_unavailable}</p></div>
+      </div>
+    );
+  }
+
+  const current = pages[tab];
+  return (
+    <div className="friends-layout">
+      <div className="friends-tabs">
+        {(['followers', 'following'] as const).map(direction => (
+          <button
+            key={direction}
+            type="button"
+            className={`friends-tab${tab === direction ? ' active' : ''}`}
+            onClick={() => setTab(direction)}
+          >
+            {direction === 'followers' ? p.friends_followers : p.friends_following}
+            {' '}<span className="friends-tab-count">{pages[direction]?.total ?? 0}</span>
+          </button>
+        ))}
+      </div>
+
+      {current ? (
+        <>
+          <FriendsList
+            users={current.users}
+            emptyText={tab === 'followers' ? p.friends_empty_followers_other : p.friends_empty_following_other}
+          >
+            {user => <UserCard user={user} />}
+          </FriendsList>
+          {current.nextCursor && (
+            <div className="friends-load-more-row">
+              <button type="button" className="friends-load-more-btn" onClick={loadMore} disabled={loadingMore}>
+                {p.friends_load_more}
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="friends-empty-state"><p>{p.friends_unavailable}</p></div>
+      )}
+    </div>
+  );
+}
+
+function OwnFriends() {
+  const p = getT().profile;
+  const [tab, setTab] = useState<Direction>('followers');
   const [followers, setFollowers] = useState<UserSearchResult[]>([]);
   const [following, setFollowing] = useState<UserSearchResult[]>([]);
   const [loaded, setLoaded] = useState(false);

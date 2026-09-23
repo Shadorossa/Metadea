@@ -32,6 +32,7 @@
     "allow-toast-commands",
     "opener:default",
     "opener:allow-open-url",
+    "process:allow-exit",
     "notification:default"
   ]
 }

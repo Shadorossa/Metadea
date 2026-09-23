@@ -1,7 +1,11 @@
 // The typed ROM library scan behind Local's emulated-game cards and the
 // automatic file clean-up (rom_rename.rs). Walks every configured ROM
-// folder (emulator_configs), looking only at that platform's rom_extensions,
-// skipping the emulator's own directory subtree, dotfiles and temp files,
+// folder (emulator_configs), looking only at that platform's rom_extensions
+// (the chosen emulator's compatible list, see emulators::scan_rom_extensions)
+// minus what is never a game (accepts_rom_file: executables, BIOS/firmware
+// dumps, zips outside arcade emulators, tiny .elf stubs), skipping the
+// emulator's own directory subtree, BIOS/firmware/system folders, dotfiles
+// and temp files,
 // and groups Switch update/DLC dumps under their base game by title id so
 // a game never shows up as three cards. emulator_roms.rs flattens the
 // result into scan_all_games' LocalGame list.
@@ -45,6 +49,20 @@ pub struct RomGame {
     pub base: RomFile,
     pub updates: Vec<RomFile>,
     pub dlc: Vec<RomFile>,
+    // Multi-disc sets (multi_disc.rs): every disc in boot order, `base`
+    // being the first; empty for a single-file game.
+    #[serde(default)]
+    pub discs: Vec<RomFile>,
+    // The set's .m3u (existing or generated), when there is one.
+    #[serde(default)]
+    pub playlist: Option<String>,
+    // A set's name without the disc tag ("Final Fantasy VII (USA)").
+    #[serde(default)]
+    pub title_stem: Option<String>,
+    // Paths that used to be entries of their own and now belong to this
+    // one (other discs, absorbed .bin tracks...), for rom_disc_merge.rs.
+    #[serde(skip)]
+    pub replaced_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,7 +83,7 @@ pub fn is_sidecar_extension(ext: &str) -> bool {
 // with the connection lock released.
 pub(crate) fn rom_folder_configs(conn: &rusqlite::Connection) -> Vec<RomFolderConfig> {
     let mut stmt = match conn.prepare(
-        "SELECT platform_id, rom_folder, executable_path, rom_extensions FROM emulator_configs
+        "SELECT platform_id, rom_folder, executable_path, emulator_name FROM emulator_configs
          WHERE rom_folder IS NOT NULL AND rom_folder != ''",
     ) {
         Ok(s) => s,
@@ -73,9 +91,9 @@ pub(crate) fn rom_folder_configs(conn: &rusqlite::Connection) -> Vec<RomFolderCo
     };
     let rows = stmt.query_map([], |r| {
         let platform_id: String = r.get(0)?;
-        let stored: Option<String> = r.get(3)?;
+        let emulator_name: Option<String> = r.get(3)?;
         Ok(RomFolderConfig {
-            rom_extensions: crate::emulators::effective_rom_extensions(&platform_id, stored.as_deref().unwrap_or("")),
+            rom_extensions: crate::emulators::scan_rom_extensions(&platform_id, emulator_name.as_deref().unwrap_or("")),
             platform_id,
             rom_folder: r.get(1)?,
             executable_path: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
@@ -117,9 +135,86 @@ fn is_ignored_name(name: &str) -> bool {
     name.starts_with('.') || name.starts_with(".xdp-") || name.ends_with(".tmp") || name.ends_with(".part")
 }
 
-// One directory: the ROM files it holds (by extension) with their
-// same-stem sidecars attached.
-fn rom_files_in_dir(dir: &Path, extensions: &[String], out: &mut Vec<RomFile>) {
+// ─── Scan safeguards ─────────────────────────────────────────────────────────
+// The compatible lists that drive the scan are what the emulator can OPEN,
+// which is broader than what a game dump looks like (.zip, .bin, .exe,
+// .elf...). These rules keep the rest out without touching real games.
+
+// Platforms whose games genuinely are Windows/DOS executables. None of the
+// consoles in the catalog is (Xbox uses .xbe/.xex, the PS1 .psexe).
+const EXECUTABLE_PLATFORMS: &[&str] = &["pc", "dos", "windows"];
+const EXECUTABLE_EXTENSIONS: &[&str] = &["exe", "dll", "sys"];
+
+// Arcade platforms, whose ROM sets are always zipped.
+const ARCADE_PLATFORMS: &[&str] = &["arcade", "mame", "fbneo", "neogeo", "cps1", "cps2", "cps3"];
+
+// Emulators that launch zipped ROMs directly, by executable name.
+const ZIP_LAUNCHING_EMULATORS: &[&str] = &["retroarch", "mame", "fbneo", "fba", "finalburn"];
+
+// Smaller .elf files are loaders/stubs and homebrew test binaries, not games.
+const MIN_ELF_BYTES: u64 = 64 * 1024;
+
+// Folder names that hold BIOS/firmware, never games (compared lowercase).
+const SYSTEM_FOLDERS: &[&str] = &["bios", "firmware", "system"];
+
+// Exact BIOS/firmware file names (lowercase).
+const BIOS_FILE_NAMES: &[&str] = &[
+    "dc_boot.bin", "dc_flash.bin", "gba_bios.bin", "bios7.bin", "bios9.bin", "firmware.bin",
+    "neogeo.zip", "ps1_rom.bin", "ps2_rom.bin", "pgm.zip", "naomi.zip", "awbios.zip", "skns.zip",
+];
+
+pub(crate) fn is_system_folder(name: &str) -> bool {
+    SYSTEM_FOLDERS.contains(&name.to_ascii_lowercase().as_str())
+}
+
+// scph1001.bin, SCPH-70012.BIN, bios_CD_U.bin, ps2-0230a-20080220.bin,
+// syscard3.pce, dc_boot.bin, neogeo.zip...
+pub(crate) fn is_bios_file_name(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    if BIOS_FILE_NAMES.contains(&lower.as_str()) {
+        return true;
+    }
+    let (stem, ext) = lower.rsplit_once('.').unwrap_or((lower.as_str(), ""));
+    match ext {
+        "bin" | "rom" => stem.starts_with("scph") || stem.starts_with("ps2-") || stem.contains("bios"),
+        "pce" => stem.starts_with("syscard"),
+        _ => false,
+    }
+}
+
+// Whether the emulator at `executable_path` launches zipped ROMs as they are.
+pub(crate) fn launches_zipped_roms(platform_id: &str, executable_path: &str) -> bool {
+    if ARCADE_PLATFORMS.contains(&platform_id) {
+        return true;
+    }
+    let exe = Path::new(executable_path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    !exe.is_empty() && ZIP_LAUNCHING_EMULATORS.iter().any(|name| exe.contains(name))
+}
+
+// The per-file decision on top of the extension list: `ext` lowercase,
+// `size` in bytes.
+pub(crate) fn accepts_rom_file(platform_id: &str, zipped_roms: bool, name: &str, ext: &str, size: u64) -> bool {
+    if EXECUTABLE_EXTENSIONS.contains(&ext) && !EXECUTABLE_PLATFORMS.contains(&platform_id) {
+        return false;
+    }
+    if is_bios_file_name(name) {
+        return false;
+    }
+    match ext {
+        "zip" => zipped_roms,
+        "elf" => size > MIN_ELF_BYTES,
+        _ => true,
+    }
+}
+
+// One directory: the ROM files it holds (by extension, minus what
+// accepts_rom_file rejects) with their same-stem sidecars attached.
+fn rom_files_in_dir(dir: &Path, cfg: &RomFolderConfig, zipped_roms: bool, out: &mut Vec<RomFile>) {
+    let extensions = &cfg.rom_extensions;
     let Ok(entries) = std::fs::read_dir(dir) else { return };
     let mut roms: Vec<PathBuf> = Vec::new();
     let mut others: HashMap<String, Vec<PathBuf>> = HashMap::new();
@@ -135,7 +230,10 @@ fn rom_files_in_dir(dir: &Path, extensions: &[String], out: &mut Vec<RomFile>) {
         let ext = path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).unwrap_or_default();
         let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_ascii_lowercase();
         if extensions.contains(&ext) {
-            roms.push(path);
+            let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+            if accepts_rom_file(&cfg.platform_id, zipped_roms, name, &ext, size) {
+                roms.push(path);
+            }
         } else if is_sidecar_extension(&ext) {
             others.entry(stem).or_default().push(path);
         }
@@ -173,18 +271,19 @@ pub fn scan_rom_folder_files(cfg: &RomFolderConfig) -> Vec<RomFile> {
     }
     let skip_dir = emulator_dir(cfg);
     let skipped = |dir: &Path| skip_dir.as_ref().is_some_and(|s| is_within(dir, s));
+    let zipped_roms = launches_zipped_roms(&cfg.platform_id, &cfg.executable_path);
     if !skipped(root) {
-        rom_files_in_dir(root, &cfg.rom_extensions, &mut files);
+        rom_files_in_dir(root, cfg, zipped_roms, &mut files);
     }
     if let Ok(entries) = std::fs::read_dir(root) {
         let mut subdirs: Vec<PathBuf> = entries.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
         subdirs.sort();
         for sub in subdirs {
             let name = sub.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-            if is_ignored_name(name) || skipped(&sub) {
+            if is_ignored_name(name) || is_system_folder(name) || skipped(&sub) {
                 continue;
             }
-            rom_files_in_dir(&sub, &cfg.rom_extensions, &mut files);
+            rom_files_in_dir(&sub, cfg, zipped_roms, &mut files);
         }
     }
     files
@@ -245,6 +344,10 @@ pub fn group_rom_files(platform_id: &str, files: Vec<RomFile>) -> Vec<RomGame> {
         base: file,
         updates: Vec::new(),
         dlc: Vec::new(),
+        discs: Vec::new(),
+        playlist: None,
+        title_stem: None,
+        replaced_paths: Vec::new(),
     };
 
     for file in files {
@@ -417,11 +520,41 @@ pub(crate) fn rom_scan_signature(configs: &[RomFolderConfig]) -> Option<String> 
     })))
 }
 
+// One platform's scanned files -> its games: multi-disc sets first (never
+// for Switch, whose dumps group by title id), then the regular grouping.
+pub fn rom_games_from_files(platform_id: &str, files: Vec<RomFile>, fs: &dyn super::multi_disc::DiscFs) -> Vec<RomGame> {
+    if platform_id == "switch" {
+        return group_rom_files(platform_id, files);
+    }
+    let stacked = super::multi_disc::stack_multi_disc(files, fs);
+    let mut games = group_rom_files(platform_id, stacked.singles);
+    for game in &mut games {
+        if let Some(tracks) = stacked.absorbed.get(&game.base.path) {
+            game.replaced_paths.extend(tracks.iter().cloned());
+        }
+    }
+    for set in stacked.sets {
+        let base = set.discs[0].clone();
+        games.push(RomGame {
+            platform_id: platform_id.to_string(),
+            app_id: synthetic_app_id("rom", &base.path),
+            base,
+            updates: Vec::new(),
+            dlc: Vec::new(),
+            discs: set.discs,
+            playlist: set.playlist,
+            title_stem: Some(set.title_stem),
+            replaced_paths: set.replaced,
+        });
+    }
+    games
+}
+
 pub fn scan_rom_games(configs: &[RomFolderConfig]) -> Vec<RomGame> {
     let mut games = Vec::new();
     for cfg in configs {
         let files = scan_rom_folder_files(cfg);
-        let mut grouped = group_rom_files(&cfg.platform_id, files);
+        let mut grouped = rom_games_from_files(&cfg.platform_id, files, &super::multi_disc::RealFs);
         with_rom_header_cache(|cache| {
             for game in &mut grouped {
                 if let Some(header) = cache.header_for(Path::new(&game.base.path), read_rom_header) {
@@ -545,6 +678,87 @@ mod tests {
         assert_eq!(files.len(), 1, "{files:?}");
         assert_eq!(files[0].file_name, "5288 - Layton.nds");
         assert_eq!(files[0].sidecars.len(), 2);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn windows_executables_are_never_console_roms() {
+        // DuckStation lists .exe (PS-X EXE homebrew), but a Windows binary
+        // in a PS1 folder is a tool or a launcher, not a game.
+        assert!(!accepts_rom_file("ps1", false, "DuckStation Updater.exe", "exe", 5_000_000));
+        assert!(!accepts_rom_file("xbox360", false, "xenia.dll", "dll", 1_000_000));
+        assert!(!accepts_rom_file("ps2", false, "driver.sys", "sys", 20_000));
+        assert!(accepts_rom_file("xbox360", false, "default.xex", "xex", 9_000_000));
+        assert!(accepts_rom_file("ps1", false, "Crash Bandicoot (USA).psexe", "psexe", 900_000));
+        assert!(accepts_rom_file("pc", false, "DOOM.EXE", "exe", 700_000));
+    }
+
+    #[test]
+    fn bios_and_firmware_dumps_are_ignored() {
+        for name in [
+            "scph1001.bin", "SCPH-70012.BIN", "bios_CD_U.bin", "BIOS.bin", "ps2-0230a-20080220.bin",
+            "dc_boot.bin", "dc_flash.bin", "gba_bios.bin", "bios7.bin", "bios9.bin", "firmware.bin",
+            "syscard3.pce", "neogeo.zip", "ps1_rom.bin", "sega_101_bios.rom",
+        ] {
+            assert!(is_bios_file_name(name), "{name}");
+            assert!(!accepts_rom_file("ps1", true, name, name.rsplit_once('.').unwrap().1.to_ascii_lowercase().as_str(), 512 * 1024), "{name}");
+        }
+        for name in ["Crash Bandicoot (USA) (Track 1).bin", "Final Fantasy VII (USA) (Disc 1).bin", "Biohazard (Japan).bin", "Street Fighter Alpha 3.zip"] {
+            assert!(!is_bios_file_name(name), "{name}");
+        }
+        assert!(is_system_folder("BIOS") && is_system_folder("firmware") && is_system_folder("System"));
+        assert!(!is_system_folder("Systemic Shock"));
+    }
+
+    #[test]
+    fn zips_only_for_emulators_that_launch_them() {
+        assert!(!launches_zipped_roms("ds", "C:/Emus/melonDS/melonDS.exe"));
+        assert!(!launches_zipped_roms("ps1", "C:/Emus/ePSXe/ePSXe.exe"));
+        assert!(!launches_zipped_roms("ds", ""));
+        assert!(launches_zipped_roms("ds", "C:/Emus/RetroArch-Win64/retroarch.exe"));
+        assert!(launches_zipped_roms("arcade", ""));
+        assert!(launches_zipped_roms("gba", "D:/mame/mame64.exe"));
+        assert!(!accepts_rom_file("ds", false, "Pokemon Platinum (USA).zip", "zip", 60_000_000));
+        assert!(accepts_rom_file("ds", true, "Pokemon Platinum (USA).zip", "zip", 60_000_000));
+    }
+
+    #[test]
+    fn tiny_elf_stubs_are_skipped() {
+        assert!(!accepts_rom_file("gamecube", false, "boot.elf", "elf", 12 * 1024));
+        assert!(!accepts_rom_file("gamecube", false, "stub.elf", "elf", 64 * 1024));
+        assert!(accepts_rom_file("gamecube", false, "Swiss.elf", "elf", 2 * 1024 * 1024));
+    }
+
+    #[test]
+    fn scan_applies_the_safeguards_on_disk() {
+        let root = temp_root("guards");
+        let emu = std::env::temp_dir().join("metadea-rom-library-guards-emu");
+        std::fs::write(root.join("Crash Bandicoot (USA).cue"), "FILE \"Crash Bandicoot (USA).bin\" BINARY\n  TRACK 01 MODE2/2352\n").unwrap();
+        std::fs::write(root.join("Crash Bandicoot (USA).bin"), b"x").unwrap();
+        std::fs::write(root.join("scph1001.bin"), b"x").unwrap();
+        std::fs::write(root.join("Spyro (USA).zip"), b"x").unwrap();
+        std::fs::write(root.join("DuckStation Updater.exe"), b"x").unwrap();
+        std::fs::create_dir_all(root.join("BIOS")).unwrap();
+        std::fs::write(root.join("BIOS").join("SCPH-5501.bin"), b"x").unwrap();
+        std::fs::write(root.join("BIOS").join("Tekken 3 (USA).bin"), b"x").unwrap();
+        std::fs::create_dir_all(root.join("Silent Hill (USA)")).unwrap();
+        std::fs::write(root.join("Silent Hill (USA)").join("Silent Hill (USA).chd"), b"x").unwrap();
+        let cfg = RomFolderConfig {
+            platform_id: "ps1".into(),
+            rom_folder: root.to_string_lossy().to_string(),
+            executable_path: emu.join("duckstation-qt-x64-ReleaseLTCG.exe").to_string_lossy().to_string(),
+            rom_extensions: crate::emulators::scan_rom_extensions("ps1", "DuckStation"),
+        };
+        let files = scan_rom_folder_files(&cfg);
+        let mut names: Vec<_> = files.iter().map(|f| f.file_name.clone()).collect();
+        names.sort();
+        assert_eq!(names, vec!["Crash Bandicoot (USA).bin", "Crash Bandicoot (USA).cue", "Silent Hill (USA).chd"]);
+
+        // The .cue claims its .bin: one game, whose file is the .cue.
+        let games = rom_games_from_files("ps1", files, &crate::platform_scanning::multi_disc::RealFs);
+        let mut bases: Vec<_> = games.iter().map(|g| g.base.file_name.clone()).collect();
+        bases.sort();
+        assert_eq!(bases, vec!["Crash Bandicoot (USA).cue", "Silent Hill (USA).chd"]);
         let _ = std::fs::remove_dir_all(&root);
     }
 

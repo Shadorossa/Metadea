@@ -32,13 +32,41 @@ export interface LocaleBootstrapOptions {
   storageKey: string;
   locales: readonly string[];
   buildLang: string;
+  /** One-time marker: set on the first run of a build with this bootstrap. */
+  migratedKey?: string;
+  /** Locale an install from before 0.7 ran in without choosing one (the old
+   *  default). Kept for such installs so an update never switches language. */
+  legacyLocale?: string;
+  /** Prefix of the app's localStorage keys: any present on that first run
+   *  means the app was already in use (a fresh install has none yet). */
+  legacyKeyPrefix?: string;
 }
 
-export function buildLocaleBootstrapScript({ storageKey, locales, buildLang }: LocaleBootstrapOptions): string {
+export function buildLocaleBootstrapScript({
+  storageKey, locales, buildLang, migratedKey, legacyLocale, legacyKeyPrefix,
+}: LocaleBootstrapOptions): string {
+  const migration = migratedKey && legacyLocale && legacyKeyPrefix
+    ? `
+    if (localStorage.getItem(${JSON.stringify(migratedKey)}) === null) {
+      if (stored === null) {
+        for (var k = 0; k < localStorage.length; k++) {
+          var name = localStorage.key(k);
+          if (name && name !== ${JSON.stringify(migratedKey)} && name.indexOf(${JSON.stringify(legacyKeyPrefix)}) === 0) {
+            stored = ${JSON.stringify(legacyLocale)};
+            localStorage.setItem(${JSON.stringify(storageKey)}, stored);
+            break;
+          }
+        }
+      }
+      localStorage.setItem(${JSON.stringify(migratedKey)}, '1');
+    }`
+    : '';
   return `(function () {
   var resolve = ${INLINE_RESOLVE_LOCALE_SOURCE};
   var stored = null;
-  try { stored = localStorage.getItem(${JSON.stringify(storageKey)}); } catch (e) { /* storage unavailable */ }
+  try {
+    stored = localStorage.getItem(${JSON.stringify(storageKey)});${migration}
+  } catch (e) { /* storage unavailable */ }
   var system = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language].filter(Boolean);
   var lang = resolve(stored, system, ${JSON.stringify(locales)});
   var root = document.documentElement;

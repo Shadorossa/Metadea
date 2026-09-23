@@ -5,6 +5,7 @@ import type { MediaPageData } from '../../../lib/media/types';
 import { Pagination } from '../Pagination';
 import { CharacterCard } from './MediaPageCards';
 import { SectionTabs } from './MediaPageControls';
+import type { MediaSpoilers } from './useMediaSpoilers';
 
 export type CharTab = 'characters' | 'staff';
 
@@ -19,6 +20,8 @@ interface Props {
   setCharacterPage: Dispatch<SetStateAction<number>>;
   customImagesMap: Map<string, FavoriteCustomImage>;
   showUsers: boolean;
+  /** Spoiler shield answers for this page (absent: nothing hidden). */
+  spoilers?: MediaSpoilers;
 }
 
 export function MediaCastSection({
@@ -30,6 +33,7 @@ export function MediaCastSection({
   setCharacterPage,
   customImagesMap,
   showUsers,
+  spoilers,
 }: Props) {
   const roleOrder = (role?: string) => {
     const normalizedRole = role?.toLowerCase().trim() || '';
@@ -65,7 +69,15 @@ export function MediaCastSection({
                 {activeCharList
                   .slice((characterPage - 1) * CHARACTER_PAGE_SIZE, characterPage * CHARACTER_PAGE_SIZE)
                   .map((c, i) => (
-                    <CharacterCard key={i} character={c} charTab={charTab} customImagesMap={customImagesMap} />
+                    <CharacterCard
+                      key={i}
+                      character={c}
+                      charTab={charTab}
+                      customImagesMap={customImagesMap}
+                      onRevealSpoiler={charTab === 'characters' && spoilers?.isCastMemberHidden(c.id)
+                        ? () => spoilers.revealCastMember(c.id ?? '')
+                        : undefined}
+                    />
                   ))}
               </div>
               {activeCharList.length > CHARACTER_PAGE_SIZE && (

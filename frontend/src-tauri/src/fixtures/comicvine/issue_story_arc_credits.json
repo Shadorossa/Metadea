@@ -1,0 +1,16 @@
+{
+  "error": "OK",
+  "limit": 1,
+  "offset": 0,
+  "number_of_page_results": 1,
+  "number_of_total_results": 1,
+  "status_code": 1,
+  "results": {
+    "id": 139412,
+    "story_arc_credits": [
+      { "api_detail_url": "https://comicvine.gamespot.com/api/story_arc/4045-56251/", "id": 56251, "name": "Arrancar Saga", "site_detail_url": "https://comicvine.gamespot.com/arrancar-saga/4045-56251/" },
+      { "api_detail_url": "https://comicvine.gamespot.com/api/story_arc/4045-56252/", "id": 56252, "name": "Hueco Mundo", "site_detail_url": "https://comicvine.gamespot.com/hueco-mundo/4045-56252/" }
+    ]
+  },
+  "version": "1.0"
+}

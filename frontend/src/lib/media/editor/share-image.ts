@@ -7,7 +7,7 @@
 // "Compartir" button).
 import { STAR_PATH } from '../constants';
 import { dbRatingToStars5, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../rating-utils';
-import { fetchImageDataUrl } from '../../tauri/share-image';
+import { resolveCanvasImage as resolveImage } from '../canvas-image';
 import { toLargeCover } from '../small-cover';
 
 export interface ShareImageOptions {
@@ -21,35 +21,6 @@ export interface ShareImageOptions {
 const WIDTH = 1080;
 const HEIGHT = 1920;
 
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = src;
-  });
-}
-
-// A remote https:// image loaded straight into an <img> and exported via
-// canvas comes back blank unless its server sends CORS headers explicitly
-// allowing it — AniList/TMDB/IGDB covers generally don't. Routing it
-// through the Rust side (a plain server-side fetch, no browser CORS policy
-// involved) and getting a data: URL back sidesteps that; a data: URL never
-// taints a canvas. Already-local sources (data:, asset://) load as-is.
-async function resolveImage(src: string): Promise<HTMLImageElement | null> {
-  try {
-    // Some AniList fields come back protocol-relative ("//s4.anilist.co/...").
-    const normalized = src.startsWith('//') ? `https:${src}` : src;
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
-      const dataUrl = await fetchImageDataUrl(normalized);
-      return await loadImage(dataUrl ?? normalized);
-    }
-    return await loadImage(normalized);
-  } catch {
-    return null;
-  }
-}
 
 // Tries toLargeCover's upgraded URL first, falling back to the original
 // stored one if that fails — needed specifically because AniList's

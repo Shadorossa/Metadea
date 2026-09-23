@@ -35,7 +35,7 @@ Metadea es tu compañero perfecto si:
 - Vincula tu carpeta de anime local
 - Sincronización automática con tu lista de AniList
 - Selector de episodios intuitivo
-- Reproduce episodios en VLC o tu reproductor predeterminado
+- Reproduce episodios en el reproductor integrado (libmpv)
 - Sincroniza el progreso automáticamente
 
 ### 🔗 Sincronización en Línea
@@ -110,7 +110,7 @@ Metadea es tu compañero perfecto si:
 2. Selecciona tu carpeta de anime
 3. Elige un anime de tu lista en AniList
 4. Metadea detectará automáticamente los episodios
-5. Haz clic en un episodio para reproducir en VLC
+5. Haz clic en un episodio para reproducirlo en el reproductor integrado
 6. El progreso se sincroniza automáticamente
 
 ### Agregar favoritos
@@ -150,9 +150,8 @@ R: Ve a **Panel de Control** → **Programas** → **Programas y característica
 - Intenta desinstalar y reinstalar la aplicación
 - Asegúrate de tener los últimos actualizadores de Windows instalados
 
-**VLC no abre los episodios**
-- Instala [VLC Media Player](https://www.videolan.org/vlc/) si aún no lo tienes
-- Configura VLC como tu reproductor predeterminado
+**El reproductor no abre los episodios**
+- Comprueba que `libmpv-2.dll` está junto al ejecutable (viene incluido con Metadea); si falta, reinstala la aplicación
 
 **AniList no sincroniza**
 - Ve a Configuración y reconecta tu cuenta de AniList

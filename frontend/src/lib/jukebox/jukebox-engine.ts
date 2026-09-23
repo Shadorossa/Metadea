@@ -16,7 +16,7 @@ import { moveItem } from '../shared/collections/move-item';
 import { readJukeboxPreferences, writeJukeboxPreferences } from './jukebox-preferences';
 import { applyFavoriteToggle, themeDisplayTitle, toFavoriteKeys, type FavoriteToggleContext } from './jukebox-favorites';
 import {
-  clampVolume, currentTheme, cycleRepeat, findQueueIndex, jukeboxStore, nextIndex, prevIndex, themeKey,
+  clampVolume, currentTheme, cycleRepeat, effectiveVolume, findQueueIndex, jukeboxStore, nextIndex, prevIndex, themeKey,
   withQueue, withShuffle, type JukeboxState,
 } from './jukebox-store';
 
@@ -32,6 +32,9 @@ let loadToken = 0;
 let failureStreak = 0;
 let lastPresence: PresenceSnapshot | null = null;
 let overlayObserver: MutationObserver | null = null;
+// Temporary volume multiplier (Ambient mode's "play softly"); never saved and
+// never shown — the store keeps the user's own volume.
+let duckFactor = 1;
 
 function patch(partial: Partial<JukeboxState>): void {
   jukeboxStore.set({ ...jukeboxStore.get(), ...partial });
@@ -69,6 +72,7 @@ function publishPresence(): void {
     endTime: snapshot.endTime,
     coverUrl: cover && cover.startsWith('http') ? toMediumCover(cover) : undefined,
     externalId: entry.theme.external_id,
+    share: { externalId: entry.theme.external_id, title: entry.media_title, coverUrl: cover },
   });
 }
 
@@ -145,7 +149,7 @@ function ensureAudio(): HTMLAudioElement {
   const element = new Audio();
   host[AUDIO_GLOBAL_KEY] = element;
   element.preload = 'auto';
-  element.volume = jukeboxStore.get().volume;
+  element.volume = effectiveVolume(jukeboxStore.get().volume, duckFactor);
   element.addEventListener('play', () => {
     patch({ status: 'playing', error: false });
     updateMediaSessionState();
@@ -328,8 +332,15 @@ export function seekTo(seconds: number): void {
 export function setVolume(volume: number): void {
   const clamped = clampVolume(volume);
   patch({ volume: clamped });
-  if (audio) audio.volume = clamped;
+  if (audio) audio.volume = effectiveVolume(clamped, duckFactor);
   savePreferences();
+}
+
+/** Scales the playing volume by `factor` (0–1) without changing the user's
+ *  volume; 1 restores it. Ambient mode ramps this for its fades. */
+export function setDuckFactor(factor: number): void {
+  duckFactor = Number.isFinite(factor) ? Math.min(1, Math.max(0, factor)) : 1;
+  if (audio) audio.volume = effectiveVolume(jukeboxStore.get().volume, duckFactor);
 }
 
 export function toggleShuffle(): void {
@@ -439,7 +450,7 @@ export async function initJukebox(): Promise<void> {
   initialized = true;
   const prefs = readJukeboxPreferences();
   jukeboxStore.set(withShuffle({ ...jukeboxStore.get(), volume: prefs.volume, repeat: prefs.repeat }, prefs.shuffle));
-  ensureAudio().volume = prefs.volume;
+  ensureAudio().volume = effectiveVolume(prefs.volume, duckFactor);
   installMediaSessionHandlers();
   installYieldRules();
   try {

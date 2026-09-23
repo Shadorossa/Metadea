@@ -6,7 +6,7 @@ import { getT } from '../../i18n/runtime';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
-import { displayNameFor, type StatusEntry, type SortMode, sortEntries, entryKey } from '../../lib/local/catalog-game-linking';
+import { displayNameFor, type StatusEntry, type SortMode, sortEntries, entryKey, entryExternalId } from '../../lib/local/catalog-game-linking';
 import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, type PlatformId } from '../../lib/local/platforms';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
@@ -16,6 +16,7 @@ import { DeleteContextMenu } from './ui/DeleteContextMenu';
 import { VirtualCardGrid } from './ui/VirtualCardGrid';
 import { SortModeSelect } from './ui/SortModeSelect';
 import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
+import { useCachedBeatSeconds } from './hooks/useCachedBeatSeconds';
 
 // sectionStatus is the badge shown on any kind:'game' entry in this section
 // (kind:'catalog' entries carry their own item.status instead) — safe to
@@ -96,6 +97,13 @@ export function GamesGrid({
   // reason about, and there's no real case for browsing one platform
   // alphabetically while another stays sorted by playtime.
   const [sortMode, setSortMode] = useState<SortMode>('alpha');
+  const sortsByLength = sortMode === 'shortestToBeat';
+  const beatSeconds = useCachedBeatSeconds(sortsByLength, sortsByLength
+    ? [
+        ...[...groupedGames.values()].flat().map(g => g.external_id),
+        ...[...pendingByLauncher.values()].flat().map(entryExternalId),
+      ].filter((id): id is string => !!id)
+    : []);
 
   // Right-click "Eliminar de la lista" on any card, game or catalog-tracked
   // pendiente alike (see GameCard/LocalMediaCard's own onRequestDelete) —
@@ -204,7 +212,7 @@ export function GamesGrid({
             ...list.map((g): StatusEntry => ({ kind: 'game', game: g })),
             ...pendingForLauncher,
           ];
-          const sortedEntries = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById));
+          const sortedEntries = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById), beatSeconds);
           const totalCount = merged.length;
           return (
             <section

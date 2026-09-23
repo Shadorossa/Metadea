@@ -45,6 +45,9 @@ import { MediaEditorMonthGrid } from './media-editor/MediaEditorMonthGrid';
 import { MediaEditorActions } from './media-editor/MediaEditorActions';
 import { MediaEditorStatusRow } from './media-editor/MediaEditorStatusRow';
 import { MediaEditorDateFields } from './media-editor/MediaEditorDateFields';
+import { FillerChoice } from './media-page/FillerChoice';
+import { useFillerInfo } from './hooks/useFillerInfo';
+import { completionEpisode, entryHasFiller } from '../../lib/anime/filler';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -612,6 +615,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return data.totalCount;
   }, [isUnifiedAnime, isUnifiedEvent, isGeneralTab, generalTotalCount, seasonMetaMap, entry.activeLogId, data.totalCount, activeSeriesSeasonInfo]);
 
+  // "Filler: Watched / Skipped" (lib/anime/filler.ts), for an anime log whose
+  // episodes include filler. Skipped completes the log at its last canon
+  // episode; the progress number itself stays the real one.
+  const fillerInfo = useFillerInfo(data.type === 'anime' && !isGeneralTab ? entry.activeLogId : null);
+  const skipFiller = activeLog.skipFiller ?? false;
+  const showFillerChoice = entryHasFiller(fillerInfo, activeTotalCount);
+  const completeAtEpisode = completionEpisode({ skip_filler: skipFiller ? 1 : 0 }, fillerInfo, activeTotalCount);
+
   const generalStartDate = useMemo(
     () => isUnifiedAnime ? computeChainBoundaryDate('start', animeSeasonChain, entry.logs) : '',
     [isUnifiedAnime, animeSeasonChain, entry.logs],
@@ -791,7 +802,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       disabled={isGeneralTab}
                       onChange={v => {
                         const updates: Partial<LogState> = { progress: v };
-                        if (!isUpcoming && activeTotalCount && activeTotalCount > 0 && v >= activeTotalCount && activeLog.status !== 'completed') {
+                        if (!isUpcoming && completeAtEpisode && completeAtEpisode > 0 && v >= completeAtEpisode && activeLog.status !== 'completed') {
                           updates.status = 'completed';
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
@@ -843,6 +854,15 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progressCount2: v } })} />
                     )}
                   </div>
+                )}
+                {showFillerChoice && (
+                  <FillerChoice
+                    t={t.filler}
+                    skip={skipFiller}
+                    info={fillerInfo}
+                    total={activeTotalCount}
+                    onChange={skip => dispatchEntry({ type: 'UPDATE_LOG', updates: { skipFiller: skip } })}
+                  />
                 )}
 
                 {/* Rating — rating_2 (its own name/system) only when this

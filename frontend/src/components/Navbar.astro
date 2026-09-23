@@ -47,9 +47,9 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
       <a href="/local" data-nav="local" class={`nav-icon-btn nav-icon-btn--plain${activePage === 'local' ? ' active' : ''}`} title={i18n.local} data-i18n-title="nav.local">
         <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-play" /></svg>
       </a>
-      <span class="nav-icon-btn nav-icon-btn--plain nav-icon-btn--tier nav-icon-btn--disabled" aria-disabled="true" title={i18n.tier} data-i18n-title="nav.tier">
+      <a href="/tier" data-nav="tier" class={`nav-icon-btn nav-icon-btn--plain${activePage === 'tier' ? ' active' : ''}`} title={i18n.tier} data-i18n-title="nav.tier">
         <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-tier" /></svg>
-      </span>
+      </a>
       <a href="/search" data-nav="search" class={`nav-browse-link${activePage === 'search' ? ' active' : ''}`} data-i18n="nav.browse">
         {i18n.browse}
       </a>

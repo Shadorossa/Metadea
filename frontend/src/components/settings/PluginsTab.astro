@@ -1,0 +1,30 @@
+---
+// Settings › Plugins: one block per kind of plugin (a heading and a short
+// description over its own controls). UI themes (skins) is the first kind;
+// a new kind adds another `settings-plugin-category` section below it.
+import type { Translations } from "../../i18n/index";
+import { UiThemesSection } from "../ui-themes/UiThemesSection";
+import "../../styles/components/ui-themes.css";
+
+interface Props {
+  t: Translations;
+}
+const { t } = Astro.props;
+---
+
+<div class="settings-panel hidden" id="panel-plugins">
+  <div class="settings-section">
+    <h3 class="settings-section-title" data-i18n="plugins.tab">{t.plugins.tab}</h3>
+    <p class="settings-hint" data-i18n="plugins.intro">{t.plugins.intro}</p>
+  </div>
+
+  <section class="settings-divider settings-plugin-category" aria-labelledby="plugins-ui-themes-title" data-plugin-category="ui_themes">
+    <div class="settings-section">
+      <h3 class="settings-section-title" id="plugins-ui-themes-title" data-i18n="plugins.ui_themes_title">
+        {t.plugins.ui_themes_title}
+      </h3>
+      <p class="settings-hint" data-i18n="plugins.ui_themes_description">{t.plugins.ui_themes_description}</p>
+      <UiThemesSection client:load />
+    </div>
+  </section>
+</div>

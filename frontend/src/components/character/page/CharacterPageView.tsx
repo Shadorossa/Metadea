@@ -3,26 +3,31 @@
 // (styles/pages/character.css, media/base.css) applies unchanged.
 import type { CharacterPageData } from '../../../lib/character/character-page-data';
 import type { CharacterStrings } from '../../../lib/character/character-stat-labels';
+import type { CharacterReaction } from '../../../lib/character/character-reactions';
 import { attributeUrl } from '../../../lib/character/character-page-urls';
 import { sanitizeHtml } from '../../../lib/shared/text/sanitize-html';
 import { CharacterAppearances } from './CharacterAppearances';
 import { CharacterHeroLeftCol, CharacterHeroRightCol } from './CharacterHero';
 import { CharacterStatsList } from './CharacterStats';
 import { CharacterVoiceActors } from './CharacterVoiceActors';
+import type { CharacterSpoilerView } from './useCharacterSpoilers';
+import { SpoilerBanner, SpoilerShield } from '../../spoilers/SpoilerShield';
 
 export interface CharacterPageViewProps {
   t: CharacterStrings;
   data: CharacterPageData;
   avatarUrl: string | null;
   isFavorite: boolean;
-  reaction: string | null;
+  reaction: CharacterReaction | null;
   onToggleFavorite: () => void;
-  onReaction: (reaction: string) => void;
+  onReaction: (reaction: CharacterReaction) => void;
   onEditAvatar: () => void;
   onEdit: () => void;
+  /** Spoiler shield answers for this character (absent: nothing hidden). */
+  spoiler?: CharacterSpoilerView | null;
 }
 
-export function CharacterPageView({ t, data, avatarUrl, isFavorite, reaction, onToggleFavorite, onReaction, onEditAvatar, onEdit }: CharacterPageViewProps) {
+export function CharacterPageView({ t, data, avatarUrl, isFavorite, reaction, onToggleFavorite, onReaction, onEditAvatar, onEdit, spoiler }: CharacterPageViewProps) {
   return (
     <div id="character-content" style={{ display: 'block' }} data-char-key={data.externalId}>
       <div className="character-grid">
@@ -36,9 +41,19 @@ export function CharacterPageView({ t, data, avatarUrl, isFavorite, reaction, on
             onToggleFavorite={onToggleFavorite}
             onReaction={onReaction}
             onEditAvatar={onEditAvatar}
+            avatarSpoiler={spoiler?.hideImage ? { label: spoiler.lateDebutNote, onReveal: spoiler.revealImage } : undefined}
           />
 
-          <CharacterHeroRightCol name={data.name} nameNative={data.nameNative} aliases={data.aliases} />
+          <CharacterHeroRightCol name={data.name} nameNative={data.nameNative} aliases={data.aliases}>
+            {spoiler?.franchiseName && (
+              <SpoilerBanner
+                franchiseName={spoiler.franchiseName}
+                note={spoiler.lateDebutNote}
+                onRevealPage={spoiler.revealPage}
+                onRevealFranchise={spoiler.revealFranchise}
+              />
+            )}
+          </CharacterHeroRightCol>
 
           <div className="media-col-synopsis" id="char-bio-section" style={{ display: data.biographyHtml ? 'block' : 'none' }}>
             <div className="media-section-header-row">
@@ -46,7 +61,13 @@ export function CharacterPageView({ t, data, avatarUrl, isFavorite, reaction, on
               <div className="media-section-header-line"></div>
             </div>
             {/* Third-party biography markup (AniList/Fandom) — sanitized, never raw. */}
-            <div className="media-description-text" id="char-description" dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.biographyHtml) }} />
+            <SpoilerShield hidden={!!spoiler?.hideBiography} onReveal={spoiler?.revealBiography ?? (() => {})} label={spoiler?.lateDebutNote ?? undefined}>
+              <div
+                className={`media-description-text${spoiler?.pending ? ' spoiler-shield-pending' : ''}`}
+                id="char-description"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.biographyHtml) }}
+              />
+            </SpoilerShield>
           </div>
 
           <CharacterAppearances appearances={data.appearances} t={t} />
@@ -68,7 +89,7 @@ export function CharacterPageView({ t, data, avatarUrl, isFavorite, reaction, on
               )}
             </div>
           </div>
-          <CharacterStatsList rows={data.statRows} t={t} />
+          <CharacterStatsList rows={data.statRows} t={t} spoiler={spoiler} />
 
           <CharacterVoiceActors voiceActors={data.voiceActors} />
         </div>

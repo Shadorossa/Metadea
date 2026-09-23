@@ -9,6 +9,7 @@ import {
   readUserFavoritesTyped,
   saveCharacter,
   getCharacter,
+  getCharacterReaction,
   getCharacterMergeTarget,
   getCharacterAppearances,
   saveCharacterAppearances,
@@ -31,6 +32,7 @@ import {
   type MergedAppearance,
 } from './character-appearances';
 import { parseCharacterPageId } from './character-page-id';
+import { normalizeReaction, type CharacterReaction } from './character-reactions';
 import { buildRoleLabels, type CharacterStrings } from './character-stat-labels';
 import { buildCharacterStatRows, type CharacterStatRow } from './character-stats';
 import {
@@ -56,7 +58,7 @@ export interface CharacterPageData {
   voiceActors: VoiceActorsByLanguage;
   appearances: MergedAppearance[];
   isFavorite: boolean;
-  reaction: string | null;
+  reaction: CharacterReaction | null;
 }
 
 export type CharacterPageLoadResult =
@@ -225,8 +227,7 @@ export async function loadCharacterPageData(idParam: string, t: CharacterStrings
   const favList = allFavs['character'] || [];
   const isFavorite = Array.isArray(favList) && favList.includes(characterExternalId);
 
-  const savedLocal = await getCharacter(characterExternalId);
-  const reaction = savedLocal?.reaction ?? null;
+  const reaction = normalizeReaction(await getCharacterReaction(characterExternalId).catch(() => null));
 
   // Writes the sticky (local-preferred) values back, not AniList's raw
   // live copy — this used to blindly resave character.name.full/

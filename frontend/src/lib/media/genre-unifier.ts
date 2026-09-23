@@ -141,6 +141,9 @@ const GENRE_DEFS: GenreDef[] = [
   { name: 'Folk Tale', aliases: ['Folk tale', 'Folklore'], isTag: true },
 ];
 
+// Every unified name (core and tag), e.g. for share-link-codec's GENRE_CODES.
+export const UNIFIED_GENRE_NAMES: readonly string[] = GENRE_DEFS.map(def => def.name);
+
 // Build flat lookup map at module load time
 const RAW_TO_UNIFIED: Record<string, { name: string; isTag: boolean }> =
   Object.fromEntries(

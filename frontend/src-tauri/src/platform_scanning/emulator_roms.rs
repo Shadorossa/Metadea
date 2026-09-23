@@ -24,10 +24,17 @@ fn company_for_platform(platform_id: &str) -> &'static str {
 // `name` stays the raw file stem: the frontend's rom-name-parser turns it
 // into the clean title for display and IGDB matching, and local_games_seen
 // keeps whatever was scanned. app_id is the same synthetic id the typed
-// scan reports, so links/covers keyed by it resolve from either path.
+// scan reports, so links/covers keyed by it resolve from either path. A
+// multi-disc set is named without its disc tag (so IGDB matches the game,
+// not "Disc 1") and carries its discs and playlist.
 fn to_local_game(game: RomGame) -> LocalGame {
+    use super::common::synthetic_app_id;
+    let replaced_app_ids = game.replaced_paths.iter().map(|path| synthetic_app_id("rom", path)).collect();
     LocalGame {
-        name: game.base.stem.clone(),
+        name: game.title_stem.clone().unwrap_or_else(|| game.base.stem.clone()),
+        discs: if game.discs.len() > 1 { game.discs.iter().map(|d| d.path.clone()).collect() } else { Vec::new() },
+        disc_playlist: game.playlist,
+        replaced_app_ids,
         launcher: company_for_platform(&game.platform_id).to_string(),
         app_id: Some(game.app_id),
         external_id: None,

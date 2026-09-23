@@ -1,6 +1,6 @@
 import { tauriCmd, tauriRun } from './bridge';
 
-// Where VLC's own position was last seen for an episode not yet marked
+// Where the video player's position was last seen for an episode not yet marked
 // watched — see resume_position.rs's own comment for why this is a
 // persisted table rather than in-memory state.
 export async function getResumePosition(externalId: string, episodeNumber: number): Promise<number | null> {

@@ -13,7 +13,7 @@ describe('parseAppError', () => {
   });
 
   it('rejects anything that is not a known code', () => {
-    expect(parseAppError('Failed to launch VLC: boom')).toBeNull();
+    expect(parseAppError('Failed to launch the player: boom')).toBeNull();
     expect(parseAppError('E_NOT_A_REAL_CODE')).toBeNull();
     expect(parseAppError('')).toBeNull();
   });

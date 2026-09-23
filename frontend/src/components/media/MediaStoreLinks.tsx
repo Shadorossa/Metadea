@@ -19,7 +19,14 @@ export function openLink(url: string) {
   else window.open(url, '_blank');
 }
 
-export function MediaStoreLinks({ links }: { links: StoreLink[] }) {
+// GG.deals price comparison — always after the official stores (see
+// lib/media/ggdeals-link.ts for how its URL is chosen).
+interface GgDealsLink {
+  url: string;
+  label: string;
+}
+
+export function MediaStoreLinks({ links, ggDeals }: { links: StoreLink[]; ggDeals?: GgDealsLink }) {
   return (
     <div className="media-store-links-inline">
       {links.map(link => {
@@ -51,6 +58,18 @@ export function MediaStoreLinks({ links }: { links: StoreLink[] }) {
           </button>
         );
       })}
+      {ggDeals && links.length > 0 && <span className="media-store-links-divider" aria-hidden="true" />}
+      {ggDeals && (
+        <button
+          type="button"
+          className="media-store-link"
+          title={ggDeals.label}
+          aria-label={ggDeals.label}
+          onClick={() => openLink(ggDeals.url)}
+        >
+          <img src="/API/ggdeals_logo.png" alt="GG.deals" className="media-store-icon media-store-icon--ggdeals" />
+        </button>
+      )}
     </div>
   );
 }

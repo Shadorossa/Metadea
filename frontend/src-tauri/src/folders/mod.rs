@@ -4,17 +4,18 @@
 // command, which lib.rs's `generate_handler![folders::…]` expands to.
 
 mod dialogs;
+mod disc_launch;
+mod emulator_captures;
 mod emulator_launch;
 mod process_tracking;
 mod routes;
 mod screenshots;
 mod toast_window;
-mod vlc;
 
 pub use dialogs::*;
+pub use emulator_captures::*;
 pub use emulator_launch::*;
 pub use process_tracking::*;
 pub use routes::*;
 pub use screenshots::*;
 pub use toast_window::*;
-pub use vlc::*;

@@ -1,0 +1,13 @@
+[
+  {
+    "name": "g0",
+    "result": [
+      { "id": 7018, "name": "Sekiro: Shadows Die Twice", "cover": { "id": 1, "image_id": "co2a23" }, "first_release_date": 1553212800, "game_type": 0, "total_rating": 90.83, "genres": [{ "id": 12 }, { "id": 31 }] },
+      { "id": 1942, "name": "Bloodborne: The Old Hunters", "cover": { "id": 2, "image_id": "co1xyz" }, "first_release_date": 1448323200, "game_type": 1, "genres": [{ "id": 12 }] },
+      { "id": 119133, "name": "Future Title", "first_release_date": 1900000000, "game_type": 0 },
+      { "id": 555, "name": "Some Visual Novel", "game_type": 0, "genres": [{ "id": 34 }, { "id": 31 }] },
+      { "id": 81085, "name": "Dark Souls: Remastered", "first_release_date": 1527120000, "game_type": 9 },
+      { "id": 4242, "name": "Cancelled Project", "game_type": 0, "status": 6 }
+    ]
+  }
+]

@@ -30,6 +30,7 @@ import { buildLibraryStatusEntries } from '../../lib/local/catalog-game-linking'
 import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../../lib/local/platforms';
 import { isLocalMediaItemPlayable, toLocalMediaItem } from './library-playability';
 import { useShortcuts } from '../shared/hooks/useShortcuts';
+import type { PublicDualRating } from '../../lib/social/users';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
@@ -92,11 +93,17 @@ interface LibrarySectionProps {
   overrideCatalogMap?: Map<string, CatalogSummary>;
   overrideSagaRelations?: DbMediaRelation[];
   overrideSagaNames?: Record<string, string>;
+  /** Someone else's second-rating setup (names, system, range) — null
+   *  when they don't use one. Only read together with readOnly. */
+  overrideDualRating?: PublicDualRating | null;
+  /** Works whose cover the profile's owner picked (already applied to
+   *  overrideCatalogMap's cover_url). */
+  overrideCoverIds?: ReadonlySet<string>;
   readOnly?: boolean;
 }
 
 export function LibrarySection({
-  overrideItems, overrideCatalogMap, overrideSagaRelations, overrideSagaNames, readOnly,
+  overrideItems, overrideCatalogMap, overrideSagaRelations, overrideSagaNames, overrideDualRating, overrideCoverIds, readOnly,
 }: LibrarySectionProps = {}) {
   const p = getT().profile;
   const typeLabels = getT().search.types;
@@ -161,7 +168,7 @@ export function LibrarySection({
   const [endDateFilter, setEndDateFilter] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [groupByEdition, setGroupByEdition] = useState(false);
-  const [groupByBundle, setGroupByBundle] = useState(overrideItems ? false : isLibraryGroupByBundleEnabled);
+  const [groupByBundle, setGroupByBundle] = useState(isLibraryGroupByBundleEnabled);
   const toggleGroupByBundle = () => setGroupByBundle(prev => {
     const next = !prev;
     setLibraryGroupByBundleEnabled(next);
@@ -170,20 +177,30 @@ export function LibrarySection({
 
   // Settings > Preferencias' opt-in "doble calificación" — the selector to
   // pick which one this view sorts/displays by only shows up at all once
-  // enabled there (someone else's profile, via overrideItems, has no
-  // concept of the viewer's own dual-rating setup, so it's never relevant
-  // on a read-only view either).
-  const dualRatingEnabled = !overrideItems && isDualRatingEnabled();
-  const [ratingSlot, setRatingSlotState] = useState<RatingSlot>(getActiveRatingSlot);
+  // enabled there. Someone else's profile follows THEIR setup instead
+  // (synced with their profile; null when they don't use one), and picking
+  // a slot there doesn't touch the viewer's own saved slot.
+  const dualRatingEnabled = readOnly ? !!overrideDualRating : isDualRatingEnabled();
+  const [ratingSlot, setRatingSlotState] = useState<RatingSlot>(() => (readOnly ? 'rating' : getActiveRatingSlot()));
   const changeRatingSlot = (slot: RatingSlot) => {
-    setActiveRatingSlot(slot);
+    if (!readOnly) setActiveRatingSlot(slot);
     setRatingSlotState(slot);
   };
   const settingsT = getT().settings;
-  const ratingSlotLabel = (slot: RatingSlot) =>
-    slot === 'rating_2'
+  const ratingSlotLabel = (slot: RatingSlot) => {
+    if (readOnly) {
+      return (slot === 'rating_2' ? overrideDualRating?.name_2 : overrideDualRating?.name_1)
+        || (slot === 'rating_2' ? settingsT.dual_rating_default_name2 : settingsT.dual_rating_default_name1);
+    }
+    return slot === 'rating_2'
       ? getRatingName2(settingsT.dual_rating_default_name2)
       : getRatingName1(settingsT.dual_rating_default_name1);
+  };
+  // Memoised: LibraryCard is memo()'d on its props.
+  const rating2Scale = useMemo(
+    () => (readOnly && overrideDualRating ? { system: overrideDualRating.system_2, max: overrideDualRating.max_2 } : undefined),
+    [readOnly, overrideDualRating],
+  );
 
   // The navbar's per-type library shortcuts (Navbar.astro) deep-link here as
   // /profile?libtype=<type>#library. profile.astro's switchTab() strips that
@@ -202,9 +219,12 @@ export function LibrarySection({
   // the whole library, see useCoverCacheBatch) — those cards load the local
   // webp instead of hitting the remote CDN on every visit, exactly like
   // Local's own grids. Misses keep their remote URL.
+  // A cover someone else picked (overrideCoverIds) is never painted from the
+  // cache either — the cache holds the catalog's original.
   const coverCacheIds = useMemo(
-    () => filterCoverCacheCandidates(libraryItems ? libraryItems.map(item => item.external_id) : []),
-    [libraryItems],
+    () => filterCoverCacheCandidates(libraryItems ? libraryItems.map(item => item.external_id) : [])
+      .filter(id => !overrideCoverIds?.has(id)),
+    [libraryItems, overrideCoverIds],
   );
   const coverCacheHits = useCoverCacheBatch(coverCacheIds);
 
@@ -790,6 +810,7 @@ export function LibrarySection({
                     cachedCoverPath={coverCacheHits[item.external_id]}
                     issueRelations={issueRelationsByMedia.get(item.external_id)}
                     ratingSlot={dualRatingEnabled ? ratingSlot : 'rating'}
+                    rating2Scale={rating2Scale}
                   />
                 )}
               />

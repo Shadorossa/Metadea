@@ -1,0 +1,364 @@
+/* Night controls + E-Ink / paper mode of the readers
+   (components/reader/ReaderNightControls.tsx, hooks/useEinkMode.ts).
+   Everything below `.reader-eink` is scoped to the reader panel; the
+   colours come from custom properties the hook sets on that panel
+   (lib/reader/eink-mode.ts einkChromeVars), so nothing leaks into the app.
+   The EPUB chapter itself is styled inside its shadow root
+   (lib/reader/epub-chapter-dom.ts buildEinkChapterStyles). */
+
+/* ── Night controls popover (both modes) ──────────────────────────────── */
+
+.reader-night {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.reader-night-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 620;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem 0.8rem;
+  background: rgba(18, 18, 24, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  cursor: default;
+  animation: comic-menu-in 120ms ease;
+}
+
+.reader-night-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.reader-night-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.reader-night-row--toggle {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.reader-night-row--toggle > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.reader-night-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.reader-night-value {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.reader-night-hint,
+.reader-night-footnote {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.reader-night-footnote {
+  margin: 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reader-night-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.reader-night-row input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.reader-night-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.reader-night-switch {
+  appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.reader-night-switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 120ms ease;
+}
+
+.reader-night-switch:checked {
+  background: var(--accent);
+}
+
+.reader-night-switch:checked::before {
+  transform: translateX(14px);
+}
+
+.reader-night-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── E-Ink / paper mode ───────────────────────────────────────────────── */
+
+.eink-filter-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* A flat matte surface: the app tokens the reader chrome reads are
+   re-pointed at the ink/paper palette, and nothing glows, blurs or moves. */
+.comic-reader-overlay.reader-eink {
+  --text-main: var(--eink-ink);
+  --text-muted: var(--eink-muted);
+  --accent: var(--eink-ink);
+  --border-color: var(--eink-line);
+  --epub-chrome-bg: var(--eink-paper-shade);
+  --epub-chrome-border: var(--eink-line);
+  color-scheme: light;
+  background: var(--eink-paper) var(--eink-grain) repeat;
+  color: var(--eink-ink);
+}
+
+.reader-eink,
+.reader-eink *,
+.reader-eink *::before,
+.reader-eink *::after {
+  transition: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Only the pages in the DOM (the current spread) carry the filter. */
+.reader-eink .comic-reader-page {
+  filter: var(--eink-filter);
+}
+
+.reader-eink .comic-reader-header {
+  background: var(--eink-paper-shade);
+  border-bottom: 1px solid var(--eink-line);
+}
+
+.reader-eink .comic-reader-header-btn,
+.reader-eink .comic-reader-close,
+.reader-eink .comic-reader-fullscreen-exit {
+  background: transparent;
+  border: 1px solid var(--eink-line);
+  border-radius: 2px;
+  color: var(--eink-ink);
+}
+
+/* E-ink highlights by inverting, not by glowing. */
+.reader-eink .comic-reader-header-btn:hover,
+.reader-eink .comic-reader-close:hover,
+.reader-eink .comic-reader-fullscreen-exit:hover,
+.reader-eink .comic-reader-header-btn.is-active {
+  background: var(--eink-ink);
+  border-color: var(--eink-ink);
+  color: var(--eink-paper);
+}
+
+.reader-eink .comic-reader-nav {
+  background: var(--eink-paper);
+  border: 1px solid var(--eink-ink);
+  color: var(--eink-ink);
+}
+
+.reader-eink .comic-reader-nav:hover {
+  background: var(--eink-ink);
+  color: var(--eink-paper);
+}
+
+.reader-eink .comic-reader-progress-bar {
+  height: 2px;
+  background: var(--eink-line);
+}
+
+.reader-eink .comic-reader-progress-fill {
+  background: var(--eink-ink);
+}
+
+.reader-eink .comic-context-menu,
+.reader-eink .comic-reader-toast,
+.reader-eink .reader-night-popover,
+.reader-eink .epub-reader-chapter-loading {
+  background: var(--eink-paper);
+  border: 1px solid var(--eink-ink);
+  border-radius: 2px;
+  color: var(--eink-ink);
+}
+
+.reader-eink .comic-context-menu-item:hover,
+.reader-eink .epub-toc-item:hover,
+.reader-eink .epub-bookmark-delete:hover {
+  background: var(--eink-ink);
+  color: var(--eink-paper);
+}
+
+.reader-eink .comic-context-menu-title,
+.reader-eink .comic-context-menu-divider,
+.reader-eink .reader-night-footnote {
+  border-color: var(--eink-line);
+}
+
+.reader-eink .comic-context-menu-divider {
+  background: var(--eink-line);
+}
+
+.reader-eink .epub-reader-state {
+  background: var(--eink-paper) var(--eink-grain) repeat;
+}
+
+.reader-eink .epub-toc-item--active {
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.reader-eink .epub-setting select {
+  background: var(--eink-paper);
+  border-color: var(--eink-line);
+  color: var(--eink-ink);
+}
+
+.reader-eink .epub-segmented button,
+.reader-eink .epub-segmented button.is-active {
+  border-radius: 2px;
+  background: transparent;
+}
+
+.reader-eink .epub-segmented button.is-active {
+  border-color: var(--eink-ink);
+  outline: 1px solid var(--eink-ink);
+}
+
+.reader-eink .epub-theme-swatch {
+  filter: grayscale(1);
+}
+
+.reader-eink input[type="range"],
+.reader-eink input[type="checkbox"] {
+  accent-color: var(--eink-ink);
+}
+
+.reader-eink .reader-night-switch {
+  border: 1px solid var(--eink-ink);
+  border-radius: 2px;
+  background: var(--eink-paper);
+}
+
+.reader-eink .reader-night-switch::before {
+  top: 2px;
+  left: 2px;
+  border-radius: 1px;
+  background: var(--eink-muted);
+}
+
+.reader-eink .reader-night-switch:checked {
+  background: var(--eink-ink);
+}
+
+.reader-eink .reader-night-switch:checked::before {
+  background: var(--eink-paper);
+}
+
+/* A stepped spinner, like an e-ink hourglass. */
+.reader-eink .spinner {
+  border-color: var(--eink-line);
+  border-top-color: var(--eink-ink);
+  animation: spin 1.2s steps(8) infinite !important;
+}
+
+/* ── Page refresh flash ───────────────────────────────────────────────── */
+/* Inverted page, then solid ink, then the new page — each phase held
+   (steps), the way an e-ink panel refreshes. Composited: an opacity
+   animation over a backdrop-filter, no per-frame JS. */
+
+.reader-eink .eink-refresh-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 650;
+  pointer-events: none;
+  opacity: 0;
+  backdrop-filter: invert(1) !important;
+  -webkit-backdrop-filter: invert(1) !important;
+  animation: eink-refresh-flash 300ms steps(1, end) forwards !important;
+}
+
+.reader-eink .eink-refresh-flash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--eink-ink);
+  opacity: 0;
+  animation: eink-refresh-solid 300ms steps(1, end) forwards !important;
+}
+
+@keyframes eink-refresh-flash {
+  0% { opacity: 1; }
+  66% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes eink-refresh-solid {
+  0% { opacity: 0; }
+  40% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-eink .eink-refresh-flash {
+    display: none;
+  }
+}

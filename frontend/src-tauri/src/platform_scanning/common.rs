@@ -20,6 +20,16 @@ pub struct LocalGame {
     // every non-ROM (Steam/Epic/GOG/...) game.
     #[serde(default)]
     pub rom_platform: Option<String>,
+    // Multi-disc sets (platform_scanning/multi_disc.rs): every disc in boot
+    // order (install_path is the first) and the set's .m3u, when it has one.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub discs: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disc_playlist: Option<String>,
+    // app_ids of the entries this one replaced (a set's other discs, a cue
+    // sheet's .bin); scan_all_games folds their data in (rom_disc_merge.rs).
+    #[serde(skip)]
+    pub replaced_app_ids: Vec<String>,
 }
 
 impl LocalGame {
@@ -27,7 +37,7 @@ impl LocalGame {
         Self {
             name, launcher: launcher.to_string(), app_id, external_id: None,
             install_path, playtime_minutes: None, last_played: None, installed: Some(true),
-            rom_platform: None,
+            rom_platform: None, discs: Vec::new(), disc_playlist: None, replaced_app_ids: Vec::new(),
         }
     }
 }

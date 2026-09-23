@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ModalShell } from '../shared/ModalShell';
 import type { Translations } from '../../i18n/index';
@@ -11,6 +11,10 @@ import type { StoryArc } from '../../lib/tauri/story-arcs';
 import { wrapAssetUrl } from '../../lib/tauri/bridge';
 import { toMediumCover } from '../../lib/media/small-cover';
 import { SagaCompletionBar } from './saga/SagaCompletionBar';
+import { useSpoilerShield } from '../spoilers/hooks/useSpoilerShield';
+import { SpoilerChip } from '../spoilers/SpoilerShield';
+import { chainToRelations } from '../../lib/spoilers/spoiler-franchises';
+import { spoilerItemKey } from '../../lib/spoilers/spoiler-reveals';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
@@ -108,6 +112,18 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
     });
     return () => { cancelled = true; };
   }, [externalId]);
+
+  // Spoiler shield: arcs past the user's progress get their name and image
+  // blurred; with "hide covers" on, so do the covers of later seasons the
+  // user hasn't reached. The viewer's own order is the chain order.
+  const chainIds = entries.map(entry => entry.externalId);
+  const spoilerRelations = useMemo(() => chainToRelations(entries.map(entry => entry.externalId)), [entries]);
+  const { evaluator: spoilers, isRevealed, reveal } = useSpoilerShield({ extraRelations: spoilerRelations });
+  const isEntryCoverHidden = (id: string) => {
+    const earlier = chainIds.slice(0, Math.max(0, chainIds.indexOf(id)));
+    return !!spoilers && spoilers.isCoverHidden(id, earlier) && !isRevealed(spoilerItemKey.cover(id));
+  };
+  const isArcHidden = (arc: StoryArc) => !!spoilers && spoilers.isArcHidden(arc.items) && !isRevealed(spoilerItemKey.arc(arc.id));
 
   const firstEntry = entries[0];
   const showFormatTooltips = new Set(
@@ -215,6 +231,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                         {backgroundEntry.cover && (
                           <img
                             key={backgroundEntry.externalId}
+                            className={isEntryCoverHidden(backgroundEntry.externalId) ? 'spoiler-blur' : undefined}
                             src={toMediumCover(backgroundEntry.cover)}
                             alt=""
                           />
@@ -262,7 +279,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                           >
                             {isCurrent && <span className="saga-strip-item-current-indicator" />}
                             {entry.cover
-                              ? <img className="saga-strip-alternative-half-image" src={toMediumCover(entry.cover)} alt="" loading="lazy" />
+                              ? <img className={`saga-strip-alternative-half-image${isEntryCoverHidden(entry.externalId) ? ' spoiler-blur' : ''}`} src={toMediumCover(entry.cover)} alt="" loading="lazy" />
                               : <div className="saga-strip-item-cover-fallback" />}
                           </a>
                         </div>
@@ -287,6 +304,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                 }
                 return panel.map(entry => {
                 const isCurrent = entry.externalId === externalId;
+                const coverHidden = isEntryCoverHidden(entry.externalId);
                 return (
                   <a
                     key={entry.externalId}
@@ -294,7 +312,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                     href={`/media?id=${encodeURIComponent(entry.externalId)}`}
                     onClick={e => { if (isCurrent) e.preventDefault(); }}
                   >
-                    <div className="saga-strip-item-bg">
+                    <div className={`saga-strip-item-bg${coverHidden ? ' spoiler-blur' : ''}`}>
                       {entry.cover && <img src={toMediumCover(entry.cover)} alt="" />}
                       <div className="saga-strip-item-overlay" />
                     </div>
@@ -307,11 +325,14 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                           {lookupLabel(t.formats, entry.format, entry.format)}
                         </span>
                       )}
-                      <div className="saga-strip-item-cover">
+                      <div className={`saga-strip-item-cover${coverHidden ? ' spoiler-blur' : ''}`}>
                         {entry.cover
                           ? <img className="cover-image-fill" src={toMediumCover(entry.cover)} alt="" loading="lazy" />
                           : <div className="saga-strip-item-cover-fallback" />}
                       </div>
+                      {coverHidden && entry.cover && (
+                        <SpoilerChip element="span" onReveal={() => reveal(spoilerItemKey.cover(entry.externalId))} />
+                      )}
                     </div>
 
                     <div className="saga-strip-item-info">
@@ -338,35 +359,38 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                   ? `${single.ep_start}-${single.ep_end}`
                   : single && single.ep_start != null ? `${single.ep_start}+`
                   : null;
+                const arcHidden = isArcHidden(arc);
                 return (
                   <div
                     key={arc.id}
                     className="saga-strip-item saga-strip-item--arc"
                     onMouseEnter={e => {
+                      if (arcHidden) return;
                       const rect = e.currentTarget.getBoundingClientRect();
                       setHoveredArcId(arc.id);
                       setHoverPanelPos({ top: rect.top, left: rect.right + 12 });
                     }}
                     onMouseLeave={() => { setHoveredArcId(null); setHoverPanelPos(null); }}
                   >
-                    <div className="saga-strip-item-bg">
+                    <div className={`saga-strip-item-bg${arcHidden ? ' spoiler-blur' : ''}`}>
                       {arc.image_base64 && <img src={wrapAssetUrl(arc.image_base64)} alt="" />}
                       <div className="saga-strip-item-overlay" />
                     </div>
 
-                    <div className="saga-strip-item-cover">
+                    <div className={`saga-strip-item-cover${arcHidden ? ' spoiler-blur' : ''}`}>
                       {arc.image_base64
                         ? <img className="cover-image-fill" src={wrapAssetUrl(arc.image_base64)} alt="" loading="lazy" />
                         : <div className="saga-strip-item-cover-fallback" />}
                     </div>
 
                     <div className="saga-strip-item-info">
-                      <span className="saga-strip-item-title">{arc.name}</span>
+                      <span className={`saga-strip-item-title${arcHidden ? ' spoiler-blur-text' : ''}`} aria-hidden={arcHidden || undefined}>{arc.name}</span>
                       <div className="saga-strip-item-meta-row">
                         {range && <span className="saga-strip-item-year">{range}</span>}
                         {!single && <span className="saga-strip-item-badge">{arc.items.length} obras</span>}
                       </div>
                     </div>
+                    {arcHidden && <SpoilerChip onReveal={() => reveal(spoilerItemKey.arc(arc.id))} />}
                   </div>
                 );
               })}

@@ -1,6 +1,9 @@
 ---
 import '../styles/pages/profile.css';
 import '../styles/pages/media.css';
+// .user-profile-banner-actions / header icon buttons, shared with /user.
+import '../styles/pages/user-profile.css';
+import '../styles/components/tier-card.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getLang, useTranslations } from '../i18n/index';
 import { ProfileLibraryEditor } from '../components/profile/ProfileLibraryEditor';
@@ -12,6 +15,7 @@ import {
   ICON_PROFILE_REVIEWS,
   ICON_PROFILE_LISTS,
   ICON_PROFILE_FRIENDS,
+  ICON_WEB_LINK,
 } from '../lib/dom/icon-strings';
 
 const lang = getLang(Astro.url);
@@ -75,6 +79,19 @@ const t    = useTranslations(lang);
           })();
         </script>
       </div>
+      <!-- Where someone else's profile has Follow (UserProfileView.tsx):
+           "Copy web profile link". Wired by mount/web-profile-link.ts. -->
+      <div class="user-profile-banner-actions">
+        <button
+          type="button"
+          id="profile-web-link-btn"
+          class="user-profile-follow-btn profile-web-link-btn"
+          aria-label={t.settings.web_profile_copy}
+          data-tooltip={t.settings.web_profile_copy}
+          hidden
+          set:html={ICON_WEB_LINK}
+        ></button>
+      </div>
     </div>
 
     <div class="profile-tabs-divider">
@@ -137,7 +154,7 @@ const t    = useTranslations(lang);
       <div id="tab-pane-friends" class="profile-tab-pane" hidden></div>
     </div>
 
-    <ProfileLibraryEditor client:load i18n={t.media} />
+    <ProfileLibraryEditor client:load />
 
   </main>
 </BaseLayout>
@@ -157,6 +174,7 @@ const t    = useTranslations(lang);
   import { STORAGE_KEYS } from '../lib/storage/storage-keys';
   import { getCachedLibraryAndCatalog, getCachedMediaRelations } from '../lib/profile/library-data-cache';
   import { getCachedUserInfo } from '../lib/profile/user-info';
+  import { mountWebProfileLinkButton } from '../components/profile/mount/web-profile-link';
 
   // The early-paint caches read by the inline script at the top of this
   // page hold base64 images — rewriting them on every visit when nothing
@@ -226,6 +244,8 @@ const t    = useTranslations(lang);
 
     // Bail out if profile tab content is not present
     if (!document.getElementById('profile-tab-content')) return;
+
+    void mountWebProfileLinkButton();
 
     // Re-read on every navigation to this page, not just once at module load
     // — Astro's view-transition navigation re-fires 'astro:page-load' and

@@ -239,14 +239,14 @@ export const guideFr: Translations['guide'] = {
     },
     tier_lists: {
       title: "Tier lists",
-      intro: "Classez des œuvres par niveaux de S à F, ou par niveaux dont vous choisissez vous-même le nom et la couleur.",
+      intro: "Classez des œuvres ou des personnages façon TierMaker : des lignes de S à F que vous pouvez renommer, recolorer, ajouter, supprimer et réordonner.",
       steps: {
-        s1: "Ouvrez Tier list et créez-en une nouvelle.",
-        s2: "Ajoutez des œuvres de votre catalogue ; elles attendent dans la zone « Non classé ».",
-        s3: "Faites glisser chaque œuvre vers son niveau. Cliquez sur le nom ou la couleur d'un niveau pour le modifier.",
+        s1: "Ouvrez Tier list dans la barre de navigation et créez une liste d'œuvres ou de personnages.",
+        s2: "Remplissez la réserve depuis votre bibliothèque (filtres ou remplissages rapides comme « tout ce qui est terminé de 2024 »), vos listes et sagas, vos personnages ou une recherche.",
+        s3: "Faites glisser les couvertures dans les lignes, ou sélectionnez-en plusieurs et appuyez sur 1–9. Double-cliquez sur une couverture pour la renvoyer dans la réserve.",
       },
       tips: {
-        t1: "Les tier lists de personnages et la recherche communautaire arrivent bientôt.",
+        t1: "Chaque modification s'enregistre seule et Ctrl+Z l'annule. « Enregistrer en image » exporte le tableau en PNG et « Afficher sur mon profil » l'affiche dans l'onglet Listes de votre profil.",
       },
     },
     stats: {
@@ -308,8 +308,7 @@ export const guideFr: Translations['guide'] = {
       steps: {
         s1: "Dans Paramètres › Émulateurs, choisissez un constructeur et une console.",
         s2: "Choisissez l'émulateur et son exécutable, les arguments de lancement ({ROM} est remplacé par le fichier) et votre dossier de ROM.",
-        s3: "Vous pouvez aussi définir les extensions de ROM à rechercher (vide = les extensions habituelles) et le dossier de captures de l'émulateur.",
-        s4: "Ouvrez Play › Jeux : vos ROM apparaissent avec des noms propres et les données d'IGDB.",
+        s3: "Ouvrez Play › Jeux : vos ROM apparaissent avec des noms propres et les données d'IGDB.",
       },
       tips: {
         t1: "« Nettoyer automatiquement les noms des ROM » renomme les fichiers dans un format propre (et leurs sauvegardes avec eux). Une notification vous permet d'annuler pendant quelques secondes.",
@@ -347,15 +346,15 @@ export const guideFr: Translations['guide'] = {
     },
     screenshots: {
       title: "Captures d'écran",
-      intro: "La section « Captures d’écran » d'une œuvre rassemble des captures de trois sources : celles que vous prenez dans Metadea, vos captures Steam et le dossier de captures de votre émulateur.",
+      intro: "La section « Captures d'écran » d'une œuvre réunit ses captures de Images › Metadea › <œuvre> et, pour les jeux Steam, vos captures Steam.",
       steps: {
         s1: "Appuyez sur F12 dans le lecteur intégré pour enregistrer une image. Elle va dans Images › Metadea › <œuvre>, nommée d'après l'épisode et le moment.",
         s2: "Dans le lecteur de comics, faites un clic droit sur une page et choisissez « Enregistrer la page (PNG) ».",
-        s3: "Pour les émulateurs, définissez le dossier de captures de chaque console dans Paramètres › Émulateurs, ou laissez-le vide pour qu'il soit détecté.",
+        s3: "Pour les émulateurs, faites vos captures comme d'habitude : tant qu'un jeu lancé depuis Metadea tourne, chaque capture est déplacée vers Images › Metadea › <jeu> et une notification le confirme.",
       },
       tips: {
-        t1: "Le dossier de captures est détecté automatiquement pour Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu et PPSSPP.",
-        t2: "Les captures d'émulateur sont filtrées par jeu ; si aucune ne correspond, les captures récentes sont affichées avec une remarque.",
+        t1: "Le dossier de captures de l'émulateur est détecté pour Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu, PPSSPP, Cemu et RPCS3 ; pour les autres émulateurs, indiquez-le dans Paramètres › Émulateurs (avancé).",
+        t2: "Les captures d'un jeu déjà présentes dans le dossier de l'émulateur y sont déplacées la première fois que vous ouvrez le jeu.",
       },
     },
     launching: {
@@ -374,9 +373,9 @@ export const guideFr: Translations['guide'] = {
     },
     player: {
       title: "Le lecteur vidéo",
-      intro: "Les épisodes et films locaux se lisent dans le lecteur intégré de Metadea (libmpv), qui retient votre progression tout seul. Vous pouvez utiliser VLC à la place si vous préférez.",
+      intro: "Les épisodes et films locaux se lisent dans le lecteur intégré de Metadea (libmpv), qui retient votre progression tout seul.",
       steps: {
-        s1: "Choisissez le lecteur dans Paramètres › Préférences › Lecteur vidéo : intégré (libmpv) ou VLC (externe).",
+        s1: "Rien à installer : le lecteur (libmpv) est fourni avec Metadea.",
         s2: "Choisissez les commandes : par-dessus la vidéo, ou dans une barre fixe sous la vidéo.",
         s3: "Appuyez sur « Lire » sur un épisode dans Play. Le reste de la saison est mis en file d'attente ; appuyez sur Q pour voir la file.",
         s4: "Utilisez les menus pour changer de piste audio, de sous-titres et de vitesse (0,5× à 2×).",
@@ -385,7 +384,7 @@ export const guideFr: Translations['guide'] = {
       },
       tips: {
         t1: "Cliquez sur la vidéo pour mettre en pause et double-cliquez pour passer en plein écran.",
-        t2: "Si libmpv ne peut pas être chargé, Metadea utilise automatiquement VLC et vous le signale.",
+        t2: "Si libmpv ne peut pas être chargé, Metadea vous le signale au lieu d'ouvrir la vidéo.",
         t3: "Terminer le dernier épisode termine l'œuvre et ajoute sa suite à vos œuvres en attente.",
         t4: "Discord affiche ce que vous regardez avec un compte à rebours du temps restant.",
       },
@@ -413,7 +412,6 @@ export const guideFr: Translations['guide'] = {
       },
       tips: {
         t1: "Les segments proviennent des chapitres du fichier (MKV) et, pour les anime, d'AniSkip ; les chapitres l'emportent quand les deux existent.",
-        t2: "Cela ne fonctionne que dans le lecteur intégré, pas dans VLC.",
       },
     },
     reader_comics: {
@@ -569,7 +567,7 @@ export const guideFr: Translations['guide'] = {
       title: "Thèmes d'interface (skins)",
       intro: "Les skins changent l'apparence de tout Metadea. Ce sont des dossiers contenant un fichier theme.json et, éventuellement, du CSS, que vous pouvez créer vous-même ou obtenir d'autres personnes.",
       steps: {
-        s1: "Dans Paramètres › Apparence › Thèmes de la communauté (skins), appuyez sur « Ouvrir le dossier des thèmes ».",
+        s1: "Dans Paramètres › Plugins › Thèmes d'interface, appuyez sur « Ouvrir le dossier des thèmes ».",
         s2: "Copiez-y un dossier de thème (ou appuyez sur « Créer le thème d'exemple ») et appuyez sur « Recharger ».",
         s3: "Appuyez sur « Activer » sur le thème voulu. Il reste actif après un redémarrage.",
         s4: "Si vous créez le vôtre, activez « Surveiller les modifications » pour voir vos changements toutes les deux secondes.",
@@ -620,11 +618,12 @@ export const guideFr: Translations['guide'] = {
     },
     backup: {
       title: "Où sont vos données et sauvegardes",
-      intro: "Tout est stocké dans une base de données dans votre dossier utilisateur (sous Windows, %APPDATA%\\com.metadea.app). Une sauvegarde copie ce dossier dans un seul fichier ZIP.",
+      intro: "Tout est stocké dans une base de données dans votre dossier utilisateur (sous Windows, %APPDATA%\\com.metadea.app). Une sauvegarde est un seul fichier .7z avec cette base de données, vos images personnalisées et vos skins ; les caches sont exclus car ils se retéléchargent.",
       steps: {
-        s1: "Ouvrez Paramètres › Sauvegarde et appuyez sur « Exporter les données ». Enregistrez le ZIP en dehors du dossier de données de Metadea.",
-        s2: "Pour restaurer, appuyez sur « Importer les données » et choisissez un ZIP. Metadea enregistre d'abord une copie de vos données actuelles à côté du dossier, puis redémarre pour appliquer la sauvegarde.",
+        s1: "Ouvrez Paramètres › Sauvegarde et appuyez sur « Créer une sauvegarde ». Enregistrez le .7z en dehors du dossier de données de Metadea.",
+        s2: "Pour restaurer, appuyez sur « Restaurer depuis un fichier » et choisissez un .7z (ou un .zip des versions précédentes). Metadea vérifie chaque fichier, enregistre une copie de vos données actuelles à côté du dossier, puis redémarre pour appliquer la sauvegarde.",
         s3: "« Ouvrir le dossier » dans Paramètres › Environnement › Chemins locaux ouvre le dossier de données.",
+        s4: "Associez Google Drive dans le même onglet pour envoyer des sauvegardes dans un dossier privé de l'app, tout de suite ou automatiquement chaque jour ou chaque semaine ; vous pouvez restaurer n'importe laquelle depuis la liste.",
       },
       tips: {
         t1: "Personne d'autre n'a de copie de votre bibliothèque : faites une sauvegarde avant les gros changements et de temps en temps.",

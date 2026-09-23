@@ -36,7 +36,7 @@ export interface OnboardingStepDef {
 export const ONBOARDING_STEPS: readonly OnboardingStepDef[] = [
   { id: 'intro', icon: 'sparkles', optional: false },
   { id: 'basics', icon: 'languages', optional: false, settingsTab: 'preferences' },
-  { id: 'ui_theme', icon: 'palette', optional: true, settingsTab: 'profile' },
+  { id: 'ui_theme', icon: 'palette', optional: true, settingsTab: 'plugins' },
   { id: 'profile', icon: 'user', optional: true, settingsTab: 'profile' },
   { id: 'library', icon: 'library', optional: false, settingsTab: 'preferences' },
   { id: 'player', icon: 'play', optional: true, settingsTab: 'preferences' },

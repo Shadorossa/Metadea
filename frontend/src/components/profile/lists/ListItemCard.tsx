@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { ListItemFull } from '../../../lib/tauri';
 import { getT } from '../../../i18n/runtime';
 import { fallbackGradient, type ListItemDisplay } from '../../../lib/profile/list-display';
+import { CoverImage } from '../../shared/CoverImage';
 
 type P = ReturnType<typeof getT>['profile'];
 
@@ -19,7 +20,7 @@ export function ListItemCardBody({ item, display, index, isRanked, readOnly, p, 
   p: P;
   onRemove: (id: string) => void;
 }) {
-  const { cover, url, epBadge, title } = display;
+  const { cover, coverWorkId, url, epBadge, title } = display;
   return (
     <>
       {/* Purely a visual hint now — the whole card is grabbable (see
@@ -28,7 +29,7 @@ export function ListItemCardBody({ item, display, index, isRanked, readOnly, p, 
       <a className="list-item-cover-link" href={url} draggable={false}>
         {epBadge && <span className="list-item-episode-badge">{epBadge}</span>}
         {cover
-          ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" draggable={false} />
+          ? <CoverImage externalId={coverWorkId} className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" draggable={false} />
           : <div className="list-item-cover list-item-cover--fallback" style={{ background: fallbackGradient(item.media_type) }}><span>{title.slice(0, 2).toUpperCase()}</span></div>}
         <div className="list-item-info">
           <span className="list-item-title">{title}</span>

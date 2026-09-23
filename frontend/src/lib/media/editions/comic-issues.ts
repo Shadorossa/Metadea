@@ -124,6 +124,29 @@ async function resolveVolumeId(rawId: string, isComic: boolean, titleMain?: stri
     : { id: null, status: 'no-match' };
 }
 
+export interface ComicVineVolumeSuggestion {
+  volumeId: number | null;
+  /** comic-id: a comic's own id is its volume; mapping: the curated
+   *  issue_source_id; search: best title match (confirm it); none/unavailable:
+   *  nothing matched / Comic Vine unreachable. */
+  source: 'comic-id' | 'mapping' | 'search' | 'none' | 'unavailable';
+}
+
+// The same volume the Issues tab resolves to (fetchComicIssues), for the
+// story-arc importer to pre-select.
+export async function suggestComicVineVolume(rawId: string, fallbackTitle?: string): Promise<ComicVineVolumeSuggestion> {
+  const isComic = rawId.startsWith('comic:');
+  const entry = await getCatalogEntry(rawId).catch(() => null);
+  const titleMain = entry?.title_main || fallbackTitle;
+  const altTitle = entry?.title_romaji || entry?.title_english || undefined;
+  const preferredIssueCount = entry?.type === 'manga' ? entry.total_count_2 ?? undefined : undefined;
+  const resolution = await resolveVolumeId(rawId, isComic, titleMain ?? undefined, altTitle, entry?.issue_source_id, preferredIssueCount);
+  if (!resolution.id) return { volumeId: null, source: resolution.status === 'unavailable' ? 'unavailable' : 'none' };
+  if (isComic && !entry?.issue_source_id) return { volumeId: resolution.id, source: 'comic-id' };
+  const mapped = entry?.issue_source_id && Number(entry.issue_source_id) === resolution.id;
+  return { volumeId: resolution.id, source: mapped ? 'mapping' : 'search' };
+}
+
 // All issues for a comic volume plus the full cast/genres aggregated across
 // them — the volume's own character_credits is usually just a first-issue
 // sample. Runs once per comic; results get persisted.

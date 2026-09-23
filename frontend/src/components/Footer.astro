@@ -39,6 +39,13 @@ const apis = [
     logo: "/platforms/Fandom_logo.png",
     url: "https://www.fandom.com",
   },
+  // GG.deals' free API terms require attribution.
+  {
+    name: "GG.deals",
+    logo: "/API/ggdeals_logo.png",
+    url: "https://gg.deals",
+    logoClass: "footer-logo--wordmark",
+  },
 ];
 ---
 
@@ -58,7 +65,7 @@ const apis = [
             data-i18n-aria-label="footer.external_link"
             data-i18n-vars={JSON.stringify({ name: api.name })}
           >
-            <img src={api.logo} alt={api.name} class="footer-logo" />
+            <img src={api.logo} alt={api.name} title={api.name} class:list={["footer-logo", api.logoClass]} />
           </a>
         ))
       }

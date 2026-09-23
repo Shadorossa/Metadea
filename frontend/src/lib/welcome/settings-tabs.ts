@@ -10,8 +10,9 @@ export const SETTINGS_TAB_IDS = [
   'application',
   'environment',
   'emulators',
-  'novedades',
+  'accessibility',
   'backup',
+  'plugins',
 ] as const;
 
 export type SettingsTabId = typeof SETTINGS_TAB_IDS[number];
@@ -25,6 +26,7 @@ export const SERVICE_PLATFORM_IDS = [
   'comicvine',
   'apisports',
   'retroachievements',
+  'google',
 ] as const;
 
 export type ServicePlatformId = typeof SERVICE_PLATFORM_IDS[number];
@@ -51,6 +53,7 @@ export const SERVICE_BRAND_NAMES: Record<ServicePlatformId, string> = {
   comicvine: 'Comic Vine',
   apisports: 'API-Sports',
   retroachievements: 'RetroAchievements',
+  google: 'Google Drive',
 };
 
 /** i18n path of each tab's sidebar label in pages/settings.astro. */
@@ -60,6 +63,7 @@ export const SETTINGS_TAB_LABEL_KEYS: Record<SettingsTabId, string> = {
   application: 'settings.tab_application',
   environment: 'settings.tab_environment',
   emulators: 'settings.tab_emulators',
-  novedades: 'settings.tab_novedades',
+  accessibility: 'settings.tab_accessibility',
   backup: 'settings.tab_backup',
+  plugins: 'plugins.tab',
 };

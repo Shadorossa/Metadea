@@ -121,29 +121,6 @@ export const EMULATORS_DB: Record<string, EmulatorDefinition[]> = {
   ],
 };
 
-// Mirror of emulators.rs's default_rom_extensions (Rust is what the scanner
-// actually uses) — shown as the placeholder of the settings field so the
-// user sees what "leave empty" means.
-export const DEFAULT_ROM_EXTENSIONS: Record<string, string[]> = {
-  gamecube: ['rvz', 'iso', 'gcm', 'gcz'],
-  wii: ['rvz', 'iso', 'wbfs', 'gcz'],
-  ds: ['nds'],
-  '3ds': ['3ds', 'cia', 'cci'],
-  wiiu: ['wud', 'wux', 'wua', 'rpx'],
-  switch: ['nsp', 'xci'],
-  ps1: ['chd', 'cue', 'pbp', 'iso', 'bin', 'm3u'],
-  ps2: ['iso', 'chd', 'bin', 'cue', 'cso'],
-  psp: ['iso', 'cso', 'chd', 'pbp'],
-  ps3: ['iso'],
-  psvita: ['vpk'],
-  ps4: ['iso', 'bin'],
-  ps5: ['iso', 'bin'],
-  xbox: ['iso', 'xiso'],
-  xbox360: ['iso', 'xex'],
-  xboxone: ['iso', 'xex'],
-  xboxseriesx: ['iso', 'xex'],
-};
-
 export const ALL_PLATFORMS = COMPANIES.flatMap(company =>
   company.platforms.map(platform => ({ ...platform, company: company.id, color: company.color })),
 );

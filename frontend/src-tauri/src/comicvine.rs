@@ -9,6 +9,7 @@
 // request itself being otherwise valid.
 use serde::{Deserialize, Serialize};
 use crate::igdb::RequestBudget;
+use crate::error_codes::{with_detail, COMICVINE_API, COMICVINE_KEY_MISSING, COMICVINE_NETWORK};
 
 const COMICVINE_BASE: &str = "https://comicvine.gamespot.com/api";
 // Comic Vine allows 200 requests per resource per hour and additionally
@@ -613,18 +614,22 @@ pub async fn comicvine_get_issues(
     // string ("1", "10", "11", "12", "2", ...) rather than numerically —
     // re-sort here using the parsed numeric value, falling back to id order
     // for anything non-numeric (annuals like "Annual 1" etc).
-    all_issues.sort_by(|a, b| {
-        let na = a.issue_number.as_deref().and_then(|s| s.parse::<f64>().ok());
-        let nb = b.issue_number.as_deref().and_then(|s| s.parse::<f64>().ok());
-        match (na, nb) {
-            (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => a.id.cmp(&b.id),
-        }
-    });
+    all_issues.sort_by(|a, b| compare_issue_numbers(a.issue_number.as_deref(), a.id, b.issue_number.as_deref(), b.id));
 
     Ok(all_issues)
+}
+
+// Numeric issue order ("2" before "10"); non-numeric numbers (annuals) go
+// last, in id order.
+fn compare_issue_numbers(a: Option<&str>, a_id: u64, b: Option<&str>, b_id: u64) -> std::cmp::Ordering {
+    let na = a.and_then(|s| s.trim().parse::<f64>().ok());
+    let nb = b.and_then(|s| s.trim().parse::<f64>().ok());
+    match (na, nb) {
+        (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal).then(a_id.cmp(&b_id)),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => a_id.cmp(&b_id),
+    }
 }
 
 // Comic Vine's issue resource-type prefix (distinct from VOLUME_RESOURCE_PREFIX).
@@ -698,4 +703,547 @@ pub async fn comicvine_get_issue(
     }
 
     Ok(parsed.results)
+}
+
+// ── Story arcs (the story-arc editor's "Import from ComicVine") ─────────────
+//
+// A Comic Vine story arc (resource 4045, e.g. "Arrancar Saga" 4045-56251)
+// lists its issues as bare refs — id/name only, no issue_number and no
+// volume — so turning an arc into a range of one Metadea work takes the arc,
+// then its issues' numbers/volumes/descriptions (a manga tankōbon's
+// description lists the chapters it collects; the frontend's
+// lib/media/story-arcs/comicvine-chapters.ts parses them). Listing every arc
+// of a volume needs each issue's story_arc_credits, which only the
+// single-issue detail resource exposes: the scan walks the volume's issues
+// in order and skips every issue an already-found arc covers, so a 70-volume
+// manga costs roughly one request per arc instead of one per volume (an arc
+// nested entirely inside another one can be missed that way). Every answer
+// is cached in comicvine_arc_cache for 30 days.
+//
+// These commands return `E_COMICVINE_*` codes (error_codes.rs); the older
+// commands above still return prose.
+
+const STORY_ARC_RESOURCE_PREFIX: &str = "4045";
+// "isssue" is Comic Vine's own spelling of the field.
+const STORY_ARC_FIELD_LIST: &str = "id,name,deck,description,image,issues,first_appeared_in_issue,count_of_isssue_appearances,publisher";
+const STORY_ARC_SEARCH_FIELD_LIST: &str = "id,name,deck,image,first_appeared_in_issue,count_of_isssue_appearances,publisher";
+const ISSUE_SUMMARY_FIELD_LIST: &str = "id,issue_number,name,volume,description,cover_date";
+const ISSUE_ARC_CREDITS_FIELD_LIST: &str = "id,story_arc_credits";
+const ARC_CACHE_TTL_SECS: i64 = 30 * 24 * 60 * 60;
+// Comic Vine caps a list response (and so an id:1|2|3 filter) at 100.
+const ISSUE_BATCH_SIZE: usize = 100;
+// Network requests one volume scan may spend (of the 200/hour budget); a
+// scan that hits it comes back with `complete: false` and is not cached as
+// a whole, but every per-issue answer it did get is, so a retry resumes.
+const MAX_ARC_SCAN_REQUESTS: usize = 120;
+
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
+
+/// An `{id, name}` ref (story arc issue list, story_arc_credits, an issue's volume).
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+pub struct ComicVineResourceRef {
+    pub id:   u64,
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVineStoryArc {
+    pub id:                         u64,
+    #[serde(default)]
+    pub name:                       Option<String>,
+    #[serde(default)]
+    pub deck:                       Option<String>,
+    #[serde(default)]
+    pub description:                Option<String>,
+    #[serde(default)]
+    pub image:                      Option<ComicVineImage>,
+    #[serde(default, deserialize_with = "null_as_default")]
+    pub issues:                     Vec<ComicVineResourceRef>,
+    #[serde(default)]
+    pub first_appeared_in_issue:    Option<ComicVineIssueRef>,
+    #[serde(default, alias = "count_of_isssue_appearances")]
+    pub count_of_issue_appearances: Option<u64>,
+    #[serde(default)]
+    pub publisher:                  Option<ComicVinePublisher>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVineIssueSummary {
+    pub id:           u64,
+    #[serde(default)]
+    pub issue_number: Option<String>,
+    #[serde(default)]
+    pub name:         Option<String>,
+    #[serde(default)]
+    pub volume:       Option<ComicVineResourceRef>,
+    #[serde(default)]
+    pub description:  Option<String>,
+    #[serde(default)]
+    pub cover_date:   Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ComicVineStoryArcSearchPage {
+    pub story_arcs: Vec<ComicVineStoryArc>,
+    pub has_more:   bool,
+}
+
+/// Every story arc touching a volume, plus all of the volume's issues (with
+/// descriptions) in numeric order. `complete` is false when the scan stopped
+/// at MAX_ARC_SCAN_REQUESTS.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ComicVineVolumeArcs {
+    pub volume_id: u64,
+    pub arcs:      Vec<ComicVineStoryArc>,
+    pub issues:    Vec<ComicVineIssueSummary>,
+    pub complete:  bool,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct ComicVineIssueArcCredits {
+    #[serde(default, deserialize_with = "null_as_default")]
+    story_arc_credits: Vec<ComicVineResourceRef>,
+}
+
+// -- Response envelope ------------------------------------------------------------
+
+// Comic Vine wraps every answer in {status_code, error, number_of_total_results,
+// results}; status 1 is OK, 101 "object not found" (results is then `[]`,
+// even on a detail resource). Anything else (100 bad key, 107 rate limited)
+// is an API error.
+#[derive(Debug, Deserialize)]
+struct ComicVineEnvelope {
+    #[serde(default)]
+    status_code:             Option<i64>,
+    #[serde(default)]
+    error:                   Option<String>,
+    #[serde(default)]
+    number_of_total_results: i64,
+    #[serde(default)]
+    results:                 serde_json::Value,
+}
+
+fn parse_envelope(body: &str) -> Result<ComicVineEnvelope, String> {
+    let envelope: ComicVineEnvelope = serde_json::from_str(body).map_err(|e| with_detail(COMICVINE_API, e))?;
+    match envelope.status_code {
+        None | Some(1) => Ok(envelope),
+        Some(101) => Ok(ComicVineEnvelope { results: serde_json::Value::Null, ..envelope }),
+        Some(code) => Err(with_detail(COMICVINE_API, format!("status {code}: {}", envelope.error.as_deref().unwrap_or("")))),
+    }
+}
+
+fn parse_detail<T: serde::de::DeserializeOwned>(body: &str) -> Result<Option<T>, String> {
+    let envelope = parse_envelope(body)?;
+    match envelope.results {
+        serde_json::Value::Object(_) => serde_json::from_value(envelope.results).map(Some).map_err(|e| with_detail(COMICVINE_API, e)),
+        _ => Ok(None),
+    }
+}
+
+fn parse_list<T: serde::de::DeserializeOwned>(body: &str) -> Result<(Vec<T>, i64), String> {
+    let envelope = parse_envelope(body)?;
+    let total = envelope.number_of_total_results;
+    match envelope.results {
+        serde_json::Value::Array(_) => serde_json::from_value(envelope.results).map(|items| (items, total)).map_err(|e| with_detail(COMICVINE_API, e)),
+        _ => Ok((Vec::new(), total)),
+    }
+}
+
+fn parse_story_arc_response(body: &str) -> Result<Option<ComicVineStoryArc>, String> {
+    parse_detail(body)
+}
+
+fn parse_issue_summaries_response(body: &str) -> Result<Vec<ComicVineIssueSummary>, String> {
+    parse_list(body).map(|(issues, _)| issues)
+}
+
+fn parse_issue_arc_credits_response(body: &str) -> Result<Vec<ComicVineResourceRef>, String> {
+    Ok(parse_detail::<ComicVineIssueArcCredits>(body)?.map(|c| c.story_arc_credits).unwrap_or_default())
+}
+
+// -- Transport --------------------------------------------------------------------
+
+async fn arc_api_key(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    comicvine_api_key(app_handle).await.map_err(|_| COMICVINE_KEY_MISSING.to_string())
+}
+
+// One budgeted GET. The reqwest error is stripped of its URL, which carries
+// the api_key query parameter.
+async fn comicvine_get(client: &reqwest::Client, api_key: &str, path: &str, params: &[(&str, &str)]) -> Result<String, String> {
+    COMICVINE_BUDGET.acquire().await;
+    let mut query: Vec<(&str, &str)> = vec![("api_key", api_key), ("format", "json")];
+    query.extend_from_slice(params);
+    let resp = client
+        .get(format!("{COMICVINE_BASE}{path}"))
+        .query(&query)
+        .send()
+        .await
+        .map_err(|e| with_detail(COMICVINE_NETWORK, e.without_url()))?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(with_detail(COMICVINE_API, format!("HTTP {status}")));
+    }
+    resp.text().await.map_err(|e| with_detail(COMICVINE_NETWORK, e.without_url()))
+}
+
+// -- Cache (comicvine_arc_cache) --------------------------------------------------
+
+pub(crate) fn arc_cache_read(conn: &rusqlite::Connection, key: &str, now: i64) -> rusqlite::Result<Option<String>> {
+    use rusqlite::OptionalExtension;
+    let row: Option<(String, i64)> = conn
+        .prepare_cached("SELECT json, fetched_at FROM comicvine_arc_cache WHERE cache_key = ?1")?
+        .query_row([key], |row| Ok((row.get(0)?, row.get(1)?)))
+        .optional()?;
+    Ok(row.filter(|(_, fetched_at)| now - fetched_at < ARC_CACHE_TTL_SECS).map(|(json, _)| json))
+}
+
+pub(crate) fn arc_cache_write(conn: &rusqlite::Connection, rows: &[(String, String)], now: i64) -> rusqlite::Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    {
+        let mut stmt = tx.prepare_cached(
+            "INSERT INTO comicvine_arc_cache (cache_key, json, fetched_at) VALUES (?1, ?2, ?3)
+             ON CONFLICT(cache_key) DO UPDATE SET json = excluded.json, fetched_at = excluded.fetched_at",
+        )?;
+        for (key, json) in rows {
+            stmt.execute(rusqlite::params![key, json, now])?;
+        }
+    }
+    tx.commit()
+}
+
+fn now_unix() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+
+// Cache failures only cost a refetch, so they are logged, never returned.
+fn cache_get<T: serde::de::DeserializeOwned>(app_handle: &tauri::AppHandle, key: &str) -> Option<T> {
+    let db = tauri::Manager::state::<crate::db::MetadeaDb>(app_handle);
+    let conn = db.conn.lock().ok()?;
+    match arc_cache_read(&conn, key, now_unix()) {
+        Ok(json) => json.and_then(|json| serde_json::from_str(&json).ok()),
+        Err(error) => {
+            log::warn!("comicvine arc cache: read failed ({error})");
+            None
+        }
+    }
+}
+
+fn cache_put<T: Serialize>(app_handle: &tauri::AppHandle, entries: &[(String, &T)]) {
+    let rows: Vec<(String, String)> = entries
+        .iter()
+        .filter_map(|(key, value)| serde_json::to_string(value).ok().map(|json| (key.clone(), json)))
+        .collect();
+    if rows.is_empty() {
+        return;
+    }
+    let db = tauri::Manager::state::<crate::db::MetadeaDb>(app_handle);
+    let Ok(conn) = db.conn.lock() else { return };
+    if let Err(error) = arc_cache_write(&conn, &rows, now_unix()) {
+        log::warn!("comicvine arc cache: write failed ({error})");
+    }
+}
+
+fn arc_cache_key(id: u64) -> String { format!("arc:{id}") }
+fn issue_cache_key(id: u64) -> String { format!("issue:{id}") }
+fn issue_arcs_cache_key(id: u64) -> String { format!("issue-arcs:{id}") }
+fn volume_arcs_cache_key(id: u64) -> String { format!("volume-arcs:{id}") }
+
+// -- Fetchers (cache-aware; the bool is "spent a network request") ----------------
+
+async fn story_arc_cached(app_handle: &tauri::AppHandle, client: &reqwest::Client, api_key: &str, id: u64) -> Result<(Option<ComicVineStoryArc>, bool), String> {
+    if let Some(arc) = cache_get::<ComicVineStoryArc>(app_handle, &arc_cache_key(id)) {
+        return Ok((Some(arc), false));
+    }
+    let path = format!("/story_arc/{STORY_ARC_RESOURCE_PREFIX}-{id}/");
+    let body = comicvine_get(client, api_key, &path, &[("field_list", STORY_ARC_FIELD_LIST)]).await?;
+    let arc = parse_story_arc_response(&body)?;
+    if let Some(arc) = &arc {
+        cache_put(app_handle, &[(arc_cache_key(id), arc)]);
+    }
+    Ok((arc, true))
+}
+
+async fn issue_arc_credits_cached(app_handle: &tauri::AppHandle, client: &reqwest::Client, api_key: &str, id: u64) -> Result<(Vec<ComicVineResourceRef>, bool), String> {
+    if let Some(credits) = cache_get::<Vec<ComicVineResourceRef>>(app_handle, &issue_arcs_cache_key(id)) {
+        return Ok((credits, false));
+    }
+    let path = format!("/issue/{ISSUE_RESOURCE_PREFIX}-{id}/");
+    let body = comicvine_get(client, api_key, &path, &[("field_list", ISSUE_ARC_CREDITS_FIELD_LIST)]).await?;
+    let credits = parse_issue_arc_credits_response(&body)?;
+    cache_put(app_handle, &[(issue_arcs_cache_key(id), &credits)]);
+    Ok((credits, true))
+}
+
+fn cache_issue_summaries(app_handle: &tauri::AppHandle, issues: &[ComicVineIssueSummary]) {
+    let entries: Vec<(String, &ComicVineIssueSummary)> = issues.iter().map(|i| (issue_cache_key(i.id), i)).collect();
+    cache_put(app_handle, &entries);
+}
+
+// Every issue of a volume with its description, 100 per page, numeric order.
+async fn volume_issue_summaries(client: &reqwest::Client, api_key: &str, volume_id: u64) -> Result<Vec<ComicVineIssueSummary>, String> {
+    let filter = format!("volume:{volume_id}");
+    let limit = ISSUE_BATCH_SIZE.to_string();
+    let mut all: Vec<ComicVineIssueSummary> = Vec::new();
+    let mut offset = 0usize;
+    loop {
+        let offset_str = offset.to_string();
+        let body = comicvine_get(client, api_key, "/issues/", &[
+            ("filter", filter.as_str()),
+            ("limit", limit.as_str()),
+            ("offset", offset_str.as_str()),
+            ("field_list", ISSUE_SUMMARY_FIELD_LIST),
+        ]).await?;
+        let (page, total) = parse_list::<ComicVineIssueSummary>(&body)?;
+        let page_len = page.len();
+        all.extend(page);
+        offset += page_len;
+        if page_len < ISSUE_BATCH_SIZE || offset as i64 >= total {
+            break;
+        }
+    }
+    sort_issue_summaries(&mut all);
+    Ok(all)
+}
+
+fn sort_issue_summaries(issues: &mut [ComicVineIssueSummary]) {
+    issues.sort_by(|a, b| compare_issue_numbers(a.issue_number.as_deref(), a.id, b.issue_number.as_deref(), b.id));
+}
+
+/// Unique ids in first-seen order, split into Comic Vine's 100-id pages.
+fn issue_id_batches(ids: &[u64]) -> Vec<Vec<u64>> {
+    let mut seen = std::collections::HashSet::new();
+    let unique: Vec<u64> = ids.iter().copied().filter(|id| seen.insert(*id)).collect();
+    unique.chunks(ISSUE_BATCH_SIZE).map(<[u64]>::to_vec).collect()
+}
+
+// -- Commands ---------------------------------------------------------------------
+
+#[tauri::command]
+pub async fn comicvine_search_story_arcs(
+    app_handle: tauri::AppHandle,
+    query: String,
+    page: Option<u32>,
+) -> Result<ComicVineStoryArcSearchPage, String> {
+    if query.trim().is_empty() {
+        return Ok(ComicVineStoryArcSearchPage { story_arcs: vec![], has_more: false });
+    }
+    let api_key = arc_api_key(&app_handle).await?;
+    const PAGE_SIZE: i64 = 100;
+    let offset = (i64::from(page.unwrap_or(1).max(1)) - 1) * PAGE_SIZE;
+    let limit_str = PAGE_SIZE.to_string();
+    let offset_str = offset.to_string();
+    let body = comicvine_get(crate::http::http_client(), &api_key, "/search/", &[
+        ("query", query.as_str()),
+        ("resources", "story_arc"),
+        ("limit", limit_str.as_str()),
+        ("offset", offset_str.as_str()),
+        ("field_list", STORY_ARC_SEARCH_FIELD_LIST),
+    ]).await?;
+    let (story_arcs, total) = parse_list::<ComicVineStoryArc>(&body)?;
+    let has_more = offset + (story_arcs.len() as i64) < total;
+    Ok(ComicVineStoryArcSearchPage { story_arcs, has_more })
+}
+
+#[tauri::command]
+pub async fn comicvine_get_story_arc(
+    app_handle: tauri::AppHandle,
+    story_arc_id: u64,
+) -> Result<Option<ComicVineStoryArc>, String> {
+    if let Some(arc) = cache_get::<ComicVineStoryArc>(&app_handle, &arc_cache_key(story_arc_id)) {
+        return Ok(Some(arc));
+    }
+    let api_key = arc_api_key(&app_handle).await?;
+    story_arc_cached(&app_handle, crate::http::http_client(), &api_key, story_arc_id).await.map(|(arc, _)| arc)
+}
+
+/// Number, volume and description of each issue, in the order asked (ids
+/// Comic Vine does not know are left out); 100 ids per request.
+#[tauri::command]
+pub async fn comicvine_get_issues_batch(
+    app_handle: tauri::AppHandle,
+    issue_ids: Vec<u64>,
+) -> Result<Vec<ComicVineIssueSummary>, String> {
+    let mut found: std::collections::HashMap<u64, ComicVineIssueSummary> = std::collections::HashMap::new();
+    let mut missing: Vec<u64> = Vec::new();
+    for &id in &issue_ids {
+        match cache_get::<ComicVineIssueSummary>(&app_handle, &issue_cache_key(id)) {
+            Some(issue) => { found.insert(id, issue); }
+            None => missing.push(id),
+        }
+    }
+
+    if !missing.is_empty() {
+        let api_key = arc_api_key(&app_handle).await?;
+        let client = crate::http::http_client();
+        let limit = ISSUE_BATCH_SIZE.to_string();
+        for batch in issue_id_batches(&missing) {
+            let filter = format!("id:{}", batch.iter().map(u64::to_string).collect::<Vec<_>>().join("|"));
+            let body = comicvine_get(client, &api_key, "/issues/", &[
+                ("filter", filter.as_str()),
+                ("limit", limit.as_str()),
+                ("field_list", ISSUE_SUMMARY_FIELD_LIST),
+            ]).await?;
+            let issues = parse_issue_summaries_response(&body)?;
+            cache_issue_summaries(&app_handle, &issues);
+            found.extend(issues.into_iter().map(|issue| (issue.id, issue)));
+        }
+    }
+
+    let mut seen = std::collections::HashSet::new();
+    Ok(issue_ids
+        .iter()
+        .filter(|id| seen.insert(**id))
+        .filter_map(|id| found.remove(id))
+        .collect())
+}
+
+#[tauri::command]
+pub async fn comicvine_story_arcs_for_volume(
+    app_handle: tauri::AppHandle,
+    volume_id: u64,
+    refresh: Option<bool>,
+) -> Result<ComicVineVolumeArcs, String> {
+    let cache_key = volume_arcs_cache_key(volume_id);
+    if !refresh.unwrap_or(false) {
+        if let Some(cached) = cache_get::<ComicVineVolumeArcs>(&app_handle, &cache_key) {
+            return Ok(cached);
+        }
+    }
+
+    let api_key = arc_api_key(&app_handle).await?;
+    let client = crate::http::http_client();
+    let issues = volume_issue_summaries(client, &api_key, volume_id).await?;
+    cache_issue_summaries(&app_handle, &issues);
+
+    let mut covered: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut seen_arcs: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    let mut arcs: Vec<ComicVineStoryArc> = Vec::new();
+    let mut requests = 0usize;
+    let mut complete = true;
+
+    for issue in &issues {
+        if covered.contains(&issue.id) {
+            continue;
+        }
+        if requests >= MAX_ARC_SCAN_REQUESTS {
+            complete = false;
+            break;
+        }
+        let (credits, fetched) = issue_arc_credits_cached(&app_handle, client, &api_key, issue.id).await?;
+        requests += usize::from(fetched);
+        covered.insert(issue.id);
+        for credit in credits {
+            if !seen_arcs.insert(credit.id) {
+                continue;
+            }
+            let (arc, fetched) = story_arc_cached(&app_handle, client, &api_key, credit.id).await?;
+            requests += usize::from(fetched);
+            if let Some(arc) = arc {
+                covered.extend(arc.issues.iter().map(|i| i.id));
+                arcs.push(arc);
+            }
+        }
+    }
+
+    let result = ComicVineVolumeArcs { volume_id, arcs, issues, complete };
+    if complete {
+        cache_put(&app_handle, &[(cache_key, &result)]);
+    }
+    Ok(result)
+}
+
+#[cfg(test)]
+mod story_arc_tests {
+    use super::*;
+
+    const STORY_ARC: &str = include_str!("fixtures/comicvine/story_arc.json");
+    const ISSUES_BATCH: &str = include_str!("fixtures/comicvine/issues_batch.json");
+    const ISSUE_ARC_CREDITS: &str = include_str!("fixtures/comicvine/issue_story_arc_credits.json");
+
+    fn cache_conn() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        let tx = conn.unchecked_transaction().unwrap();
+        crate::migrations::comicvine_arc_cache::migrate(&tx).unwrap();
+        tx.commit().unwrap();
+        conn
+    }
+
+    #[test]
+    fn parses_a_story_arc_with_its_issue_refs() {
+        let arc = parse_story_arc_response(STORY_ARC).unwrap().expect("arc");
+        assert_eq!(arc.id, 56251);
+        assert_eq!(arc.name.as_deref(), Some("Arrancar Saga"));
+        assert_eq!(arc.count_of_issue_appearances, Some(6));
+        assert_eq!(arc.issues.len(), 6);
+        assert_eq!(arc.issues[0], ComicVineResourceRef { id: 139412, name: Some("Be My Family or Not".into()) });
+        assert_eq!(arc.first_appeared_in_issue.as_ref().and_then(|i| i.issue_number.as_deref()), Some("21"));
+        assert_eq!(arc.publisher.as_ref().and_then(|p| p.name.as_deref()), Some("Viz"));
+        assert!(arc.image.as_ref().and_then(|i| i.medium_url.as_deref()).is_some_and(|u| u.starts_with("https://")));
+    }
+
+    #[test]
+    fn cached_story_arcs_round_trip_through_serde() {
+        let arc = parse_story_arc_response(STORY_ARC).unwrap().unwrap();
+        let json = serde_json::to_string(&arc).unwrap();
+        let back: ComicVineStoryArc = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.count_of_issue_appearances, Some(6));
+        assert_eq!(back.issues, arc.issues);
+    }
+
+    #[test]
+    fn not_found_is_none_and_api_errors_carry_the_code() {
+        let not_found = r#"{"error":"Object Not Found","status_code":101,"results":[]}"#;
+        assert!(parse_story_arc_response(not_found).unwrap().is_none());
+        let bad_key = r#"{"error":"Invalid API Key","status_code":100,"results":[]}"#;
+        assert!(parse_story_arc_response(bad_key).unwrap_err().starts_with("E_COMICVINE_API"));
+        assert!(parse_story_arc_response("<html>").unwrap_err().starts_with("E_COMICVINE_API"));
+    }
+
+    #[test]
+    fn parses_an_issue_batch_with_volumes_and_descriptions() {
+        let mut issues = parse_issue_summaries_response(ISSUES_BATCH).unwrap();
+        assert_eq!(issues.len(), 4);
+        sort_issue_summaries(&mut issues);
+        let numbers: Vec<&str> = issues.iter().filter_map(|i| i.issue_number.as_deref()).collect();
+        assert_eq!(numbers, ["21", "22", "23", "100"]);
+        assert_eq!(issues[0].volume.as_ref().map(|v| v.id), Some(18923));
+        assert!(issues[0].description.as_deref().unwrap_or("").contains("Chapter 182"));
+        // A null description or volume name does not break the page.
+        assert!(issues.iter().any(|i| i.description.is_none()));
+        assert!(issues.iter().any(|i| i.volume.as_ref().is_some_and(|v| v.name.is_none())));
+    }
+
+    #[test]
+    fn parses_story_arc_credits_and_tolerates_null() {
+        let credits = parse_issue_arc_credits_response(ISSUE_ARC_CREDITS).unwrap();
+        assert_eq!(credits.iter().map(|c| c.id).collect::<Vec<_>>(), [56251, 56252]);
+        let null_credits = r#"{"status_code":1,"results":{"id":1,"story_arc_credits":null}}"#;
+        assert!(parse_issue_arc_credits_response(null_credits).unwrap().is_empty());
+    }
+
+    #[test]
+    fn batches_unique_ids_by_hundred() {
+        let ids: Vec<u64> = (1..=250).chain([5, 6]).collect();
+        let batches = issue_id_batches(&ids);
+        assert_eq!(batches.iter().map(Vec::len).collect::<Vec<_>>(), [100, 100, 50]);
+        assert_eq!(batches[0][0], 1);
+    }
+
+    #[test]
+    fn cache_round_trips_and_expires_after_thirty_days() {
+        let conn = cache_conn();
+        arc_cache_write(&conn, &[("arc:1".into(), "{\"id\":1}".into())], 1_000).unwrap();
+        assert_eq!(arc_cache_read(&conn, "arc:1", 1_000 + ARC_CACHE_TTL_SECS - 1).unwrap().as_deref(), Some("{\"id\":1}"));
+        assert!(arc_cache_read(&conn, "arc:1", 1_000 + ARC_CACHE_TTL_SECS).unwrap().is_none());
+        arc_cache_write(&conn, &[("arc:1".into(), "{\"id\":2}".into())], 5_000).unwrap();
+        assert_eq!(arc_cache_read(&conn, "arc:1", 5_001).unwrap().as_deref(), Some("{\"id\":2}"));
+        assert!(arc_cache_read(&conn, "arc:2", 5_001).unwrap().is_none());
+    }
 }

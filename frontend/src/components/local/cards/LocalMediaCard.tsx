@@ -97,6 +97,7 @@ export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete, lau
       ref={cardRef}
       title={item.title}
       cover={coverSrc}
+      externalId={item.externalId}
       placeholderIcon={<IconFolder />}
       badge={
         <span className={`local-media-status-badge${item.status === 'planning' ? ' local-media-status-badge--planning' : ''}`}>

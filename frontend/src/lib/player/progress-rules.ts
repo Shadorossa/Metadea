@@ -1,5 +1,5 @@
-// The "when does an episode count as watched" rules, shared by the VLC
-// polling path and the built-in player's event path in playback-service.
+// The "when does an episode count as watched" rules, used by the built-in
+// player's event path in playback-service.
 
 // Fraction of the file the user has to reach for an episode to be marked
 // watched — leaves room for trailing credits / next-episode previews.

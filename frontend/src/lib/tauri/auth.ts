@@ -1,5 +1,6 @@
 import { isTauri, invoke } from './bridge';
 import { STORAGE_KEYS } from '../storage/storage-keys';
+import { decodeJwtPayload } from '../shared/text/encoding-utils';
 
 export interface AuthSession {
   token:    string;
@@ -27,6 +28,15 @@ export async function getAuthToken(): Promise<AuthSession | null> {
     } catch { return null; }
   }
   return null;
+}
+
+/** The signed-in account's email from its session token (the Worker puts it
+ *  in the JWT payload), or null. Only ever used as a hint, never trusted. */
+export async function accountEmailHint(): Promise<string | null> {
+  const session = await getAuthToken().catch(() => null);
+  if (!session) return null;
+  const email = decodeJwtPayload(session.token).email;
+  return typeof email === 'string' && email.includes('@') ? email : null;
 }
 
 export async function clearAuthToken(): Promise<void> {

@@ -20,6 +20,58 @@ pub(super) fn name_has_edition_word(name: &str) -> bool {
         .any(|tok| NON_GAME_NAME_WORDS.iter().any(|w| tok.eq_ignore_ascii_case(w)))
 }
 
+/// What plain search makes of one raw IGDB game (igdb_search's filters),
+/// shared with the company page (company_catalog/igdb.rs) so both list the
+/// same works. `Extra` is a game search leaves out that is DLC, an
+/// expansion, a bundle, a mod, a pack or an update: the company page keeps
+/// it behind its "Include DLC" toggle; everything else search drops
+/// (cancelled, remasters, expanded editions, ports, episodes, duplicate
+/// editions) is `Excluded`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PlainSearchVerdict {
+    Keep,
+    Extra,
+    Excluded,
+}
+
+// Bundles (3), remasters (9), expanded editions (10) and updates (14).
+const PLAIN_SEARCH_EXCLUDED: &[u64] = &[3, 9, 10, 14];
+// DLC (1), expansion (2), bundle (3), mod (5), pack (13), update (14).
+const EXTRA_GAME_TYPES: &[u64] = &[1, 2, 3, 5, 13, 14];
+
+pub(crate) fn plain_search_verdict(item: &serde_json::Value) -> PlainSearchVerdict {
+    // Cancelled status is 6 in IGDB API
+    if item["status"].as_i64() == Some(6) {
+        return PlainSearchVerdict::Excluded;
+    }
+    // Checked against both fields independently: get_game_category's
+    // category-then-game_type fallback can mask one flagging it when the
+    // other is absent from the record (an expanded edition tagged
+    // category=main_game but game_type=10).
+    let flagged = |types: &[u64]| {
+        item["category"].as_u64().is_some_and(|c| types.contains(&c))
+            || item["game_type"].as_u64().is_some_and(|c| types.contains(&c))
+    };
+    let category = get_game_category(item);
+    let excluded = flagged(PLAIN_SEARCH_EXCLUDED)
+        // 0 main_game, 4 standalone_expansion, 7 season, 8 remake.
+        || !matches!(category, 0 | 4 | 7 | 8)
+        // A main_game with a parent or a version_title is an edition of
+        // another entry, not its own.
+        || (category == 0 && (!item["version_parent"].is_null() || !item["version_title"].is_null()))
+        // A main_game literally named "... Edition" is almost always a
+        // re-release IGDB miscategorised; word-boundary checked so
+        // "Expedition 33" isn't caught.
+        || (category == 0 && name_has_edition_word(item["name"].as_str().unwrap_or("")));
+    if !excluded {
+        PlainSearchVerdict::Keep
+    } else if flagged(EXTRA_GAME_TYPES) || EXTRA_GAME_TYPES.contains(&category) {
+        PlainSearchVerdict::Extra
+    } else {
+        PlainSearchVerdict::Excluded
+    }
+}
+
 pub(crate) fn is_non_game(game: &serde_json::Value) -> bool {
     // 0: main_game, 2: expansion, 3: bundle, 4: standalone, 7: season, 8: remake, 9: remaster, 10: expanded, 11: port, 13: pack, 14: update
     const ALLOWED: &[u64] = &[0, 2, 3, 4, 7, 8, 9, 10, 11, 13, 14];
@@ -73,7 +125,7 @@ pub(super) fn build_store_links(external_games: &serde_json::Value) -> Option<Ve
 }
 
 // VN filter: genre 34 in top-3, not RPG (12) or Fighting (4), with parent inheritance
-pub(super) fn detect_vn(game: &serde_json::Value) -> bool {
+pub(crate) fn detect_vn(game: &serde_json::Value) -> bool {
     let genres = game["genres"].as_array().cloned().unwrap_or_default();
     let top3: Vec<u64> = genres
         .iter()
@@ -158,5 +210,36 @@ mod name_has_edition_word_tests {
     #[test]
     fn non_ascii_lookalikes_do_not_match() {
         assert!(!name_has_edition_word("Jeu Édition"));
+    }
+}
+
+#[cfg(test)]
+mod plain_search_verdict_tests {
+    use super::{plain_search_verdict, PlainSearchVerdict};
+    use serde_json::json;
+
+    #[test]
+    fn main_games_remakes_and_seasons_are_kept() {
+        for category in [0, 4, 7, 8] {
+            assert_eq!(plain_search_verdict(&json!({ "name": "Elden Ring", "category": category })), PlainSearchVerdict::Keep);
+        }
+        assert_eq!(plain_search_verdict(&json!({ "name": "Clair Obscur: Expedition 33", "game_type": 0 })), PlainSearchVerdict::Keep);
+    }
+
+    #[test]
+    fn dlc_and_bundles_are_extras() {
+        for game_type in [1, 2, 3, 5, 13, 14] {
+            assert_eq!(plain_search_verdict(&json!({ "name": "Add-on", "game_type": game_type })), PlainSearchVerdict::Extra, "{game_type}");
+        }
+    }
+
+    #[test]
+    fn remasters_ports_editions_and_cancelled_games_are_excluded() {
+        for game_type in [6, 9, 10, 11, 12] {
+            assert_eq!(plain_search_verdict(&json!({ "name": "Re-release", "game_type": game_type })), PlainSearchVerdict::Excluded, "{game_type}");
+        }
+        assert_eq!(plain_search_verdict(&json!({ "name": "Game", "category": 0, "version_parent": 12 })), PlainSearchVerdict::Excluded);
+        assert_eq!(plain_search_verdict(&json!({ "name": "Game: Definitive Edition", "category": 0 })), PlainSearchVerdict::Excluded);
+        assert_eq!(plain_search_verdict(&json!({ "name": "Game", "category": 0, "status": 6 })), PlainSearchVerdict::Excluded);
     }
 }

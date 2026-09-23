@@ -1,7 +1,7 @@
 ---
 import type { Translations } from "../../i18n/index";
 import '../../styles/pages/settings-emulators.css';
-import { ALL_PLATFORMS, COMPANIES, DEFAULT_ROM_EXTENSIONS } from '../../lib/local/emulator-catalog';
+import { ALL_PLATFORMS, COMPANIES } from '../../lib/local/emulator-catalog';
 
 interface Props {
   t: Translations;
@@ -10,72 +10,65 @@ const { t } = Astro.props;
 
 ---
 
-<!-- Tab: Emuladores -->
+<!-- Tab: Emuladores. Top row: platform linking (the main job of the tab, with
+     the chosen console's editor under its tiles) | Library (ROM clean-up) |
+     Saved games. The play-session reminders live in
+     AccessibilityTab. -->
 <div class="settings-panel hidden" id="panel-emulators">
-  <div class="settings-section">
-    <h3 class="settings-section-title" data-i18n="settings.emulators_title">{t.settings.emulators_title}</h3>
+  <div class="settings-section emu-section">
+    <div class="emu-top-row">
+      <!-- Selector de empresas -->
+      <div class="emu-top-col companies-selector-section">
+        <h3 class="settings-section-title" data-i18n="settings.emulators_platforms">{t.settings.emulators_platforms}</h3>
 
-    <!-- Automatic ROM file clean-up (local.roms.auto_rename) -->
-    <div class="settings-checkbox-row">
-      <div class="settings-checkbox-group">
-        <label class="settings-checkbox-label">
-          <input type="checkbox" id="roms-auto-rename" class="settings-checkbox" />
-          <span class="checkbox-label-text" data-i18n="settings.roms_auto_rename">{t.settings.roms_auto_rename}</span>
-        </label>
-        <p class="settings-hint" data-i18n="settings.roms_auto_rename_hint">{t.settings.roms_auto_rename_hint}</p>
-      </div>
-    </div>
-
-    <!-- Selector de empresas -->
-    <div class="companies-selector-section">
-      <h4 class="settings-subsection-title" data-i18n="settings.emulators_platforms">{t.settings.emulators_platforms}</h4>
-
-      <div class="companies-selector">
-        {COMPANIES.map(company => (
-          <div class="company-item">
-            <button
-              type="button"
-              class="company-tab-btn"
-              data-company={company.id}
-              title={company.name}
-            >
-              <img class="company-logo" src={company.logo} alt={company.name} />
-              <svg class="company-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                <line x1="9" y1="9" x2="9" y2="9.01"/>
-                <line x1="15" y1="9" x2="15" y2="9.01"/>
-              </svg>
-            </button>
-            <span class="company-label">{company.name}</span>
-          </div>
-        ))}
-      </div>
-
-      <!-- Selector de plataformas por empresa -->
-      <div class="platforms-selector-container hidden" id="platforms-selector-container">
-        <h5 class="platforms-selector-title" id="platforms-selector-title"></h5>
-        <div class="platforms-selector" id="platforms-selector"></div>
-      </div>
-
-      <!-- Viewport para formularios -->
-      <div class="platforms-viewport">
-        <div class="platforms-empty-placeholder" id="platforms-empty">
-          <span class="platforms-placeholder-icon">🎮</span>
-          <h4 data-i18n="settings.platforms_select_title">{t.settings.platforms_select_title}</h4>
-          <p data-i18n="settings.platforms_select_hint">{t.settings.platforms_select_hint}</p>
+        <div class="companies-selector">
+          {COMPANIES.map(company => (
+            <div class="company-item">
+              <button
+                type="button"
+                class="company-tab-btn"
+                data-company={company.id}
+                title={company.name}
+              >
+                <img class="company-logo" src={company.logo} alt={company.name} />
+                <svg class="company-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                  <line x1="9" y1="9" x2="9" y2="9.01"/>
+                  <line x1="15" y1="9" x2="15" y2="9.01"/>
+                </svg>
+              </button>
+              <span class="company-label">{company.name}</span>
+            </div>
+          ))}
         </div>
 
-        <!-- Forms por plataforma -->
-        {ALL_PLATFORMS.map(platform => (
-          <div class="platform-form-block hidden" id={`platform-form-${platform.id}`}>
-            <div class="platform-form-header" data-company={platform.company}>
-              <h5 class="platform-form-title" data-company={platform.company}>{platform.name}</h5>
-            </div>
+        <!-- Selector de plataformas por empresa -->
+        <div class="platforms-selector-container hidden" id="platforms-selector-container">
+          <h5 class="platforms-selector-title" id="platforms-selector-title"></h5>
+          <div class="platforms-selector" id="platforms-selector"></div>
+        </div>
 
-            <div class="platform-form-fields">
-              <div class="emulator-config-row combined-row">
-                <div class="emulator-section">
+        <!-- Viewport para formularios: the chosen console's editor, in this
+             column under the console tiles, groups stacked. -->
+        <div class="platforms-viewport">
+          <p class="platforms-empty-placeholder" id="platforms-empty">
+            <span class="platforms-empty-title" data-i18n="settings.platforms_select_title">{t.settings.platforms_select_title}</span>
+            <span class="platforms-empty-hint" data-i18n="settings.platforms_select_hint">{t.settings.platforms_select_hint}</span>
+          </p>
+
+          <!-- Forms por plataforma -->
+          {ALL_PLATFORMS.map(platform => (
+            <div class="platform-form-block hidden" id={`platform-form-${platform.id}`}>
+              <div class="platform-form-header" data-company={platform.company}>
+                <h5 class="platform-form-title" data-company={platform.company}>{platform.name}</h5>
+              </div>
+
+              <!-- Stacked, compact groups: Emulator (+ captures-folder
+                   disclosure; its "Compatible" list is what the ROM scan uses) |
+                   Launch arguments. -->
+              <div class="platform-form-fields emu-editor-row">
+                <div class="emu-editor-field emulator-section">
                   <label class="form-label" for={`emulator-select-${platform.id}`} data-i18n="settings.emulators_choose">{t.settings.emulators_choose}</label>
                   <div class="input-row">
                     <select class="form-select emulator-select compact" id={`emulator-select-${platform.id}`} data-platform={platform.id}>
@@ -88,18 +81,60 @@ const { t } = Astro.props;
                         <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
                       </svg>
                     </button>
+                    <!-- Advanced: the folder the emulator itself saves captures to, only
+                         for emulators the auto-detection table does not know. It is a
+                         SOURCE: captures are always moved to Pictures/Metadea/<game>/.
+                         A small camera disclosure next to the folder button; opens as a popover. -->
+                    <details class="emulator-screenshots-override">
+                      <summary title={t.local.emulator_screenshots_dir} data-i18n-title="local.emulator_screenshots_dir" aria-label={t.local.emulator_screenshots_dir} data-i18n-aria-label="local.emulator_screenshots_dir">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/>
+                          <circle cx="12" cy="13" r="3"/>
+                        </svg>
+                      </summary>
+                      <div class="emulator-screenshots-popover">
+                        <div class="emu-editor-label">
+                          <span class="form-label" data-i18n="local.emulator_screenshots_dir">{t.local.emulator_screenshots_dir}</span>
+                          <span class="settings-help-btn" tabindex="0" role="img" title={t.local.emulator_screenshots_dir_hint} data-i18n-title="local.emulator_screenshots_dir_hint" aria-label={t.local.emulator_screenshots_dir_hint} data-i18n-aria-label="local.emulator_screenshots_dir_hint">
+                            <span class="info-indicator" aria-hidden="true">i</span>
+                          </span>
+                        </div>
+                        <div class="input-row">
+                          <input
+                            class="form-input"
+                            type="text"
+                            id={`screenshots-dir-${platform.id}`}
+                            data-platform={platform.id}
+                            spellcheck="false"
+                            aria-label={t.local.emulator_screenshots_dir}
+                            data-i18n-aria-label="local.emulator_screenshots_dir"
+                          />
+                          <button type="button" class="rom-folder-btn" data-platform={platform.id} data-field="screenshots-dir" title={t.local.emulator_screenshots_pick} data-i18n-title="local.emulator_screenshots_pick">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M2 11h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>
+                              <rect x="6" y="4" width="12" height="7" rx="1"/>
+                              <circle cx="12" cy="7.5" r="1.5"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </details>
                     <div class="emulator-config-middle hidden" id={`supported-container-${platform.id}`}>
-                      <span class="form-label-small" data-i18n="settings.emulators_supported_label">{t.settings.emulators_supported_label}</span>
+                      <span class="emu-compat-icon" role="img" title={t.settings.emulators_supported_title} data-i18n-title="settings.emulators_supported_title" aria-label={t.settings.emulators_supported_title} data-i18n-aria-label="settings.emulators_supported_title">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
+                        </svg>
+                      </span>
                       <div class="supported-types" id={`extensions-display-${platform.id}`}></div>
                     </div>
                   </div>
                 </div>
 
-                <div class="launch-section">
+                <div class="emu-editor-field launch-section">
                   <label class="form-label" for={`launch-args-${platform.id}`} data-i18n="settings.emulators_args">{t.settings.emulators_args}</label>
                   <div class="input-row">
                     <input
-                      class="form-input"
+                      class="form-input emu-editor-args"
                       type="text"
                       id={`launch-args-${platform.id}`}
                       placeholder="{ROM}"
@@ -121,44 +156,76 @@ const { t } = Astro.props;
                   </div>
                 </div>
               </div>
-
-              <div class="emulator-config-row rom-extensions-row">
-                <label class="form-label" for={`rom-extensions-${platform.id}`} data-i18n="settings.emulators_rom_extensions">{t.settings.emulators_rom_extensions}</label>
-                <input
-                  class="form-input"
-                  type="text"
-                  id={`rom-extensions-${platform.id}`}
-                  placeholder={(DEFAULT_ROM_EXTENSIONS[platform.id] ?? []).join(', ')}
-                  data-platform={platform.id}
-                  spellcheck="false"
-                />
-                <p class="settings-hint" data-i18n="settings.emulators_rom_extensions_hint">{t.settings.emulators_rom_extensions_hint}</p>
-              </div>
-
-              <div class="emulator-config-row rom-extensions-row">
-                <label class="form-label" for={`screenshots-dir-${platform.id}`} data-i18n="local.emulator_screenshots_dir">{t.local.emulator_screenshots_dir}</label>
-                <div class="input-row">
-                  <input
-                    class="form-input"
-                    type="text"
-                    id={`screenshots-dir-${platform.id}`}
-                    data-platform={platform.id}
-                    spellcheck="false"
-                  />
-                  <button type="button" class="rom-folder-btn" data-platform={platform.id} data-field="screenshots-dir" title={t.local.emulator_screenshots_pick} data-i18n-title="local.emulator_screenshots_pick">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M2 11h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>
-                      <rect x="6" y="4" width="12" height="7" rx="1"/>
-                      <circle cx="12" cy="7.5" r="1.5"/>
-                    </svg>
-                  </button>
-                </div>
-                <p class="settings-hint" data-i18n="local.emulator_screenshots_dir_hint">{t.local.emulator_screenshots_dir_hint}</p>
-              </div>
-
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
+
+      <!-- Library: automatic ROM file clean-up (local.roms.auto_rename). -->
+      <div class="emu-top-col emu-library">
+        <h3 class="settings-section-title" data-i18n="settings.library_section_title">{t.settings.library_section_title}</h3>
+        <div class="emu-inline-row">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="roms-auto-rename" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="settings.roms_auto_rename">{t.settings.roms_auto_rename}</span>
+          </label>
+          <span class="settings-help-btn" tabindex="0" role="img" title={t.settings.roms_auto_rename_hint} data-i18n-title="settings.roms_auto_rename_hint" aria-label={t.settings.roms_auto_rename_hint} data-i18n-aria-label="settings.roms_auto_rename_hint">
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Saved games: one central folder (src-tauri/src/saves; behaviour in
+           mount/saves-settings.ts, docs/SAVES.md). -->
+      <div class="emu-top-col saves-settings" id="saves-settings">
+        <!-- Same title element as Library; the text and its (i) form one item,
+             so themes that flank titles with lines keep them centred. -->
+        <h3 class="settings-section-title">
+          <span class="emu-title-with-info">
+            <span data-i18n="saves.settings_title">{t.saves.settings_title}</span>
+            <span class="settings-help-btn" tabindex="0" role="img" title={t.saves.settings_intro} data-i18n-title="saves.settings_intro" aria-label={t.saves.settings_intro} data-i18n-aria-label="saves.settings_intro">
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </span>
+          </span>
+        </h3>
+        <div class="emu-inline-row saves-settings-root">
+          <span class="form-label" data-i18n="saves.root_label">{t.saves.root_label}</span>
+          <span class="settings-help-btn" tabindex="0" role="img" title={t.saves.root_info} data-i18n-title="saves.root_info" aria-label={t.saves.root_info} data-i18n-aria-label="saves.root_info">
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </span>
+          <!-- rtl + an ltr <bdi>: the ellipsis eats the START of a long path so the
+               folder name stays visible; the full path is the field's tooltip. -->
+          <span class="saves-settings-path"><bdi dir="ltr" id="saves-root-path"></bdi></span>
+          <button type="button" class="emu-icon-btn" id="saves-root-change" title={t.saves.root_change} data-i18n-title="saves.root_change" aria-label={t.saves.root_change} data-i18n-aria-label="saves.root_change">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+            </svg>
+          </button>
+          <button type="button" class="emu-icon-btn" id="saves-root-reset" hidden title={t.saves.root_reset} data-i18n-title="saves.root_reset" aria-label={t.saves.root_reset} data-i18n-aria-label="saves.root_reset">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
+            </svg>
+          </button>
+          <button type="button" class="emu-icon-btn" id="saves-root-open" title={t.saves.root_open} data-i18n-title="saves.root_open" aria-label={t.saves.root_open} data-i18n-aria-label="saves.root_open">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M12 11v6"/><path d="m9 14 3-3 3 3"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="emu-inline-row saves-settings-import">
+          <label class="form-label" for="saves-history-keep" data-i18n="saves.history_label">{t.saves.history_label}</label>
+          <span class="settings-help-btn" tabindex="0" role="img" title={t.saves.history_info} data-i18n-title="saves.history_info" aria-label={t.saves.history_info} data-i18n-aria-label="saves.history_info">
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </span>
+          <input class="form-input saves-settings-keep" type="number" id="saves-history-keep" min="1" max="50" step="1" inputmode="numeric" />
+          <span class="emu-inline-sep" aria-hidden="true"></span>
+          <button type="button" class="btn btn--sm btn--secondary" id="saves-import-btn" data-i18n="saves.import_button">{t.saves.import_button}</button>
+          <span class="settings-help-btn" tabindex="0" role="img" title={t.saves.import_info} data-i18n-title="saves.import_info" aria-label={t.saves.import_info} data-i18n-aria-label="saves.import_info">
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </span>
+          <span class="settings-hint saves-settings-status" id="saves-import-status" aria-live="polite"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -237,6 +304,9 @@ const { t } = Astro.props;
       if (!data) return;
       const wasActive = btn.classList.contains('active');
       document.querySelectorAll('.company-tab-btn').forEach(b => b.classList.remove('active'));
+      // A brand change (or closing the brand) closes the open console editor:
+      // the new brand shows its tiles with nothing open until one is picked.
+      document.querySelectorAll('.platform-form-block').forEach(f => f.classList.add('hidden'));
 
       if (wasActive) {
         platformsContainer.classList.add('hidden');
@@ -267,8 +337,14 @@ const { t } = Astro.props;
             pBtn.addEventListener('click', async () => {
               await emulatorsDataReady;
               const platformId = pBtn.dataset.platform;
-              document.querySelectorAll('.platform-form-block').forEach(f => f.classList.add('hidden'));
               const formBlock = document.getElementById(`platform-form-${platformId}`);
+              // Clicking the console whose editor is open closes it; another
+              // console switches the editor to that one.
+              const wasOpen = !!formBlock && !formBlock.classList.contains('hidden');
+              document.querySelectorAll('.platform-form-block').forEach(f => f.classList.add('hidden'));
+              platformsSelector.querySelectorAll('.platform-selector-btn').forEach(b => b.classList.remove('active'));
+              if (wasOpen) return;
+              pBtn.classList.add('active');
               if (formBlock) {
                 formBlock.classList.remove('hidden');
                 // Populate emulator select
@@ -298,7 +374,9 @@ const { t } = Astro.props;
       const emulator = emulators.find(em => em.name === selectedEmulator);
 
       if (emulator && selectedEmulator) {
-        extensionsDisplay.textContent = emulator.extensions.join(', ');
+        // "3ds · 3dsx · cci": no dots, so more of the list fits the row.
+        extensionsDisplay.textContent = emulator.extensions.map(ext => ext.replace(/^\./, '')).join(' · ');
+        extensionsDisplay.title = extensionsDisplay.textContent;
         supportedContainer.classList.remove('hidden');
       } else {
         extensionsDisplay.textContent = '';

@@ -84,6 +84,35 @@ export const PLAYER_KEY_BINDINGS: readonly PlayerKeyBinding[] = [
   { id: 'player.seek_end', keys: 'end', description: 'shortcuts.player_seek_end', action: { type: 'seek_end' } },
 ];
 
+// Clip mode (scissors button): registered as a second `player`-context
+// registration only while clip mode is on, so — being the latest in the
+// same context — `[`/`]` shadow speed down/up just for that time and give
+// them back when clip mode ends. Enter is free in the player table: it
+// confirms the trim, then exports from the chooser. Esc cancels through the
+// player's Escape ladder (dismissOverlays), not here.
+export type ClipKeyAction = 'set_start' | 'set_end' | 'confirm';
+
+export interface ClipKeyBinding {
+  id: string;
+  keys: string;
+  description: string;
+  action: ClipKeyAction;
+}
+
+export const CLIP_KEY_BINDINGS: readonly ClipKeyBinding[] = [
+  { id: 'player.clip_set_start', keys: '[', description: 'shortcuts.player_clip_set_start', action: 'set_start' },
+  { id: 'player.clip_set_end', keys: ']', description: 'shortcuts.player_clip_set_end', action: 'set_end' },
+  { id: 'player.clip_export', keys: 'enter', description: 'shortcuts.player_clip_export', action: 'confirm' },
+];
+
+/** Ids of player bindings a clip-mode key shadows while clip mode is on. */
+export function clipKeyConflicts(): string[] {
+  const clipKeys = new Set(CLIP_KEY_BINDINGS.map(binding => binding.keys));
+  return PLAYER_KEY_BINDINGS
+    .filter(binding => (typeof binding.keys === 'string' ? [binding.keys] : binding.keys).some(key => clipKeys.has(key)))
+    .map(binding => binding.id);
+}
+
 export function bindingAction(binding: PlayerKeyBinding, key: string): PlayerKeyAction {
   return typeof binding.action === 'function' ? binding.action(key) : binding.action;
 }

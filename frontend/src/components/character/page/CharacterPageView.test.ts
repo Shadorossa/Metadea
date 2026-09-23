@@ -131,7 +131,7 @@ function legacyContentHtml(d: CharacterPageData): string {
             <div class="character-action-row" id="char-action-row">
               <button class="char-action-btn${d.isFavorite ? ' active' : ''}" id="char-fav-btn" data-action="favorite" title="${t.action_favorite}"><svg></svg><span>${t.action_favorite}</span></button>
               <button class="char-action-btn${d.reaction === 'like' ? ' active' : ''}" id="char-like-btn" data-action="like" data-reaction="like" title="${t.action_like}" disabled><svg></svg><span>${t.action_like}</span></button>
-              <button class="char-action-btn${d.reaction === 'interested' ? ' active' : ''}" id="char-interested-btn" data-action="interested" data-reaction="interested" title="${t.action_interested}" disabled><svg></svg><span>${t.action_interested}</span></button>
+              <button class="char-action-btn${d.reaction === 'interest' ? ' active' : ''}" id="char-interested-btn" data-action="interested" data-reaction="interested" title="${t.action_interested}" disabled><svg></svg><span>${t.action_interested}</span></button>
               <button class="char-action-btn${d.reaction === 'dislike' ? ' active' : ''}" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title="${t.action_dislike}" disabled><svg></svg><span>${t.action_dislike}</span></button>
             </div>
             <div class="character-avatar-frame">

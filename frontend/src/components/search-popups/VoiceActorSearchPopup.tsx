@@ -6,6 +6,7 @@ import { searchTmdbPeople } from '../../lib/search/providers/tmdb';
 import { API_ENDPOINTS } from '../../lib/api/endpoints';
 import { useDebouncedSearch, dedupeByKey } from '../shared/hooks/useDebouncedSearch';
 import { getT } from '../../i18n/runtime';
+import { interpolate } from '../../lib/shared/text/interpolate';
 
 export interface VoiceActorSearchResult {
   externalId: string;
@@ -129,7 +130,7 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
           </div>
         </div>
         <div className="pr-editor-search-cast-actions">
-          <span>{selectedIds.length} seleccionados</span>
+          <span>{interpolate(getT().search.selected_count, { count: selectedIds.length })}</span>
           <button
             type="button"
             className="pr-editor-btn pr-editor-btn--submit"

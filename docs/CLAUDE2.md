@@ -228,7 +228,7 @@ The canonical schema lives in `src-tauri/src/db.rs` (`media_catalog`, `character
 | `comicvine.rs` | ComicVine client |
 | `anilist.rs` | AniList token storage + profile lookup |
 | `platform_scanning.rs`, `steam.rs` | Installed-game detection, Steam achievements/owned games |
-| `folders.rs` | Folder picking, local anime scanning, launching games/VLC |
+| `folders.rs` | Folder picking, local anime scanning, launching games |
 | `user_library.rs`, `user_lists.rs`, `user_metadata.rs`, `favorite_images.rs` | Per-user data: library entries, custom lists, favorites, profile images |
 | `tier_lists.rs` | Tier list CRUD and placements |
 | `episode_history.rs` | Local anime watch history |

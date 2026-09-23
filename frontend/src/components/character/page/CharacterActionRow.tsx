@@ -1,19 +1,23 @@
 import type { CharacterStrings } from '../../../lib/character/character-stat-labels';
+import { CHARACTER_REACTIONS, type CharacterReaction } from '../../../lib/character/character-reactions';
 
 interface Props {
   t: CharacterStrings;
   isFavorite: boolean;
-  reaction: string | null;
+  reaction: CharacterReaction | null;
   onToggleFavorite: () => void;
-  onReaction: (reaction: string) => void;
+  /** The clicked reaction — the page toggles it (active again → none). */
+  onReaction: (reaction: CharacterReaction) => void;
 }
 
-const REACTIONS = ['like', 'interested', 'dislike'] as const;
+// "interest" keeps the element id/data attribute the page's CSS already
+// targets ("interested").
+const DOM_NAME: Record<CharacterReaction, string> = { like: 'like', interest: 'interested', dislike: 'dislike' };
 
 export function CharacterActionRow({ t, isFavorite, reaction, onToggleFavorite, onReaction }: Props) {
-  const reactionLabel: Record<(typeof REACTIONS)[number], string> = {
+  const reactionLabel: Record<CharacterReaction, string> = {
     like: t.action_like,
-    interested: t.action_interested,
+    interest: t.action_interested,
     dislike: t.action_dislike,
   };
   return (
@@ -30,15 +34,16 @@ export function CharacterActionRow({ t, isFavorite, reaction, onToggleFavorite, 
         </svg>
         <span>{t.action_favorite}</span>
       </button>
-      {REACTIONS.map(r => (
+      {CHARACTER_REACTIONS.map(r => (
         <button
           key={r}
+          type="button"
           className={`char-action-btn${reaction === r ? ' active' : ''}`}
-          id={`char-${r}-btn`}
-          data-action={r}
+          id={`char-${DOM_NAME[r]}-btn`}
+          data-action={DOM_NAME[r]}
           data-reaction={r}
           title={reactionLabel[r]}
-          disabled
+          aria-pressed={reaction === r}
           onClick={() => onReaction(r)}
         >
           {r === 'like' && (
@@ -46,7 +51,7 @@ export function CharacterActionRow({ t, isFavorite, reaction, onToggleFavorite, 
               <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
             </svg>
           )}
-          {r === 'interested' && (
+          {r === 'interest' && (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
             </svg>

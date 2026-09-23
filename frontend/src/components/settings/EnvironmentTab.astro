@@ -4,8 +4,10 @@ import type { Translations } from "../../i18n/index";
 interface Props {
   t: Translations;
   onboarding?: boolean;
+  /** App version for the updates block (settings page only). */
+  version?: string;
 }
-const { t } = Astro.props;
+const { t, onboarding = false, version = '' } = Astro.props;
 ---
 
 <!-- Tab: Entorno -->
@@ -41,37 +43,33 @@ const { t } = Astro.props;
       </div>
       <div class="api-platform-item">
         <button type="button" class="api-platform-tab-btn" data-platform="mal" data-i18n-title="mal.env_platform_title" title={t.mal.env_platform_title}>
-          <img class="api-platform-logo" src="/API/MyAnimeList_logo.svg" alt="MyAnimeList" />
+          <img class="api-platform-logo" src="/platforms/MyAnimeList_logo.png" alt="MyAnimeList" />
         </button>
         <span class="api-platform-label" data-i18n="mal.env_platform_label">{t.mal.env_platform_label}</span>
       </div>
       <div class="api-platform-item">
         <button type="button" class="api-platform-tab-btn" data-platform="comicvine" data-i18n-title="settings.env_platform_comicvine_title" title={t.settings.env_platform_comicvine_title}>
-          <svg class="api-platform-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 3h13l3 3v15H4z"/>
-            <path d="M17 3v3h3"/>
-            <line x1="7" y1="9" x2="15" y2="9"/>
-            <line x1="7" y1="13" x2="15" y2="13"/>
-            <line x1="7" y1="17" x2="12" y2="17"/>
-          </svg>
+          <img class="api-platform-logo" src="/API/comicvine_logo.png" alt="Comic Vine" />
         </button>
         <span class="api-platform-label" data-i18n="settings.env_platform_comics_label">{t.settings.env_platform_comics_label}</span>
       </div>
       <div class="api-platform-item">
         <button type="button" class="api-platform-tab-btn" data-platform="apisports" data-i18n-title="settings.env_platform_apisports_title" title={t.settings.env_platform_apisports_title}>
-          <svg class="api-platform-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M7 14h3m4 0h3m-10 4h3"/>
-          </svg>
+          <img class="api-platform-logo" src="/platforms/Event_logo.png" alt="" />
         </button>
         <span class="api-platform-label" data-i18n="settings.env_platform_events_label">{t.settings.env_platform_events_label}</span>
       </div>
       <div class="api-platform-item">
         <button type="button" class="api-platform-tab-btn" data-platform="retroachievements" data-i18n-title="retro_achievements.settings_platform_title" title={t.retro_achievements.settings_platform_title}>
-          <svg class="api-platform-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-          </svg>
+          <img class="api-platform-logo" src="/platforms/Retroachivements.png" alt="RetroAchievements" />
         </button>
         <span class="api-platform-label" data-i18n="retro_achievements.settings_platform_label">{t.retro_achievements.settings_platform_label}</span>
+      </div>
+      <div class="api-platform-item">
+        <button type="button" class="api-platform-tab-btn" data-platform="google" data-i18n-title="backup.env_platform_title" title={t.backup.env_platform_title}>
+          <img class="api-platform-logo" src="/platforms/Google-Drive_logo.png" alt="Google Drive" />
+        </button>
+        <span class="api-platform-label" data-i18n="backup.env_platform_label">{t.backup.env_platform_label}</span>
       </div>
     </div>
 
@@ -273,6 +271,24 @@ const { t } = Astro.props;
         <p class="settings-hint" data-i18n="retro_achievements.settings_note">{t.retro_achievements.settings_note}</p>
       </div>
 
+      <!-- Form: Google OAuth client for Drive backups (src-tauri/src/google_drive; docs/BACKUPS.md) -->
+      <div class="api-platform-form-block hidden" id="api-form-google">
+        <div class="env-service-header env-service-header--api">
+          <span class="api-form-service-title" data-i18n="backup.env_google_title">{t.backup.env_google_title}</span>
+        </div>
+        <div class="env-fields env-fields--row">
+          <div class="env-field">
+            <label class="env-label" for="google-client-id" data-i18n="backup.env_google_client_id">{t.backup.env_google_client_id}</label>
+            <input class="env-input" type="text" id="google-client-id" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="env-field">
+            <label class="env-label" for="google-client-secret" data-i18n="backup.env_google_client_secret">{t.backup.env_google_client_secret}</label>
+            <input class="env-input" type="password" id="google-client-secret" placeholder="GOCSPX-…" autocomplete="off" />
+          </div>
+        </div>
+        <p class="settings-hint" data-i18n="backup.env_google_hint">{t.backup.env_google_hint}</p>
+      </div>
+
     </div>
 
     <div class="settings-divider settings-divider--actions env-actions-center">
@@ -299,5 +315,78 @@ const { t } = Astro.props;
       📁 <span data-i18n="settings.env_open_folder">{t.settings.env_open_folder}</span>
     </button>
   </div>
+
+  <!-- Updates & maintenance (formerly its own "What's new" tab). Element ids
+       are unchanged, so the updater / community-catalog / character-id
+       mount scripts keep binding to them. -->
+  {!onboarding && (
+    <div class="settings-section settings-novedades-section" id="settings-updates">
+      <h3 class="settings-section-title" data-i18n="settings.tab_novedades">{t.settings.tab_novedades}</h3>
+
+    <div class="settings-novedades-cards">
+      <div class="settings-novedades-card-wrap">
+        <div class="settings-version-card">
+          <div class="settings-novedades-version-heading">
+            <span class="settings-auth-name" data-i18n="settings.app_version_label">{t.settings.app_version_label}</span>
+            <span
+              class="app-curr-ver settings-auth-status settings-auth-status--mono"
+              data-version={version}
+            ></span>
+          </div>
+          <button
+            class="btn btn--sm btn--secondary"
+            id="app-check-update-btn" data-i18n="settings.app_check_update">{t.settings.app_check_update}</button
+          >
+          <!-- Opens the "What's new" history (ChangelogLauncher in BaseLayout). -->
+          <button
+            type="button"
+            class="btn btn--sm btn--secondary"
+            data-open-changelog
+            data-i18n="changelog.view_button">{t.changelog.view_button}</button
+          >
+        </div>
+        <div
+          id="updater-status-text"
+          class="settings-novedades-status"
+        >
+        </div>
+      </div>
+
+      <div class="settings-novedades-card-wrap">
+        <div class="settings-version-card">
+          <div class="settings-novedades-card-heading">
+            <span class="settings-auth-name" data-i18n="settings.community_catalog_sync_label">{t.settings.community_catalog_sync_label}</span>
+          </div>
+          <button
+            class="btn btn--sm btn--secondary"
+            id="community-catalog-sync-btn" data-i18n="settings.community_catalog_sync_btn">{t.settings.community_catalog_sync_btn}</button
+          >
+        </div>
+        <div
+          id="community-catalog-sync-status"
+          class="settings-novedades-status"
+        >
+        </div>
+      </div>
+
+      <div class="settings-novedades-card-wrap">
+        <div class="settings-version-card">
+          <div class="settings-novedades-card-heading">
+            <span class="settings-auth-name" data-i18n="settings.fix_character_ids_label">{t.settings.fix_character_ids_label}</span>
+          </div>
+          <button
+            class="btn btn--sm btn--secondary"
+            id="fix-character-ids-btn" data-i18n="settings.fix_character_ids_btn">{t.settings.fix_character_ids_btn}</button
+          >
+        </div>
+        <div
+          id="fix-character-ids-status"
+          class="settings-novedades-status"
+        >
+        </div>
+      </div>
+    </div>
+    </div>
+  )}
 
 </div>

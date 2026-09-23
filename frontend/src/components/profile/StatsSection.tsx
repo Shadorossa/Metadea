@@ -35,24 +35,24 @@ interface StatsData {
 
 interface Props {
   // Someone else's profile (UserProfileView) already has the mapped
-  // library, the viewer's own catalogMap, and the reshaped activity journey
-  // in hand — passing them in skips this component's own local-only fetch.
-  // Every stat here is computed purely from those three inputs, so nothing
-  // else needs to change for it to work on someone else's data — minutes
-  // spent/hours will just read 0 since that isn't synced. Saga relations
-  // aren't part of what's synced either — omitting them just means a saga
-  // (e.g. Gintama's seasons) shows as N separate completed works instead of
-  // 1, same as before this collapsing existed.
+  // library, the viewer's own catalogMap, the reshaped activity journey and
+  // the scoped saga relations in hand — passing them in skips this
+  // component's own local-only fetch. Every stat here is computed purely
+  // from those inputs — including the owner's real minutes_spent when their
+  // app synced it (toLibraryEntry only estimates it for older profiles).
   overrideItems?: Items;
   overrideCatalogMap?: Map<string, CatalogSummary>;
   overrideJourney?: StatsData['journey'];
+  overrideRelations?: DbMediaRelation[];
+  /** Someone else's profile: no "add something" call to action. */
+  readOnly?: boolean;
 }
 
-export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourney }: Props = {}) {
+export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourney, overrideRelations, readOnly }: Props = {}) {
   const t = getT();
   const p = t.profile;
   const [data, setData] = useState<StatsData | null>(
-    overrideItems ? { items: overrideItems, catalogMap: overrideCatalogMap ?? new Map(), system: getActiveRatingSystem(), journey: overrideJourney ?? [], relations: [] } : null
+    overrideItems ? { items: overrideItems, catalogMap: overrideCatalogMap ?? new Map(), system: getActiveRatingSystem(), journey: overrideJourney ?? [], relations: overrideRelations ?? [] } : null
   );
 
   useEffect(() => {
@@ -91,7 +91,7 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
       <div className="profile-empty">
         <span className="profile-empty-icon">📊</span>
         <p>{p.stats_empty}</p>
-        {!overrideItems && <a href="/search">{p.empty_cta}</a>}
+        {!readOnly && <a href="/search">{p.empty_cta}</a>}
       </div>
     );
   }

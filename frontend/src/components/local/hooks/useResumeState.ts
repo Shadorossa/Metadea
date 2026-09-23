@@ -12,8 +12,8 @@ export interface ResumeState {
   readingProgress: ReadingProgress | null;
 }
 
-// Where the next episode/volume was left off — VLC's saved position for
-// video, the reader's saved page for comics/books. Re-read whenever the
+// Where the next episode/volume was left off — the player's saved position
+// for video, the reader's saved page for comics/books. Re-read whenever the
 // target episode changes, or when this item's playback session /
 // reader modal comes and goes (the position may have moved meanwhile).
 export function useResumeState(

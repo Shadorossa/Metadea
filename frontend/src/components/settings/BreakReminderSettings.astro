@@ -1,0 +1,76 @@
+---
+// Settings › Accessibility › Break reminder + Clock alerts. Rust schedules both
+// (src-tauri/src/game_break_reminder.rs); behaviour in
+// mount/break-reminder-settings.ts, the list is filled there.
+import type { Translations } from '../../i18n/index';
+import '../../styles/pages/settings-break-reminder.css';
+import { CLOCK_ALERT_PRESET, MAX_INTERVAL_HOURS } from '../../lib/local/break-reminder';
+
+interface Props {
+  t: Translations;
+}
+const { t } = Astro.props;
+const fill = (template: string, vars: Record<string, string | number>) =>
+  Object.entries(vars).reduce((acc, [key, value]) => acc.replace(`{${key}}`, String(value)), template);
+---
+
+<div class="break-reminder-settings" id="break-reminder-settings">
+  <!-- One hours box: 0 (or empty) = off, otherwise every N hours (0.5–12). -->
+  <div class="break-reminder-col">
+    <div class="break-reminder-label">
+      <label class="form-label" for="break-reminder-interval" data-i18n="settings.break_reminder_title">{t.settings.break_reminder_title}</label>
+      <span class="break-reminder-hours">
+        <input
+          class="form-input break-reminder-input"
+          type="number"
+          id="break-reminder-interval"
+          min="0"
+          max={MAX_INTERVAL_HOURS}
+          step="0.5"
+          inputmode="decimal"
+          placeholder="0"
+          title={t.settings.break_reminder_hours}
+          data-i18n-title="settings.break_reminder_hours"
+        />
+        <span class="break-reminder-unit" aria-hidden="true" data-i18n="settings.break_reminder_hours_suffix">{t.settings.break_reminder_hours_suffix}</span>
+      </span>
+      <span class="settings-help-btn break-reminder-info" tabindex="0" role="img" title={t.settings.break_reminder_info} data-i18n-title="settings.break_reminder_info" aria-label={t.settings.break_reminder_info} data-i18n-aria-label="settings.break_reminder_info">
+        <span class="info-indicator" aria-hidden="true">i</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="break-reminder-col">
+    <div class="break-reminder-label">
+      <span class="form-label" data-i18n="settings.clock_alerts_title">{t.settings.clock_alerts_title}</span>
+      <span class="settings-help-btn break-reminder-info" tabindex="0" role="img" title={t.settings.clock_alerts_info} data-i18n-title="settings.clock_alerts_info" aria-label={t.settings.clock_alerts_info} data-i18n-aria-label="settings.clock_alerts_info">
+        <span class="info-indicator" aria-hidden="true">i</span>
+      </span>
+    </div>
+    <div class="clock-alerts-add">
+      <input
+        class="form-input clock-alerts-time"
+        type="time"
+        id="clock-alerts-time"
+        step="60"
+        aria-label={t.settings.clock_alerts_time}
+        data-i18n-aria-label="settings.clock_alerts_time"
+      />
+      <button type="button" class="btn btn--sm btn--secondary" id="clock-alerts-add" data-i18n="settings.clock_alerts_add">{t.settings.clock_alerts_add}</button>
+      <button
+        type="button"
+        class="clock-alerts-chip"
+        id="clock-alerts-preset"
+        data-time={CLOCK_ALERT_PRESET}
+        aria-label={fill(t.settings.clock_alerts_add_time, { time: CLOCK_ALERT_PRESET })}
+        data-i18n-aria-label="settings.clock_alerts_add_time"
+        data-i18n-vars={JSON.stringify({ time: CLOCK_ALERT_PRESET })}
+      >+ {CLOCK_ALERT_PRESET}</button>
+    </div>
+    <div class="clock-alerts-current">
+      <ul class="clock-alerts-list" id="clock-alerts-list"></ul>
+      <p class="settings-hint clock-alerts-empty" id="clock-alerts-empty" data-i18n="settings.clock_alerts_empty">{t.settings.clock_alerts_empty}</p>
+    </div>
+    <p class="settings-hint clock-alerts-limit" id="clock-alerts-limit" hidden data-i18n="settings.clock_alerts_limit">{t.settings.clock_alerts_limit}</p>
+  </div>
+</div>

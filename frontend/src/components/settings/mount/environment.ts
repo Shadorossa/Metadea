@@ -25,6 +25,8 @@ const ENV_FIELDS: Array<[keyof EnvConfig, string]> = [
   ['ra_username',        'ra-username'],
   ['ra_api_key',         'ra-api-key'],
   ['mal_client_id',      'mal-client-id'],
+  ['google_client_id',     'google-client-id'],
+  ['google_client_secret', 'google-client-secret'],
 ];
 
 export async function initEnvironment(showToast: (msg?: string) => void) {

@@ -1,5 +1,4 @@
 import { invoke, tauriCmd } from './bridge';
-import type { LocalScreenshot } from './anime-local';
 
 export interface EmulatorConfig {
   emulator_name: string;
@@ -8,37 +7,36 @@ export interface EmulatorConfig {
   rom_folder: string;
   /** Legacy persisted field; monitoring is fixed to process mode. */
   tracking_mode: string;
-  /** Extensions (lowercase, no dot) the ROM scanner considers; always the
-   *  effective list when read (the platform default when never customised). */
+  /** Read-only: the extensions (lowercase, no dot) the ROM scanner uses,
+   *  i.e. the chosen emulator's compatible list, or the platform default
+   *  without a known emulator (emulators::scan_rom_extensions). */
   rom_extensions: string[];
-  /** Folder the emulator writes screenshots to; '' = auto-detected from the
-   *  executable's layout (see emulators::default_screenshots_dirs). */
+  /** Override of the folder the emulator itself writes screenshots to (the
+   *  SOURCE they are moved from), for emulators not auto-detected; '' =
+   *  detected from the executable's layout (emulators::default_screenshots_dirs).
+   *  Captures always end up in Pictures/Metadea/<game>/. */
   screenshots_dir: string;
-}
-
-export interface EmulatorScreenshots {
-  screenshots: LocalScreenshot[];
-  // false when nothing in the folder could be tied to this game, so the
-  // list is the emulator's recent captures for the platform instead.
-  filtered: boolean;
 }
 
 export async function readEmulatorsConfig(): Promise<Record<string, EmulatorConfig>> {
   return invoke('read_emulators_config');
 }
 
-// The emulator's own captures for a ROM (see get_emulator_screenshots);
-// empty when the platform has no emulator or no capture folder resolves.
-export async function getEmulatorScreenshots(
+// Moves this ROM's captures still sitting in the emulator's own folder into
+// Pictures/Metadea/<title>/ (see import_emulator_screenshots), where
+// getLocalScreenshots lists them; resolves to how many were moved. A no-op
+// once done, since moved captures are gone from the emulator's folder.
+export async function importEmulatorScreenshots(
   platformId: string,
   romPath: string,
-  options: { headerId?: string | null; title?: string | null } = {},
-): Promise<EmulatorScreenshots> {
-  return tauriCmd<EmulatorScreenshots>('get_emulator_screenshots', { screenshots: [], filtered: true }, {
+  title: string,
+  headerId?: string | null,
+): Promise<number> {
+  return tauriCmd<number>('import_emulator_screenshots', 0, {
     platformId,
     romPath,
-    headerId: options.headerId ?? null,
-    title: options.title ?? null,
+    title,
+    headerId: headerId ?? null,
   });
 }
 

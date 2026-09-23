@@ -1,0 +1,356 @@
+{
+  "valid": [
+    {
+      "name": "game with IGDB cover",
+      "path": "/g/2136/bayonetta-2009/hsac-86-co9xp1",
+      "data": {
+        "externalId": "game:2136",
+        "title": "Bayonetta",
+        "year": 2009,
+        "genres": [
+          "Hack and Slash",
+          "Action"
+        ],
+        "score": 86,
+        "cover": "co9xp1"
+      }
+    },
+    {
+      "name": "manga with AniList cover",
+      "path": "/m/30013/one-piece-1997/acadco-92-xmbx30013~tZn2PIpT7vdK.png",
+      "data": {
+        "externalId": "manga:30013",
+        "title": "One Piece",
+        "year": 1997,
+        "genres": [
+          "Action",
+          "Adventure",
+          "Comedy"
+        ],
+        "score": 92,
+        "cover": "xmbx30013~tZn2PIpT7vdK.png"
+      }
+    },
+    {
+      "name": "light novel, accents",
+      "path": "/n/85737/pokemon-ete-a-zurich-2015/fa---UG9rw6ltb246IMOJdMOpIMOgIFrDvHJpY2g",
+      "data": {
+        "externalId": "lnovel:85737",
+        "title": "Pokémon: Été à Zürich",
+        "year": 2015,
+        "genres": [
+          "Fantasy"
+        ]
+      }
+    },
+    {
+      "name": "visual novel, VNDB cover",
+      "path": "/v/12342/steins-gate-2009/vnsf-90-v12342-U3RlaW5zO0dhdGU",
+      "data": {
+        "externalId": "vnovel:12342",
+        "title": "Steins;Gate",
+        "year": 2009,
+        "genres": [
+          "Visual Novel",
+          "Sci-Fi"
+        ],
+        "score": 90,
+        "cover": "v12342"
+      }
+    },
+    {
+      "name": "series, TMDB poster",
+      "path": "/s/1396/breaking-bad-2008/drcr-89-tggFHVNu6YYI5L9pCfOacjizRGt.jpg",
+      "data": {
+        "externalId": "series:1396",
+        "title": "Breaking Bad",
+        "year": 2008,
+        "genres": [
+          "Drama",
+          "Crime"
+        ],
+        "score": 89,
+        "cover": "tggFHVNu6YYI5L9pCfOacjizRGt.jpg"
+      }
+    },
+    {
+      "name": "movie titled with four digits, no year",
+      "path": "/f/335984/blade-runner-2049-_/sf--",
+      "data": {
+        "externalId": "movie:335984",
+        "title": "Blade Runner 2049",
+        "genres": [
+          "Sci-Fi"
+        ]
+      }
+    },
+    {
+      "name": "book, Open Library cover",
+      "path": "/b/OL82563W/harry-potter-and-the-philosophers-stone-1997/faya-80-o10521270-SGFycnkgUG90dGVyIGFuZCB0aGUgUGhpbG9zb3BoZXIncyBTdG9uZQ",
+      "data": {
+        "externalId": "book:OL82563W",
+        "title": "Harry Potter and the Philosopher's Stone",
+        "year": 1997,
+        "genres": [
+          "Fantasy",
+          "Young Adult"
+        ],
+        "score": 80,
+        "cover": "o10521270"
+      }
+    },
+    {
+      "name": "comic, ComicVine cover",
+      "path": "/c/4050-796/watchmen-1986/--k6_67663_5387463~01.jpg",
+      "data": {
+        "externalId": "comic:4050-796",
+        "title": "Watchmen",
+        "year": 1986,
+        "genres": [],
+        "cover": "k6_67663_5387463~01.jpg"
+      }
+    },
+    {
+      "name": "event id with provider prefix and colons",
+      "path": "/e/apisports~football~39~2024.252F25/premier-league-2024/--",
+      "data": {
+        "externalId": "event:apisports:football:39:2024%2F25",
+        "title": "Premier League",
+        "year": 2024,
+        "genres": []
+      }
+    },
+    {
+      "name": "Japanese title",
+      "path": "/a/5114/fullmetal-alchemist-2009/acad-90--6Yu844Gu6Yys6YeR6KGT5birIEZVTExNRVRBTCBBTENIRU1JU1Q",
+      "data": {
+        "externalId": "anime:5114",
+        "title": "鋼の錬金術師 FULLMETAL ALCHEMIST",
+        "year": 2009,
+        "genres": [
+          "Action",
+          "Adventure"
+        ],
+        "score": 90
+      }
+    },
+    {
+      "name": "Japanese-only title",
+      "path": "/m/1/_/---6JGs6YCB44Gu44OV44Oq44O844Os44Oz",
+      "data": {
+        "externalId": "manga:1",
+        "title": "葬送のフリーレン",
+        "genres": []
+      }
+    },
+    {
+      "name": "emoji title, Steam cover, zero score",
+      "path": "/g/1145360/hades-2020/acrpin-0-s1145360-SGFkZXMg8J-UpQ",
+      "data": {
+        "externalId": "game:1145360",
+        "title": "Hades 🔥",
+        "year": 2020,
+        "genres": [
+          "Action",
+          "Role-playing (RPG)",
+          "Indie"
+        ],
+        "score": 0,
+        "cover": "s1145360"
+      }
+    },
+    {
+      "name": "game, custom Worker cover",
+      "path": "/g/1/custom/--imaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "data": {
+        "externalId": "game:1",
+        "title": "Custom",
+        "genres": [],
+        "cover": "imaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "name": "anime, AniList banner hash plus cover",
+      "path": "/a/161645/kusuriya-no-hitorigoto-2023/drmy-88-b.oqzTZYIvviWI.xabx161645~QLbzHXiYRgV2.jpg",
+      "data": {
+        "externalId": "anime:161645",
+        "title": "Kusuriya no Hitorigoto",
+        "year": 2023,
+        "genres": [
+          "Drama",
+          "Mystery"
+        ],
+        "score": 88,
+        "banner": "oqzTZYIvviWI",
+        "cover": "xabx161645~QLbzHXiYRgV2.jpg"
+      }
+    },
+    {
+      "name": "manga, AniList banner without hash, png",
+      "path": "/m/30013/one-piece-1997/acadco-92-b.~png.xmbx30013~tZn2PIpT7vdK.png",
+      "data": {
+        "externalId": "manga:30013",
+        "title": "One Piece",
+        "year": 1997,
+        "genres": [
+          "Action",
+          "Adventure",
+          "Comedy"
+        ],
+        "score": 92,
+        "banner": "~png",
+        "cover": "xmbx30013~tZn2PIpT7vdK.png"
+      }
+    },
+    {
+      "name": "game, IGDB artwork banner plus cover",
+      "path": "/g/2136/bayonetta-2009/shhsad-86-b.onbkmlwypoqawqecxyhz.co9xp1",
+      "data": {
+        "externalId": "game:2136",
+        "title": "Bayonetta",
+        "year": 2009,
+        "genres": [
+          "Shooter",
+          "Hack and Slash",
+          "Adventure"
+        ],
+        "score": 86,
+        "banner": "onbkmlwypoqawqecxyhz",
+        "cover": "co9xp1"
+      }
+    },
+    {
+      "name": "series, TMDB backdrop plus poster",
+      "path": "/s/1396/breaking-bad-2008/drcr-89-b.9faGSFi5jam6pDWGNd0p8JcJgXQ.tggFHVNu6YYI5L9pCfOacjizRGt.jpg",
+      "data": {
+        "externalId": "series:1396",
+        "title": "Breaking Bad",
+        "year": 2008,
+        "genres": [
+          "Drama",
+          "Crime"
+        ],
+        "score": 89,
+        "banner": "9faGSFi5jam6pDWGNd0p8JcJgXQ",
+        "cover": "tggFHVNu6YYI5L9pCfOacjizRGt.jpg"
+      }
+    },
+    {
+      "name": "book, custom Worker banner only",
+      "path": "/b/OL1W/x/--b.imcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "data": {
+        "externalId": "book:OL1W",
+        "title": "X",
+        "genres": [],
+        "banner": "imcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    },
+    {
+      "name": "anime, AniList banner only (no trailing dot)",
+      "path": "/a/161645/kusuriya-no-hitorigoto-2023/drmy-88-b.oqzTZYIvviWI",
+      "data": {
+        "externalId": "anime:161645",
+        "title": "Kusuriya no Hitorigoto",
+        "year": 2023,
+        "genres": [
+          "Drama",
+          "Mystery"
+        ],
+        "score": 88,
+        "banner": "oqzTZYIvviWI"
+      }
+    }
+  ],
+  "legacy": [
+    {
+      "name": "legacy bare b: anime with AniList banner",
+      "path": "/a/147105/tongari-boushi-no-atelier-2026/addrfa-85-b",
+      "data": {
+        "externalId": "anime:147105",
+        "title": "Tongari Boushi no Atelier",
+        "year": 2026,
+        "genres": [
+          "Adventure",
+          "Drama",
+          "Fantasy"
+        ],
+        "score": 85
+      }
+    },
+    {
+      "name": "legacy bare b: anime, romaji particles",
+      "path": "/a/161645/kusuriya-no-hitorigoto-2023/drmy-88-b",
+      "data": {
+        "externalId": "anime:161645",
+        "title": "Kusuriya no Hitorigoto",
+        "year": 2023,
+        "genres": [
+          "Drama",
+          "Mystery"
+        ],
+        "score": 88
+      }
+    },
+    {
+      "name": "legacy bare b before a title token",
+      "path": "/a/5114/fullmetal-alchemist-2009/acad-90-b-6Yu844Gu6Yys6YeR6KGT5birIEZVTExNRVRBTCBBTENIRU1JU1Q",
+      "data": {
+        "externalId": "anime:5114",
+        "title": "鋼の錬金術師 FULLMETAL ALCHEMIST",
+        "year": 2009,
+        "genres": [
+          "Action",
+          "Adventure"
+        ],
+        "score": 90
+      }
+    },
+    {
+      "name": "legacy bare b plus custom cover",
+      "path": "/a/2/custom-anime/--bimbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "data": {
+        "externalId": "anime:2",
+        "title": "Custom Anime",
+        "genres": [],
+        "cover": "imbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "name": "legacy trailing dot after a banner-only token",
+      "path": "/b/OL1W/x/--b.imcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.",
+      "data": {
+        "externalId": "book:OL1W",
+        "title": "X",
+        "genres": [],
+        "banner": "imcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    }
+  ],
+  "invalid": [
+    "/x/1/a/--",
+    "/g/1/a",
+    "/g/1/a/--/extra",
+    "/g//a/--",
+    "/g/1/A/--",
+    "/g/1/a/---",
+    "/g/1/a/--co..",
+    "/g/1/a/-101-",
+    "/g/1/a/zz-5",
+    "/g/1/a/--bad!",
+    "/g/1/a/--zz9",
+    "/g/%3Cscript%3E/a/--",
+    "/g/1.2/a/--",
+    "/g/1.ZZ/a/--",
+    "/g/1/a/---!!!",
+    "/g/1/a/--co1-@@",
+    "/g/1/a b/--",
+    "/g/1/a__b/--",
+    "/g/1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111/a/--",
+    "/g/1/a/--xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "/b/1/a/--b.abc.",
+    "/g/1/a/--b.ABC.",
+    "/a/1/a/--b.abc.zz9",
+    "/a/1/a/--b.abc~bmp.",
+    "/f/1/a/--b.."
+  ]
+}

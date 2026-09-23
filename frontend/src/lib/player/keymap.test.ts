@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolvePlayerKeyAction, isPlayerHandledKey, SEEK_STEP_SECONDS, SEEK_LARGE_STEP_SECONDS, VOLUME_STEP, SUB_DELAY_STEP_SECONDS,
-  PLAYER_KEY_BINDINGS, SPEED_STEP, clampSpeed,
+  PLAYER_KEY_BINDINGS, SPEED_STEP, clampSpeed, CLIP_KEY_BINDINGS, clipKeyConflicts,
 } from './keymap';
 
 describe('resolvePlayerKeyAction', () => {
@@ -65,5 +65,16 @@ describe('resolvePlayerKeyAction', () => {
       expect(binding.id.startsWith('player.')).toBe(true);
       expect(binding.description.startsWith('shortcuts.player_')).toBe(true);
     }
+  });
+});
+
+describe('clip mode keys', () => {
+  it('only shadow the speed keys, and only while clip mode is on', () => {
+    expect(clipKeyConflicts().sort()).toEqual(['player.speed_down', 'player.speed_up']);
+  });
+
+  it('use unique ids and combos', () => {
+    expect(new Set(CLIP_KEY_BINDINGS.map(binding => binding.id)).size).toBe(CLIP_KEY_BINDINGS.length);
+    expect(new Set(CLIP_KEY_BINDINGS.map(binding => binding.keys)).size).toBe(CLIP_KEY_BINDINGS.length);
   });
 });

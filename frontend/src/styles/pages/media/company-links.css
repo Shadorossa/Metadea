@@ -1,0 +1,42 @@
+/* Company names on the media page hero (components/media/media-page/
+   CompanyLinks.tsx) link to /company; they keep the look of the text they
+   replace and only show they are links on hover/focus. */
+.company-name-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color var(--anim-fast), border-color var(--anim-fast);
+}
+
+.company-name-link:hover,
+.company-name-link:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent-border);
+  outline: none;
+}
+
+/* Record labels among an anime's producers (CompanyLinks.tsx PublisherLine):
+   folded behind a small toggle, dimmed once revealed. */
+.company-name--music {
+  opacity: 0.75;
+}
+
+.company-music-toggle {
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.66rem;
+  cursor: pointer;
+  transition: color var(--anim-fast), border-color var(--anim-fast);
+}
+
+.company-music-toggle:hover,
+.company-music-toggle:focus-visible {
+  color: var(--text-main);
+  border-color: var(--accent-border);
+  outline: none;
+}

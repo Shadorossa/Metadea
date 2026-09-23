@@ -60,7 +60,7 @@ impl RenameGuard {
 
 // The on-disk cover/banner cache (igdb/cache.rs) is a folder per app_id
 // plus an index.json keyed by it — both follow the id.
-fn move_metadata_entry(meta_root: &Path, old_id: &str, new_id: &str) {
+pub(crate) fn move_metadata_entry(meta_root: &Path, old_id: &str, new_id: &str) {
     let old_dir = meta_root.join(old_id);
     let new_dir = meta_root.join(new_id);
     if old_dir.is_dir() && !new_dir.exists() {

@@ -18,6 +18,12 @@ pub struct EnvConfig {
     pub ra_api_key: Option<String>,
     // MyAnimeList OAuth client id (src/mal reads it).
     pub mal_client_id: Option<String>,
+    // Google OAuth client for Drive backups (src/google_drive). Overrides the
+    // build-time METADEA_GOOGLE_CLIENT_ID / _SECRET when set.
+    #[serde(default)]
+    pub google_client_id: Option<String>,
+    #[serde(default)]
+    pub google_client_secret: Option<String>,
 }
 
 pub(crate) fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
@@ -26,7 +32,7 @@ pub(crate) fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String
         "SELECT name, value FROM app_env WHERE name IN (
             'anilist_client_id','igdb_client_id','igdb_client_secret',
             'steam_api_key','tmdb_access_token','tmdb_api_key','comicvine_api_key','apisports_api_key',
-            'ra_username','ra_api_key','mal_client_id'
+            'ra_username','ra_api_key','mal_client_id','google_client_id','google_client_secret'
          )"
     ).str_err()?;
     let mut cfg = EnvConfig {
@@ -37,6 +43,8 @@ pub(crate) fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String
         ra_username: None,
         ra_api_key: None,
         mal_client_id: None,
+        google_client_id: None,
+        google_client_secret: None,
     };
     let rows: Vec<(String, String)> = stmt
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
@@ -58,6 +66,8 @@ pub(crate) fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String
             "ra_username"        => cfg.ra_username        = opt,
             "ra_api_key"         => cfg.ra_api_key         = opt,
             "mal_client_id"      => cfg.mal_client_id      = opt,
+            "google_client_id"     => cfg.google_client_id     = opt,
+            "google_client_secret" => cfg.google_client_secret = opt,
             _ => {}
         }
     }
@@ -93,6 +103,8 @@ pub async fn write_env_config(
         ("ra_username",        config.ra_username.as_deref().unwrap_or("")),
         ("ra_api_key",         config.ra_api_key.as_deref().unwrap_or("")),
         ("mal_client_id",      config.mal_client_id.as_deref().unwrap_or("")),
+        ("google_client_id",     config.google_client_id.as_deref().unwrap_or("")),
+        ("google_client_secret", config.google_client_secret.as_deref().unwrap_or("")),
     ];
     for (name, value) in pairs {
         // An empty value means "unset" to env_from_db, so it stays empty.

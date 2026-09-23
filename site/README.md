@@ -2,6 +2,22 @@
 
 Plain HTML, no build step. Currently holds only the deep-link redirect page.
 
+Links copied from the app ("Copy link", `l`) and the Discord "Open in Metadea"
+button now use the rich share links served by the `metadea` Worker (repo
+`metadea-web`, route `src/routes/share.ts`), whose Discord/Open Graph preview
+shows the work:
+
+```
+https://metadea.metadea.workers.dev/g/2136/bayonetta-2009/hsac-86-co9xp1
+```
+
+The format is defined by `frontend/src/lib/deep-link/share-link-codec.ts`,
+duplicated byte-for-byte as `metadea-web/src/services/share-codec.ts`; both
+repos test their copy against the same `share-link-fixtures.json`, so change
+the two codecs and the two fixture files together. `open/` stays as the
+fallback: links without enough catalog data, and malformed share links (the
+Worker redirects those here).
+
 ## `open/` — https redirect to `metadea://`
 
 Discord Rich Presence buttons (and most chats) only accept `https://` links, so

@@ -1,6 +1,6 @@
 // Home's "Continue watching" card: the raw candidates for "the last thing
-// watched" in one round trip — the latest resume-position updates (VLC and
-// the built-in player both write them), the latest watched-episode history
+// watched" in one round trip — the latest resume-position updates (written
+// by the built-in player), the latest watched-episode history
 // entries, the built-in player's stop frames (player/continue_frame.rs) and
 // the cached per-episode name/still for every candidate episode. Picking
 // the winner is frontend logic (lib/home/continue-watching.ts, tested).

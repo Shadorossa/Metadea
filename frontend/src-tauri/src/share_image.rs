@@ -17,7 +17,7 @@ use tauri_plugin_dialog::DialogExt;
 // A cover URL reaching here comes from the community catalog, i.e. from a
 // third-party pull request. Without these guards the command is a general
 // purpose fetch primitive: it would happily pull `http://127.0.0.1:.../` (the
-// VLC control interface listens there) or stream an unbounded body into
+// any local service listening there) or stream an unbounded body into
 // memory, base64 included.
 const MAX_IMAGE_BYTES: usize = 20 * 1024 * 1024;
 
@@ -120,6 +120,9 @@ pub async fn save_image_file(
     // bridge, rather than a raw byte array.
     data_url: String,
     default_name: String,
+    // Opens the dialog in Pictures/Metadea (created on demand) instead of
+    // wherever it was last. Optional so older callers keep the OS default.
+    in_pictures_folder: Option<bool>,
 ) -> Result<Option<String>, String> {
     let b64 = data_url
         .split_once("base64,")
@@ -127,15 +130,33 @@ pub async fn save_image_file(
         .unwrap_or(&data_url);
     let bytes = base64_decode(b64)?;
 
-    let picked = app_handle
+    let mut dialog = app_handle
         .dialog()
         .file()
         .set_file_name(&default_name)
-        .add_filter("PNG Image", &["png"])
-        .blocking_save_file();
+        .add_filter("PNG Image", &["png"]);
+    if in_pictures_folder.unwrap_or(false) {
+        if let Some(dir) = pictures_metadea_dir(&app_handle) {
+            dialog = dialog.set_directory(dir);
+        }
+    }
+    let picked = dialog.blocking_save_file();
 
     let Some(path) = picked else { return Ok(None) };
     let path_str = path.to_string();
     std::fs::write(&path_str, &bytes).map_err(|e| e.to_string())?;
     Ok(Some(path_str))
+}
+
+/// Pictures/Metadea, created if missing; Pictures itself when it cannot be
+/// created; None when the OS has no pictures folder.
+fn pictures_metadea_dir(app_handle: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    use tauri::Manager;
+    let pictures = app_handle.path().picture_dir().ok()?;
+    let target = pictures.join("Metadea");
+    if std::fs::create_dir_all(&target).is_ok() {
+        Some(target)
+    } else {
+        Some(pictures)
+    }
 }

@@ -7,18 +7,19 @@ import {
   ICON_SETTINGS_APPEARANCE,
   ICON_SETTINGS_CONNECTIONS,
   ICON_SETTINGS_ENVIRONMENT,
-  ICON_SETTINGS_NOVEDADES,
   ICON_SETTINGS_ADMIN,
   ICON_SETTINGS_PREFERENCES,
+  ICON_SETTINGS_ACCESSIBILITY,
 } from "../lib/dom/icon-strings";
 import ProfileTab from "../components/settings/ProfileTab.astro";
 import PreferencesTab from "../components/settings/PreferencesTab.astro";
 import EnvironmentTab from "../components/settings/EnvironmentTab.astro";
 import ConnectionsTab from "../components/settings/ConnectionsTab.astro";
-import NovedadesTab from "../components/settings/WhatsNewTab.astro";
 import EmulatorsTab from "../components/settings/EmulatorsTab.astro";
+import AccessibilityTab from "../components/settings/AccessibilityTab.astro";
 import HelpModals from "../components/settings/HelpModals.astro";
 import BackupRestoreTab from "../components/settings/BackupRestoreTab.astro";
+import PluginsTab from "../components/settings/PluginsTab.astro";
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -66,9 +67,9 @@ const version = pkg.version;
           </svg>
           <span data-i18n="settings.tab_emulators">{t.settings.tab_emulators}</span>
         </button>
-        <button class="settings-tab" data-tab="novedades">
-          <Fragment set:html={ICON_SETTINGS_NOVEDADES} />
-          <span data-i18n="settings.tab_novedades">{t.settings.tab_novedades}</span>
+        <button class="settings-tab" data-tab="accessibility">
+          <Fragment set:html={ICON_SETTINGS_ACCESSIBILITY} />
+          <span data-i18n="settings.tab_accessibility">{t.settings.tab_accessibility}</span>
         </button>
         <a href="/guide" class="settings-tab" id="settings-guide-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -94,17 +95,24 @@ const version = pkg.version;
           </svg>
           <span data-i18n="settings.tab_backup">{t.settings.tab_backup}</span>
         </button>
+        <button class="settings-tab" data-tab="plugins">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15.39 4.39a1 1 0 0 0 1.68-.47 2.5 2.5 0 1 1 3.01 3.01 1 1 0 0 0-.47 1.68l1.57 1.57c.47.47.7 1.08.7 1.7s-.23 1.23-.7 1.7l-1.6 1.6a1 1 0 0 1-1.61-.37 2.5 2.5 0 1 0-3.21 3.21 1 1 0 0 1 .37 1.61l-1.6 1.6a2.4 2.4 0 0 1-3.4 0l-1.57-1.57a1 1 0 0 0-1.68.47 2.5 2.5 0 1 1-3.01-3.01 1 1 0 0 0 .47-1.68L2.7 13.7a2.4 2.4 0 0 1 0-3.4l1.6-1.6a1 1 0 0 1 1.61.37 2.5 2.5 0 1 0 3.21-3.21 1 1 0 0 1-.37-1.61l1.6-1.6a2.4 2.4 0 0 1 3.4 0z"/>
+          </svg>
+          <span data-i18n="plugins.tab">{t.plugins.tab}</span>
+        </button>
       </aside>
 
       <!-- Contenido -->
       <div class="settings-content">
         <ProfileTab t={t} />
         <PreferencesTab t={t} />
-        <EnvironmentTab t={t} />
+        <EnvironmentTab t={t} version={version} />
         <EmulatorsTab t={t} />
+        <AccessibilityTab t={t} />
         <ConnectionsTab t={t} />
-        <NovedadesTab t={t} version={version} />
         <BackupRestoreTab t={t} />
+        <PluginsTab t={t} />
       </div>
     </div>
   </div>
@@ -123,7 +131,12 @@ const version = pkg.version;
   import { initThemePicker } from "../components/settings/mount/theme";
   import { initEnvironment } from "../components/settings/mount/environment";
   import { initPlayerPreferences } from "../components/settings/mount/player-preferences";
+  import { initBigPicturePreferences } from "../components/settings/mount/big-picture-preferences";
+  import { initAmbientModePreferences } from "../components/settings/mount/ambient-mode-preferences";
+  import { initSpoilerPreferences } from "../components/settings/mount/spoiler-preferences";
   import { initEmulators } from "../components/settings/mount/emulators";
+  import { initSavesSettings } from "../components/settings/mount/saves-settings";
+  import { initBreakReminderSettings } from "../components/settings/mount/break-reminder-settings";
   import { initFontPicker } from "../components/settings/mount/fonts";
   import { initGitHubAuth } from "../components/settings/mount/github";
   import { initAniListAuth } from "../components/settings/mount/anilist";
@@ -136,6 +149,7 @@ const version = pkg.version;
   import { initDualRating } from "../components/settings/mount/dual-rating";
   import { initLanguageSwitcher } from "../components/settings/mount/language";
   import { initBio } from "../components/settings/mount/bio";
+  import { initWebProfile } from "../components/settings/mount/web-profile";
   import { initUpdater } from "../components/settings/mount/updater";
   import { initCommunityCatalogSync } from "../components/settings/mount/community-catalog";
   import { initFixCharacterIds } from "../components/settings/mount/fix-character-ids";
@@ -215,7 +229,12 @@ const version = pkg.version;
     initThemePicker(showToast);
     initEnvironment(showToast);
     initPlayerPreferences();
+    initBigPicturePreferences();
+    initAmbientModePreferences();
+    initSpoilerPreferences(showToast);
     initEmulators(showToast);
+    initSavesSettings(showToast);
+    initBreakReminderSettings(showToast);
     initGitHubAuth();
     initAniListAuth();
     initAniListImportUI(showToast);
@@ -227,6 +246,7 @@ const version = pkg.version;
     initDualRating(showToast);
     initLanguageSwitcher();
     initBio(showToast);
+    initWebProfile(showToast);
 
     // Lógica para alternar las plataformas de API (Paginado)
     const platformBtns = document.querySelectorAll(".api-platform-tab-btn");

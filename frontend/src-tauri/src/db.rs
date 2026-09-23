@@ -905,6 +905,12 @@ CREATE TABLE IF NOT EXISTS social_user_list (
     tags           TEXT,
     status         TEXT,
     progress       REAL,
+    rating_2            REAL,
+    progress_2          REAL,
+    minutes_spent       REAL,
+    reconsumption_count INTEGER,
+    reconsuming         INTEGER,
+    preferred_cover     TEXT,
     PRIMARY KEY (social_user_id, external_id)
 );
 
@@ -917,7 +923,8 @@ CREATE TABLE IF NOT EXISTS social_user_activity (
     progress_end   INTEGER,
     date           TEXT,
     timestamp      TEXT NOT NULL,
-    PRIMARY KEY (social_user_id, timestamp, external_id)
+    occurrence     INTEGER,
+    PRIMARY KEY (social_user_id, timestamp, external_id, event_type)
 );
 
 CREATE TABLE IF NOT EXISTS social_monthly_history (
@@ -946,6 +953,19 @@ CREATE TABLE IF NOT EXISTS social_user_list_items (
     PRIMARY KEY (social_user_id, list_key, external_id)
 );
 CREATE INDEX IF NOT EXISTS idx_social_user_list_items ON social_user_list_items(social_user_id, list_key, position);
+
+-- Their character reactions (like / interest / dislike — see
+-- character_reactions.rs). name/image_url are what they synced, used when
+-- YOUR characters table doesn't have that character.
+CREATE TABLE IF NOT EXISTS social_character_reactions (
+    social_user_id TEXT NOT NULL,
+    reaction       TEXT NOT NULL,
+    external_id    TEXT NOT NULL,
+    position       INTEGER NOT NULL DEFAULT 0,
+    name           TEXT,
+    image_url      TEXT,
+    PRIMARY KEY (social_user_id, external_id)
+);
 
 CREATE TABLE IF NOT EXISTS user_profile (
     id                INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),

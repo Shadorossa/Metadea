@@ -94,7 +94,7 @@ describe('resolveListItemDisplay', () => {
 
   it('links a plain media item to /media with its own cover and title', () => {
     const display = resolveListItemDisplay(item({ external_id: 'anime:1', title_main: 'Naruto', cover_url: 'c.png' }), false, false);
-    expect(display).toEqual({ cover: 'c.png', isEpItem: false, url: '/media?id=anime%3A1', epBadge: null, title: 'Naruto' });
+    expect(display).toEqual({ cover: 'c.png', coverWorkId: 'anime:1', isEpItem: false, url: '/media?id=anime%3A1', epBadge: null, title: 'Naruto' });
   });
 
   it('falls back to the external id as title and an empty cover', () => {

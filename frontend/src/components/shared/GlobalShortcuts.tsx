@@ -9,8 +9,6 @@ import { useShortcuts } from './hooks/useShortcuts';
 import { ShortcutSheet } from './ShortcutSheet';
 
 export const OPEN_QUICK_SEARCH_EVENT = 'metadea:open-quick-search';
-/** Settings › Keyboard shortcuts dispatches this to open the sheet. */
-export const TOGGLE_SHORTCUT_SHEET_EVENT = 'metadea:toggle-shortcut-sheet';
 
 // mod+1 … mod+6, in the navbar's left-to-right order (see Navbar.astro).
 const NAV_ROUTES: ReadonlyArray<{ id: string; description: string; href: string }> = [
@@ -33,11 +31,6 @@ export function GlobalShortcuts() {
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
   useEffect(() => installShortcutDispatcher(), []);
-
-  useEffect(() => {
-    window.addEventListener(TOGGLE_SHORTCUT_SHEET_EVENT, toggleSheet);
-    return () => window.removeEventListener(TOGGLE_SHORTCUT_SHEET_EVENT, toggleSheet);
-  }, [toggleSheet]);
 
   const bindings: ShortcutBinding[] = [
     {

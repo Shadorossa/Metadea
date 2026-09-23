@@ -11,6 +11,7 @@ mod emulator_roms;
 mod epic;
 mod gog;
 mod local_folders;
+pub mod multi_disc;
 pub mod rom_header;
 pub mod rom_library;
 mod scan_cache;

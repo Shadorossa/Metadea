@@ -150,3 +150,11 @@ export function clampVolume(volume: number): number {
 export function currentTheme(state: JukeboxState): FavoriteTheme | null {
   return state.index === null ? null : state.queue[state.index] ?? null;
 }
+
+/** The element's real volume: the user's volume scaled by a temporary duck
+ *  factor (Ambient mode plays the jukebox softly without touching the
+ *  volume the user chose, which is what the strip shows and what is saved). */
+export function effectiveVolume(volume: number, duck: number): number {
+  const factor = Number.isFinite(duck) ? Math.min(1, Math.max(0, duck)) : 1;
+  return clampVolume(volume) * factor;
+}

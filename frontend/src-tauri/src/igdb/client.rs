@@ -10,8 +10,8 @@ pub(crate) const IGDB_API_EXTERNAL_GAMES: &str = "https://api.igdb.com/v4/extern
 pub(super) const IGDB_API_ARTWORKS: &str = "https://api.igdb.com/v4/artworks";
 pub(super) const IGDB_API_SCREENSHOTS: &str = "https://api.igdb.com/v4/screenshots";
 pub(super) const IGDB_API_COVERS: &str = "https://api.igdb.com/v4/covers";
-pub(super) const IGDB_API_MULTIQUERY: &str = "https://api.igdb.com/v4/multiquery";
-pub(super) const IGDB_IMAGE_COVER_BIG: &str = "https://images.igdb.com/igdb/image/upload/t_cover_big";
+pub(crate) const IGDB_API_MULTIQUERY: &str = "https://api.igdb.com/v4/multiquery";
+pub(crate) const IGDB_IMAGE_COVER_BIG: &str = "https://images.igdb.com/igdb/image/upload/t_cover_big";
 pub(super) const IGDB_IMAGE_1080P: &str = "https://images.igdb.com/igdb/image/upload/t_1080p";
 
 pub(crate) const EDITION_KEYWORDS: &[&str] = &[

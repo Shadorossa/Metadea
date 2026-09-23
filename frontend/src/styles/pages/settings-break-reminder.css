@@ -1,0 +1,196 @@
+/* Settings › Accessibility › Play session: break reminder + clock alerts
+   (components/settings/AccessibilityTab.astro + BreakReminderSettings.astro).
+   Two columns on wide screens (break reminder | clock alerts), stacked on
+   narrow ones. Everything at full contrast: this tab is an invitation, not
+   a footnote. */
+.play-session-section {
+  gap: 0.75rem;
+}
+
+.play-session-intro {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+
+.break-reminder-settings {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem 2rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .break-reminder-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.break-reminder-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.break-reminder-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.break-reminder-label .form-label {
+  margin: 0;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+/* Controls share one 32px height so the two columns line up. */
+.break-reminder-settings .form-input,
+.break-reminder-settings .btn--sm {
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.break-reminder-settings .form-input {
+  padding-block: 0.3rem;
+  font-size: 0.8rem;
+}
+
+/* The hours box: a short themed number field with its unit ("h") after it. */
+.break-reminder-hours {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.35rem;
+}
+
+.break-reminder-input {
+  width: 4.5rem;
+  padding-inline: 0.6rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  appearance: textfield;
+}
+
+/* Native spinners render as a light widget on the dark field; arrow keys
+   still step by half an hour. */
+.break-reminder-input::-webkit-outer-spin-button,
+.break-reminder-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.break-reminder-unit {
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.break-reminder-row,
+.clock-alerts-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clock-alerts-empty[hidden],
+.clock-alerts-limit[hidden] {
+  display: none;
+}
+
+.clock-alerts-time {
+  max-width: 9rem;
+}
+
+/* The saved alerts sit on one wrapping line of small removable chips; the
+   empty-state text takes their place, dimmed and inline. */
+.clock-alerts-current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.clock-alerts-list {
+  display: contents;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clock-alerts-empty {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.clock-alerts-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.15rem 0.2rem 0.15rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-primary);
+  font-size: 0.78rem;
+}
+
+.clock-alerts-item-time {
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.clock-alerts-item-weekdays {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.clock-alerts-item-remove {
+  display: grid;
+  width: 1.3rem;
+  height: 1.3rem;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.clock-alerts-item-remove:hover,
+.clock-alerts-item-remove:focus-visible {
+  background: var(--bg-elevated);
+  color: var(--text-main);
+}
+
+.clock-alerts-chip {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.clock-alerts-chip:hover,
+.clock-alerts-chip:focus-visible {
+  border-color: var(--accent);
+}
+
+.clock-alerts-chip:disabled,
+.clock-alerts-add .btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -1,0 +1,17 @@
+---
+import '../styles/pages/media.css';
+import '../styles/pages/creator-works.css';
+import '../styles/pages/company.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getLang, useTranslations } from '../i18n/index';
+import CompanyPage from '../components/company/CompanyPage';
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+---
+
+<BaseLayout title={`${t.company_page.page_title} — Metadea`} titleKey="company_page.page_title" lang={lang} activePage="search">
+  <div class="media-page">
+    <CompanyPage client:load i18n={{ company_page: t.company_page, creator_completion: t.creator_completion, errors: t.errors, types: t.search.types }} />
+  </div>
+</BaseLayout>

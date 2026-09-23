@@ -1,36 +1,173 @@
-  .settings-subsection-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-main);
-    margin-bottom: 1rem;
-    margin-top: 0;
+  /* ── Sections (EmulatorsTab.astro) ─────────────────────────────────────
+     [Link platforms | Library (ROM clean-up + saves)] → the chosen
+     platform's editor; tight rhythm, controls sized to content. */
+  #panel-emulators {
+    gap: 0;
+  }
+
+  .emu-section {
+    gap: 0.6rem;
+  }
+
+  .emu-section + .emu-section {
+    margin-top: 1.25rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .emu-section-header,
+  .emu-inline-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+  }
+
+  .emu-inline-row .form-label {
+    margin: 0;
+  }
+
+  /* Row labels sit one step below the section titles, and every control in
+     the non-platform sections shares one 32px height so rows line up. */
+  .emu-section .emu-inline-row .form-label {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+  }
+
+  .emu-inline-row .form-input {
+    height: 32px;
+    box-sizing: border-box;
+    padding-block: 0.3rem;
+    font-size: 0.78rem;
+  }
+
+  .emu-inline-row .btn--sm {
+    height: 32px;
+    box-sizing: border-box;
+  }
+
+  /* Top row, three titled columns: Link platforms (+ the chosen console's
+     editor under its tiles) | Library (ROM clean-up) | Saved games, split
+     by hairlines; the row grows with column 1, the others stay at the top.
+     Everything stacks once the window is narrower than 1100px. */
+  .emu-top-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 1rem 1.25rem;
+    align-items: stretch;
+  }
+
+  /* Titles with their (i) inside: text and icon travel as one item. */
+  .emu-title-with-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .emu-top-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  /* Hairlines between the columns, drawn in the gap so the columns keep
+     the same widths as the editor's subgrid below. */
+  .emu-top-col + .emu-top-col {
+    position: relative;
+  }
+
+  .emu-top-col + .emu-top-col::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -0.625rem;
+    border-left: 1px solid var(--border-color);
+  }
+
+  /* The checkbox text may wrap in the narrow column; its (i) stays beside it. */
+  .emu-library > .emu-inline-row {
+    flex-wrap: nowrap;
+  }
+
+  @media (max-width: 1099px) {
+    .emu-top-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .emu-top-col + .emu-top-col {
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .emu-top-col + .emu-top-col::before {
+      content: none;
+    }
+  }
+
+  /* A little breathing room between two control groups sharing a row. */
+  .emu-inline-sep {
+    width: 0.75rem;
+  }
+
+  /* Compact square icon button (saves folder: change / default / open). */
+  .emu-icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color var(--anim-base) var(--anim-ease), border-color var(--anim-base) var(--anim-ease);
+  }
+
+  .emu-icon-btn:hover,
+  .emu-icon-btn:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+    outline: none;
+  }
+
+  .emu-icon-btn[hidden] {
+    display: none;
   }
 
   /* Empresas selector */
   .companies-selector-section {
-    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
+  /* A compact row of brand tiles, left-aligned as a group. */
+  /* Brand tiles spread across the column: one cell each, centred. */
   .companies-selector {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    grid-template-columns: repeat(3, 1fr);
+    justify-items: center;
+    gap: 0.75rem;
   }
 
   .company-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.3rem;
+    min-width: 64px;
   }
 
   .company-tab-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
     padding: 0.5rem;
     background: var(--bg-elevated);
     border: 2px solid transparent;
@@ -106,7 +243,7 @@
   .company-tab-btn.has-error .company-logo { display: none; }
 
   .company-label {
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: var(--text-muted);
     text-align: center;
@@ -124,12 +261,14 @@
   .platforms-selector-title[data-company="xbox"] { --company-color: #107c10; }
 
   /* Selector de plataformas */
+  /* The console box spans its column; the tiles fill each row. */
   .platforms-selector-container {
-    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.75rem;
     background: var(--bg-elevated);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    margin-bottom: 1.5rem;
   }
 
   .platforms-selector-container.hidden {
@@ -137,30 +276,30 @@
   }
 
   .platforms-selector-title {
-    margin: 0 0 1rem;
-    font-size: 0.9rem;
+    margin: 0 0 0.6rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--company-color, var(--accent));
-    padding-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
     border-bottom: 2px solid var(--company-color, var(--accent));
   }
 
   .platforms-selector {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.75rem;
-    justify-items: center;
+    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+    gap: 0.5rem;
   }
 
   .platform-item {
     display: block;
+    min-width: 0;
   }
 
   .platform-selector-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 50px;
+    width: 100%;
     height: 50px;
     padding: 0.5rem;
     background: var(--bg-primary);
@@ -175,6 +314,10 @@
   .platform-selector-btn[data-company="nintendo"] { --platform-color: #e60012; }
   .platform-selector-btn[data-company="playstation"] { --platform-color: #003087; }
   .platform-selector-btn[data-company="xbox"] { --platform-color: #107c10; }
+
+  .platform-selector-btn.active {
+    border-color: var(--platform-color, var(--accent));
+  }
 
   .platform-selector-btn:hover {
     background: var(--bg-elevated);
@@ -201,39 +344,28 @@
   }
 
   /* Viewport para formularios */
-  .platforms-viewport {
-    padding: 1.5rem;
+  /* Only boxed while a platform's form is showing; with nothing selected it
+     is just the one-line hint below. */
+  .platforms-viewport:has(.platform-form-block:not(.hidden)) {
+    padding: 0.75rem;
     background: var(--bg-elevated);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    min-height: 200px;
   }
 
   .platforms-empty-placeholder {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    padding: 2rem;
-    text-align: center;
-    color: var(--text-muted);
-  }
-
-  .platforms-empty-placeholder h4 {
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.5rem;
     margin: 0;
-    font-size: 0.95rem;
-    color: var(--text-main);
-  }
-
-  .platforms-empty-placeholder p {
-    margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: var(--text-dim);
   }
 
-  .platforms-placeholder-icon {
-    font-size: 2rem;
+  .platforms-empty-title {
+    font-weight: 600;
+    color: var(--text-muted);
   }
 
   .platform-form-block {
@@ -245,8 +377,8 @@
   }
 
   .platform-form-header {
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
     border-bottom: 2px solid;
     border-color: var(--platform-color, var(--accent));
   }
@@ -262,53 +394,167 @@
     color: var(--platform-color, var(--accent));
   }
 
-  .platform-form-fields {
+  /* The editor (column 1, under the console tiles): stacked groups, each
+     one compact line that flexes to the column's width. */
+  .emu-editor-row {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.65rem;
   }
 
-  .emulator-config-row {
-    display: grid;
-    grid-template-columns: auto auto auto 1fr auto;
-    grid-template-rows: auto auto;
-    gap: 0.75rem;
+  .emu-editor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .emu-editor-row .form-label {
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .emu-editor-label {
+    display: flex;
     align-items: center;
-  }
-
-  .emulator-config-row.combined-row {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto;
-    gap: 1rem;
-    align-items: stretch;
-  }
-
-  /* "ROM extensions" — one label, one input, one hint, stacked. */
-  .emulator-config-row.rom-extensions-row {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-    gap: 0.5rem;
-    align-items: stretch;
-  }
-
-  .emulator-section,
-  .launch-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
 
   .input-row {
     display: flex;
     flex-direction: row;
-    gap: 0.5rem;
+    gap: 0.4rem;
     align-items: center;
   }
 
+  .emu-editor-row .form-input,
+  .emu-editor-row .form-select {
+    height: 32px;
+    box-sizing: border-box;
+    padding-block: 0.3rem;
+    font-size: 0.78rem;
+  }
+
+  .emu-editor-args {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+
+  /* Emulator row, always one line: select + folder + captures buttons, then
+     the "Compatible" list (what the ROM scan uses) in the remaining width,
+     cut with an ellipsis; the full list is its tooltip. */
+  .emulator-section .input-row {
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+  }
+
+  .emulator-section .emulator-config-middle {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    gap: 0.25rem;
+    margin-left: 0.15rem;
+  }
+
+  .emu-compat-icon {
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    color: var(--text-muted);
+    cursor: help;
+  }
+
+  /* Compact controls so the list gets most of the row: the select fits its
+     content (up to 140px), the two icon buttons are 28px squares. */
+  .emulator-section .form-select.compact {
+    width: auto;
+    max-width: 140px;
+    padding-inline: 0.45rem;
+  }
+
+  .emulator-section .exe-picker-btn,
+  .emulator-section .emulator-screenshots-override > summary {
+    width: 28px;
+    height: 28px;
+  }
+
+  .emulator-section .supported-types {
+    min-width: 0;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .launch-section .rom-folder-display {
+    flex: 0 1 45%;
+    min-width: 0;
+  }
+
+  /* Captures folder: a small camera toggle at the row's end; the field
+     opens as a popover under the row's right edge (anchored to the row, so
+     it stays inside the box however the row wraps). */
+  .emulator-screenshots-override {
+    align-self: flex-end;
+  }
+
+  .emulator-screenshots-override > summary {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-muted);
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .emulator-screenshots-override > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .emulator-screenshots-override > summary:hover,
+  .emulator-screenshots-override > summary:focus-visible,
+  .emulator-screenshots-override[open] > summary {
+    border-color: var(--platform-color, var(--accent));
+    color: var(--text-main);
+    outline: none;
+  }
+
+  .emulator-screenshots-popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: min(320px, 100%);
+    box-sizing: border-box;
+    padding: 0.7rem 0.8rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .emulator-screenshots-popover .form-label {
+    white-space: normal;
+  }
+
+  .emulator-screenshots-popover .form-input {
+    flex: 1;
+    min-width: 0;
+  }
+
   .form-select.compact {
-    padding: 0.6rem 0.7rem;
-    font-size: 0.8rem;
-    height: 40px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+    height: 32px;
     box-sizing: border-box;
   }
 
@@ -317,8 +563,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
@@ -327,16 +573,6 @@
     cursor: pointer;
     transition: all var(--anim-base) var(--anim-ease);
     flex-shrink: 0;
-  }
-
-  .exe-picker-btn {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .rom-folder-btn {
-    grid-column: 5;
-    grid-row: 2;
   }
 
   .exe-picker-btn:hover,
@@ -353,26 +589,22 @@
     font-size: 0.75rem;
     color: var(--text-dim);
     white-space: nowrap;
-    height: 40px;
-    grid-column: 3;
-    grid-row: 2;
-    visibility: visible;
+    height: 32px;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 180px;
+    overflow: hidden;
   }
 
   .emulator-config-middle.hidden {
     visibility: hidden;
   }
 
-  .form-label-small {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-main);
-    margin: 0;
-  }
-
   .supported-types {
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-size: 0.75rem;
-    color: var(--text-dim);
+    color: var(--text-muted);
     line-height: 1.4;
     margin: 0;
   }
@@ -411,13 +643,67 @@
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-    flex: 1;
+    height: 32px;
+    box-sizing: border-box;
+    max-width: 180px;
+    line-height: 1.3rem;
+  }
+
+  .rom-folder-display:empty {
+    display: none !important;
   }
 
 
   .hidden {
     display: none !important;
+  }
+
+  /* Emulator saves (EmulatorsTab.astro › Library › #saves-settings): two
+     compact rows. */
+  .saves-settings-root .form-label,
+  .saves-settings-import .form-label {
+    white-space: nowrap;
+  }
+
+  /* The folder row: one line when there is room; in a narrow Library
+     column the path and its buttons drop under the label together. */
+  .saves-settings-root {
+    flex-wrap: wrap;
+  }
+
+  /* Read-only path field of limited width. rtl + the ltr <bdi> inside put
+     the ellipsis at the START, so the folder name itself stays visible. */
+  .saves-settings-path {
+    flex: 1 1 6rem;
+    max-width: 420px;
+    min-width: 6rem;
+    margin-left: 0.25rem;
+    height: 32px;
+    box-sizing: border-box;
+    padding: 0 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-muted);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.74rem;
+    line-height: 30px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+  }
+
+  .saves-settings-keep {
+    width: 4.5rem;
+    margin-left: 0.25rem;
+  }
+
+  .saves-settings-status {
+    margin: 0;
+  }
+
+  .saves-settings-status--error {
+    color: var(--color-error);
   }

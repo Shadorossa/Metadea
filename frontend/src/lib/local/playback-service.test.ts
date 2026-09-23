@@ -39,11 +39,6 @@ vi.mock('../tauri/resume-position', () => ({
   saveResumePosition: mocks.saveResumePosition,
   clearResumePosition: mocks.clearResumePosition,
 }));
-vi.mock('../tauri/anime-local', () => ({
-  playFileWithVlc: vi.fn(async () => {}),
-  getVlcPlaybackStatus: vi.fn(async () => null),
-  sendVlcCommand: vi.fn(async () => {}),
-}));
 vi.mock('../tauri/player', () => ({
   playerOpen: mocks.playerOpen,
   playerEngineAvailable: mocks.playerEngineAvailable,
@@ -66,8 +61,7 @@ vi.mock('../tauri/player', () => ({
 vi.mock('../media/anilist-sync', () => ({ syncToAniList: vi.fn(async () => {}), isAniListType: () => false }));
 vi.mock('../media/small-cover', () => ({ toMediumCover: (url: string) => url }));
 vi.mock('./discord-presence', () => ({ setPlaybackPresence: vi.fn(), clearPlaybackPresence: vi.fn() }));
-vi.mock('../dom/toast', () => ({ showToast: vi.fn() }));
-vi.mock('../../i18n/runtime', () => ({ getT: () => ({ player: { engine_unavailable_fallback: 'fallback' } }) }));
+vi.mock('../../i18n/runtime', () => ({ getT: () => ({ player: { engine_unavailable: 'libmpv missing' } }) }));
 
 // Vitest runs in node: the service announces marks with a window event, and
 // the settings module reads a Storage.
@@ -131,7 +125,6 @@ describe('startQueuePlayback (internal engine)', () => {
     expect(request.titles).toEqual(['Three', '']);
     expect(request.overlay).toBe(false);
     expect(playerModalStore.get()).toBe(true);
-    expect(playbackStore.get()?.engine).toBe('internal');
     expect(playbackStore.get()?.queueIndex).toBe(0);
   });
 
@@ -196,11 +189,17 @@ describe('startQueuePlayback (internal engine)', () => {
     expect(mocks.saveLibraryEntry).toHaveBeenCalledTimes(2);
   });
 
-  it('falls back to VLC when libmpv is unavailable', async () => {
-    mocks.playerEngineAvailable.mockResolvedValueOnce(false);
+  it('ignores a legacy "engine = vlc" preference and still opens the built-in player', async () => {
+    localStorage.setItem('metadea_playback_engine', 'vlc');
     await startQueuePlayback(target());
+    expect(mocks.playerOpen).toHaveBeenCalledTimes(1);
+    expect(playerModalStore.get()).toBe(true);
+  });
+
+  it('rejects with the translated message when libmpv is unavailable, starting nothing', async () => {
+    mocks.playerEngineAvailable.mockResolvedValueOnce(false);
+    await expect(startQueuePlayback(target())).rejects.toThrow('libmpv missing');
     expect(mocks.playerOpen).not.toHaveBeenCalled();
-    expect(playbackStore.get()?.engine).toBe('vlc');
     expect(playerModalStore.get()).toBe(false);
   });
 });

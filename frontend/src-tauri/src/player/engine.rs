@@ -28,6 +28,10 @@ pub struct PlayerSessionInfo {
     /// mode) can look up skip segments for what is playing.
     pub external_id: Option<String>,
     pub episode_numbers: Vec<i64>,
+    /// Queue episodes that are filler, sent only when the library entry is
+    /// set to "Filler: Skipped" (lib/anime/filler.ts) — the controls offer
+    /// "Next canon episode" instead of rolling into them.
+    pub filler_episodes: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -47,6 +51,7 @@ pub struct OpenRequest {
     pub titles: Vec<String>,
     pub external_id: Option<String>,
     pub episode_numbers: Vec<i64>,
+    pub filler_episodes: Vec<i64>,
     pub capture_dir: PathBuf,
 }
 
@@ -73,6 +78,18 @@ pub fn engine_options() -> Vec<(String, String)> {
     .iter()
     .map(|(name, value)| (name.to_string(), value.to_string()))
     .collect()
+}
+
+#[derive(Debug, Clone)]
+pub struct ClipSource {
+    pub path: String,
+    pub duration: f64,
+    pub audio_id: Option<i64>,
+    pub track_list: String,
+    pub sub_delay: f64,
+    pub work_name: String,
+    pub episode_label: String,
+    pub episode_number: Option<f64>,
 }
 
 #[derive(Default)]
@@ -161,6 +178,12 @@ impl PlayerEngine {
         refreshed
     }
 
+    /// The library if a previous call already loaded it (the seek-bar
+    /// thumbnailer opens its own handle on it).
+    pub fn loaded_library(&self) -> Option<Arc<LibMpv>> {
+        self.lib.clone()
+    }
+
     /// Loads (and caches) libmpv without creating a client.
     pub fn ensure_library(&mut self, resource_dir: Option<PathBuf>, exe_dir: Option<PathBuf>) -> Result<Arc<LibMpv>, PlayerError> {
         if let Some(lib) = &self.lib {
@@ -241,6 +264,7 @@ impl PlayerEngine {
             titles: request.titles,
             external_id: request.external_id,
             episode_numbers: request.episode_numbers,
+            filler_episodes: request.filler_episodes,
         };
         self.session = Some(session.clone());
         self.capture_dir = Some(request.capture_dir);
@@ -364,6 +388,42 @@ impl PlayerEngine {
         }
         let path_text = path.to_string_lossy();
         self.client()?.command(&["screenshot-to-file", &path_text, "video"])
+    }
+
+    /// What a clip export needs from the playing file, read live from mpv:
+    /// source path, duration, current audio id, the raw track list (the
+    /// selected subtitle is resolved by clip::plan) and subtitle delay, plus
+    /// the work/episode naming the output file.
+    pub fn clip_source(&self) -> Option<ClipSource> {
+        let client = self.client.as_ref()?;
+        let session = self.session.as_ref()?;
+        let path = client.get_property_string("path")?;
+        let index = client.get_property_i64("playlist-pos").and_then(|pos| usize::try_from(pos).ok()).unwrap_or(0);
+        Some(ClipSource {
+            path,
+            duration: client.get_property_f64("duration").unwrap_or(0.0),
+            audio_id: client.get_property_i64("aid"),
+            track_list: client.get_property_string("track-list").unwrap_or_default(),
+            sub_delay: client.get_property_f64("sub-delay").unwrap_or(0.0),
+            work_name: session.work_name.clone(),
+            episode_label: episode_label_for_index(&session.episode_labels, index),
+            episode_number: session.episode_numbers.get(index).map(|number| *number as f64),
+        })
+    }
+
+    /// Loops `a`..`b` (clip-mode preview); `None` clears the loop.
+    pub fn set_ab_loop(&self, range: Option<(f64, f64)>) -> Result<(), PlayerError> {
+        let client = self.client()?;
+        match range {
+            Some((a, b)) => {
+                client.set_property("ab-loop-a", &format!("{a:.3}"))?;
+                client.set_property("ab-loop-b", &format!("{b:.3}"))
+            }
+            None => {
+                client.set_property("ab-loop-a", "no")?;
+                client.set_property("ab-loop-b", "no")
+            }
+        }
     }
 
     /// Quits mpv, waits for the event thread and releases the client. The

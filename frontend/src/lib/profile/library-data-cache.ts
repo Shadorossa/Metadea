@@ -2,6 +2,7 @@ import { getAllLibraryEntries } from '../tauri/library';
 import { getCatalogEntriesForLibrary, getCatalogEntriesByIds } from '../tauri/catalog';
 import type { LibraryEntry, CatalogSummary, DbMediaRelation } from '../tauri';
 import { collectSeedIds, loadScopedMediaRelations } from './relations-scope';
+import { loadAllFillerInfo } from '../anime/filler-store';
 
 export interface LibraryAndCatalog {
   items: LibraryEntry[];
@@ -62,9 +63,16 @@ function loadProfileData(): Promise<ProfileData> {
   });
 }
 
+// Every reader also waits for the library-wide filler map (one IPC call,
+// memoised in lib/anime/filler-store.ts), so the stats, the backlog and the
+// home cards can read effective totals synchronously once this resolves.
+function withFillerInfo(data: Promise<ProfileData>): Promise<ProfileData> {
+  return Promise.all([data, loadAllFillerInfo()]).then(([loaded]) => loaded);
+}
+
 function getCachedProfileData(): Promise<ProfileData> {
   if (!profileCache) profileCache = loadProfileData();
-  return profileCache;
+  return withFillerInfo(profileCache);
 }
 
 /** Fills the cache from `load` when it is empty — Home's one-round-trip
@@ -73,7 +81,7 @@ function getCachedProfileData(): Promise<ProfileData> {
  *  rejecting, means "no bundle": the chain runs as usual and nothing is
  *  memoised from the failed attempt. Same rows, same invalidation. */
 export function primeProfileData(load: () => Promise<ProfileData | null>): Promise<ProfileData> {
-  if (profileCache) return profileCache;
+  if (profileCache) return withFillerInfo(profileCache);
   const pending: Promise<ProfileData> = load()
     .catch((err) => { logLoadFailure('home bundle', err); return null; })
     .then(loaded => {
@@ -83,7 +91,7 @@ export function primeProfileData(load: () => Promise<ProfileData | null>): Promi
       return fallback;
     });
   profileCache = pending;
-  return pending;
+  return withFillerInfo(pending);
 }
 
 export function getCachedLibraryAndCatalog(): Promise<LibraryAndCatalog> {

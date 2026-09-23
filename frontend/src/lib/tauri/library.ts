@@ -34,6 +34,9 @@ export interface LibraryEntry {
   // through — see lib/media/editor/reconsumption-run.ts for the editor side.
   reconsumption_count?: number;
   reconsuming?: number;
+  /** "Filler: Watched / Skipped" for anime with filler (1 = skipped; see
+   *  lib/anime/filler.ts). Omitted on save → Rust keeps the stored value. */
+  skip_filler?: number;
 }
 
 // Fired after any write below, from wherever it happens (Profile's own
@@ -89,29 +92,6 @@ export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntr
 
 export async function getLibraryEntry(externalId: string): Promise<LibraryEntry | null> {
   return tauriCmd<LibraryEntry | null>('get_library_entry', null, { externalId });
-}
-
-// Añade horas y minutos jugados a una entrada de la biblioteca tras terminar una sesión.
-export async function addPlaytimeHours(externalId: string, hours: number): Promise<void> {
-  let entry = await getLibraryEntry(externalId).catch(() => null);
-  if (!entry) {
-    entry = {
-      id: '', user_id: 'local', external_id: externalId,
-      type: 'game', status: 'in_progress',
-      rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
-      is_favorite: 0, is_platinum: 0, tags: null, notes: null,
-      added_at: new Date().toISOString(), updated_at: null,
-      selected_platform: null, selected_version: null,
-      started_at: new Date().toISOString().slice(0, 10), finished_at: null,
-    };
-  }
-  const addMinutes = Math.round(hours * 60);
-  const effectiveAddMinutes = addMinutes > 0 ? addMinutes : (hours >= 15.0 / 3600.0 ? 1 : 0);
-  if (effectiveAddMinutes <= 0) return;
-  const currentMinutes = entry.minutes_spent || Math.round((entry.progress ?? 0) * 60);
-  const newMinutes = currentMinutes + effectiveAddMinutes;
-  const progress = Math.round((newMinutes / 60) * 100) / 100;
-  await saveLibraryEntry({ ...entry, progress, minutes_spent: newMinutes });
 }
 
 export async function deleteLibraryEntry(externalId: string): Promise<void> {

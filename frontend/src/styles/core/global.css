@@ -34,6 +34,9 @@
   --color-error-soft: #ff8585;
   --color-success: #10b981;
   --color-success-soft: #4ade80;
+  /* Informational blue (anime "mixed canon/filler" episodes). The red
+     counterpart for filler is --color-error. */
+  --color-info: #60a5fa;
   --color-gold: #f59e0b;
   --color-gold-soft: #fbbf24;
   --color-on-light: #1a1a1a;

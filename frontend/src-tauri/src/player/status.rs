@@ -23,6 +23,8 @@ pub struct TrackInfo {
     pub lang: Option<String>,
     pub selected: bool,
     pub is_default: bool,
+    /// mpv `forced` flag: a signs/foreign-parts-only subtitle track.
+    pub forced: bool,
     pub codec: Option<String>,
     pub external: bool,
 }
@@ -105,6 +107,7 @@ pub fn parse_track_list(json: &str) -> Vec<TrackInfo> {
                 lang: item.get("lang").and_then(|v| v.as_str()).map(str::to_string),
                 selected: item.get("selected").and_then(|v| v.as_bool()).unwrap_or(false),
                 is_default: item.get("default").and_then(|v| v.as_bool()).unwrap_or(false),
+                forced: item.get("forced").and_then(|v| v.as_bool()).unwrap_or(false),
                 codec: item.get("codec").and_then(|v| v.as_str()).map(str::to_string),
                 external: item.get("external").and_then(|v| v.as_bool()).unwrap_or(false),
             })

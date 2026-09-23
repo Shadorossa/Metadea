@@ -195,6 +195,8 @@ interface OpenLibWorkEntry {
   title: string;
   key: string;
   covers?: number[];
+  /** Free text ("1937", "September 21, 1937"); not on every work. */
+  first_publish_date?: string;
 }
 
 // Raw shape of GET /authors/{key}.json — everything OpenLibAuthorDetail
@@ -237,7 +239,8 @@ export async function fetchOpenLibAuthorFullDetail(authorKey: string): Promise<O
   const works = (worksRes?.entries || []).map(entry => ({
     title: entry.title,
     key: entry.key,
-    covers: entry.covers
+    covers: entry.covers,
+    first_publish_date: entry.first_publish_date,
   }));
   return {
     name: detail.name,

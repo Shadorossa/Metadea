@@ -24,6 +24,11 @@ export interface RomGame {
   base:        RomFile;
   updates:     RomFile[];
   dlc:         RomFile[];
+  // Multi-disc sets: every disc in boot order (base is the first), the set's
+  // .m3u and its name without the disc tag.
+  discs?:      RomFile[];
+  playlist?:   string | null;
+  title_stem?: string | null;
 }
 
 export interface RomFolderConfig {
@@ -64,4 +69,17 @@ export async function renameRomFiles(items: RomRenameItem[]): Promise<RomRenameO
 // files went back to their previous name.
 export async function undoRomRenames(journalIds: number[]): Promise<number> {
   return invoke<number>('undo_rom_renames', { journalIds });
+}
+
+export interface RomDiscMergeSummary {
+  /** Library entries that now show as one multi-disc game. */
+  games:   number;
+  /** Old per-disc entries folded into them. */
+  entries: number;
+}
+
+// Left by the scan that folded old per-disc entries into their multi-disc
+// set (rom_disc_merge.rs); cleared on read, so it is shown once.
+export async function takeRomDiscMergeSummary(): Promise<RomDiscMergeSummary | null> {
+  return tauriCmd<RomDiscMergeSummary | null>('take_rom_disc_merge_summary', null);
 }

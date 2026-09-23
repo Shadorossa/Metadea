@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 use crate::db::ToStringErr;
-use super::process_tracking::SessionEndedPayload;
+use super::emulator_captures::{rom_title, start_emulator_capture_watcher};
 
 // Splits an emulator's launch_args string into process args, substituting
 // the `{ROM}` placeholder (see EmulatorsTab.astro's own field, which shows
@@ -135,6 +135,7 @@ mod build_emulator_args_tests {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // one flat IPC payload
 pub async fn launch_game(
     app_handle: tauri::AppHandle,
     launcher: String,
@@ -142,6 +143,15 @@ pub async fn launch_game(
     install_path: Option<String>,
     rom_platform: Option<String>,
     external_id: Option<String>,
+    // The game's display title: an emulator session's captures are moved to
+    // $PICTURES/Metadea/<title>/ (the ROM's file name when absent).
+    title: Option<String>,
+    // Presence art for the game session (game_sessions.rs); optional.
+    cover_url: Option<String>,
+    // Multi-disc sets: the disc picked in the game panel and the set's .m3u
+    // (see disc_launch.rs for which one boots).
+    disc_path: Option<String>,
+    disc_playlist: Option<String>,
 ) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     let is_direct_exe = install_path
@@ -152,7 +162,6 @@ pub async fn launch_game(
     if !is_direct_exe {
         if let Some(platform_id) = rom_platform {
             use tauri::Manager;
-            use tauri::Emitter;
             let rom_path = install_path.ok_or("No ROM path for emulator game")?;
             let db = app_handle.state::<crate::db::MetadeaDb>();
             let (executable_path, launch_args) = {
@@ -167,51 +176,76 @@ pub async fn launch_game(
             if executable_path.is_empty() {
                 return Err(format!("No emulator executable configured for {}", platform_id));
             }
-            let args = build_emulator_args(&launch_args, &rom_path);
+            let capture_title = title
+                .filter(|title| !title.trim().is_empty())
+                .unwrap_or_else(|| rom_title(&rom_path));
+            // Saves: newer central copies go back into the emulator's folders
+            // (or RetroArch is pointed at the central folder) before it
+            // starts; never blocks the launch on failure (see saves/mod.rs).
+            let save_session = crate::saves::begin_session(&app_handle, &platform_id, &rom_path, &capture_title).await;
+            let boot_path = super::disc_launch::resolve_rom_launch_path(&executable_path, &launch_args, &rom_path, disc_path.as_deref(), disc_playlist.as_deref());
+            let mut args = build_emulator_args(&launch_args, &boot_path);
+            if let Some(session) = &save_session {
+                args = session.apply_args(args);
+            }
+            // Emulator instances already running before this launch are
+            // never mistaken for it (game_sessions::exclude_preexisting).
+            let emulator_matcher = crate::game_sessions::ProcessMatcher::executable(&PathBuf::from(&executable_path));
+            let preexisting = crate::game_sessions::snapshot_matching_pids(&emulator_matcher);
             let mut child = std::process::Command::new(&executable_path)
                 .args(&args)
                 .spawn()
                 .map_err(|e| format!("Failed to launch emulator: {}", e))?;
+            // Snapshot the emulator's capture folders now, before it can
+            // write anything; every capture from here on moves to Metadea's.
+            let capture_watcher = start_emulator_capture_watcher(&app_handle, &platform_id, &rom_path, &capture_title);
+
+            // The session registry owns playtime: it records it in SQLite when
+            // the emulator exits, even when no page is listening.
+            let registration = crate::game_sessions::register(&app_handle, crate::game_sessions::NewSession {
+                external_id: external_id.unwrap_or_default(),
+                title: capture_title.clone(),
+                cover_url,
+                platform: Some(platform_id.clone()),
+                launcher: launcher.clone(),
+                app_id: app_id.clone(),
+                install_path: Some(rom_path.clone()),
+                exe_path: Some(executable_path.clone()),
+                pids: vec![child.id()],
+                running: true,
+            });
+            let session_id = match registration {
+                crate::game_sessions::Registration::New(id) => Some(id),
+                // Already tracked: that session's watcher follows this
+                // instance too, by name, once its own child exits.
+                crate::game_sessions::Registration::Duplicate => None,
+            };
 
             let handle = app_handle.clone();
-            let ext_id = external_id.unwrap_or_default();
-            let exe_path_buf = PathBuf::from(&executable_path);
-            let root_filename = exe_path_buf.file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_default();
-            let start = std::time::Instant::now();
 
             tokio::spawn(async move {
                 let _ = tokio::task::spawn_blocking(move || {
                     let _ = child.wait();
                 }).await;
 
-                if !root_filename.is_empty() {
-                    use sysinfo::System;
-                    let mut sys = System::new();
-                    let timeout = std::time::Duration::from_secs(30);
-                    let poll = std::time::Duration::from_millis(500);
-                    let mut elapsed = std::time::Duration::ZERO;
-                    loop {
-                        tokio::time::sleep(poll).await;
-                        elapsed += poll;
-                        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
-                        let running = sys.processes().values().any(|p| {
-                            p.name().to_string_lossy().eq_ignore_ascii_case(&root_filename)
-                        });
-                        if !running || elapsed >= timeout {
-                            break;
-                        }
-                    }
+                // Launcher-wrapper emulators hand off to another process of
+                // the same executable: follow it, without a time cap.
+                let ended_unix = match &session_id {
+                    Some(id) => crate::game_sessions::follow_until_exit(&handle, id, &emulator_matcher, &preexisting).await,
+                    None => crate::game_sessions::now_unix(),
+                };
+
+                // The session is over: final sweep, then the watcher stops.
+                if let Some(watcher) = capture_watcher {
+                    watcher.stop().await;
+                }
+                // Then the session's saves are copied to the central folder.
+                if let Some(session) = save_session {
+                    crate::saves::end_session(&handle, session).await;
                 }
 
-                let total_secs = start.elapsed().as_secs_f64();
-                let hours = total_secs / 3600.0;
-                if hours >= 0.01 && !ext_id.is_empty() {
-                    let _ = handle.emit("game-session-ended", SessionEndedPayload {
-                        external_id: ext_id,
-                        hours,
-                    });
+                if let Some(id) = session_id {
+                    crate::game_sessions::finish(&handle, &id, ended_unix);
                 }
             });
 

@@ -47,6 +47,15 @@
   object-fit: cover;
 }
 
+/* "Prefer clean covers" (components/shared/CoverImage.tsx): IGDB key art
+   standing in for a game cover is center-cropped to the same cover box; a
+   textless poster already has the cover's aspect. */
+img[data-textless='art'],
+img[data-textless='poster'] {
+  object-fit: cover;
+  object-position: center;
+}
+
 /* ── Media cards ─────────────────────────────────────────────────────────── */
 /* Fixed 3:4 box via the classic "padding-bottom" technique instead of the
  * `aspect-ratio` property — every result card (any media type/provider:
@@ -576,4 +585,41 @@
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   cursor: pointer;
+}
+
+/* Speech-bubble tooltip: a small dark box with an arrow, shown above its
+   (position: relative) host by the host's own :hover/:focus rule — the saga
+   strip's format labels (media/preview.css) and the taste comparison's time
+   segments (user-profile.css). */
+.saga-strip-format-tooltip {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  padding: 0.28rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(18, 18, 18, 0.96);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+  pointer-events: none;
+}
+
+.saga-strip-format-tooltip::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(18, 18, 18, 0.96);
+  content: '';
+  transform: translate(-50%, -50%) rotate(45deg);
 }

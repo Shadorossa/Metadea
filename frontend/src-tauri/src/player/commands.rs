@@ -81,7 +81,7 @@ pub async fn player_engine_available(app: AppHandle, state: State<'_, PlayerEngi
     match engine.ensure_library(resource_dir, exe_dir) {
         Ok(_) => Ok(true),
         Err(error) => {
-            log::info!("libmpv unavailable, VLC fallback stays active: {error}");
+            log::info!("libmpv unavailable, local video playback is disabled: {error}");
             Ok(false)
         }
     }
@@ -104,6 +104,9 @@ pub struct PlayerOpenArgs {
     pub external_id: Option<String>,
     #[serde(default)]
     pub episode_numbers: Option<Vec<i64>>,
+    /// Queue episodes that are filler when the entry skips filler.
+    #[serde(default)]
+    pub filler_episodes: Option<Vec<i64>>,
     /// `true` (default): controls in the transparent overlay window;
     /// `false`: docked controls in the main WebView, no overlay.
     #[serde(default)]
@@ -116,8 +119,18 @@ pub async fn player_open(
     state: State<'_, PlayerEngineState>,
     request: PlayerOpenArgs,
 ) -> Result<PlayerSessionInfo, PlayerError> {
-    let PlayerOpenArgs { queue, start_index, start_seconds, work_name, episode_labels, titles, external_id, episode_numbers, overlay } =
-        request;
+    let PlayerOpenArgs {
+        queue,
+        start_index,
+        start_seconds,
+        work_name,
+        episode_labels,
+        titles,
+        external_id,
+        episode_numbers,
+        filler_episodes,
+        overlay,
+    } = request;
     if queue.is_empty() {
         return Err(PlayerError::invalid_argument("empty queue"));
     }
@@ -164,6 +177,7 @@ pub async fn player_open(
             titles: titles.unwrap_or_default(),
             external_id,
             episode_numbers: episode_numbers.unwrap_or_default(),
+            filler_episodes: filler_episodes.unwrap_or_default(),
             queue,
             capture_dir,
         })?

@@ -1,0 +1,43 @@
+{
+  "error": "OK",
+  "limit": 100,
+  "offset": 0,
+  "number_of_page_results": 4,
+  "number_of_total_results": 4,
+  "status_code": 1,
+  "results": [
+    {
+      "cover_date": "2008-03-04",
+      "description": "<p><em>Ichigo trains with the Visored while the Arrancar close in.</em></p><table data-max-width=\"true\"><thead><tr><th scope=\"col\">Chapter</th><th scope=\"col\">Title</th></tr></thead><tbody><tr><td>191</td><td>Conquistadores</td></tr><tr><td>192</td><td>The Toxic Invasion</td></tr><tr><td>193</td><td>Shut Your Mouth, Mr. Smoker</td></tr></tbody></table>",
+      "id": 139413,
+      "issue_number": "22",
+      "name": "Conquistadores",
+      "volume": { "api_detail_url": "https://comicvine.gamespot.com/api/volume/4050-18923/", "id": 18923, "name": "Bleach", "site_detail_url": "https://comicvine.gamespot.com/bleach/4050-18923/" }
+    },
+    {
+      "cover_date": "2018-05-01",
+      "description": null,
+      "id": 1100200,
+      "issue_number": "100",
+      "name": null,
+      "volume": { "api_detail_url": "https://comicvine.gamespot.com/api/volume/4050-18923/", "id": 18923, "name": null, "site_detail_url": "https://comicvine.gamespot.com/bleach/4050-18923/" }
+    },
+    {
+      "cover_date": "2007-12-04",
+      "description": "<p>Ichigo returns to the human world...</p><h4>Chapters</h4><ul><li>Chapter 182: Be My Family or Not</li><li>Chapter 183: Surprise Attack</li><li>Chapter 184: Deathberry Returns</li></ul>",
+      "id": 139412,
+      "issue_number": "21",
+      "name": "Be My Family or Not",
+      "volume": { "api_detail_url": "https://comicvine.gamespot.com/api/volume/4050-18923/", "id": 18923, "name": "Bleach", "site_detail_url": "https://comicvine.gamespot.com/bleach/4050-18923/" }
+    },
+    {
+      "cover_date": "2008-06-03",
+      "description": "<p>Includes chapters 200&ndash;208.</p>",
+      "id": 139414,
+      "issue_number": "23",
+      "name": "Mala Suerte!",
+      "volume": { "api_detail_url": "https://comicvine.gamespot.com/api/volume/4050-18923/", "id": 18923, "name": "Bleach", "site_detail_url": "https://comicvine.gamespot.com/bleach/4050-18923/" }
+    }
+  ],
+  "version": "1.0"
+}

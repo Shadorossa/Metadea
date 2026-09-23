@@ -26,6 +26,7 @@ import { initFontPicker } from '../../settings/mount/fonts';
 import { initRatingSystem } from '../../settings/mount/rating-system';
 import { initCustomColor } from '../../settings/mount/custom-color';
 import { initActivitySettings } from '../../settings/mount/activity';
+import { initSpoilerPreferences } from '../../settings/mount/spoiler-preferences';
 import { initDualRating } from '../../settings/mount/dual-rating';
 import { initLanguageSwitcher } from '../../settings/mount/language';
 import { initBio } from '../../settings/mount/bio';
@@ -60,7 +61,7 @@ function distributeSettings(): void {
   // The language hint says "reload to apply", which the language buttons
   // already do; and wiping every note is not a first-run decision.
   document.querySelector('#onboarding-basic-language [data-i18n="settings.language_hint"]')?.remove();
-  document.querySelector('#onboarding-library-content #clear-all-notes-btn')?.closest('.settings-checkbox-group')?.remove();
+  document.querySelector('#onboarding-library-content #clear-all-notes-btn')?.closest('.prefs-row')?.remove();
   source.remove();
 }
 
@@ -142,6 +143,7 @@ function initSettingsControls(token: string, username: string): void {
   initRatingSystem(showSettingsToast);
   initCustomColor(showSettingsToast);
   initActivitySettings(showSettingsToast);
+  initSpoilerPreferences(showSettingsToast);
   initDualRating(showSettingsToast);
   initLanguageSwitcher();
   initBio(showSettingsToast);

@@ -1,9 +1,8 @@
-// F12 capture naming for the built-in player. The VLC path keeps its own copy
-// in folders/screenshots.rs (`sanitize_capture_folder_name` is `pub(super)`
-// there and that module is owned by another change set), so the three tiny
-// helpers are mirrored here verbatim: the output must match byte for byte
-// because both engines write into the same `$PICTURES/Metadea/<work>/` folder
-// and MediaScreenshotsSection lists them together.
+// F12 capture naming for the built-in player. folders/screenshots.rs keeps
+// its own `sanitize_capture_folder_name` (`pub(super)`, used for emulator
+// captures and listing); the output must match byte for byte because both
+// resolve the same `$PICTURES/Metadea/<work>/` folder and
+// MediaScreenshotsSection lists everything in it together.
 
 use std::path::{Path, PathBuf};
 
@@ -40,7 +39,7 @@ pub fn screenshot_file_name(work_name: &str, episode_label: &str, position_milli
 }
 
 /// The label the capture carries for queue entry `index`, with the same
-/// fallbacks the VLC watcher applies when the label list is short.
+/// fallbacks used when the label list is short.
 pub fn episode_label_for_index(episode_labels: &[String], index: usize) -> String {
     episode_labels
         .get(index)
@@ -69,7 +68,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn file_name_matches_the_vlc_watcher_scheme() {
+    fn file_name_uses_work_episode_and_timecode() {
         assert_eq!(
             screenshot_file_name("Teen Titans", "S01E25", 3_723_456),
             "Teen Titans - S01E25 - 01h02m03s456.png"
@@ -77,7 +76,7 @@ mod tests {
     }
 
     #[test]
-    fn folder_name_sanitizing_mirrors_the_vlc_helper() {
+    fn folder_name_sanitizing_mirrors_the_folders_helper() {
         assert_eq!(sanitize_capture_folder_name(r#"a<b>c:d"e/f\g|h?i*j"#), "a_b_c_d_e_f_g_h_i_j");
         assert_eq!(sanitize_capture_folder_name("  .Name.  "), "Name");
         assert_eq!(sanitize_capture_folder_name(""), "Obra");

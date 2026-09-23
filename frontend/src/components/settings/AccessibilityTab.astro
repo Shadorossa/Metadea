@@ -1,0 +1,20 @@
+---
+import type { Translations } from "../../i18n/index";
+import BreakReminderSettings from './BreakReminderSettings.astro';
+
+interface Props {
+  t: Translations;
+}
+const { t } = Astro.props;
+---
+
+<!-- Tab: Accessibility. Play session: break reminder + clock alerts while a
+     game runs (game_break_reminder.rs; behaviour in
+     mount/break-reminder-settings.ts). -->
+<div class="settings-panel hidden" id="panel-accessibility">
+  <div class="settings-section play-session-section">
+    <h3 class="settings-section-title" data-i18n="settings.play_session_title">{t.settings.play_session_title}</h3>
+    <p class="play-session-intro" data-i18n="settings.accessibility_intro">{t.settings.accessibility_intro}</p>
+    <BreakReminderSettings t={t} />
+  </div>
+</div>

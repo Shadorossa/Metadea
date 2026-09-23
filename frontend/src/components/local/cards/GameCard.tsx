@@ -51,6 +51,7 @@ export function GameCard({ game, coverCache, onClick, status, onRequestDelete, d
     <MediaCardShell
       title={displayName ?? game.name}
       cover={cover}
+      externalId={game.external_id}
       placeholderIcon={<IconMonitor />}
       badge={badgeInfo && (
         <span className={`local-media-status-badge local-media-status-badge--${badgeInfo.modifier}`}>

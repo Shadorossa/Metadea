@@ -16,6 +16,9 @@ import { PdfCanvasPage, getOrQueuePdfRender, type PdfRenderItem } from './PdfCan
 import { EpubReaderView } from './EpubReaderView';
 import { isEpubPath, type ReaderProps } from './reader-props';
 import { useReaderFullscreen, useReaderActiveClass } from './hooks/useReaderFullscreen';
+import { useEinkMode } from './hooks/useEinkMode';
+import { ReaderNightControls } from './ReaderNightControls';
+import { EinkFilterDefs, EinkRefreshFlash } from './EinkPageLayer';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -26,6 +29,8 @@ import { setReadingPresence, clearReadingPresence } from '../../lib/local/discor
 import { IconX } from '../local/ui/icons';
 import { getT } from '../../i18n/runtime';
 import { formatAppError } from '../../lib/errors/format-error';
+import { useMediaRemote } from '../shared/hooks/useMediaRemote';
+import { readerRemoteAction } from '../../lib/big-picture/media-remote';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -80,6 +85,7 @@ function ComicReaderModal({
   const [spreadIndex, setSpreadIndex] = useState(0);
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useReaderFullscreen();
   useReaderActiveClass();
+  const eink = useEinkMode('comic');
   const [bookmarks, setBookmarks] = useState<number[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -232,6 +238,14 @@ function ComicReaderModal({
 
   const goPrev = useCallback(() => setSpreadIndex(i => Math.max(0, i - 1)), []);
   const goNext = useCallback(() => setSpreadIndex(i => Math.min(spreads.length - 1, i + 1)), [spreads.length]);
+  // Big Picture's gamepad: D-pad/A turn pages (LB/RB too — no chapters
+  // here), B closes without the fullscreen-first step of Escape.
+  useMediaRemote(command => {
+    const action = readerRemoteAction(command);
+    if (action === 'close') handleClose();
+    else if (action === 'page_prev' || action === 'chapter_prev') goPrev();
+    else goNext();
+  });
 
   const jumpToPage = useCallback((pageNum: number) => {
     const sIdx = spreads.findIndex(s => s.includes(pageNum - 1));
@@ -377,7 +391,8 @@ function ComicReaderModal({
       overlay={false}
       onClose={handleClose}
       label={title}
-      panelClassName={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}`}
+      panelClassName={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}${eink.prefs.enabled ? ' reader-eink' : ''}`}
+      panelProps={{ style: eink.panelStyle }}
       closeOnEscape={false}
       closeOnBackdrop={false}
       stopPanelPropagation={false}
@@ -387,6 +402,7 @@ function ComicReaderModal({
         {loadState === 'ready' && (
           <span className="comic-reader-page-count">{pageLabel}</span>
         )}
+        <ReaderNightControls prefs={eink.prefs} onChange={eink.update} />
         {onStandBy && (
           <button type="button" className="comic-reader-header-btn" onClick={handleStandBy} title={t.standby_title} aria-label={t.standby_aria}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -585,6 +601,11 @@ function ComicReaderModal({
             </>
           )}
         </div>
+      )}
+
+      {eink.prefs.enabled && <EinkFilterDefs markup={eink.filterMarkup} />}
+      {loadState === 'ready' && (
+        <EinkRefreshFlash turnKey={String(spreadIndex)} active={eink.prefs.enabled && eink.prefs.refreshFlash} />
       )}
 
       {toastMsg && (

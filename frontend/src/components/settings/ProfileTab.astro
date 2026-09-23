@@ -7,7 +7,9 @@ import {
   ICON_TRASH,
 } from "../../lib/dom/icon-strings";
 import type { Translations } from "../../i18n/index";
-import { UiThemesSection } from "../ui-themes/UiThemesSection";
+// The skins list moved to Settings › Plugins (PluginsTab.astro); the styles
+// stay imported here because welcome.astro's skins step renders through this
+// component's page and has no other import of them.
 import "../../styles/components/ui-themes.css";
 
 interface Props {
@@ -189,19 +191,35 @@ const { t, onboarding = false } = Astro.props;
     </div>
   </div>
 
-  <!-- User UI themes / skins (components/ui-themes, docs/THEMING.md).
-       Not rendered in onboarding: welcome.astro mounts its own island in the
-       skins step, and moving a hydrated island between parents re-hydrates it. -->
-  {!onboarding && (
-    <div class="settings-divider">
-      <div class="settings-section">
-        <h3 class="settings-section-title" data-i18n="ui_themes.section_title">
-          {t.ui_themes.section_title}
-        </h3>
-        <UiThemesSection client:load />
+  <!-- Perfil web público (opt-in, apagado por defecto): el sync diario lo
+       envía como web_profile_public y el Worker solo sirve
+       metadea.pages.dev/u/<id> mientras esté activo. Lo cablea
+       mount/web-profile.ts. -->
+  <!-- Compact card at the left of its row (title, toggle, "i"); the link
+       itself lives in the profile headers' "Copy web profile link"
+       (pages/profile.astro, UserProfileView.tsx). -->
+  <div class="settings-divider settings-divider--row" hidden={onboarding}>
+    <div class="settings-section web-profile-card" id="web-profile-section">
+      <div class="web-profile-card-head">
+        <label class="settings-checkbox-label">
+          <input
+            type="checkbox"
+            id="web-profile-public"
+            class="settings-checkbox"
+            aria-label={t.settings.web_profile_enable}
+            data-i18n-aria-label="settings.web_profile_enable"
+          />
+          <span class="settings-section-title" data-i18n="settings.web_profile_title">{t.settings.web_profile_title}</span>
+        </label>
+        <button type="button" class="settings-help-btn" data-i18n-title="settings.web_profile_hint" title={t.settings.web_profile_hint}>
+          <span class="info-indicator" aria-hidden="true">i</span>
+        </button>
       </div>
+      <p class="settings-hint" id="web-profile-needs-account" hidden data-i18n="settings.web_profile_needs_account">
+        {t.settings.web_profile_needs_account}
+      </p>
     </div>
-  )}
+  </div>
 
   <!-- Cerrar sesión -->
   <div class="settings-divider" hidden={onboarding}>

@@ -4,6 +4,7 @@ import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
 import { search, searchGameBundles, searchGameExpandedEditions, searchGameRemasters, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { useDebouncedSearch, dedupeByKey } from '../shared/hooks/useDebouncedSearch';
 import { getT } from '../../i18n/runtime';
+import { interpolate } from '../../lib/shared/text/interpolate';
 import { isMediaTypeDisabled } from '../../lib/media/media-types';
 
 // Every media type an API search can plausibly return — a saga/bundled-in
@@ -266,7 +267,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             </div>
             {castPicker.onConfirm && !castLoading && !castError && cast.length > 0 && (
               <div className="pr-editor-search-cast-actions">
-                <span>{castPicker.selectedIds?.length ?? 0} seleccionados</span>
+                <span>{interpolate(s.selected_count, { count: castPicker.selectedIds?.length ?? 0 })}</span>
                 <button
                   type="button"
                   className="pr-editor-btn pr-editor-btn--submit"
@@ -345,7 +346,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
         </div>
         {multiSelect && (
           <div className="pr-editor-search-cast-actions">
-            <span>{Object.keys(selectedMedia).length} seleccionados</span>
+            <span>{interpolate(s.selected_count, { count: Object.keys(selectedMedia).length })}</span>
             <button
               type="button"
               className="pr-editor-btn pr-editor-btn--submit"

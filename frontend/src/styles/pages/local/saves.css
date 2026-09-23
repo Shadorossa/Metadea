@@ -1,0 +1,258 @@
+/* Game detail panel › Saves (components/local/details/GameSavesSection.tsx). */
+
+.game-saves {
+  margin-top: 1.25rem;
+}
+
+.game-saves-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.game-saves-heading .local-steam-media-title {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.game-saves-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.game-saves-icon-btn,
+.game-saves-text-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color var(--anim-fast) var(--anim-ease), border-color var(--anim-fast) var(--anim-ease);
+}
+
+.game-saves-icon-btn:hover:not(:disabled),
+.game-saves-text-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.game-saves-icon-btn:disabled,
+.game-saves-text-btn:disabled {
+  opacity: var(--opacity-40);
+  cursor: default;
+}
+
+.game-saves-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.game-saves-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.6rem 0 0;
+}
+
+.game-saves-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.game-saves-thumb {
+  position: relative;
+  width: 64px;
+  height: 40px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-muted);
+}
+
+.game-saves-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.game-saves-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.game-saves-chip {
+  flex-shrink: 0;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--border-medium);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.game-saves-chip--battery {
+  color: var(--color-success-soft);
+  border-color: color-mix(in srgb, var(--color-success-soft) 40%, transparent);
+}
+
+.game-saves-chip--state {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.game-saves-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.game-saves-label {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+}
+
+.game-saves-label--empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.78rem;
+}
+
+.game-saves-label:hover {
+  color: var(--accent);
+}
+
+.game-saves-label-input {
+  width: 100%;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.game-saves-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.game-saves-meta time {
+  color: var(--text-main);
+}
+
+.game-saves-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.game-saves-sync {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+.game-saves-sync--ok {
+  color: var(--color-success);
+}
+
+.game-saves-versions {
+  max-width: 9rem;
+  height: 28px;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.game-saves-empty {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+}
+
+.game-saves-empty-title {
+  margin-bottom: 0.25rem;
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+.game-saves-empty .game-saves-hint {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.game-saves-status {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.game-saves-status--error {
+  color: var(--color-error);
+}
+
+@media (max-width: 640px) {
+  .game-saves-row {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .game-saves-thumb {
+    width: 48px;
+  }
+
+  .game-saves-meta {
+    grid-column: 2;
+    flex-direction: row;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .game-saves-actions {
+    grid-column: 2;
+  }
+}

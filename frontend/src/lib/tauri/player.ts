@@ -16,6 +16,9 @@ export const PLAYER_EVENTS = {
   error: 'player://error',
   session: 'player://session',
   screenshot: 'player://screenshot',
+  thumbnail: 'player://thumbnail',
+  thumbnailsReady: 'player://thumbnails-ready',
+  clipProgress: 'player://clip-progress',
 } as const;
 
 async function invokePlayer<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -40,6 +43,8 @@ export interface PlayerOpenRequest {
   // what the skip-segment lookup (usePlayerSkipSegments) keys on.
   externalId?: string | null;
   episodeNumbers?: number[];
+  // Queue episodes that are filler, only when the entry skips filler.
+  fillerEpisodes?: number[];
   // false = docked controls in the main WebView, no overlay window.
   overlay?: boolean;
 }
@@ -128,3 +133,90 @@ export const listenPlayerScreenshot = (handler: (saved: PlayerScreenshotSaved) =
   listenPlayerEvent<PlayerScreenshotSaved>(PLAYER_EVENTS.screenshot, handler);
 export const listenToastAction = (handler: (action: ToastAction) => void) =>
   listenPlayerEvent<ToastAction>('toast://action', handler);
+
+// Seek-bar hover thumbnails (src-tauri/src/player/thumbnails).
+export interface ThumbnailManifest {
+  version: number;
+  durationSecs: number;
+  intervalSecs: number;
+  count: number;
+  tileWidth: number;
+  tileHeight: number;
+  columns: number;
+  rows: number;
+  sheets: string[];
+  missing: number[];
+}
+
+export interface ThumbnailFrame {
+  key: string;
+  index: number;
+  count: number;
+  intervalSecs: number;
+  tileWidth: number;
+  tileHeight: number;
+  dataUrl: string;
+}
+
+export interface ThumbnailsReady {
+  key: string;
+  manifest: ThumbnailManifest;
+  // Absolute paths; shown through the asset protocol ($APPCACHE/thumbnails).
+  sheets: string[];
+}
+
+export type ThumbnailsStart =
+  | { state: 'unavailable' }
+  | { state: 'cached'; key: string; manifest: ThumbnailManifest; sheets: string[] }
+  | { state: 'generating'; key: string; frames: ThumbnailFrame[] };
+
+export async function playerThumbnailsStart(path: string): Promise<ThumbnailsStart> {
+  if (!isTauri()) return { state: 'unavailable' };
+  return invokePlayer<ThumbnailsStart>('player_thumbnails_start', { path });
+}
+
+// On-demand JPEG data URL at `seconds` while the job for `key` runs; null otherwise.
+export async function playerThumbnailAt(key: string, seconds: number): Promise<string | null> {
+  if (!isTauri()) return null;
+  return invokePlayer<string | null>('player_thumbnail_at', { key, seconds });
+}
+
+export const playerThumbnailsStop = () => runPlayer('player_thumbnails_stop');
+export const listenPlayerThumbnail = (handler: (frame: ThumbnailFrame) => void) =>
+  listenPlayerEvent<ThumbnailFrame>(PLAYER_EVENTS.thumbnail, handler);
+export const listenPlayerThumbnailsReady = (handler: (ready: ThumbnailsReady) => void) =>
+  listenPlayerEvent<ThumbnailsReady>(PLAYER_EVENTS.thumbnailsReady, handler);
+
+// Instant clips (src-tauri/src/player/clip). Failures reject with a
+// PlayerError whose `code` is an `E_CLIP_*` / `E_*` app error code.
+export type ClipFormat = 'mp4' | 'gif';
+export type ClipSize = '480p' | '720p';
+
+export interface ClipRequest {
+  startSecs: number;
+  endSecs: number;
+  format: ClipFormat;
+  size: ClipSize;
+  includeAudio: boolean;
+  burnSubtitles: boolean;
+}
+
+export interface ClipResult {
+  path: string;
+  bytes: number;
+  // False when the file was saved but the clipboard could not take it.
+  copied: boolean;
+}
+
+export async function playerClipExport(request: ClipRequest): Promise<ClipResult> {
+  return invokePlayer<ClipResult>('player_clip_export', { request });
+}
+
+export const playerClipCancel = () => runPlayer('player_clip_cancel');
+// Clip-mode preview loop (mpv ab-loop); nulls clear it.
+export const playerSetAbLoop = (startSecs: number | null, endSecs: number | null) =>
+  runPlayer('player_set_ab_loop', { startSecs, endSecs });
+export const playerClipReveal = (path: string) => runPlayer('player_clip_reveal', { path });
+export const playerClipOpenFolder = () => runPlayer('player_clip_open_folder');
+export const listenClipProgress = (handler: (progress: { fraction: number }) => void) =>
+  listenPlayerEvent<{ fraction: number }>(PLAYER_EVENTS.clipProgress, handler);

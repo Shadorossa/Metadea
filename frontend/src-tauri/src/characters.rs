@@ -272,26 +272,6 @@ pub async fn delete_character(
 }
 
 #[tauri::command]
-pub async fn set_character_reaction(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    external_id: String,
-    reaction: Option<String>,
-) -> Result<(), String> {
-    let conn = state.conn.lock().str_err()?;
-    let now = Utc::now().to_rfc3339();
-    let updated = conn
-        .execute(
-            "UPDATE characters SET reaction = ?1, updated_at = ?2 WHERE external_id = ?3",
-            rusqlite::params![&reaction, &now, &external_id],
-        )
-        .str_err()?;
-    if updated == 0 {
-        return Err("Character not found; save it before setting a reaction".to_string());
-    }
-    Ok(())
-}
-
-#[tauri::command]
 pub async fn save_character_appearances(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     character_external_id: String,
@@ -611,9 +591,16 @@ pub async fn remap_tmdb_character_ids(
             "UPDATE character_merges SET canonical_character_external_id = ?2 WHERE canonical_character_external_id = ?1",
             rusqlite::params![&remap.old_external_id, &remap.new_external_id],
         ).str_err()?;
+        // A reaction the canonical id already has wins over the legacy one's,
+        // so the character stays in only one reaction list.
         tx.execute(
-            "INSERT OR IGNORE INTO user_list_items (external_id, list_key, position, added_at)
-             SELECT ?2, list_key, position, added_at FROM user_list_items WHERE external_id = ?1",
+            &format!(
+                "INSERT OR IGNORE INTO user_list_items (external_id, list_key, position, added_at)
+                 SELECT ?2, list_key, position, added_at FROM user_list_items WHERE external_id = ?1
+                   AND NOT (list_key IN {hidden}
+                            AND EXISTS (SELECT 1 FROM user_list_items WHERE external_id = ?2 AND list_key IN {hidden}))",
+                hidden = crate::character_reactions::HIDDEN_LIST_KEYS_SQL,
+            ),
             rusqlite::params![&remap.old_external_id, &remap.new_external_id],
         ).str_err()?;
         tx.execute("DELETE FROM user_list_items WHERE external_id = ?1", [&remap.old_external_id]).str_err()?;

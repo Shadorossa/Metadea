@@ -242,7 +242,26 @@ export function CalendarSection() {
   return (
     <div className="home-card">
       <div className="stats-calendar-header">
-        <h3 className="home-card-title">{p.stats_calendar}</h3>
+        <div className="stats-calendar-heading">
+          <h3 className="home-card-title">{p.stats_calendar}</h3>
+          <span className="stats-calendar-heading-sep" aria-hidden="true" />
+            <div className="home-calendar-toggle">
+              <button
+                type="button"
+                className={`home-calendar-toggle-btn ${mode === 'mine' ? 'active' : ''}`}
+                onClick={() => { setMode('mine'); setTypeFilter(null); }}
+              >
+                {p.calendar_for_you}
+              </button>
+              <button
+                type="button"
+                className={`home-calendar-toggle-btn ${mode === 'general' ? 'active' : ''}`}
+                onClick={() => { setMode('general'); setTypeFilter(null); }}
+              >
+                {p.calendar_general}
+              </button>
+            </div>
+        </div>
         <div className="stats-calendar-month-nav">
           <button
             type="button"
@@ -268,22 +287,6 @@ export function CalendarSection() {
         </div>
       </div>
       <div className="home-calendar-controls">
-        <div className="home-calendar-toggle">
-          <button
-            type="button"
-            className={`home-calendar-toggle-btn ${mode === 'mine' ? 'active' : ''}`}
-            onClick={() => { setMode('mine'); setTypeFilter(null); }}
-          >
-            {p.calendar_for_you}
-          </button>
-          <button
-            type="button"
-            className={`home-calendar-toggle-btn ${mode === 'general' ? 'active' : ''}`}
-            onClick={() => { setMode('general'); setTypeFilter(null); }}
-          >
-            {p.calendar_general}
-          </button>
-        </div>
         <div className="home-calendar-type-tabs">
           <TypeTabs releases={releases} activeType={typeFilter} tabClass="home-calendar-type-tab" onSelect={setTypeFilter} />
         </div>

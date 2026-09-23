@@ -7,6 +7,11 @@ import {
   setUnifySeasonsHighestRatedCoverEnabled,
   isCompletedMangaIssueCoverEnabled,
   setCompletedMangaIssueCoverEnabled,
+  isTextlessCoversEnabled,
+  setTextlessCoversEnabled,
+  getTextlessCoverScope,
+  setTextlessCoverScope,
+  type TextlessCoverScope,
 } from '../../../lib/storage/preferences';
 import { byId } from '../../../lib/dom/dom';
 import { clearAllRatings } from '../../../lib/tauri/library';
@@ -14,15 +19,21 @@ import { getT } from '../../../i18n/runtime';
 
 export function initActivitySettings(showToast: (msg?: string) => void) {
   const unifySeasonsCheckbox = byId<HTMLInputElement>('unify-seasons-enabled');
+  // The highest-rated cover only applies to unified seasons (LibraryCard), so
+  // it is disabled while unification is off.
+  const highestRatedCoverCheckbox = byId<HTMLInputElement>('unify-seasons-highest-rated-cover');
+  const syncHighestRatedCover = () => {
+    if (highestRatedCoverCheckbox && unifySeasonsCheckbox) highestRatedCoverCheckbox.disabled = !unifySeasonsCheckbox.checked;
+  };
   if (unifySeasonsCheckbox) {
     unifySeasonsCheckbox.checked = isUnifySeasonsEnabled();
     unifySeasonsCheckbox.addEventListener('change', () => {
       setUnifySeasonsEnabled(unifySeasonsCheckbox.checked);
+      syncHighestRatedCover();
       showToast();
     });
   }
 
-  const highestRatedCoverCheckbox = byId<HTMLInputElement>('unify-seasons-highest-rated-cover');
   if (highestRatedCoverCheckbox) {
     highestRatedCoverCheckbox.checked = isUnifySeasonsHighestRatedCoverEnabled();
     highestRatedCoverCheckbox.addEventListener('change', () => {
@@ -30,12 +41,32 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
       showToast();
     });
   }
+  syncHighestRatedCover();
 
   const completedMangaIssueCoverCheckbox = byId<HTMLInputElement>('completed-manga-issue-cover');
   if (completedMangaIssueCoverCheckbox) {
     completedMangaIssueCoverCheckbox.checked = isCompletedMangaIssueCoverEnabled();
     completedMangaIssueCoverCheckbox.addEventListener('change', () => {
       setCompletedMangaIssueCoverEnabled(completedMangaIssueCoverCheckbox.checked);
+      showToast();
+    });
+  }
+
+  const textlessCoversCheckbox = byId<HTMLInputElement>('prefer-textless-covers');
+  const textlessScopeSelect = byId<HTMLSelectElement>('textless-covers-scope');
+  if (textlessScopeSelect) {
+    textlessScopeSelect.value = getTextlessCoverScope();
+    textlessScopeSelect.addEventListener('change', () => {
+      setTextlessCoverScope(textlessScopeSelect.value as TextlessCoverScope);
+      showToast();
+    });
+  }
+  if (textlessCoversCheckbox) {
+    textlessCoversCheckbox.checked = isTextlessCoversEnabled();
+    if (textlessScopeSelect) textlessScopeSelect.disabled = !textlessCoversCheckbox.checked;
+    textlessCoversCheckbox.addEventListener('change', () => {
+      setTextlessCoversEnabled(textlessCoversCheckbox.checked);
+      if (textlessScopeSelect) textlessScopeSelect.disabled = !textlessCoversCheckbox.checked;
       showToast();
     });
   }

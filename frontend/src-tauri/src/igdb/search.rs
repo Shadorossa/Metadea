@@ -6,7 +6,7 @@ use chrono::Datelike;
 use crate::igdb_env::load_env_config;
 use super::auth::get_twitch_token;
 use super::client::{igdb_query, EDITION_KEYWORDS, IGDB_API_GAMES, IGDB_IMAGE_COVER_BIG};
-use super::mapping::{detect_vn, get_game_category, is_non_game, name_has_edition_word};
+use super::mapping::{detect_vn, get_game_category, is_non_game, plain_search_verdict, PlainSearchVerdict};
 
 // Games releasing in [start_unix, end_unix] — single request, used by the
 // Home calendar's "General" view. Uses a broader category allowlist than
@@ -283,37 +283,11 @@ pub async fn igdb_search(
             continue;
         }
 
-        // Bundles (3), remasters (9), updates (14), and expanded editions
-        // (10) never belong in plain search results (bundles aren't a
-        // playable title on their own; remasters/updates/expanded editions
-        // should only ever surface as a relation on the original game's
-        // page, not as their own separate search hit) — checked against
-        // both fields independently since get_game_category's
-        // category-then-game_type fallback can mask one flagging it when
-        // the other is simply absent from this particular record (e.g. an
-        // expanded edition IGDB tagged category=main_game but game_type=10).
-        const EXCLUDED: &[u64] = &[3, 9, 10, 14];
-        if item["category"].as_u64().is_some_and(|c| EXCLUDED.contains(&c))
-            || item["game_type"].as_u64().is_some_and(|c| EXCLUDED.contains(&c)) {
-            continue;
-        }
-
-        // 0 main_game, 4 standalone_expansion, 7 season, 8 remake.
-        let category = get_game_category(&item);
-        if !matches!(category, 0 | 4 | 7 | 8) {
-            continue;
-        }
-
-        // Si es main_game (0) y tiene parent o version_title, lo saltamos para evitar duplicados de fichas base
-        if category == 0 && (!item["version_parent"].is_null() || !item["version_title"].is_null()) {
-            continue;
-        }
-
-        // A main_game (0) whose own name is literally "... Edition" is
-        // almost always a re-released bundle/version IGDB miscategorized as
-        // its own main game rather than as a proper edition/remaster
-        // relation — word-boundary checked so "Expedition 33" isn't caught.
-        if category == 0 && name_has_edition_word(item["name"].as_str().unwrap_or("")) {
+        // Bundles, remasters, updates, expanded editions, DLC, ports,
+        // duplicate editions and "... Edition" main games never belong in
+        // plain search results: they only surface as a relation on the
+        // original game's page. Shared with the company page.
+        if plain_search_verdict(&item) != PlainSearchVerdict::Keep {
             continue;
         }
 

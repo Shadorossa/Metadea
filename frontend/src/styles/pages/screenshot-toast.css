@@ -161,3 +161,70 @@ body {
 .screenshot-toast-icon svg[hidden] {
   display: none;
 }
+
+/* ── Break reminder / clock alert: cover + rest or clock glyph ───────────── */
+.screenshot-toast-card--break {
+  border-left-color: #e8b86b;
+}
+
+.screenshot-toast-card--break .screenshot-toast-title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #f6e3c2;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.screenshot-toast-card--break .screenshot-toast-work {
+  color: #d9cfc2;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.screenshot-toast-cover {
+  position: relative;
+  width: 36px;
+  height: 48px;
+  flex: 0 0 36px;
+  border: 1px solid rgba(232, 184, 107, 0.45);
+  background: rgba(232, 184, 107, 0.12);
+}
+
+.screenshot-toast-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.screenshot-toast-cover-badge {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid rgba(232, 184, 107, 0.6);
+  border-radius: 999px;
+  background: rgba(22, 21, 23, 0.95);
+  color: #f0c889;
+}
+
+.screenshot-toast-cover-badge svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.screenshot-toast-cover[hidden],
+.screenshot-toast-icon[hidden],
+.screenshot-toast-cover img[hidden],
+.screenshot-toast-cover-badge svg[hidden] {
+  display: none;
+}

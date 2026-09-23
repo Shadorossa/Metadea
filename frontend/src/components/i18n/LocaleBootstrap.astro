@@ -17,6 +17,10 @@ const bootstrap = buildLocaleBootstrapScript({
   storageKey: STORAGE_KEYS.locale,
   locales: LOCALES,
   buildLang: Astro.props.buildLang,
+  // Before 0.7 the app defaulted to Spanish; keep it for those installs.
+  migratedKey: STORAGE_KEYS.localeMigrated,
+  legacyLocale: 'es',
+  legacyKeyPrefix: 'metadea_',
 });
 ---
 

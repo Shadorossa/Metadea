@@ -10,18 +10,29 @@ use rusqlite::{Connection, OptionalExtension, Result as SqlResult, Transaction};
 
 use crate::db::{current_schema_version, mark_migration, merge_fragmented_sagas};
 mod aniskip;
+mod anime_filler;
+mod company_cache;
 mod continue_watching;
 mod emulator_screenshots;
+mod game_sessions;
 mod jukebox;
 mod mal;
 mod reconsumption;
+mod social_profile_parity;
+mod tier_list_board;
+mod yearly_bingo;
+mod yearly_challenge;
 
 pub(crate) mod retro_achievements;
 pub(crate) mod epub_reader;
+pub(crate) mod textless_cover_cache;
+pub(crate) mod comicvine_arc_cache;
+pub(crate) mod time_to_beat_cache;
+pub(crate) mod wallpaper_cache;
 
 type Migration = fn(&Transaction) -> SqlResult<()>;
 
-const MIGRATIONS: &[(i64, Migration)] = &[
+pub(crate) const MIGRATIONS: &[(i64, Migration)] = &[
     (1, m1), (2, m2), (3, m3), (4, m4), (5, m5), (6, m6), (7, m7), (8, m8), (9, m9),
     (10, m10), (11, m11), (12, m12), (13, m13), (14, m14), (15, m15),
     // Migration 16 was reverted before release — see m17's comment.
@@ -41,6 +52,17 @@ const MIGRATIONS: &[(i64, Migration)] = &[
     (75, mal::migrate),
     (76, emulator_screenshots::migrate),
     (77, continue_watching::migrate),
+    (78, company_cache::migrate),
+    (79, yearly_challenge::migrate),
+    (80, social_profile_parity::migrate),
+    (81, textless_cover_cache::migrate),
+    (82, tier_list_board::migrate),
+    (83, yearly_bingo::migrate),
+    (84, comicvine_arc_cache::migrate),
+    (85, time_to_beat_cache::migrate),
+    (86, anime_filler::migrate),
+    (87, game_sessions::migrate),
+    (88, wallpaper_cache::migrate),
 ];
 
 pub(crate) fn run_migrations(conn: &Connection) -> SqlResult<()> {
@@ -774,11 +796,11 @@ fn m42(tx: &Transaction) -> SqlResult<()> {
 }
 
 fn m43(tx: &Transaction) -> SqlResult<()> {
-    // Where VLC's own position was last seen for an episode that hasn't
-    // been auto-marked watched yet — lets "Reproducir" resume from there
-    // instead of always restarting at 0, even after fully closing VLC
-    // and coming back later (unlike vlc-session.ts's in-memory identity,
-    // which only survives while the app itself stays open). One row per
+    // Where the video player's position was last seen for an episode that
+    // hasn't been auto-marked watched yet — lets "Reproducir" resume from
+    // there instead of always restarting at 0, even after fully closing the
+    // player and coming back later (an in-memory identity would only
+    // survive while the app itself stays open). One row per
     // (external_id, episode_number); cleared once that episode is
     // actually marked watched (see episode_history's own writer).
     tx.execute_batch(

@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.0"
+version = "0.7.0"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -51,6 +51,13 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 discord-rich-presence = "0.2"
 unrar = "0.5"
 zip = { version = "2.2", default-features = false, features = ["deflate"] }
+# Full backups (src/backup/archive.rs) are .7z with LZMA2. Pure Rust, so no
+# 7-Zip install or C toolchain is needed; only the LZMA2 codec is enabled
+# (no AES/bzip2/ppmd). The old .zip format is still read through `zip`.
+sevenz-rust2 = { version = "0.23", default-features = false, features = ["compress"] }
+# SHA-256 for the backup manifest hashes and the Google OAuth PKCE S256
+# challenge (src/google_drive/oauth.rs); already in the graph through tauri.
+sha2 = "0.10"
 # EPUB reader (src/epub_reader): container.xml / OPF / NCX / nav / chapter XHTML
 # parsing. Already in the dependency graph through plist; escape-html resolves
 # the HTML named entities (&nbsp; &mdash; ...) real EPUB chapters use.
@@ -62,8 +69,10 @@ libloading = "0.8"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
 windows-dpapi = "0.1.0"
-# Native child HWND that hosts the embedded mpv video surface (src/player/video_host.rs).
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_UI_WindowsAndMessaging"] }
+# Native child HWND that hosts the embedded mpv video surface (src/player/video_host.rs);
+# DataExchange + Memory put exported clips on the clipboard as files (src/player/clip).
+# Threading + Input_XboxController: the controller pause menu (src/game_pause).
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_System_DataExchange", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Threading", "Win32_UI_Input_XboxController", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"

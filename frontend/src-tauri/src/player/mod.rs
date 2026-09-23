@@ -14,7 +14,12 @@
 // - window:         the overlay window + keeping surface/overlay aligned to the
 //                   video rect the player modal reports inside the main window
 // - commands:       the #[tauri::command] surface the frontend invokes
+// - clip:           instant MP4/GIF clips on a headless encoding handle,
+//                   copied to the clipboard as a file (CF_HDROP)
+// - thumbnails:     seek-bar hover previews from a second, headless libmpv
+//                   handle (sprite sheets cached under $APPCACHE/thumbnails)
 
+mod clip;
 mod commands;
 mod continue_frame;
 mod engine;
@@ -26,8 +31,11 @@ mod libmpv_ffi;
 mod mpv_api;
 mod screenshot_names;
 mod status;
+mod thumbnails;
 mod video_host;
 mod window;
 
+pub use clip::*;
 pub use commands::*;
 pub use engine::PlayerEngineState;
+pub use thumbnails::*;

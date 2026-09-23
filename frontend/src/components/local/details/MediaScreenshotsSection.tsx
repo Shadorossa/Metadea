@@ -3,7 +3,7 @@ import { useKeyedState } from '../../shared/hooks/useKeyedState';
 
 const NO_SCREENSHOTS: LocalScreenshot[] = [];
 import {
-  getEmulatorScreenshots, getLocalScreenshots, steamGetScreenshots, wrapAssetUrl,
+  getLocalScreenshots, importEmulatorScreenshots, steamGetScreenshots, wrapAssetUrl,
   type LocalScreenshot, type SteamAchievement,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/runtime';
@@ -29,7 +29,9 @@ interface MediaScreenshotsSectionProps {
     // configured, error...).
     empty?: React.ReactNode;
   };
-  // A scanned ROM: the emulator's own capture folder joins the list.
+  // A scanned ROM: its captures live in Pictures/Metadea/<workName>/ like
+  // every other work's (emulator sessions move them there); ones still in
+  // the emulator's own folder are moved there once, on first load.
   emulator?: { platformId: string; romPath: string; title?: string };
 }
 
@@ -39,14 +41,10 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
   const achievementsIconAppId = appId ?? achievementsTab?.iconAppId ?? '';
   const emulatorPlatformId = emulator?.platformId;
   const emulatorRomPath = emulator?.romPath;
-  const emulatorTitle = emulator?.title;
   // Everything below starts over for each work this section is shown for.
   const workKey = `${appId}\n${workName}\n${emulatorRomPath ?? ''}`;
   const [activeTab, setActiveTab] = useKeyedState<'screenshots' | 'achievements'>(workKey, 'screenshots');
   const [screenshots, setScreenshots] = useKeyedState<LocalScreenshot[]>(workKey, NO_SCREENSHOTS);
-  // The emulator folder had nothing named after this game, so what it
-  // contributed is its recent captures for the platform.
-  const [emulatorUnfiltered, setEmulatorUnfiltered] = useKeyedState(workKey, false);
   const screenshotsGridRef = useRef<HTMLDivElement>(null);
   const achievementsGridRef = useRef<HTMLDivElement>(null);
   const [previewIndex, setPreviewIndex] = useKeyedState<number | null>(workKey, null);
@@ -57,8 +55,8 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
   const [achievementColumns, setAchievementColumns] = useState(6);
   const [loading, setLoading] = useKeyedState(workKey, true);
   const [failed, setFailed] = useKeyedState(workKey, false);
-  // The captures (a local folder walk, Steam's screenshot folder, the
-  // emulator's capture folder) are only listed once this section has been
+  // The captures (a local folder walk, Steam's screenshot folder) are only
+  // listed once this section has been
   // scrolled into view with its screenshots tab active — it sits below the
   // panel's summary, so a panel opened for its header alone never issues
   // them. Latched per work: once wanted, later tab switches keep the list
@@ -89,30 +87,29 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
 
     const loadScreenshots = async (showLoading: boolean) => {
       if (showLoading) setLoading(true);
-      const requests: Promise<{ screenshots: LocalScreenshot[]; filtered: boolean }>[] = [
-        getLocalScreenshots(workName).then(screenshots => ({ screenshots, filtered: true })),
-      ];
-      if (appId) requests.push(steamGetScreenshots(appId).then(screenshots => ({ screenshots, filtered: true })));
-      if (emulatorPlatformId && emulatorRomPath) {
-        requests.push(getEmulatorScreenshots(emulatorPlatformId, emulatorRomPath, { title: emulatorTitle }));
+      // First load of a ROM: move its captures still in the emulator's own
+      // folder into the work's Metadea folder (a no-op once done).
+      if (showLoading && emulatorPlatformId && emulatorRomPath) {
+        await importEmulatorScreenshots(emulatorPlatformId, emulatorRomPath, workName)
+          .catch(error => console.error('[Local screenshots] Failed to import emulator captures:', error));
+        if (cancelled) return;
       }
+      const requests: Promise<LocalScreenshot[]>[] = [getLocalScreenshots(workName)];
+      if (appId) requests.push(steamGetScreenshots(appId));
       const results = await Promise.allSettled(requests);
       if (cancelled) return;
 
       const loaded: LocalScreenshot[] = [];
       let succeeded = 0;
-      let unfiltered = false;
       for (const result of results) {
         if (result.status === 'fulfilled') {
           succeeded++;
-          loaded.push(...result.value.screenshots);
-          if (!result.value.filtered && result.value.screenshots.length > 0) unfiltered = true;
+          loaded.push(...result.value);
         } else {
           console.error('[Local screenshots] Failed to load captures:', result.reason);
         }
       }
       setScreenshots([...new Map(loaded.map(screenshot => [screenshot.path, screenshot])).values()]);
-      setEmulatorUnfiltered(unfiltered);
       setFailed(succeeded === 0);
       if (showLoading) setLoading(false);
     };
@@ -130,7 +127,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [screenshotsWanted, appId, workName, emulatorPlatformId, emulatorRomPath, emulatorTitle, setScreenshots, setEmulatorUnfiltered, setFailed, setLoading]);
+  }, [screenshotsWanted, appId, workName, emulatorPlatformId, emulatorRomPath, setScreenshots, setFailed, setLoading]);
 
   useEffect(() => {
     if (activeTab !== 'screenshots' || screenshots.length === 0) return;
@@ -171,7 +168,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
     .pop()
     ?.match(/\b(S\d{2}E\d{2}|M\d{2})\b/i)?.[1]
     .toUpperCase() ?? null;
-  const vlcScreenshotDetails = (path: string) => {
+  const captureDetails = (path: string) => {
     const filename = path.split(/[\\/]/).pop() ?? '';
     const match = filename.match(/ - (S\d{2}E\d{2}) - (\d{2,}h\d{2}m\d{2}s\d{3})\.png$/i);
     return match ? { episode: match[1].toUpperCase(), timecode: match[2] } : null;
@@ -261,7 +258,6 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
         <div className="local-steam-media-panel" role="tabpanel">
           {screenshots.length > 0 ? (
             <>
-              {emulatorUnfiltered && <p className="local-steam-screenshots-empty">{t.local.emulator_screenshots_recent}</p>}
               <div className="local-steam-screenshots-grid" ref={screenshotsGridRef}>
                 {visibleScreenshots.map((screenshot, index) => {
                   const absoluteIndex = visibleScreenshotsPage * screenshotsPerPage + index;
@@ -328,10 +324,10 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
               aria-label={t.character.pagination_prev}
             >‹</button>
             <div className="local-steam-screenshot-frame">
-              {vlcScreenshotDetails(shownScreenshot.path) && (
-                <div className="local-steam-screenshot-vlc-label">
-                  <strong>{vlcScreenshotDetails(shownScreenshot.path)!.episode}</strong>
-                  <span>{vlcScreenshotDetails(shownScreenshot.path)!.timecode}</span>
+              {captureDetails(shownScreenshot.path) && (
+                <div className="local-steam-screenshot-capture-label">
+                  <strong>{captureDetails(shownScreenshot.path)!.episode}</strong>
+                  <span>{captureDetails(shownScreenshot.path)!.timecode}</span>
                 </div>
               )}
               <img className="local-steam-screenshot-full" src={wrapAssetUrl(shownScreenshot.path)} alt={`${t.local.screenshots} ${previewIndex! + 1}`} />

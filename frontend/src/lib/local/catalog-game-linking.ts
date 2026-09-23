@@ -137,7 +137,9 @@ export function displayNameFor(g: LocalGame, catalogMapById?: Map<string, Catalo
 // Used by both GamesGrid (Videojuegos) and LocalMediaSection (Visual
 // Novel's own Steam-backed platform sections) so the two don't drift into
 // two independently-maintained sort behaviors.
-export type SortMode = 'alpha' | 'lastPlayed' | 'playtime';
+// 'shortestToBeat' reads the time_to_beat cache only (see
+// useCachedBeatSeconds): works whose length was never looked up sort last.
+export type SortMode = 'alpha' | 'lastPlayed' | 'playtime' | 'shortestToBeat';
 
 export function entryDisplayName(entry: StatusEntry, displayNameFor: (g: LocalGame) => string | undefined): string {
   return entry.kind === 'game' ? (displayNameFor(entry.game) ?? entry.game.name) : entry.item.title;
@@ -159,9 +161,25 @@ export function entryPlaytimeMinutes(entry: StatusEntry): number {
   return entry.item.libraryEntry.minutes_spent ?? 0;
 }
 
-export function sortEntries(entries: StatusEntry[], mode: SortMode, displayNameFor: (g: LocalGame) => string | undefined): StatusEntry[] {
+/** The catalog id an entry's time to beat is cached under, if it has one. */
+export function entryExternalId(entry: StatusEntry): string | undefined {
+  return entry.kind === 'game' ? entry.game.external_id : entry.item.externalId;
+}
+
+export function sortEntries(
+  entries: StatusEntry[],
+  mode: SortMode,
+  displayNameFor: (g: LocalGame) => string | undefined,
+  beatSeconds?: ReadonlyMap<string, number>,
+): StatusEntry[] {
   const sorted = [...entries];
-  if (mode === 'alpha') {
+  if (mode === 'shortestToBeat') {
+    const lengthOf = (entry: StatusEntry) => {
+      const id = entryExternalId(entry);
+      return (id && beatSeconds?.get(id)) || Infinity;
+    };
+    sorted.sort((a, b) => (lengthOf(a) - lengthOf(b)) || entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor)));
+  } else if (mode === 'alpha') {
     sorted.sort((a, b) => entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor)));
   } else if (mode === 'lastPlayed') {
     sorted.sort((a, b) => entryLastPlayedMs(b) - entryLastPlayedMs(a));

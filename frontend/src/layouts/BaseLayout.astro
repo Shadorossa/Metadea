@@ -8,16 +8,22 @@ import '../styles/components/quick-search.css';
 import '../styles/components/footer.css';
 import '../styles/components/global-loading-bar.css';
 import '../styles/components/shortcut-sheet.css';
+import '../styles/components/spoiler-shield.css';
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
 import { QuickSearchOverlay } from '../components/search/QuickSearchOverlay';
 import { GlobalShortcuts } from '../components/shared/GlobalShortcuts';
+import { ChangelogLauncher } from '../components/changelog/ChangelogLauncher';
+import '../styles/components/changelog.css';
 import { NowPlayingBar } from '../components/local/NowPlayingBar';
+import { GamePauseOverlay } from '../components/game-pause/GamePauseOverlay';
+import '../styles/components/game-pause.css';
 import { NowReadingBar } from '../components/reader/NowReadingBar';
 import { UiThemeLoader } from '../components/ui-themes/UiThemeLoader';
 import '../styles/components/now-playing-bar.css';
 import { JukeboxIsland } from '../components/jukebox/JukeboxIsland';
 import '../styles/components/jukebox.css';
+import { AmbientModeIsland } from '../components/ambient/AmbientModeIsland';
 import { CharacterPrEditorModal } from '../components/character/CharacterPrEditorModal';
 import type { Locale } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
@@ -97,6 +103,9 @@ const t = useTranslations(lang);
          global bindings (mod+K, mod+1..6, alt+arrows, ?) and the "?" sheet.
          See lib/shared/keyboard/shortcut-registry.ts. -->
     <GlobalShortcuts client:load transition:persist />
+    <!-- "What's new" modal: opens once per new app version with its
+         CHANGELOG.md section, and from [data-open-changelog] buttons. -->
+    <ChangelogLauncher client:load transition:persist />
     <div id="page-content" transition:name="page-content">
       <slot />
     </div>
@@ -106,10 +115,16 @@ const t = useTranslations(lang);
          #page-content and transition:persist so it survives page swaps the
          same way #global-toast/#app-bg do. -->
     <NowPlayingBar client:load transition:persist />
+    <!-- Controller pause menu (components/game-pause/, src-tauri/src/game_pause):
+         shows over any page when a game launched from Metadea is paused. -->
+    <GamePauseOverlay client:load transition:persist />
     <NowReadingBar client:load transition:persist />
     <!-- Jukebox mini player (components/jukebox/, lib/jukebox/): the OP/ED
          favourites queue and its audio element outlive every page. -->
     <JukeboxIsland client:load transition:persist />
+    <!-- Ambient TV mode (components/ambient/, lib/ambient/): screensaver after
+         the idle delay in fullscreen / Big Picture; loads its overlay on first use. -->
+    <AmbientModeIsland client:idle transition:persist />
 
     <!-- User UI themes / skins (docs/THEMING.md): injects the active theme's
          <style id="metadea-ui-theme"> after every stylesheet above and owns
@@ -387,6 +402,9 @@ const t = useTranslations(lang);
         if (!window.location.pathname.startsWith('/media')) {
           import('../lib/local/discord-presence').then(m => m.requestDiscordIdle()).catch(() => {});
         }
+        // A game launched from Metadea keeps its presence across pages: the
+        // Rust session registry is the source (lib/local/game-session-state).
+        import('../lib/local/game-session-state').then(m => m.initGameSessionPresence()).catch(() => {});
 
         // metadea:// links (lib/deep-link/) — idempotent, so re-running this
         // handler after a page swap never stacks a second listener.

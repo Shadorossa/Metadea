@@ -1,4 +1,4 @@
-// Settings › Apariencia › user UI themes (skins): lists the folders under
+// Settings › Plugins › UI themes (skins; PluginsTab.astro): lists the folders under
 // <app data>/ui_themes, activates/deactivates one, opens the folder, drops
 // the starter theme in and toggles the dev-loop watcher. The loader itself
 // lives in UiThemeLoader.tsx (BaseLayout); this island only talks to Rust

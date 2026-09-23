@@ -15,7 +15,7 @@
   min-width: 0;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 0 0 1rem 0;
+  padding: 0 0 0.35rem 0;
   margin-top: -2rem;
   scroll-behavior: smooth;
   scrollbar-width: none;
@@ -28,8 +28,17 @@
   mask-image: linear-gradient(to right, transparent, black var(--mh-fade), black calc(100% - var(--mh-fade)), transparent);
 }
 
-.mh-scroll::-webkit-scrollbar {
-  display: none;
+/* The app themes restyle every scrollbar with `[data-theme="…"] *` rules of
+   the same specificity that load later, which brought a thin bar back under
+   the months. The arrows and drag already scroll this row. */
+.monthly-history .mh-scroll {
+  scrollbar-width: none !important;
+}
+
+.monthly-history .mh-scroll::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .mh-scroll--dragging {
@@ -67,10 +76,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Nudged up from dead-center (flex align-items:center on .monthly-history)
-     to land in the visual gap between the zigzagged top/bottom card rows
-     instead of the middle of the whole two-row block. */
-  transform: translateY(-1.75rem);
+  /* Centred on the two-row block: with the bottom row pulled up by
+     margin (not a transform) the block's box is exactly the two rows, so
+     flex centring alone lands between them — no manual nudge. The scroll
+     box's own negative margin-top is mirrored so the arrows follow it. */
+  transform: translateY(-1rem);
   transition: color var(--anim-fast), border-color var(--anim-fast);
 }
 
@@ -119,7 +129,10 @@
   align-items: flex-start;
   margin: 0;
   padding: 0;
-  transform: translateY(-2.5rem) translateX(4.75rem);
+  /* margin-top (not translateY) pulls the row up so the block's layout
+     height shrinks with it — a transform left 2.5rem of empty space below. */
+  margin-top: -2.5rem;
+  transform: translateX(4.75rem);
   transition: z-index 0.2s;
 }
 

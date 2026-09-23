@@ -6,18 +6,21 @@ import { parseStatSectionLabel, StatSectionTracker } from '../../../lib/media/st
 import { mergePlatformVersions } from '../../../lib/media/mappers/mapper-utils';
 import { openLink } from '../MediaStoreLinks';
 import { MediaSourceLink } from '../MediaSourceLink';
+import { TimeToBeatBlock } from '../../shared/TimeToBeatBlock';
 
 interface Props {
   data: MediaPageData;
   t: Translations['media'];
   ratingSystem: RatingSystem;
+  /** Game / visual novel only: the "how long to beat" block under the stats. */
+  timeToBeat?: { t: Translations['time_to_beat']; playedMinutes?: number };
 }
 
 // Datos — always rendered, even with no stats/authors, since the
 // link to the source page (MediaSourceLink) can always be built
 // from data.source/sourceUrl regardless of whether anything else
 // here has data.
-export function MediaStatsColumn({ data, t: tm, ratingSystem }: Props) {
+export function MediaStatsColumn({ data, t: tm, ratingSystem, timeToBeat }: Props) {
   return (
           <div className="media-col-stats">
                 <div className="media-section-header-row">
@@ -122,6 +125,17 @@ export function MediaStatsColumn({ data, t: tm, ratingSystem }: Props) {
                     </div>
                   )}
                 </div>
+
+                {timeToBeat && (data.type === 'game' || data.type === 'vnovel') && (
+                  <TimeToBeatBlock
+                    externalId={data.externalId}
+                    title={data.titleMain}
+                    releaseYear={data.releaseYear}
+                    playedMinutes={timeToBeat.playedMinutes}
+                    t={timeToBeat.t}
+                    variant="media"
+                  />
+                )}
           </div>
   );
 }

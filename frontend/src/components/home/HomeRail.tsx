@@ -23,20 +23,35 @@ import {
   type ContinueCardData,
 } from '../../lib/home/home-snapshot';
 import { toMediumCover, toSmallCover } from '../../lib/media/small-cover';
+import { CoverImage } from '../shared/CoverImage';
 import { interpolate } from '../../lib/shared/text/interpolate';
 import { computeUpcomingPlanningReleases } from '../../lib/profile/stats-calculators';
 import { readLibraryAiringSchedule } from '../../lib/notifications/library-release-notifications';
 import { getContinueWatchingSources } from '../../lib/tauri/continue-watching';
+import { nextCanonEpisode, skipsFiller } from '../../lib/anime/filler';
+import { getLoadedFillerInfo } from '../../lib/anime/filler-store';
 import { wrapAssetUrl } from '../../lib/tauri/bridge';
+import { useSpoilerShield } from '../spoilers/hooks/useSpoilerShield';
+import { SpoilerInline } from '../spoilers/SpoilerShield';
+import { spoilerItemKey } from '../../lib/spoilers/spoiler-reveals';
+
+/** Spoiler shield state of the Continue card's episode (lib/spoilers/). */
+interface ContinueEpisodeSpoiler {
+  /** Shield data still loading: title and still wait, the cover stands in. */
+  pending: boolean;
+  hidden: boolean;
+  onReveal: () => void;
+}
 
 type HomeStrings = ReturnType<typeof getT>['home'];
 
 /** The thumbnail, in the order the card prefers: the player's own frame
  *  of the stop point, the episode's still, the work's cover. The frame file
- *  is overwritten on every stop, so its URL carries the stop time. */
-function thumbnailFor(card: ContinueCardData): string | null {
+ *  is overwritten on every stop, so its URL carries the stop time. A still
+ *  the spoiler shield holds back gives way to the cover. */
+function thumbnailFor(card: ContinueCardData, stillWithheld = false): string | null {
   if (card.framePath) return `${wrapAssetUrl(card.framePath)}?v=${card.updatedAt}`;
-  if (card.stillUrl) return wrapAssetUrl(card.stillUrl);
+  if (card.stillUrl && !stillWithheld) return wrapAssetUrl(card.stillUrl);
   return card.coverUrl ? wrapAssetUrl(toMediumCover(card.coverUrl)) : null;
 }
 
@@ -46,9 +61,10 @@ function sameCard(a: ContinueCardData | null, b: ContinueCardData | null): boole
     && a.positionSeconds === b.positionSeconds && a.framePath === b.framePath && a.title === b.title;
 }
 
-export function ContinueWatchingCard({ card, t }: { card: ContinueCardData; t: HomeStrings }) {
+export function ContinueWatchingCard({ card, t, spoiler }: { card: ContinueCardData; t: HomeStrings; spoiler?: ContinueEpisodeSpoiler }) {
   const href = buildLocalResumeUrl(card.externalId, card.mediaType) ?? `/media?id=${encodeURIComponent(card.externalId)}`;
-  const thumb = thumbnailFor(card);
+  const withheld = !!spoiler && (spoiler.pending || spoiler.hidden);
+  const thumb = thumbnailFor(card, withheld);
   const fraction = watchedFraction(card.positionSeconds, card.durationSeconds);
   const remaining = remainingLabel(card.positionSeconds, card.durationSeconds, t);
   return (
@@ -72,7 +88,10 @@ export function ContinueWatchingCard({ card, t }: { card: ContinueCardData; t: H
         </span>
         <span className="home-continue-text">
           <span className="home-continue-title">{card.title}</span>
-          <span className="home-continue-episode">{episodeLine(card, t)}</span>
+          <span className="home-continue-episode">
+            {episodeLine(withheld ? { ...card, episodeTitle: null } : card, t)}
+            {spoiler?.hidden && card.episodeTitle && <> <SpoilerInline hidden onReveal={spoiler.onReveal} /></>}
+          </span>
           {remaining && <span className="home-continue-remaining">{remaining}</span>}
         </span>
       </a>
@@ -97,7 +116,7 @@ export function AiringTodayCard({ rows, t }: { rows: readonly AiringTodayRow[]; 
                 <li key={row.externalId}>
                   <a className="home-airing-row" href={`/media?id=${encodeURIComponent(row.externalId)}`}>
                     {row.coverUrl
-                      ? <img className="home-airing-cover" src={wrapAssetUrl(toSmallCover(row.coverUrl))} alt="" width={30} height={43} decoding="async" />
+                      ? <CoverImage externalId={row.externalId} className="home-airing-cover" src={wrapAssetUrl(toSmallCover(row.coverUrl))} alt="" width={30} height={43} decoding="async" />
                       : <span className="home-airing-cover" />}
                     <span className="home-airing-text">
                       <span className="home-airing-title">{row.title}</span>
@@ -117,6 +136,7 @@ export function AiringTodayCard({ rows, t }: { rows: readonly AiringTodayRow[]; 
 
 export function HomeRail() {
   const t = getT().home;
+  const { evaluator, pending, isRevealed, reveal } = useSpoilerShield();
   const [initial] = useState(() => readHomeSnapshot());
   const [card, setCard] = useState<ContinueCardData | null>(initial?.continueWatching ?? null);
   const [airing, setAiring] = useState<AiringTodayRow[]>(() => snapshotAiring(initial, new Date()) ?? []);
@@ -127,7 +147,14 @@ export function HomeRail() {
       if (cancelled) return;
       const catalogMap = new Map(catalog.map(row => [row.external_id, row]));
       const entries = new Map(items.map(item => [item.external_id, item]));
-      const picked = pickLastWatched(sources);
+      // Filler map: loaded with the home data (library-data-cache).
+      const picked = pickLastWatched(sources, (id, finished) => {
+        const info = getLoadedFillerInfo(id);
+        const total = catalogMap.get(id)?.total_count;
+        return skipsFiller(entries.get(id), info, total)
+          ? nextCanonEpisode(finished, info, total).episode ?? finished + 1
+          : finished + 1;
+      });
       const row = picked ? catalogMap.get(picked.externalId) : undefined;
       const freshCard: ContinueCardData | null = picked
         ? {
@@ -155,10 +182,21 @@ export function HomeRail() {
     return () => { cancelled = true; };
   }, []);
 
+  // The next episode after a finished one is still ahead of the user: its
+  // title and still stay hidden while its work is under the shield. An
+  // episode stopped halfway was already seen up to there.
+  const continueSpoiler = (current: ContinueCardData): ContinueEpisodeSpoiler | undefined => {
+    if (current.positionSeconds > 0) return undefined;
+    const key = spoilerItemKey.continueEpisode(current.externalId, current.episodeNumber);
+    const hidden = !!evaluator && !isRevealed(key)
+      && evaluator.isEpisodeHidden({ external_id: current.externalId, episode_number: current.episodeNumber }, current.externalId, new Map());
+    return { pending, hidden, onReveal: () => reveal(key) };
+  };
+
   return (
     <>
       <AiringTodayCard rows={airing} t={t} />
-      {card && <ContinueWatchingCard card={card} t={t} />}
+      {card && <ContinueWatchingCard card={card} t={t} spoiler={continueSpoiler(card)} />}
     </>
   );
 }

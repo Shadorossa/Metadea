@@ -4,8 +4,8 @@ Metadea's built-in video player decodes and renders through **libmpv** (the
 library only — mpv's own UI is disabled with `osc=no` /
 `input-default-bindings=no`; every control is drawn by the app). The library
 is loaded **at runtime** (`src/player/libmpv_ffi.rs`, via `libloading`), so
-the app builds and runs without it: when it cannot be found, "Play" falls
-back to VLC and shows a translated notice.
+the app builds and runs without it: when it cannot be found, "Play" does not
+start and shows a translated notice (there is no external-player fallback).
 
 ## 1. Get the LGPL build (scripted)
 

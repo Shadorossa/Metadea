@@ -1,4 +1,5 @@
-import { formatUnixTimestampShort, formatDateTimeShort } from '../shared/text/format-date';
+import { formatUnixTimestampShort, formatDateTimeShort, getLocaleCode } from '../shared/text/format-date';
+import { formatRelativeTime } from './save-format';
 
 export function formatPlaytime(minutes?: number): string {
   if (minutes === undefined || minutes === null || isNaN(minutes) || minutes < 0) return '—';
@@ -10,6 +11,12 @@ export function formatPlaytime(minutes?: number): string {
 export function formatLastPlayed(ts?: number): string {
   if (!ts || ts === 0) return '—';
   return formatUnixTimestampShort(ts) ?? '—';
+}
+
+// "2 days ago" in the UI locale (unix seconds), '—' when never played.
+export function formatLastPlayedRelative(ts?: number, nowMs: number = Date.now()): string {
+  if (!ts || ts === 0) return '—';
+  return formatRelativeTime(ts * 1000, nowMs, getLocaleCode());
 }
 
 // SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, no offset) -

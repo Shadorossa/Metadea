@@ -4,6 +4,7 @@ import { prefetchMediaData } from '../../lib/media/media-page-data';
 import { DETAIL_SUPPORTED_TYPES } from '../../lib/media/media-types';
 import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { toSmallCover } from '../../lib/media/small-cover';
+import { CoverImage } from '../shared/CoverImage';
 
 export const SearchResultCard = memo(function SearchResultCard({ result }: { result: SearchResult }) {
   const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
@@ -12,6 +13,8 @@ export const SearchResultCard = memo(function SearchResultCard({ result }: { res
 
   function handleCoverLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const img = e.currentTarget;
+    // Key art standing in for the cover is landscape on purpose (cropped by CSS).
+    if (img.dataset.textless) return;
     if (img.naturalWidth > img.naturalHeight) setIsLandscape(true);
   }
 
@@ -49,7 +52,8 @@ export const SearchResultCard = memo(function SearchResultCard({ result }: { res
     >
       <div className="card-media-base mb-1.5">
         {result.coverUrl && !loadFailed && !isLandscape ? (
-          <img
+          <CoverImage
+            externalId={result.externalId}
             src={toSmallCover(result.coverUrl)}
             alt={result.titleMain}
             className="card-media-img"

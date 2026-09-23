@@ -5,7 +5,8 @@ import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { searchApiSportsEvents, type ApiSportsDiscipline } from './providers/apisports';
 import { MissingApiKeyError }          from './errors';
-import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
+import { searchCatalog, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
+import { localCatalogVerdict, readBlockedIds, readReclassifiedIds, reclassifiableIds, withoutIds } from './exclusion-filters';
 import { parseCSV } from '../shared/text/string-utils';
 import { dedupeByExternalId } from '../shared/collections/dedupe';
 import { searchCharactersDb, type CharacterEntry } from '../tauri/characters';
@@ -228,24 +229,6 @@ function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {
   };
 }
 
-// Same "not its own search hit" formats igdb_search excludes on the live
-// side (Rust, igdb.rs) — a local catalog row can carry one of these (e.g.
-// synced from the community catalog, or fetched before format tracking
-// existed) and without this it'd not-so-quietly reappear here even though
-// the live path was specifically made to hide it.
-const EXCLUDED_LOCAL_FORMATS = new Set(['REMASTER', 'EXPANDED_GAME', 'UPDATE', 'DLC', 'MOD', 'PORT', 'FORK', 'BUNDLE']);
-
-// Whole-word match only — mirrors name_has_edition_word in igdb.rs (same
-// word list) so "Expedition 33" isn't caught by a plain "edition" substring
-// check. Catches a locally-cataloged remaster/expanded-edition/DLC whose own
-// `format` column is missing or wrong (e.g. an old import from before format
-// tracking existed) — EXCLUDED_LOCAL_FORMATS above only helps when that
-// column is actually correct.
-const NON_GAME_NAME_WORDS = ['edition', 'remaster', 'remastered', 'dlc'];
-function titleHasEditionWord(title: string): boolean {
-  return title.split(/[^a-zA-Z0-9]+/).some(tok => NON_GAME_NAME_WORDS.includes(tok.toLowerCase()));
-}
-
 // True when this local anime already has its own PREQUEL edge in
 // media_relations — same "later season" test toSearchPage's
 // hasAnimePrequel runs against a live AniList result, just reading the
@@ -278,8 +261,8 @@ async function searchLocalCatalog(
     // fixed write path) — those would otherwise surface here with a broken
     // id that can't resolve to anything when picked.
     .filter(e => e.external_id.startsWith(`${e.type}:`))
-    .filter(e => !e.format || !EXCLUDED_LOCAL_FORMATS.has(e.format))
-    .filter(e => (mediaType !== 'game' && mediaType !== 'vnovel') || !titleHasEditionWord(e.title_main || ''));
+    // Excluded formats and "... Edition" games (lib/search/exclusion-filters.ts).
+    .filter(e => localCatalogVerdict({ type: mediaType, format: e.format, title: e.title_main }) === 'keep');
 
   // "Unificar temporadas" hides later seasons from the live AniList path
   // (see toSearchPage's hasAnimePrequel) — without this, any season already
@@ -458,14 +441,11 @@ async function searchAll(
   return { results: dedupeByExternalId(results), hasMore };
 }
 
-// search_catalog (Rust) already excludes blocked_at rows for the local-
-// catalog half of a result — but a live API hit for that same title has no
-// idea it was blocked locally, so it'd still show up on its own.
+// Blocked entries (lib/search/exclusion-filters.ts readBlockedIds).
 async function filterBlocked(page: SearchPage): Promise<SearchPage> {
-  const blocked = await getBlockedExternalIds().catch(() => [] as string[]);
-  if (blocked.length === 0) return page;
-  const blockedSet = new Set(blocked);
-  return { ...page, results: page.results.filter(r => !blockedSet.has(r.externalId)) };
+  const blocked = await readBlockedIds();
+  if (blocked.size === 0) return page;
+  return { ...page, results: withoutIds(page.results, r => r.externalId, blocked) };
 }
 
 // game/vnovel are the only two types sharing an id space here (the same
@@ -476,14 +456,11 @@ async function filterBlocked(page: SearchPage): Promise<SearchPage> {
 // buckets) still happily returns it there, but the local catalog already
 // filing it under the other type is signal enough on its own.
 async function filterReclassified(page: SearchPage): Promise<SearchPage> {
-  const candidateIds = page.results
-    .filter(r => r.type === 'game' || r.type === 'vnovel')
-    .map(r => r.externalId);
+  const candidateIds = reclassifiableIds(page.results, r => r.type, r => r.externalId);
   if (candidateIds.length === 0) return page;
-  const reclassified = await getReclassifiedExternalIds(candidateIds).catch(() => [] as string[]);
-  if (reclassified.length === 0) return page;
-  const reclassifiedSet = new Set(reclassified);
-  return { ...page, results: page.results.filter(r => !reclassifiedSet.has(r.externalId)) };
+  const reclassified = await readReclassifiedIds(candidateIds);
+  if (reclassified.size === 0) return page;
+  return { ...page, results: withoutIds(page.results, r => r.externalId, reclassified) };
 }
 
 export interface SearchOptions {

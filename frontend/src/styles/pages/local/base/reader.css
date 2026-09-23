@@ -1,4 +1,5 @@
 @import './reader-epub.css';
+@import './reader-eink.css';
 
 .comic-reader-overlay {
   position: fixed;

@@ -34,6 +34,10 @@ export interface LogState {
   // reconsumption-run.ts for the toggle's transitions.
   reconsumptionCount: number;
   reconsuming:     boolean;
+  // Mirrors LibraryEntry.skip_filler ("Filler: Watched / Skipped", see
+  // lib/anime/filler.ts). Undefined = never loaded/touched: the save omits
+  // it and Rust keeps the stored value.
+  skipFiller?:     boolean;
 }
 
 // Entry state holds every log keyed by external_id (one per version/edition)
@@ -157,6 +161,7 @@ export function libraryEntryToLog(e: LibraryEntry): LogState {
     selectedVersion: e.selected_version ?? '',
     reconsumptionCount: e.reconsumption_count ?? 0,
     reconsuming:   e.reconsuming === 1,
+    skipFiller:    e.skip_filler == null ? undefined : e.skip_filler === 1,
   };
 }
 

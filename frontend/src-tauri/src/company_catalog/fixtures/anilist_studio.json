@@ -1,0 +1,19 @@
+{
+  "data": {
+    "Studio": {
+      "id": 11,
+      "name": "MADHOUSE",
+      "isAnimationStudio": true,
+      "siteUrl": "https://anilist.co/studio/11",
+      "media": {
+        "pageInfo": { "hasNextPage": true, "total": 412, "currentPage": 1 },
+        "edges": [
+          { "isMainStudio": true, "node": { "id": 1535, "type": "ANIME", "format": "TV", "status": "FINISHED", "averageScore": 84, "isAdult": false, "title": { "romaji": "Death Note", "english": "Death Note" }, "coverImage": { "large": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx1535.jpg" }, "startDate": { "year": 2006 } } },
+          { "isMainStudio": false, "node": { "id": 19, "type": "ANIME", "format": "TV", "status": "FINISHED", "averageScore": null, "isAdult": true, "title": { "romaji": "Monster", "english": null }, "coverImage": { "large": null }, "startDate": { "year": 2004 } } },
+          { "isMainStudio": true, "node": { "id": 999999, "type": "ANIME", "format": "MOVIE", "status": "NOT_YET_RELEASED", "title": { "romaji": "Upcoming Film", "english": null }, "coverImage": null, "startDate": { "year": null } } },
+          { "isMainStudio": true, "node": null }
+        ]
+      }
+    }
+  }
+}

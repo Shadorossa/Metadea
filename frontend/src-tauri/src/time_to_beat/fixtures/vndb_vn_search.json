@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "id": "v2002",
+      "title": "Steins;Gate",
+      "alttitle": "シュタインズ・ゲート",
+      "released": "2009-10-15",
+      "length": null,
+      "length_minutes": 2640,
+      "length_votes": 1873,
+      "titles": [{ "title": "Steins;Gate" }, { "title": "シュタインズ・ゲート" }]
+    },
+    {
+      "id": "v21808",
+      "title": "Steins;Gate 0",
+      "alttitle": "シュタインズ・ゲート ゼロ",
+      "released": "2015-12-10",
+      "length": null,
+      "length_minutes": 2100,
+      "length_votes": 702,
+      "titles": [{ "title": "Steins;Gate 0" }]
+    },
+    {
+      "id": "v9999",
+      "title": "Hikari no Machi",
+      "alttitle": null,
+      "released": "TBA",
+      "length": 4,
+      "length_minutes": null,
+      "length_votes": 0,
+      "titles": [{ "title": "Hikari no Machi" }, { "title": "City of Light" }]
+    }
+  ],
+  "more": false
+}

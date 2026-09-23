@@ -45,11 +45,19 @@ function renamesFor(file: RomFile, platformId: string): RomRenameItem[] {
   return items;
 }
 
+// A multi-disc set's files are listed by its .m3u and grouped by their disc
+// tag, and the clean name drops that tag: they keep their names. So does a
+// lone tagged disc, which may still be joined by the rest of its set.
+function keepsItsName(game: RomScanResult['games'][number], file: RomFile): boolean {
+  return (game.discs?.length ?? 0) > 1 || parseRomFileName(file.stem).disc !== undefined;
+}
+
 export function buildRomRenamePlan(scan: RomScanResult): RomRenameItem[] {
   const plan: RomRenameItem[] = [];
   const targets = new Set<string>();
   for (const game of scan.games) {
     for (const file of [game.base, ...game.updates, ...game.dlc]) {
+      if (keepsItsName(game, file)) continue;
       const items = renamesFor(file, game.platform_id);
       // Two dumps of the same game ("(USA)" and "(Europe)") would collapse
       // onto one clean name: the first keeps it, the rest stay as they are.

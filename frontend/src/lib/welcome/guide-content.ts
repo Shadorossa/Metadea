@@ -117,7 +117,7 @@ export const GUIDE_SECTIONS = [
   { id: 'characters', group: 'discover', icon: 'users' },
   {
     id: 'community', group: 'discover', icon: 'git',
-    settings: [{ tab: 'application' }, { tab: 'novedades' }],
+    settings: [{ tab: 'application' }, { tab: 'environment' }],
     shortcuts: [k(['p'], 'shortcuts.media_propose')],
   },
 
@@ -247,7 +247,7 @@ export const GUIDE_SECTIONS = [
   // ── Customization ───────────────────────────────────────────────────────
   { id: 'appearance', group: 'customize', icon: 'palette', settings: [{ tab: 'profile' }] },
   {
-    id: 'ui_themes', group: 'customize', icon: 'paintbrush', settings: [{ tab: 'profile' }],
+    id: 'ui_themes', group: 'customize', icon: 'paintbrush', settings: [{ tab: 'plugins' }],
     shortcuts: [k(['mod+shift+t'], 'shortcuts.ui_theme_deactivate')],
   },
   { id: 'language', group: 'customize', icon: 'globe', settings: [{ tab: 'preferences' }] },
@@ -259,7 +259,7 @@ export const GUIDE_SECTIONS = [
   // ── Data & privacy ──────────────────────────────────────────────────────
   { id: 'privacy', group: 'data', icon: 'shield', settings: [{ tab: 'environment' }] },
   { id: 'backup', group: 'data', icon: 'database', settings: [{ tab: 'backup' }] },
-  { id: 'updates', group: 'data', icon: 'download', settings: [{ tab: 'novedades' }] },
+  { id: 'updates', group: 'data', icon: 'download', settings: [{ tab: 'environment' }] },
 ] as const satisfies readonly GuideSectionDef[];
 
 export type GuideSectionId = typeof GUIDE_SECTIONS[number]['id'];

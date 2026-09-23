@@ -47,8 +47,13 @@ const key = (externalId: string, episode: number) => `${externalId}#${episode}`;
 
 /** The most recent candidate: a resume/frame stop resumes that episode at
  *  its position; a finished episode (history) points at the next one, from
- *  the start. Null when nothing was ever watched locally. */
-export function pickLastWatched(sources: ContinueWatchingSources): LastWatched | null {
+ *  the start. Null when nothing was ever watched locally. `nextEpisode`
+ *  picks the episode after a finished one (an anime set to "Filler: Skipped" jumps
+ *  to its next canon episode — lib/anime/filler.ts's nextCanonEpisode). */
+export function pickLastWatched(
+  sources: ContinueWatchingSources,
+  nextEpisode: (externalId: string, finishedEpisode: number) => number = (_, finished) => finished + 1,
+): LastWatched | null {
   const frames = new Map(sources.frames.map(f => [key(f.external_id, f.episode_number), f]));
   const resumes = new Map(sources.resume.map(r => [key(r.external_id, r.episode_number), r]));
   const episodes = new Map(sources.episodes.map(e => [key(e.external_id, e.episode_number), e]));
@@ -57,7 +62,7 @@ export function pickLastWatched(sources: ContinueWatchingSources): LastWatched |
   const candidates: Candidate[] = [
     ...sources.resume.map(r => ({ externalId: r.external_id, episode: r.episode_number, at: parseDbTimestamp(r.updated_at), position: r.position_seconds })),
     ...sources.frames.map(f => ({ externalId: f.external_id, episode: f.episode_number, at: parseDbTimestamp(f.updated_at), position: f.position_seconds })),
-    ...sources.history.map(h => ({ externalId: h.external_id, episode: h.episode_number + 1, at: parseDbTimestamp(h.watched_at), position: 0 })),
+    ...sources.history.map(h => ({ externalId: h.external_id, episode: nextEpisode(h.external_id, h.episode_number), at: parseDbTimestamp(h.watched_at), position: 0 })),
   ].filter(c => Number.isFinite(c.at));
   if (candidates.length === 0) return null;
 

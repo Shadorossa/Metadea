@@ -13,7 +13,7 @@ struct TwitchToken {
 
 static TWITCH_TOKEN: Mutex<Option<TwitchToken>> = Mutex::new(None);
 
-pub(super) async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String, String> {
+pub(crate) async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String, String> {
     {
         // Recovers the guard even if the mutex was poisoned by a panic
         // elsewhere while holding it — there's no broken invariant here

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import type { EpubChapterContent } from '../../../lib/tauri/epub-reader';
 import { wrapAssetUrl } from '../../../lib/tauri/bridge';
 import type { ReaderPreferences } from '../../../lib/reader/reader-preferences';
-import { buildChapterFragment, buildReaderStyles, fragmentOffset, rewriteCssAssets } from '../../../lib/reader/epub-chapter-dom';
+import { buildChapterFragment, buildReaderStyles, fragmentOffset, rewriteCssAssets, type EinkChapterStyle } from '../../../lib/reader/epub-chapter-dom';
 import {
   computePageCount,
   fractionFromPage,
@@ -27,6 +27,9 @@ interface ShadowParts {
   root: ShadowRoot;
   style: HTMLStyleElement;
   publisher: HTMLStyleElement;
+  /** Inline <defs> for the E-Ink page filter: `url(#…)` in the shadow
+   *  stylesheet resolves inside the shadow tree, not the document. */
+  filterDefs: SVGDefsElement;
   viewport: HTMLDivElement;
   chapter: HTMLDivElement;
 }
@@ -37,6 +40,8 @@ export interface EpubLayoutOptions {
   chapterKey: string;
   target: ChapterTarget;
   prefs: ReaderPreferences;
+  /** E-Ink / paper mode (null = off). Memoise it: a new object relayouts. */
+  eink: (EinkChapterStyle & { filterMarkup: string }) | null;
   onBoundary: (direction: 'prev' | 'next') => void;
   onInternalLink: (href: string) => void;
   onExternalLink: (url: string) => void;
@@ -68,6 +73,14 @@ export function useEpubLayout(opts: EpubLayoutOptions) {
     root.replaceChildren();
     const style = document.createElement('style');
     const publisher = document.createElement('style');
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const filterSvg = document.createElementNS(svgNs, 'svg');
+    filterSvg.setAttribute('width', '0');
+    filterSvg.setAttribute('height', '0');
+    filterSvg.setAttribute('aria-hidden', 'true');
+    filterSvg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden');
+    const filterDefs = document.createElementNS(svgNs, 'defs');
+    filterSvg.append(filterDefs);
     const viewport = document.createElement('div');
     viewport.className = 'epub-viewport';
     const columns = document.createElement('div');
@@ -76,8 +89,8 @@ export function useEpubLayout(opts: EpubLayoutOptions) {
     chapter.className = 'epub-chapter';
     columns.append(chapter);
     viewport.append(columns);
-    root.append(style, publisher, viewport);
-    partsRef.current = { root, style, publisher, viewport, chapter };
+    root.append(style, publisher, filterSvg, viewport);
+    partsRef.current = { root, style, publisher, filterDefs, viewport, chapter };
   }, [opts.hostRef]);
 
   const commit = useCallback((next: EpubLayoutState) => {
@@ -91,13 +104,13 @@ export function useEpubLayout(opts: EpubLayoutOptions) {
     const parts = partsRef.current;
     if (!parts) return;
     const { viewport, chapter, style } = parts;
-    const { prefs } = optsRef.current;
+    const { prefs, eink } = optsRef.current;
     const pageWidth = viewport.clientWidth;
     const pageHeight = viewport.clientHeight;
     if (pageWidth === 0 || pageHeight === 0) return;
     const paginated = prefs.flow === 'paginated';
     viewport.classList.toggle('epub-viewport--scroll', !paginated);
-    style.textContent = buildReaderStyles(prefs, pageWidth, pageHeight, COLUMN_GAP);
+    style.textContent = buildReaderStyles(prefs, pageWidth, pageHeight, COLUMN_GAP, eink);
 
     let fraction = layoutRef.current.fraction;
     let fragment: string | null = null;
@@ -141,9 +154,11 @@ export function useEpubLayout(opts: EpubLayoutOptions) {
     if (!parts) return;
     const css = opts.prefs.publisherStyles && opts.chapter ? opts.chapter.css.map(c => rewriteCssAssets(c, wrapAssetUrl)).join('\n') : '';
     parts.publisher.textContent = css;
+    // Markup built from numbers only (lib/reader/eink-mode.ts serializeEinkFilter).
+    parts.filterDefs.innerHTML = opts.eink?.filterMarkup ?? '';
     const raf = requestAnimationFrame(relayout);
     return () => cancelAnimationFrame(raf);
-  }, [opts.prefs, opts.chapter, relayout]);
+  }, [opts.prefs, opts.chapter, opts.eink, relayout]);
 
   // Anything that changes the chapter's extent (window size, images and
   // fonts arriving) re-measures the page count around the same fraction.

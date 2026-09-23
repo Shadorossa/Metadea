@@ -1,5 +1,7 @@
 ---
 import '../../styles/pages/tier.css';
+// MediaSearchPopup's own styles (the add-items search).
+import '../../styles/pages/media/editor.css';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getLang, useTranslations } from '../../i18n/index';
 import TierMaker from '../../components/tier/TierMaker';
@@ -8,7 +10,7 @@ const lang = getLang(Astro.url);
 const t = useTranslations(lang);
 ---
 
-<BaseLayout title={`${t.tier.create} — Metadea`} titleKey="tier.create" lang={lang} activePage="tier">
+<BaseLayout title={`${t.tier.title} — Metadea`} titleKey="tier.title" lang={lang} activePage="tier">
   <main class="tier-new-page">
     <TierMaker client:load />
   </main>

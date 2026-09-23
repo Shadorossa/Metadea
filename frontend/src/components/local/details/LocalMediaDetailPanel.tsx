@@ -181,7 +181,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
   const { currentHistory, historyMenu, setHistoryMenu, deleteHistoryEntry } = useEpisodeHistory(item, itemSeason, onProgressSaved);
 
-  // A stale VLC-launch error shouldn't outlive the work it belonged to —
+  // A stale playback-launch error shouldn't outlive the work it belonged to —
   // cleared on the exact same triggers that refetch the chain history.
   const [playError, setPlayError] = useKeyedState<string | null>(`${item.externalId}\n${item.title}\n${itemSeason}`, null);
 
@@ -349,8 +349,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
   // Builds the queue starting at nextNumber and hands it to playback-service
   // — every remaining episode this folder actually has a file for, not just
-  // the one about to play, so VLC queues the whole rest of the season in one
-  // launch. Multi-episode queueing only makes sense for a real per-episode
+  // the one about to play, so the player queues the whole rest of the season
+  // in one launch. Multi-episode queueing only makes sense for a real per-episode
   // folder (subEntries); a movie/deep-tagged/root single-file match is just
   // the one file, nothing to queue after it.
   const handlePlay = () => {
@@ -397,8 +397,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   };
 
   // Once playback-service.ts actually has a session for this item, the play
-  // button becomes a real pause/resume toggle (VLC's own HTTP commands,
-  // no relaunching a second process) instead of only ever launching fresh.
+  // button becomes a real pause/resume toggle (the engine's own pause,
+  // no relaunching) instead of only ever launching fresh.
   const handlePlayButtonClick = () => {
     if (isThisPlaying) {
       if (playback!.status === 'playing') pausePlayback();
@@ -475,7 +475,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         </div>
 
         {playError && (
-          <p className="local-media-play-error">No se pudo abrir VLC: {playError}</p>
+          <p className="local-media-play-error">{interpolateTranslation(t.local.play_failed, { error: playError })}</p>
         )}
 
         {locateError && !locatePreview && !locateFilePreview && (

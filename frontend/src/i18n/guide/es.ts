@@ -239,14 +239,14 @@ export const guideEs: Translations['guide'] = {
     },
     tier_lists: {
       title: "Tier lists",
-      intro: "Clasifica obras en niveles de la S a la F, o en niveles con el nombre y el color que tú quieras.",
+      intro: "Clasifica obras o personajes al estilo TierMaker: filas de la S a la F que puedes renombrar, recolorear, añadir, quitar y reordenar.",
       steps: {
-        s1: "Abre Tier list y crea una nueva.",
-        s2: "Añade obras de tu catálogo; esperan en la zona «Sin clasificar».",
-        s3: "Arrastra cada obra a su nivel. Haz clic en el nombre o el color de un nivel para cambiarlo.",
+        s1: "Abre Tier list en la barra de navegación y crea una lista de obras o de personajes.",
+        s2: "Llena el banco de elementos desde tu biblioteca (filtros o rellenos rápidos como «todo lo completado de 2024»), tus listas y sagas, tus personajes o una búsqueda.",
+        s3: "Arrastra las portadas a las filas, o selecciona varias y pulsa 1–9. Haz doble clic en una portada para devolverla al banco.",
       },
       tips: {
-        t1: "Las tier lists de personajes y la búsqueda en la comunidad llegarán próximamente.",
+        t1: "Cada cambio se guarda solo y Ctrl+Z lo deshace. «Guardar como imagen» exporta el tablero como PNG y «Mostrar en mi perfil» la muestra en la pestaña Listas de tu perfil.",
       },
     },
     stats: {
@@ -308,8 +308,7 @@ export const guideEs: Translations['guide'] = {
       steps: {
         s1: "En Ajustes › Emuladores, elige una compañía y una consola.",
         s2: "Elige el emulador y su ejecutable, los argumentos de lanzamiento ({ROM} se sustituye por el archivo) y tu carpeta de ROMs.",
-        s3: "Si quieres, indica las extensiones de ROM que buscar (vacío = las habituales) y la carpeta de capturas del emulador.",
-        s4: "Abre Play › Videojuegos: tus ROMs aparecen con nombres limpios y datos de IGDB.",
+        s3: "Abre Play › Videojuegos: tus ROMs aparecen con nombres limpios y datos de IGDB.",
       },
       tips: {
         t1: "«Limpiar nombres de ROM automáticamente» renombra los archivos con un formato ordenado (y sus partidas guardadas con ellos). Un aviso te deja deshacerlo durante unos segundos.",
@@ -347,15 +346,15 @@ export const guideEs: Translations['guide'] = {
     },
     screenshots: {
       title: "Capturas de pantalla",
-      intro: "La sección «Capturas de pantalla» de una obra reúne capturas de tres sitios: las que haces en Metadea, tus capturas de Steam y la carpeta de capturas de tu emulador.",
+      intro: "La sección «Capturas de pantalla» de una obra reúne sus capturas de Imágenes › Metadea › <obra> y, en los juegos de Steam, tus capturas de Steam.",
       steps: {
         s1: "Pulsa F12 en el reproductor integrado para guardar un fotograma. Se guarda en Imágenes › Metadea › <obra>, con el episodio y el minuto en el nombre.",
         s2: "En el lector de cómics, haz clic derecho en una página y elige «Guardar página (PNG)».",
-        s3: "Para los emuladores, indica la carpeta de capturas de cada consola en Ajustes › Emuladores, o déjala vacía para que se detecte sola.",
+        s3: "En los emuladores, haz capturas como siempre: mientras corre un juego lanzado desde Metadea, cada captura se mueve a Imágenes › Metadea › <juego> y un aviso lo confirma.",
       },
       tips: {
-        t1: "La carpeta de capturas se detecta sola en Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu y PPSSPP.",
-        t2: "Las capturas del emulador se filtran por juego; si ninguna coincide, se muestran las más recientes con una nota.",
+        t1: "La carpeta de capturas del emulador se detecta sola en Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu, PPSSPP, Cemu y RPCS3; para otros emuladores, indícala en Ajustes › Emuladores (avanzado).",
+        t2: "Las capturas de un juego que ya estaban en la carpeta del emulador se mueven allí la primera vez que abres el juego.",
       },
     },
     launching: {
@@ -374,9 +373,9 @@ export const guideEs: Translations['guide'] = {
     },
     player: {
       title: "El reproductor de vídeo",
-      intro: "Los episodios y películas locales se reproducen en el reproductor integrado de Metadea (libmpv), que guarda tu progreso por sí solo. Si lo prefieres, puedes usar VLC.",
+      intro: "Los episodios y películas locales se reproducen en el reproductor integrado de Metadea (libmpv), que guarda tu progreso por sí solo.",
       steps: {
-        s1: "Elige el reproductor en Ajustes › Preferencias › Reproductor: el integrado (libmpv) o VLC (externo).",
+        s1: "No hay nada que instalar: el reproductor (libmpv) viene incluido con Metadea.",
         s2: "Elige los controles: superpuestos sobre el vídeo o en una barra fija bajo el vídeo.",
         s3: "Pulsa «Reproducir» en un episodio de Play. El resto de la temporada se pone en cola; pulsa Q para verla.",
         s4: "Usa los menús para cambiar la pista de audio, los subtítulos y la velocidad (de 0,5× a 2×).",
@@ -385,7 +384,7 @@ export const guideEs: Translations['guide'] = {
       },
       tips: {
         t1: "Haz clic en el vídeo para pausar y doble clic para la pantalla completa.",
-        t2: "Si no se puede cargar libmpv, Metadea usa VLC automáticamente y te avisa.",
+        t2: "Si no se puede cargar libmpv, Metadea te avisa en lugar de abrir el vídeo.",
         t3: "Al terminar el último episodio, la obra se completa y su secuela se añade a tus pendientes.",
         t4: "Discord muestra lo que estás viendo con una cuenta atrás del tiempo que queda.",
       },
@@ -413,7 +412,6 @@ export const guideEs: Translations['guide'] = {
       },
       tips: {
         t1: "Los tramos salen de los capítulos del archivo (MKV) y, en el anime, de AniSkip; si hay ambos, mandan los capítulos.",
-        t2: "Solo funciona en el reproductor integrado, no en VLC.",
       },
     },
     reader_comics: {
@@ -569,7 +567,7 @@ export const guideEs: Translations['guide'] = {
       title: "Temas de interfaz (skins)",
       intro: "Las skins cambian el aspecto de todo Metadea. Son carpetas con un archivo theme.json y, si quieres, CSS; puedes crearlas tú o conseguirlas de otras personas.",
       steps: {
-        s1: "En Ajustes › Apariencia › Temas de la comunidad, pulsa «Abrir carpeta de temas».",
+        s1: "En Ajustes › Plugins › Temas de interfaz, pulsa «Abrir carpeta de temas».",
         s2: "Copia ahí la carpeta de un tema (o pulsa «Crear tema de ejemplo») y pulsa «Recargar».",
         s3: "Pulsa «Activar» en el tema que quieras. Sigue activo al reiniciar.",
         s4: "Si haces el tuyo, activa «Vigilar cambios» para ver tus ediciones cada dos segundos.",
@@ -620,11 +618,12 @@ export const guideEs: Translations['guide'] = {
     },
     backup: {
       title: "Dónde están tus datos y copias de seguridad",
-      intro: "Todo se guarda en una base de datos dentro de tu carpeta de usuario (en Windows, %APPDATA%\\com.metadea.app). Una copia de seguridad guarda esa carpeta en un único archivo ZIP.",
+      intro: "Todo se guarda en una base de datos dentro de tu carpeta de usuario (en Windows, %APPDATA%\\com.metadea.app). Una copia de seguridad es un único archivo .7z con esa base de datos, tus imágenes personalizadas y tus skins; las cachés se dejan fuera porque se vuelven a descargar.",
       steps: {
-        s1: "Abre Ajustes › Copia de seguridad y pulsa «Exportar datos». Guarda el ZIP fuera de la carpeta de datos de Metadea.",
-        s2: "Para restaurar, pulsa «Importar datos» y elige un ZIP. Metadea guarda antes una copia de tus datos actuales junto a la carpeta y se reinicia para aplicar la copia.",
+        s1: "Abre Ajustes › Copia de seguridad y pulsa «Crear copia». Guarda el .7z fuera de la carpeta de datos de Metadea.",
+        s2: "Para restaurar, pulsa «Restaurar desde archivo» y elige un .7z (o un .zip de versiones anteriores). Metadea comprueba cada archivo, guarda una copia de tus datos actuales junto a la carpeta y se reinicia para aplicar la copia.",
         s3: "«Abrir carpeta», en Ajustes › Entorno › Rutas locales, abre la carpeta de datos.",
+        s4: "Vincula Google Drive en la misma pestaña para subir copias a una carpeta privada de la app, al momento o automáticamente cada día o cada semana; puedes restaurar cualquiera desde la lista.",
       },
       tips: {
         t1: "Nadie más tiene una copia de tu biblioteca: haz una copia de seguridad antes de cambios grandes y de vez en cuando.",

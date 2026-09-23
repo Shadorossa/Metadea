@@ -16,6 +16,8 @@ import { getT } from '../../../i18n/runtime';
 import { PrEditorAddButton } from './PrEditorAddButton';
 import { PrEditorStoryArcUnitRow } from './PrEditorStoryArcUnitRow';
 import { PrEditorEpisodePopover } from './PrEditorEpisodePopover';
+import { PrEditorComicVineArcImport } from './PrEditorComicVineArcImport';
+import type { ArcImportUnit } from '../../../lib/media/story-arcs/comicvine-arc-import';
 
 interface EditingArc {
   id: string;
@@ -48,6 +50,9 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
   const [showItemSearch, setShowItemSearch] = useState(false);
   const [showSagaPicker, setShowSagaPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showComicVineImport, setShowComicVineImport] = useState(false);
+  // ComicVine story arcs map to chapters for manga, to issues for comics.
+  const comicVineUnit: ArcImportUnit | null = externalId.startsWith('manga:') ? 'chapters' : externalId.startsWith('comic:') ? 'issues' : null;
 
   // Episodes cache for anime/series items
   const [episodesMap, setEpisodesMap] = useState<Record<string, MediaEpisode[]>>({});
@@ -322,9 +327,23 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
       )}
 
       {!editingArc && (
-        <div className="pr-editor-add-row">
+        <div className="pr-editor-add-row pr-editor-arcs-add-row">
           <PrEditorAddButton onClick={startNewArc} />
+          {comicVineUnit && (
+            <button type="button" className="pr-editor-add-btn" onClick={() => setShowComicVineImport(true)}>{t.cv_import}</button>
+          )}
         </div>
+      )}
+
+      {showComicVineImport && comicVineUnit && (
+        <PrEditorComicVineArcImport
+          externalId={externalId}
+          currentTitle={currentTitle}
+          unit={comicVineUnit}
+          existingArcNames={arcs.map(arc => arc.name)}
+          onImported={reload}
+          onClose={() => setShowComicVineImport(false)}
+        />
       )}
 
       {editingArc && (

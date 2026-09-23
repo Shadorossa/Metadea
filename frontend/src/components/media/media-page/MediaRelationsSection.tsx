@@ -1,4 +1,5 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import type { EpisodeFillerView } from './useEpisodeFiller';
 import type { Translations } from '../../../i18n/index';
 import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
 import type { MediaPageData } from '../../../lib/media/types';
@@ -7,9 +8,11 @@ import type { EventMatch } from '../../../lib/search/providers/apisports';
 import { bucketRelations } from '../../../lib/media/media-page-data';
 import { stripSeasonSuffix } from '../../../lib/media/mappers/mapper-utils';
 import { MediaStoreLinks } from '../MediaStoreLinks';
+import { GGDEALS_MEDIA_TYPES, ggDealsLink } from '../../../lib/media/ggdeals-link';
 import { Pagination } from '../Pagination';
 import { EpisodeCard, MatchCard, RelationCard, ThemeCardItem } from './MediaPageCards';
 import { SectionTabs } from './MediaPageControls';
+import type { MediaSpoilers } from './useMediaSpoilers';
 
 export type RelationsTab = 'related' | 'recommended' | 'editions' | 'episodes' | 'matches' | 'seasons' | 'themes';
 
@@ -37,6 +40,10 @@ interface Props {
   hasThemes: boolean;
   displayCover: string | null;
   onPlayTheme: (theme: MediaTheme) => void;
+  /** Spoiler shield answers for this page (absent: nothing hidden). */
+  spoilers?: MediaSpoilers;
+  /** AnimeFillerList data for the episodes tab (absent: no badges). */
+  filler?: { view: EpisodeFillerView; toolbar: ReactNode; footer: ReactNode };
 }
 
 export function MediaRelationsSection({
@@ -60,6 +67,8 @@ export function MediaRelationsSection({
   hasThemes,
   displayCover,
   onPlayTheme,
+  spoilers,
+  filler,
 }: Props) {
   const isComicOrHasIssues = data.type === 'comic' || (Array.isArray(data.relations) && data.relations.some(r => r.relationType === 'ISSUE'));
   const editionsLabel = isComicOrHasIssues ? tm.relations.ISSUE : tm.relations.EDITIONS;
@@ -86,6 +95,10 @@ export function MediaRelationsSection({
     : isEventCompetition
     ? eventSeasons.length > 0
     : tmdbSeasons.length > 0;
+  const storeLinks = data.storeLinks ?? [];
+  const ggDeals = GGDEALS_MEDIA_TYPES.includes(data.type) && data.titleMain
+    ? { url: ggDealsLink({ title: data.titleMain, storeLinks }), label: tm.ggdeals_link }
+    : undefined;
   const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasMatches || hasSeasonsTab || hasThemes;
   const visibleRelations = relationsTab === 'recommended'
     ? recommendedRelations
@@ -114,8 +127,8 @@ export function MediaRelationsSection({
                 ...(hasThemes ? [{ key: 'themes', label: tm.section_themes, active: relationsTab === 'themes', onClick: () => { setRelationsTab('themes'); setRelationPage(1); } }] : []),
               ] : []}
             />
-            {data.storeLinks && data.storeLinks.length > 0 && (
-              <MediaStoreLinks links={data.storeLinks} />
+            {(storeLinks.length > 0 || ggDeals) && (
+              <MediaStoreLinks links={storeLinks} ggDeals={ggDeals} />
             )}
           </div>
           {relationsTab === 'themes' ? (
@@ -197,6 +210,9 @@ export function MediaRelationsSection({
                     ? animeSeasonChain.map((entry, i) => (
                         <RelationCard
                           key={entry.externalId}
+                          onRevealCover={spoilers?.isRelatedCoverHidden(entry.externalId, animeSeasonChain.slice(0, i).map(e => e.externalId))
+                            ? () => spoilers.revealRelatedCover(entry.externalId)
+                            : undefined}
                           relation={{
                             url: `/media?id=${encodeURIComponent(entry.externalId)}`,
                             cover: entry.cover,
@@ -226,6 +242,7 @@ export function MediaRelationsSection({
             episodes.length > 0 && (() => {
               const regularEps = episodes
                 .filter(e => e.episode_number > 0)
+                .filter(e => !filler?.view.hideFiller || filler.view.kindOf(e) !== 'filler')
                 .sort((a, b) => a.episode_number - b.episode_number);
               const specialEps = episodes
                 .filter(e => e.episode_number < 0)
@@ -247,9 +264,15 @@ export function MediaRelationsSection({
 
               return (
                 <>
+                  {filler?.toolbar}
                   <div className="media-relations-grid">
                     {pageEpisodes.map(ep => (
-                      <EpisodeCard key={`${ep.external_id || currentId}-${ep.season_number}-${ep.episode_number}`} ep={ep} />
+                      <EpisodeCard
+                        key={`${ep.external_id || currentId}-${ep.season_number}-${ep.episode_number}`}
+                        ep={ep}
+                        onRevealSpoiler={spoilers?.isEpisodeHidden(ep) ? () => spoilers.revealEpisode(ep) : undefined}
+                        fillerKind={filler?.view.kindOf(ep)}
+                      />
                     ))}
                   </div>
                   {totalEpPages > 1 && (
@@ -263,6 +286,7 @@ export function MediaRelationsSection({
                       }}
                     />
                   )}
+                  {filler?.footer}
                 </>
               );
             })()
@@ -275,6 +299,9 @@ export function MediaRelationsSection({
                     <RelationCard
                       key={r.url ?? `${r.typeLabel}-${r.title}-${i}`}
                       relation={r}
+                      onRevealCover={spoilers?.isRelatedCoverHidden(r.relatedExternalId)
+                        ? () => spoilers.revealRelatedCover(r.relatedExternalId ?? '')
+                        : undefined}
                       changeKind={previewMode && r.relatedExternalId
                         ? previewAddedRelationIds.includes(r.relatedExternalId)
                           ? 'added'

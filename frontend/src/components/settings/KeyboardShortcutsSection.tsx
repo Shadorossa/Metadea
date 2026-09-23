@@ -1,8 +1,7 @@
 // Settings › Preferencias › Keyboard shortcuts: read-only listing of every
-// binding registered right now (the global set on this page), plus a button
-// that opens the same "?" sheet. Bindings are not customisable yet.
+// binding registered right now (the global set on this page). Bindings are
+// not customisable yet; "?" opens the full sheet anywhere.
 import { getT } from '../../i18n/runtime';
-import { TOGGLE_SHORTCUT_SHEET_EVENT } from '../shared/GlobalShortcuts';
 import { ShortcutList, useActiveShortcuts } from '../shared/ShortcutSheet';
 import { useHydrated } from '../shared/hooks/useHydrated';
 
@@ -18,15 +17,6 @@ export function KeyboardShortcutsSection() {
     <>
       <p className="settings-hint">{t.settings_hint}</p>
       <ShortcutList shortcuts={shortcuts} />
-      <div className="settings-shortcuts-actions">
-        <button
-          type="button"
-          className="settings-shortcuts-open-btn"
-          onClick={() => window.dispatchEvent(new CustomEvent(TOGGLE_SHORTCUT_SHEET_EVENT))}
-        >
-          {t.settings_open_sheet}
-        </button>
-      </div>
     </>
   );
 }

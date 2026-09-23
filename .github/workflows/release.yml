@@ -20,6 +20,25 @@ jobs:
         with:
           node-version: 22
 
+      # Release notes = this version's section of the root CHANGELOG.md (the
+      # same file the in-app "What's new" window reads). A missing or empty
+      # section fails the release before anything is built.
+      - name: Extract release notes from CHANGELOG.md
+        id: release_notes
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            VERSION="$GITHUB_REF_NAME"
+          else
+            VERSION=$(node -p "require('./frontend/src-tauri/tauri.conf.json').version")
+          fi
+          node .github/scripts/changelog-release-notes.mjs "$VERSION" > "$RUNNER_TEMP/release-notes.md"
+          {
+            echo 'body<<METADEA_RELEASE_NOTES_EOF'
+            cat "$RUNNER_TEMP/release-notes.md"
+            echo 'METADEA_RELEASE_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -46,10 +65,15 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           PUBLIC_API_URL: https://metadea.metadea.workers.dev
+          # Google Drive backups (docs/BACKUPS.md): desktop OAuth client, baked
+          # in at compile time via option_env!. Empty secrets just disable the
+          # built-in client (users can still paste their own in Environment).
+          METADEA_GOOGLE_CLIENT_ID: ${{ secrets.METADEA_GOOGLE_CLIENT_ID }}
+          METADEA_GOOGLE_CLIENT_SECRET: ${{ secrets.METADEA_GOOGLE_CLIENT_SECRET }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Metadea ${{ github.ref_name }}'
-          releaseBody: 'Ver los instaladores adjuntos para actualizar de forma manual o automática.'
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           projectPath: './frontend'

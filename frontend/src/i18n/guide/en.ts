@@ -239,14 +239,14 @@ export const guideEn = {
     },
     tier_lists: {
       title: "Tier lists",
-      intro: "Rank works in tiers from S to F, or in tiers you name and color yourself.",
+      intro: "Rank works or characters TierMaker-style: rows from S to F that you can rename, recolour, add, remove and reorder.",
       steps: {
-        s1: "Open Tier list and create a new one.",
-        s2: "Add works from your catalog; they wait in the “Unclassified” pool.",
-        s3: "Drag each work to its tier. Click a tier's name or color to change it.",
+        s1: "Open Tier list in the navigation bar and create a list of works or of characters.",
+        s2: "Fill the item bank from your library (filters or quick fills like “everything completed from 2024”), your lists and sagas, your characters or a search.",
+        s3: "Drag covers into the rows, or select several and press 1–9. Double-click a cover to send it back to the bank.",
       },
       tips: {
-        t1: "Tier lists of characters and community search are coming soon.",
+        t1: "Every change saves on its own and Ctrl+Z undoes it. “Save as image” exports the board as a PNG, and “Show on my profile” lists it in your profile's Lists tab.",
       },
     },
     stats: {
@@ -308,8 +308,7 @@ export const guideEn = {
       steps: {
         s1: "In Settings › Emulators, choose a company and a console.",
         s2: "Pick the emulator and its executable, the launch arguments ({ROM} is replaced by the file) and your ROM folder.",
-        s3: "Optionally set the ROM extensions to look for (empty = the usual ones) and the emulator's screenshots folder.",
-        s4: "Open Play › Games: your ROMs appear with clean names and IGDB data.",
+        s3: "Open Play › Games: your ROMs appear with clean names and IGDB data.",
       },
       tips: {
         t1: "“Clean up ROM names automatically” renames files to a tidy format (and their save files with them). A notice lets you undo it for a few seconds.",
@@ -347,15 +346,15 @@ export const guideEn = {
     },
     screenshots: {
       title: "Screenshots",
-      intro: "A work's “Screenshots” section gathers captures from three places: the ones you take in Metadea, your Steam screenshots and your emulator's capture folder.",
+      intro: "A work's “Screenshots” section gathers its captures from Pictures › Metadea › <work> and, for Steam games, your Steam screenshots.",
       steps: {
         s1: "Press F12 in the built-in player to save a frame. It goes to Pictures › Metadea › <work>, named with the episode and time.",
         s2: "In the comic reader, right-click a page and choose “Save page (PNG)”.",
-        s3: "For emulators, set the screenshots folder of each console in Settings › Emulators, or leave it empty so it is detected.",
+        s3: "For emulators, take screenshots as usual: while a game launched from Metadea runs, each capture is moved to Pictures › Metadea › <game> and a notice confirms it.",
       },
       tips: {
-        t1: "The capture folder is detected automatically for Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu and PPSSPP.",
-        t2: "Emulator captures are filtered to the game; if none match, recent captures are shown with a note.",
+        t1: "The emulator's capture folder is detected for Dolphin, PCSX2, DuckStation, melonDS, RetroArch, Citron/Yuzu, PPSSPP, Cemu and RPCS3; for other emulators, set it under Settings › Emulators (advanced).",
+        t2: "Captures of a game that were already in the emulator's folder are moved there the first time you open the game.",
       },
     },
     launching: {
@@ -374,9 +373,9 @@ export const guideEn = {
     },
     player: {
       title: "The video player",
-      intro: "Local episodes and films play in Metadea's built-in player (libmpv), which keeps your progress by itself. You can use VLC instead if you prefer.",
+      intro: "Local episodes and films play in Metadea's built-in player (libmpv), which keeps your progress by itself.",
       steps: {
-        s1: "Choose the player in Settings › Preferences › Player: built-in (libmpv) or VLC (external).",
+        s1: "Nothing to install: the player (libmpv) comes with Metadea.",
         s2: "Choose the controls: overlaid on the video, or in a fixed bar under the video.",
         s3: "Press “Play” on an episode in Play. The rest of the season is queued; press Q to see the queue.",
         s4: "Use the menus to change audio track, subtitles and speed (0.5× to 2×).",
@@ -385,7 +384,7 @@ export const guideEn = {
       },
       tips: {
         t1: "Click the video to pause and double-click for full screen.",
-        t2: "If libmpv cannot be loaded, Metadea uses VLC automatically and tells you.",
+        t2: "If libmpv cannot be loaded, Metadea tells you instead of opening the video.",
         t3: "Finishing the last episode completes the work and adds its sequel to your planning list.",
         t4: "Discord shows what you are watching with a countdown of the time left.",
       },
@@ -413,7 +412,6 @@ export const guideEn = {
       },
       tips: {
         t1: "Segments come from the file's chapters (MKV) and, for anime, from AniSkip; chapters win when both exist.",
-        t2: "It only works in the built-in player, not in VLC.",
       },
     },
     reader_comics: {
@@ -569,7 +567,7 @@ export const guideEn = {
       title: "Interface themes (skins)",
       intro: "Skins restyle all of Metadea. They are folders with a theme.json file and, optionally, CSS, which you can make yourself or get from other people.",
       steps: {
-        s1: "In Settings › Appearance › Community themes, press “Open themes folder”.",
+        s1: "In Settings › Plugins › UI themes, press “Open themes folder”.",
         s2: "Copy a theme folder there (or press “Create example theme”) and press “Reload”.",
         s3: "Press “Activate” on the theme you want. It stays on after restarting.",
         s4: "If you make your own, turn on “Watch for changes” to see your edits every two seconds.",
@@ -620,11 +618,12 @@ export const guideEn = {
     },
     backup: {
       title: "Where your data lives and backups",
-      intro: "Everything is stored in a database in your user folder (on Windows, %APPDATA%\\com.metadea.app). A backup copies that folder into a single ZIP file.",
+      intro: "Everything is stored in a database in your user folder (on Windows, %APPDATA%\\com.metadea.app). A backup is a single .7z file with that database, your custom images and your skins; caches are left out because they download again.",
       steps: {
-        s1: "Open Settings › Backup and press “Export data”. Save the ZIP outside Metadea's data folder.",
-        s2: "To restore, press “Import data” and choose a ZIP. Metadea first saves a copy of your current data next to the folder, then restarts to apply the backup.",
+        s1: "Open Settings › Backup and press “Create backup”. Save the .7z outside Metadea's data folder.",
+        s2: "To restore, press “Restore from file” and choose a .7z (or a .zip from older versions). Metadea checks every file, saves a copy of your current data next to the folder, then restarts to apply the backup.",
         s3: "“Open folder” in Settings › Environment › Local routes opens the data folder.",
+        s4: "Link Google Drive in the same tab to upload backups to a private app folder, now or automatically every day or week; you can restore any of them from the list.",
       },
       tips: {
         t1: "Nobody else has a copy of your library: make a backup before big changes and from time to time.",

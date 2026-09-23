@@ -7,17 +7,13 @@ use crate::db::ToStringErr;
 // Steam/GOG/Epic all intercept launch_game's URL scheme and start the actual
 // game executable themselves — there's no child process handle to `.wait()`
 // on. Instead this polls for any running process whose exe path lives under
-// the game's own install folder, and reports the elapsed time once one
-// showed up and then disappeared again. Fire-and-forget from the frontend's
-// point of view: it returns immediately, and the result (if any) arrives
-// later as a "game-session-ended" event.
-#[derive(Clone, serde::Serialize)]
-pub(super) struct SessionEndedPayload {
-    pub(super) external_id: String,
-    pub(super) hours: f64,
-}
-
+// the game's own install folder. The session lives in the registry
+// (game_sessions.rs) from the moment this is called, so the presence shows
+// while a slow launcher is still starting; playtime counts from the moment
+// the game's process shows up, and the registry records it when it exits.
+// Fire-and-forget from the frontend's point of view.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // Tauri command arguments are its IPC fields
 pub async fn start_playtime_session(
     app_handle: tauri::AppHandle,
     install_path: String,
@@ -25,8 +21,30 @@ pub async fn start_playtime_session(
     rom_platform: Option<String>,
     launcher: Option<String>,
     app_id: Option<String>,
+    // Presence data for the session registry; optional for older callers.
+    title: Option<String>,
+    cover_url: Option<String>,
 ) -> Result<(), String> {
-    tokio::spawn(track_playtime_session(app_handle, install_path, external_id, rom_platform, launcher, app_id));
+    use crate::game_sessions::{register, NewSession, Registration};
+    let title = title
+        .filter(|t| !t.trim().is_empty())
+        .or_else(|| PathBuf::from(&install_path).file_stem().map(|s| s.to_string_lossy().to_string()))
+        .unwrap_or_else(|| external_id.clone());
+    let registration = register(&app_handle, NewSession {
+        external_id,
+        title,
+        cover_url,
+        platform: rom_platform.clone(),
+        launcher: launcher.clone().unwrap_or_default(),
+        app_id: app_id.clone(),
+        install_path: Some(install_path.clone()),
+        exe_path: None,
+        pids: Vec::new(),
+        running: false,
+    });
+    // A second Play click on a game that is already tracked starts nothing.
+    let Registration::New(session_id) = registration else { return Ok(()) };
+    tokio::spawn(track_playtime_session(app_handle, session_id, install_path, rom_platform, launcher, app_id));
     Ok(())
 }
 
@@ -126,68 +144,70 @@ pub fn stop_game_process(
 
 async fn track_playtime_session(
     app_handle: tauri::AppHandle,
+    session_id: String,
     install_path: String,
-    external_id: String,
     rom_platform: Option<String>,
     launcher: Option<String>,
     app_id: Option<String>,
 ) {
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
     use sysinfo::System;
-    use tauri::Emitter;
+    use crate::game_sessions::{self, ProcessMatcher};
 
     let is_direct_exe = install_path.to_lowercase().ends_with(".exe");
     let watch_target: Option<PathBuf> = if let (false, Some(platform_id)) = (is_direct_exe, rom_platform.as_ref()) {
         use tauri::Manager;
         let db = app_handle.state::<crate::db::MetadeaDb>();
-        let exe = {
-            let Ok(conn) = db.conn.lock() else { return };
-            conn.query_row(
+        let exe = match db.conn.lock() {
+            Ok(conn) => conn.query_row(
                 "SELECT executable_path FROM emulator_configs WHERE platform_id = ?1",
                 [platform_id],
                 |r| r.get::<_, String>(0),
-            ).ok()
+            ).ok(),
+            Err(_) => None,
         };
         exe.filter(|e| !e.is_empty()).map(PathBuf::from)
     } else {
         Some(PathBuf::from(&install_path))
     };
-    let Some(root) = watch_target else { return };
+    let Some(root) = watch_target else {
+        game_sessions::cancel(&app_handle, &session_id);
+        return;
+    };
     let is_rom = !is_direct_exe && rom_platform.is_some();
     let gog_executable = if launcher.as_deref() == Some("gog") {
         app_id.as_deref().and_then(|id| gog_primary_executable(&root, id))
     } else {
         None
     };
-    let root_filename = root.file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_default();
     let norm_root = normalize_path_for_compare(&root);
+    let emulator_matcher = ProcessMatcher::executable(&root);
+    // Nothing to exclude: by the time this runs the game may already be up
+    // (launch_game's own ROM path is the one that snapshots beforehand).
+    let preexisting = std::collections::HashSet::new();
 
     let poll_every = Duration::from_secs(2);
-    let start_timeout = Duration::from_secs(60);
+    // Store launchers (Steam/Epic/GOG…) can take minutes to update and start
+    // the game; a direct .exe shows up within seconds.
+    let start_timeout = if is_direct_exe { Duration::from_secs(60) } else { Duration::from_secs(180) };
 
     let mut sys = System::new();
     let mut waited = Duration::ZERO;
-    let mut started_at: Option<Instant> = None;
+    let mut started = false;
+    let mut last_seen = game_sessions::now_unix();
 
     loop {
         tokio::time::sleep(poll_every).await;
-        sys.refresh_all();
-        let running = sys.processes().values().any(|p| {
-            if is_rom {
-                if !root_filename.is_empty() && p.name().to_string_lossy().eq_ignore_ascii_case(&root_filename) {
-                    return true;
-                }
-                if let Some(exe) = p.exe() {
-                    let norm_exe = normalize_path_for_compare(exe);
-                    if norm_exe == norm_root || norm_exe.ends_with(&norm_root) || norm_root.ends_with(&norm_exe) {
-                        return true;
-                    }
-                }
-                false
-            } else {
-                if let Some(exe) = p.exe() {
+        if !game_sessions::is_active(&app_handle, &session_id) {
+            return;
+        }
+        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+        let mut first_exe: Option<String> = None;
+        let pids = game_sessions::exclude_preexisting(
+            sys.processes().iter().filter_map(|(pid, p)| {
+                let hit = if is_rom {
+                    emulator_matcher.matches(&p.name().to_string_lossy(), p.exe())
+                } else if let Some(exe) = p.exe() {
                     let norm_exe = normalize_path_for_compare(exe);
                     if let Some(target) = &gog_executable {
                         norm_exe == normalize_path_for_compare(target)
@@ -196,25 +216,36 @@ async fn track_playtime_session(
                     }
                 } else {
                     false
+                };
+                if hit && first_exe.is_none() {
+                    first_exe = p.exe().map(|e| e.to_string_lossy().to_string());
                 }
-            }
-        });
+                hit.then(|| pid.as_u32())
+            }),
+            &preexisting,
+        );
 
-        match (started_at, running) {
-            (None, true) => started_at = Some(Instant::now()),
-            (None, false) => {
+        match (started, pids.is_empty()) {
+            (false, false) => {
+                started = true;
+                last_seen = game_sessions::now_unix();
+                game_sessions::mark_running(&app_handle, &session_id, pids, first_exe, last_seen);
+            }
+            (false, true) => {
                 waited += poll_every;
                 if waited >= start_timeout {
-                    let _ = app_handle.emit("game-session-ended", SessionEndedPayload { external_id: external_id.clone(), hours: 0.0 });
+                    game_sessions::cancel(&app_handle, &session_id);
                     return;
                 }
             }
-            (Some(start), false) => {
-                let hours = start.elapsed().as_secs_f64() / 3600.0;
-                let _ = app_handle.emit("game-session-ended", SessionEndedPayload { external_id, hours });
+            (true, true) => {
+                game_sessions::finish(&app_handle, &session_id, last_seen);
                 return;
             }
-            (Some(_), true) => {}
+            (true, false) => {
+                last_seen = game_sessions::now_unix();
+                game_sessions::set_pids(&app_handle, &session_id, pids);
+            }
         }
     }
 }

@@ -31,6 +31,17 @@ impl PlayerError {
         Self { code: "io_error", detail: detail.into() }
     }
 
+    /// A crate-wide `E_*` code (error_codes.rs), for failures the frontend
+    /// shows through formatAppError (clip export).
+    pub fn coded(code: &'static str, detail: impl Into<String>) -> Self {
+        Self { code, detail: detail.into() }
+    }
+
+    /// The loaded libmpv lacks a feature (e.g. encoding for clips).
+    pub fn unsupported(detail: impl Into<String>) -> Self {
+        Self { code: "unsupported", detail: detail.into() }
+    }
+
     pub fn invalid_argument(detail: impl Into<String>) -> Self {
         Self { code: "invalid_argument", detail: detail.into() }
     }

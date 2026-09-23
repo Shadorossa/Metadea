@@ -6,6 +6,9 @@ import { listenPlayerEnded, playerFocusOverlay, playerIsFullscreen, playerStopCl
 import { PlayerShell } from './PlayerShell';
 import { usePlayerKeys } from './hooks/usePlayerKeys';
 import { usePlayerStatus } from './hooks/usePlayerStatus';
+import { useMediaRemote } from '../shared/hooks/useMediaRemote';
+import { playerRemoteAction } from '../../lib/big-picture/media-remote';
+import { runPlayerAction, type PlayerActionContext } from './player-actions';
 import { useVideoBounds } from './hooks/useVideoBounds';
 
 const FULLSCREEN_CLASS = 'player-fullscreen';
@@ -82,8 +85,17 @@ export function PlayerStage() {
   const onSkipReady = useCallback((skip: () => void) => { skipRef.current = skip; }, []);
 
   const noop = () => false;
-  usePlayerKeys({
+  const actionContext: PlayerActionContext = {
     status, isFullscreen: fullscreen, setFullscreen, toggleQueue: () => {}, dismissOverlays: noop, skipSegment: () => skipRef.current(),
+  };
+  usePlayerKeys(actionContext);
+  // Big Picture's gamepad, through the same actions as the keys. B closes
+  // the player outright (not Escape's fullscreen-first ladder: Big Picture
+  // keeps the window fullscreen underneath).
+  useMediaRemote(command => {
+    const action = playerRemoteAction(command);
+    if (action.type === 'close') playerStopClose('stopped').catch(() => {});
+    else runPlayerAction(action, actionContext);
   });
 
   return (

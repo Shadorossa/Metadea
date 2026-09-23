@@ -1,5 +1,5 @@
 import {
-  AudioLines, Camera, Captions, Gauge, ListVideo, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward, Volume1,
+  AudioLines, Camera, Captions, Scissors, Gauge, ListVideo, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward, Volume1,
   Volume2, VolumeX,
 } from 'lucide-react';
 import type { Translations } from '../../i18n/index';
@@ -10,7 +10,9 @@ import type { SkipSegment } from '../../lib/player/skip-segments';
 import {
   playerNext, playerPrev, playerScreenshot, playerSeek, playerSetMute, playerSetTrack, playerSetVolume, playerTogglePause,
 } from '../../lib/tauri/player';
+import { PlayerClipPanel } from './PlayerClipPanel';
 import { PlayerMenu, type PlayerMenuItem } from './PlayerMenu';
+import type { ClipMode } from './hooks/useClipMode';
 import { PlayerSeekBar } from './PlayerSeekBar';
 import { applySpeed, MAX_VOLUME, SPEED_OPTIONS } from './player-actions';
 
@@ -27,6 +29,16 @@ interface Props {
   onMenuChange: (menu: PlayerMenuKind | null) => void;
   queueOpen: boolean;
   onToggleQueue: () => void;
+  // Smart track selection (usePlayerTrackPreferences): menu picks are
+  // remembered per series; the reset item appears while a memory exists.
+  hasTrackMemory?: boolean;
+  onManualTrack?: (kind: 'audio' | 'sub', track: PlayerTrack | null) => void;
+  onResetTrackMemory?: () => void;
+  // Seek-bar frame preview; off when docked (the native video surface sits
+  // right above the bar there and would hide it).
+  seekPreview?: boolean;
+  // Clip mode behind the scissors button (useClipMode); absent = no button.
+  clip?: ClipMode;
 }
 
 function swallow(promise: Promise<unknown>) {
@@ -42,7 +54,13 @@ function trackDetail(track: PlayerTrack): string | undefined {
   return parts.length ? parts.join(' · ') : undefined;
 }
 
-function trackItems(status: PlayerStatus, kind: 'audio' | 'sub', t: Translations['player']): PlayerMenuItem[] {
+interface TrackMenuOptions {
+  hasMemory: boolean;
+  onManual?: (kind: 'audio' | 'sub', track: PlayerTrack | null) => void;
+  onReset?: () => void;
+}
+
+function trackItems(status: PlayerStatus, kind: 'audio' | 'sub', t: Translations['player'], options: TrackMenuOptions): PlayerMenuItem[] {
   const tracks = status.tracks.filter(track => track.kind === kind);
   const anySelected = tracks.some(track => track.selected);
   const items: PlayerMenuItem[] = tracks.map(track => ({
@@ -50,17 +68,36 @@ function trackItems(status: PlayerStatus, kind: 'audio' | 'sub', t: Translations
     label: trackLabel(track, t),
     detail: trackDetail(track),
     selected: track.selected,
-    onSelect: () => swallow(playerSetTrack(kind, track.id)),
+    onSelect: () => {
+      options.onManual?.(kind, track);
+      swallow(playerSetTrack(kind, track.id));
+    },
   }));
   if (tracks.length > 0) {
-    items.push({ key: 'off', label: t.track_off, selected: !anySelected, onSelect: () => swallow(playerSetTrack(kind, null)) });
+    items.push({
+      key: 'off',
+      label: t.track_off,
+      selected: !anySelected,
+      onSelect: () => {
+        options.onManual?.(kind, null);
+        swallow(playerSetTrack(kind, null));
+      },
+    });
+  }
+  if (tracks.length > 0 && options.hasMemory && options.onReset) {
+    items.push({ key: 'reset-series', label: t.tracks_reset_series, detail: t.tracks_reset_series_hint, selected: false, onSelect: options.onReset });
   }
   return items;
 }
 
 export function PlayerControls({
   status, segments = [], t, isFullscreen, onToggleFullscreen, menu, onMenuChange, queueOpen, onToggleQueue,
+  hasTrackMemory = false, onManualTrack, onResetTrackMemory, seekPreview = true, clip,
 }: Props) {
+  const clipTrimming = clip?.phase === 'trimming';
+  const clipActive = clipTrimming || clip?.phase === 'choosing';
+  const hasSubtitles = status.tracks.some(track => track.kind === 'sub' && track.selected);
+  const trackMenu: TrackMenuOptions = { hasMemory: hasTrackMemory, onManual: onManualTrack, onReset: onResetTrackMemory };
   const playing = status.state === 'playing';
   const hasPrev = status.playlist_index > 0;
   const hasNext = status.playlist_index >= 0 && status.playlist_index < status.playlist_len - 1;
@@ -77,7 +114,18 @@ export function PlayerControls({
 
   return (
     <div className="player-controls">
-      <PlayerSeekBar positionSecs={status.position_secs} durationSecs={status.duration_secs} seekLabel={t.seek_to} segments={segments} />
+      <PlayerSeekBar positionSecs={status.position_secs} durationSecs={status.duration_secs} seekLabel={t.seek_to}
+        segments={segments}
+        path={seekPreview ? status.path : null}
+        chapters={status.chapters}
+        clip={clip && clipTrimming ? {
+          range: clip.range,
+          onStart: clip.setStart,
+          onEnd: clip.setEnd,
+          startLabel: t.clip_handle_start,
+          endLabel: t.clip_handle_end,
+        } : null}
+      />
       <div className="player-controls__row">
         <button type="button" className="player-icon-btn" onClick={() => swallow(playerPrev())} disabled={!hasPrev} aria-label={t.prev_episode} title={t.prev_episode}>
           <SkipBack size={18} />
@@ -129,17 +177,33 @@ export function PlayerControls({
           <button type="button" className="player-icon-btn" onClick={() => toggleMenu('audio')} aria-haspopup="menu" aria-expanded={menu === 'audio'} aria-label={t.audio_tracks} title={t.audio_tracks}>
             <AudioLines size={18} />
           </button>
-          {menu === 'audio' && <PlayerMenu title={t.audio_tracks} items={trackItems(status, 'audio', t)} emptyLabel={t.no_audio_tracks} onClose={closeMenu} />}
+          {menu === 'audio' && <PlayerMenu title={t.audio_tracks} items={trackItems(status, 'audio', t, trackMenu)} emptyLabel={t.no_audio_tracks} onClose={closeMenu} />}
         </div>
         <div className="player-controls__menu-anchor">
           <button type="button" className="player-icon-btn" onClick={() => toggleMenu('sub')} aria-haspopup="menu" aria-expanded={menu === 'sub'} aria-label={t.subtitle_tracks} title={t.subtitle_tracks}>
             <Captions size={18} />
           </button>
-          {menu === 'sub' && <PlayerMenu title={t.subtitle_tracks} items={trackItems(status, 'sub', t)} emptyLabel={t.no_subtitle_tracks} onClose={closeMenu} />}
+          {menu === 'sub' && <PlayerMenu title={t.subtitle_tracks} items={trackItems(status, 'sub', t, trackMenu)} emptyLabel={t.no_subtitle_tracks} onClose={closeMenu} />}
         </div>
         <button type="button" className="player-icon-btn" onClick={() => swallow(playerScreenshot())} aria-label={t.screenshot} title={t.screenshot}>
           <Camera size={18} />
         </button>
+        {clip && (
+          <div className="player-controls__menu-anchor">
+            <button
+              type="button"
+              className={`player-icon-btn${clipActive ? ' player-icon-btn--active' : ''}`}
+              onClick={() => (clipActive ? clip.cancel() : clip.enter())}
+              disabled={clip.phase === 'exporting' || status.duration_secs <= 0}
+              aria-pressed={clipActive}
+              aria-label={t.clip_button}
+              title={t.clip_button}
+            >
+              <Scissors size={18} />
+            </button>
+            {clipActive && <PlayerClipPanel clip={clip} t={t} hasSubtitles={hasSubtitles} />}
+          </div>
+        )}
         <button type="button" className={`player-icon-btn${queueOpen ? ' player-icon-btn--active' : ''}`} onClick={onToggleQueue} aria-pressed={queueOpen} aria-label={t.queue_toggle} title={t.queue_toggle}>
           <ListVideo size={18} />
         </button>

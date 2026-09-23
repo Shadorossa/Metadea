@@ -1,10 +1,13 @@
 // Public view of another user's profile — reached from the navbar
-// quick-search's "Usuarios" tab (or any /user?id=<userId> link). Same tab
-// structure and same components as the local /profile page (HofSection,
-// LibrarySection, StatsSection, ReviewsSection, ListsSection,
-// ActivitySection) — just fed from the synced social_user_* cache instead
-// of the viewer's own local tables, and read-only (no edit/create/delete
-// affordances render at all, see each component's own `readOnly` handling).
+// quick-search's "Usuarios" tab (or any /user?id=<userId> link). Same page
+// format as the local /profile page: the same banner, the same tabs in the
+// same order (Bingo only when they synced a board), the same
+// `.profile-tab-pane`s kept mounted once visited,
+// and every tab body is the owner's own section component (OverviewSection,
+// LibrarySection, FavoritesSection, StatsSection, ReviewsSection,
+// ListsSection, FriendsSection; BingoPublicSection read-only) fed injected
+// data with `readOnly` instead of its own local fetch. Only the Follow and taste-compatibility buttons are
+// specific to this page.
 //
 // Rendering reads from the LOCAL social_user_* tables (see
 // src-tauri/src/social_profile.rs), never straight from the fetched JSON —
@@ -13,44 +16,89 @@
 // looked at today doesn't re-fetch/re-write anything. Every entry renders
 // regardless of whether YOUR OWN media_catalog recognizes it — your catalog
 // is what resolves title/cover (or not), it's never a filter on what's
-// shown. An unresolved entry falls back to its bare external_id
+// shown. The Bingo tab is the exception: it renders the fetched boards
+// directly (each cell carries its own title/cover snapshot and the owner's
+// result). An unresolved entry falls back to its bare external_id
 // ("anime:12345") until your own catalog catches up, at which point the
 // exact same cached row resolves correctly next render.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link as LinkIcon, UserMinus, UserPlus } from 'lucide-react';
 import { useHydrated } from '../shared/hooks/useHydrated';
 import { getPublicProfile, followUser, unfollowUser, type PublicProfile } from '../../lib/social/users';
 import {
   getUserInfo,
   hydrateSocialProfile, getSocialLibraryLight, getSocialActivityLight, getSocialLists, getSocialListItemsLight,
-  getSocialMonthlyHistoryLight, getAllCharactersLight, getCatalogEntriesByIds, getSagaNames,
-  type LibraryEntry, type CatalogSummary, type CharacterEntry, type DbMediaRelation,
-  type DayJourney, type UserJourneyEvent, type ListInfo, type ListItemFull,
+  getSocialMonthlyHistoryLight, getAllCharactersLight, getCatalogEntriesByIds, getSagaNames, getTasteCompatibility,
+  getSocialCharacterReactions, emptyCharacterReactionGroups,
+  type CatalogSummary, type ListInfo, type ListItemFull,
 } from '../../lib/tauri';
 import { getT } from '../../i18n/runtime';
+import { copyWebProfileLink } from '../../lib/social/web-profile-link';
 import { loadScopedMediaRelations } from '../../lib/profile/relations-scope';
 import { toLibraryEntry } from '../../lib/social/social-library-mapping';
-import { getNonEditionItems, getItemMinutes } from '../../lib/profile/stats-calculators';
-import { buildMonthlyHistoryHtml, initMonthlyHistoryListeners } from '../../lib/profile/monthly';
-import { syncActiveRatingSystem, formatAverageScore } from '../../lib/media/rating-utils';
-import { pad } from '../../lib/profile/media-type-label';
+import {
+  toSocialLibraryInputs, toSocialActivityInputs, toSocialCharacterReactionsInput,
+  toDayJourney, applyOwnerCovers, toPublicBingoBoards,
+} from '../../lib/social/public-profile-mapping';
+import { interpolate } from '../../lib/shared/text/interpolate';
+import { getFontFile } from '../settings/mount/fonts';
+import { computeTasteCompatibility, hoursByMedium, librarySignals, type TasteCompatibility } from '../../lib/social/taste-compatibility';
+import { syncActiveRatingSystemFromCachedInfo } from '../../lib/profile/user-info';
+import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
+import { resolveCachedCoverPaths } from '../../lib/profile/cover-cache';
+import { beginGlobalLoading } from '../../lib/dom/global-loading';
 import {
   ICON_PROFILE_OVERVIEW, ICON_PROFILE_LIBRARY, ICON_PROFILE_FAVORITES,
-  ICON_PROFILE_STATS, ICON_PROFILE_REVIEWS, ICON_PROFILE_LISTS,
+  ICON_PROFILE_STATS, ICON_PROFILE_REVIEWS, ICON_PROFILE_LISTS, ICON_PROFILE_BINGO, ICON_PROFILE_FRIENDS,
 } from '../../lib/dom/icon-strings';
-import { HofSection } from '../profile/HofSection';
+import { OverviewSection, overviewCoverIds, type OverviewData } from '../profile/OverviewSection';
 import { FavoritesSection } from '../profile/FavoritesSection';
 import { LibrarySection } from '../profile/LibrarySection';
 import { StatsSection } from '../profile/StatsSection';
 import { ReviewsSection } from '../profile/ReviewsSection';
 import { ListsSection } from '../profile/ListsSection';
-import { ActivitySection } from '../profile/ActivitySection';
+import { FriendsSection } from '../profile/FriendsSection';
+import { BingoPublicSection } from '../bingo/BingoPublicSection';
+import { TasteHeartButton } from './TasteCompatibility';
 
 const HYDRATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
-const TABS = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists'] as const;
+// Same order as profile.astro; 'bingo' is only shown when the profile
+// synced a board (see visibleTabs).
+const TABS = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists', 'bingo', 'friends'] as const;
 type Tab = typeof TABS[number];
 
+const TAB_ICONS: Record<Tab, string> = {
+  overview: ICON_PROFILE_OVERVIEW,
+  library: ICON_PROFILE_LIBRARY,
+  favorites: ICON_PROFILE_FAVORITES,
+  stats: ICON_PROFILE_STATS,
+  reviews: ICON_PROFILE_REVIEWS,
+  lists: ICON_PROFILE_LISTS,
+  bingo: ICON_PROFILE_BINGO,
+  friends: ICON_PROFILE_FRIENDS,
+};
+
+// Same tooltip keys as profile.astro's tab strip; `bingoYear` is the newest
+// synced board's year.
+function tabTooltip(tab: Tab, p: ReturnType<typeof getT>['profile'], bingoYear: number): string {
+  switch (tab) {
+    case 'overview': return p.tab_overview;
+    case 'library': return p.tab_library;
+    case 'favorites': return p.favorites;
+    case 'stats': return p.tab_stats;
+    case 'reviews': return p.reviews;
+    case 'lists': return p.lists;
+    case 'bingo': return interpolate(getT().bingo.tab, { year: bingoYear });
+    case 'friends': return p.friends;
+  }
+}
+
+// "_v3": the profile-parity fields (time spent, second rating, journey,
+// cover choices; v3: character reactions) are only in the cache after a
+// hydrate that carried them, so every profile cached before them
+// re-hydrates once.
 function lastHydrateKey(userId: string): string {
-  return `metadea_social_profile_sync_${userId}`;
+  return `metadea_social_profile_sync_v3_${userId}`;
 }
 
 async function goToOwnProfile(): Promise<void> {
@@ -73,149 +121,38 @@ async function hydrateIfStale(userId: string, profile: PublicProfile): Promise<v
 
   await hydrateSocialProfile(
     userId,
-    profile.library.map(item => ({
-      external_id: item.external_id,
-      rating: item.rating ?? null,
-      started_at: item.started_at ?? null,
-      finished_at: item.finished_at ?? null,
-      notes: item.notes ?? null,
-      tags: item.tags ?? null,
-      status: item.status ?? null,
-      progress: item.progress ?? null,
-    })),
-    profile.activity,
+    toSocialLibraryInputs(profile),
+    toSocialActivityInputs(profile),
     profile.monthlyHistory,
     profile.lists.map(l => ({ key: l.key, name: l.name, description: l.description, is_fav: l.is_fav, items: l.items })),
+    toSocialCharacterReactionsInput(profile),
   ).catch(() => {});
 
   localStorage.setItem(lastHydrateKey(userId), String(Date.now()));
 }
 
-// Flattens the social activity cache (already event-shaped, each carrying
-// its own `date`) into the same day-grouped DayJourney[] structure
-// ActivitySection/StatsSection expect from readUserJourneyTyped().
-function toDayJourney(activity: Array<{
-  external_id: string; event_type: string; media_type: string | null;
-  date: string | null; timestamp: string; progress_start: number | null; progress_end: number | null;
-}>): DayJourney[] {
-  const byDate = new Map<string, UserJourneyEvent[]>();
-  for (const a of activity) {
-    if (a.event_type !== 'complete') continue;
-    const date = a.date ?? a.timestamp.slice(0, 10);
-    const list = byDate.get(date) ?? [];
-    list.push({
-      externalId: a.external_id,
-      type: a.event_type as UserJourneyEvent['type'],
-      progressStart: a.progress_start ?? undefined,
-      progressEnd: a.progress_end ?? undefined,
-      mediaType: a.media_type ?? '',
-      timestamp: a.timestamp,
-    });
-    byDate.set(date, list);
-  }
-  return [...byDate.entries()]
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([date, events]) => ({ date, events }));
-}
-
-interface ProfileData {
-  items: LibraryEntry[];
-  catalogMap: Map<string, CatalogSummary>;
-  characterMap: Map<string, CharacterEntry>;
-  sagaRelations: DbMediaRelation[];
+interface ProfileData extends OverviewData {
   sagaNames: Record<string, string>;
-  journey: DayJourney[];
   lists: ListInfo[];
-  favorites: Record<string, string[]>;
-  monthlyHistory: Record<string, string[]>;
+  /** null when it couldn't be computed (outside Tauri, IPC error). */
+  taste: TasteCompatibility | null;
+  /** Works whose cover the owner picked (see applyOwnerCovers). */
+  ownerCoverIds: ReadonlySet<string>;
 }
 
-function MonthlyHistory({ history, items, catalogMap }: { history: Record<string, string[]>; items: LibraryEntry[]; catalogMap: Map<string, CatalogSummary> }) {
-  const html = useMemo(() => buildMonthlyHistoryHtml(history, items, catalogMap), [history, items, catalogMap]);
-  return (
-    <div
-      dangerouslySetInnerHTML={{ __html: html }}
-      ref={el => { if (el) initMonthlyHistoryListeners(el); }}
-    />
-  );
+// Their per-type favourites (the profile's `favorites` map) minus
+// characters — the shared-favourites row links to media pages.
+function favoriteMediaIds(favorites: Record<string, string[]> | undefined): string[] {
+  return Object.entries(favorites ?? {})
+    .filter(([type]) => type !== 'character')
+    .flatMap(([, ids]) => ids);
 }
 
-function OverviewTab({ data, p }: { data: ProfileData; p: ReturnType<typeof getT>['profile'] }) {
-  const { items, catalogMap, characterMap, journey, favorites } = data;
-  const [system, setSystem] = useState<'5-star' | '10-dec' | '10' | '3-emoji'>('5-star');
-  useEffect(() => { syncActiveRatingSystem().then(setSystem); }, []);
-
-  const hofItems = useMemo(() => (favorites.multimedia ?? []).map(id => {
-    const local = items.find(item => item.external_id === id);
-    if (local) return local;
-    const meta = catalogMap.get(id);
-    if (meta) return { external_id: id, type: meta.type } as LibraryEntry;
-    return null;
-  }).filter((i): i is LibraryEntry => i !== null), [favorites, items, catalogMap]);
-
-  const stats = useMemo(() => {
-    const nonEditionItems = getNonEditionItems(items, catalogMap);
-    let completed = 0, inProgress = 0, planning = 0, dropped = 0;
-    let totalRating = 0, ratedCount = 0, totalMinutes = 0;
-    for (const item of nonEditionItems) {
-      const s = item.status ?? 'planning';
-      if (s === 'completed') completed++;
-      else if (s === 'watching' || s === 'reading' || s === 'playing') inProgress++;
-      else if (s === 'planning') planning++;
-      else if (s === 'dropped') dropped++;
-      if (item.rating) { totalRating += item.rating; ratedCount++; }
-    }
-    for (const item of items) totalMinutes += getItemMinutes(item, catalogMap);
-    return {
-      total: nonEditionItems.length, completed, inProgress, planning, dropped,
-      avg: ratedCount > 0 ? formatAverageScore(totalRating / ratedCount, system) : '0.0',
-      hours: Math.round(totalMinutes / 60),
-    };
-  }, [items, catalogMap, system]);
-
-  return (
-    <>
-      <HofSection
-        items={hofItems}
-        catalogMap={catalogMap}
-        p={p}
-        charFavIds={favorites.character ?? []}
-        characterMap={characterMap}
-      />
-      <div className="profile-stats-bar">
-        {([
-          [p.stat_total, pad(stats.total)],
-          [p.stat_progress, pad(stats.inProgress)],
-          [p.stat_completed, pad(stats.completed)],
-          [p.stat_pending, pad(stats.planning)],
-          [p.stat_dropped, pad(stats.dropped)],
-          [p.stat_avg, stats.avg],
-          [p.stat_hours, stats.hours + 'h'],
-        ] as [string, string][]).map(([label, value]) => (
-          <div className="profile-stat" key={label}>
-            <span className="profile-stat-value">{value}</span>
-            <span className="profile-stat-label">{label}</span>
-          </div>
-        ))}
-      </div>
-      <div className="profile-bottom-grid">
-        <div className="profile-bottom-col">
-          <div className="profile-section-header">
-            <p className="profile-section-label">{p.monthly_history}</p>
-            <div className="profile-section-line"></div>
-          </div>
-          <MonthlyHistory history={data.monthlyHistory} items={items} catalogMap={catalogMap} />
-        </div>
-        <div className="profile-bottom-col">
-          <div className="profile-section-header">
-            <p className="profile-section-label">{p.recent_activity}</p>
-            <div className="profile-section-line"></div>
-          </div>
-          <ActivitySection catalogMap={catalogMap} p={p} overrideJourney={journey} readOnly />
-        </div>
-      </div>
-    </>
-  );
+function tasteHighlightIds(taste: TasteCompatibility | null): string[] {
+  if (!taste) return [];
+  const ids = [...taste.sharedFavorites, ...taste.bothLoved.map(p => p.external_id)];
+  for (const pair of taste.disagreements) ids.push(pair.external_id);
+  return ids;
 }
 
 function getInitialTab(): Tab {
@@ -239,9 +176,16 @@ export function UserProfileView() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
   const [isRedirectingSelf, setIsRedirectingSelf] = useState(false);
+  // Like /profile: a tab renders on first visit, then stays mounted (hidden)
+  // so its filters/scroll survive switching away and back.
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<Tab>>(() => new Set([activeTab]));
+  const showTab = (tab: Tab) => {
+    setActiveTab(tab);
+    setVisitedTabs(prev => (prev.has(tab) ? prev : new Set([...prev, tab])));
+  };
 
   const switchTab = (tab: Tab) => {
-    setActiveTab(tab);
+    showTab(tab);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       if (tab === 'overview') {
@@ -258,7 +202,7 @@ export function UserProfileView() {
 
   useEffect(() => {
     const onPopState = () => {
-      setActiveTab(getInitialTab());
+      showTab(getInitialTab());
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -302,12 +246,19 @@ export function UserProfileView() {
       await hydrateIfStale(userId, p);
       if (cancelled) return;
 
-      const [socialLibrary, socialActivity, socialLists, socialMonthly, characters] = await Promise.all([
+      // Taste compatibility reads the social_user_list cache hydrateIfStale
+      // just wrote, so it runs here and not before.
+      const [socialLibrary, socialActivity, socialLists, socialMonthly, characters, tasteData, own, characterReactions] = await Promise.all([
         getSocialLibraryLight(userId).catch(() => []),
         getSocialActivityLight(userId).catch(() => []),
         getSocialLists(userId).catch(() => []),
         getSocialMonthlyHistoryLight(userId).catch(() => []),
         getAllCharactersLight().catch(() => []),
+        getTasteCompatibility(userId, favoriteMediaIds(p.favorites)),
+        // The viewer's own library + catalog rows: status, genre, hours and
+        // profile-vector signals for the taste score (librarySignals).
+        getCachedLibraryAndCatalog().catch(() => ({ items: [], catalog: [] as CatalogSummary[] })),
+        getSocialCharacterReactions(userId).catch(() => emptyCharacterReactionGroups()),
       ]);
       if (cancelled) return;
 
@@ -324,26 +275,72 @@ export function UserProfileView() {
         ...items.map(i => i.external_id),
         ...socialMonthly.flatMap(group => group.items.map(i => i.external_id)),
         ...socialActivity.map(a => a.external_id),
+        // Hall of Fame / favourites needn't be in their synced library.
+        ...favoriteMediaIds(p.favorites),
       ])];
-      const [catalogEntries, sagaRelations, sagaNames] = await Promise.all([
+      const favorites = p.favorites ?? {};
+      const [catalogEntries, sagaRelations, sagaNames, system, coverPathById] = await Promise.all([
         getCatalogEntriesByIds(renderedIds).catch(() => [] as CatalogSummary[]),
         loadScopedMediaRelations(renderedIds),
         getSagaNames(items.map(i => i.external_id)).catch(() => ({} as Record<string, string>)),
+        // Same rating system the owner's tabs sync before rendering.
+        syncActiveRatingSystemFromCachedInfo(),
+        resolveCachedCoverPaths(overviewCoverIds(favorites, monthlyHistory)),
       ]);
       if (cancelled) return;
       const catalogMap = new Map(catalogEntries.map(e => [e.external_id, e]));
+      // Their cover choices, not the catalog's (or the viewer's) cover.
+      const ownerCoverIds = applyOwnerCovers(catalogMap, coverPathById, socialLibrary);
+      const ownCatalog = new Map(own.catalog.map(e => [e.external_id, e]));
+      const taste = tasteData
+        ? computeTasteCompatibility(tasteData, librarySignals(
+          // Hours per medium with each side's own catalog map — the same
+          // inputs each Stats tab uses, so the numbers match.
+          { entries: own.items, hours: hoursByMedium(own.items, ownCatalog) },
+          { entries: items, hours: hoursByMedium(items, catalogMap) },
+          id => ownCatalog.get(id) ?? catalogMap.get(id),
+        ))
+        : null;
+      // Shared favourites needn't be in their synced library, so their
+      // titles/covers may not be in the map yet.
+      const missingHighlightIds = [...new Set(tasteHighlightIds(taste))].filter(id => !catalogMap.has(id));
+      if (missingHighlightIds.length > 0) {
+        const extra = await getCatalogEntriesByIds(missingHighlightIds).catch(() => [] as CatalogSummary[]);
+        if (cancelled) return;
+        for (const e of extra) catalogMap.set(e.external_id, e);
+      }
       const characterMap = new Map(characters.map(c => [c.external_id, c]));
 
       setData({
-        items, catalogMap, characterMap, sagaRelations, sagaNames,
+        items, catalogMap, characterMap, sagaRelations, sagaNames, system, coverPathById, favorites, monthlyHistory, ownerCoverIds,
+        characterReactions,
         journey: toDayJourney(socialActivity),
         lists: socialLists.map(l => ({ key: l.key, name: l.name, description: l.description, is_fav: l.is_fav, is_private: false, item_count: l.item_count, preview_ids: [] })),
-        favorites: p.favorites ?? {},
-        monthlyHistory,
+        taste,
       });
     });
     return () => { cancelled = true; };
   }, [userId, isRedirectingSelf]);
+
+  // Same bottom loading bar the owner's tabs show while their data loads —
+  // no in-page "loading" placeholder.
+  const loadingData = profile != null && data === null;
+  useEffect(() => {
+    if (!loadingData) return;
+    return beginGlobalLoading();
+  }, [loadingData]);
+
+  // Their display-name font (Settings > Perfil), loaded the way
+  // profile.astro loads the owner's: one @font-face per font id.
+  const nameFont = profile?.nameFont ?? null;
+  const nameFontFile = nameFont ? getFontFile(nameFont) : undefined;
+  useEffect(() => {
+    if (!nameFont || !nameFontFile) return;
+    const style = document.createElement('style');
+    style.textContent = `@font-face { font-family: "pf-${nameFont}"; src: url("/fonts/${nameFontFile}") format("woff2"); font-display: swap; }`;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, [nameFont, nameFontFile]);
 
   async function toggleFollow() {
     if (!profile || busy) return;
@@ -363,6 +360,8 @@ export function UserProfileView() {
     }));
   }, [userId]);
 
+  const bingoBoards = useMemo(() => (profile ? toPublicBingoBoards(profile) : []), [profile]);
+
   if (isRedirectingSelf || profile === undefined) return null;
 
   if (profile === null) {
@@ -373,24 +372,111 @@ export function UserProfileView() {
     );
   }
 
+  const visibleTabs: readonly Tab[] = bingoBoards.length > 0 ? TABS : TABS.filter(tab => tab !== 'bingo');
+  // A ?tab=bingo link to a profile without a board lands on the overview.
+  const currentTab: Tab = visibleTabs.includes(activeTab) ? activeTab : 'overview';
+
+  const tabBody = (tab: Tab, d: ProfileData): ReactNode => {
+    switch (tab) {
+      case 'overview': return <OverviewSection data={d} readOnly />;
+      case 'library': return (
+        <LibrarySection
+          overrideItems={d.items}
+          overrideCatalogMap={d.catalogMap}
+          overrideSagaRelations={d.sagaRelations}
+          overrideSagaNames={d.sagaNames}
+          overrideDualRating={profile.dualRating ?? null}
+          overrideCoverIds={d.ownerCoverIds}
+          readOnly
+        />
+      );
+      case 'favorites': return (
+        <FavoritesSection
+          overrideItems={d.items}
+          overrideCatalogMap={d.catalogMap}
+          overrideCharacterMap={d.characterMap}
+          overrideFavData={d.favorites}
+          readOnly
+        />
+      );
+      case 'stats': return (
+        <StatsSection
+          overrideItems={d.items}
+          overrideCatalogMap={d.catalogMap}
+          overrideJourney={d.journey}
+          overrideRelations={d.sagaRelations}
+          readOnly
+        />
+      );
+      case 'reviews': return <ReviewsSection overrideItems={d.items} overrideCatalogMap={d.catalogMap} />;
+      case 'lists': return (
+        <ListsSection
+          overrideLists={d.lists}
+          overrideCatalogMap={d.catalogMap}
+          overrideFetchItems={fetchListItems}
+          readOnly
+        />
+      );
+      case 'bingo': return <BingoPublicSection boards={bingoBoards} ratingSystem={d.system} owner={{ displayName: profile.username, avatarUrl: profile.avatarUrl || null }} />;
+      case 'friends': return <FriendsSection readOnly userId={profile.userId} />;
+    }
+  };
+
   return (
     <>
-      <div className="profile-banner" style={profile.bannerUrl ? { backgroundImage: `url('${profile.bannerUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+      <div
+        className={`profile-banner${profile.bannerUrl ? ' has-custom-bg' : ''}`}
+        style={profile.bannerUrl ? { backgroundImage: `url('${profile.bannerUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+      >
         <div className="profile-banner-content">
           {profile.avatarUrl
             ? <img className="profile-avatar" src={profile.avatarUrl} alt={profile.username} referrerPolicy="no-referrer" />
             : <div className="profile-avatar-placeholder">{(profile.username[0] ?? '?').toUpperCase()}</div>}
-          <h1 className="profile-username-large">{profile.username}</h1>
-          {!profile.isSelf && (
+          <h1
+            className="profile-username-large"
+            style={nameFontFile ? { fontFamily: `'pf-${profile.nameFont}', sans-serif` } : undefined}
+          >
+            {profile.username}
+          </h1>
+        </div>
+        {/* Same placement as the media page's hero buttons: on the banner's
+            bottom edge, right side, above the divider — not in the tab row. */}
+        <div className="user-profile-banner-actions">
+          {/* Icon-only, same box as the heart: UserPlus to follow,
+              UserMinus (red on hover) to unfollow. */}
+          <button
+            type="button"
+            className={`user-profile-follow-btn${following ? ' active' : ''}${busy ? ' is-pending' : ''}`}
+            onClick={toggleFollow}
+            disabled={busy}
+            aria-busy={busy || undefined}
+            aria-label={following ? s.unfollow : s.follow}
+            data-tooltip={following ? s.unfollow : s.follow}
+          >
+            {following
+              ? <UserMinus size={16} strokeWidth={2} aria-hidden="true" />
+              : <UserPlus size={16} strokeWidth={2} aria-hidden="true" />}
+          </button>
+          {/* Only while their public web page is on (Worker webProfilePublic). */}
+          {profile.webProfilePublic === true && (
             <button
               type="button"
-              className={`user-profile-follow-btn${following ? ' active' : ''}`}
-              onClick={toggleFollow}
-              disabled={busy}
+              className="user-profile-follow-btn profile-web-link-btn"
+              onClick={() => { void copyWebProfileLink(profile.userId); }}
+              aria-label={getT().settings.web_profile_copy}
+              data-tooltip={getT().settings.web_profile_copy}
             >
-              {following ? s.unfollow : s.follow}
+              <LinkIcon size={16} strokeWidth={2} aria-hidden="true" />
             </button>
           )}
+          <TasteHeartButton
+            taste={data ? data.taste : undefined}
+            catalogMap={data?.catalogMap}
+            theirName={profile.username}
+            theirAvatarUrl={profile.avatarUrl}
+            theirBannerUrl={profile.bannerUrl}
+            s={s}
+          />
         </div>
       </div>
 
@@ -399,58 +485,30 @@ export function UserProfileView() {
       </div>
 
       <nav className="profile-tabs">
-        <button className={`profile-tab${activeTab === 'overview' ? ' active' : ''}`} data-tooltip={p.tab_overview} onClick={() => switchTab('overview')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_OVERVIEW }} />
-        <button className={`profile-tab${activeTab === 'library' ? ' active' : ''}`} data-tooltip={p.tab_library} onClick={() => switchTab('library')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_LIBRARY }} />
-        <button className={`profile-tab${activeTab === 'favorites' ? ' active' : ''}`} data-tooltip={p.favorites} onClick={() => switchTab('favorites')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_FAVORITES }} />
-        <button className={`profile-tab${activeTab === 'stats' ? ' active' : ''}`} data-tooltip={p.tab_stats} onClick={() => switchTab('stats')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_STATS }} />
-        <button className={`profile-tab${activeTab === 'reviews' ? ' active' : ''}`} data-tooltip={p.reviews} onClick={() => switchTab('reviews')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_REVIEWS }} />
-        <button className={`profile-tab${activeTab === 'lists' ? ' active' : ''}`} data-tooltip={p.lists} onClick={() => switchTab('lists')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_LISTS }} />
+        {visibleTabs.map(tab => (
+          <button
+            key={tab}
+            type="button"
+            className={`profile-tab${currentTab === tab ? ' active' : ''}`}
+            data-tab={tab}
+            data-tooltip={tabTooltip(tab, p, bingoBoards[0]?.year ?? new Date().getFullYear())}
+            onClick={() => switchTab(tab)}
+            dangerouslySetInnerHTML={{ __html: TAB_ICONS[tab] }}
+          />
+        ))}
       </nav>
 
       <div className="profile-tab-content">
-        {data === null ? (
-          <div className="profile-empty"><p>{p.stats_loading}</p></div>
-        ) : (
-          <>
-            {activeTab === 'overview' && <OverviewTab data={data} p={p} />}
-            {activeTab === 'library' && (
-              <LibrarySection
-                overrideItems={data.items}
-                overrideCatalogMap={data.catalogMap}
-                overrideSagaRelations={data.sagaRelations}
-                overrideSagaNames={data.sagaNames}
-                readOnly
-              />
-            )}
-            {activeTab === 'favorites' && (
-              <FavoritesSection
-                overrideItems={data.items}
-                overrideCatalogMap={data.catalogMap}
-                overrideCharacterMap={data.characterMap}
-                overrideFavData={profile.favorites ?? {}}
-                readOnly
-              />
-            )}
-            {activeTab === 'stats' && (
-              <StatsSection
-                overrideItems={data.items}
-                overrideCatalogMap={data.catalogMap}
-                overrideJourney={data.journey}
-              />
-            )}
-            {activeTab === 'reviews' && (
-              <ReviewsSection overrideItems={data.items} overrideCatalogMap={data.catalogMap} />
-            )}
-            {activeTab === 'lists' && (
-              <ListsSection
-                overrideLists={data.lists}
-                overrideCatalogMap={data.catalogMap}
-                overrideFetchItems={fetchListItems}
-                readOnly
-              />
-            )}
-          </>
-        )}
+        {visibleTabs.map(tab => (
+          <div
+            key={tab}
+            id={`tab-pane-${tab}`}
+            className={`profile-tab-pane${data && (visitedTabs.has(tab) || tab === currentTab) ? ' pane-ready' : ''}`}
+            hidden={tab !== currentTab}
+          >
+            {data && (visitedTabs.has(tab) || tab === currentTab) && tabBody(tab, data)}
+          </div>
+        ))}
       </div>
     </>
   );

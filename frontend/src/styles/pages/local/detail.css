@@ -416,3 +416,36 @@
   color: var(--text-dim);
   white-space: nowrap;
 }
+
+/* Multi-disc games: which disc Play boots (components/local/details/DiscSelector.tsx). */
+.local-disc-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.local-disc-chip {
+  flex: 1 1 0;
+  min-width: 4.5rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color var(--anim-fast) var(--anim-ease), color var(--anim-fast) var(--anim-ease);
+}
+
+.local-disc-chip:hover,
+.local-disc-chip:focus-visible {
+  color: var(--text-main);
+  border-color: var(--accent);
+}
+
+.local-disc-chip.is-selected {
+  color: var(--text-main);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-elevated));
+}

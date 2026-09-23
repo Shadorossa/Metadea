@@ -1,51 +1,74 @@
+// Settings › Backup › Local backup: export a .7z through the save dialog,
+// restore a .7z (or an old .zip) after the confirmation dialog, and the
+// restart that applies a prepared restore. Drive lives in backup-drive.ts.
 import { getT } from '../../../i18n/runtime';
-import { formatAppError } from '../../../lib/errors/format-error';
-import { exportBackup, pickBackupFile, pickSaveFile, prepareRestore } from '../../../lib/tauri/backup';
+import { formatBytes } from '../../../lib/backup/backup-settings';
+import { interpolate } from '../../../lib/shared/text/interpolate';
+import {
+  exportBackup, getLocalBackupState, inspectBackup, pickBackupFile, pickSaveFile, prepareRestore,
+  type ExportResult,
+} from '../../../lib/tauri/backup';
+import { confirmRestore, formatBackupDate, summaryFromInfo } from './backup-confirm';
+import { createBackupProgressView, type BackupProgressView } from './backup-progress';
+import { initDriveBackup } from './backup-drive';
+import { afterRestorePrepared, describeError, relaunchApp, statusSetter } from './backup-status';
 
-export function initBackupRestore() {
-  const exportButton = document.getElementById('settings-backup-export-btn') as HTMLButtonElement | null;
-  const importButton = document.getElementById('settings-backup-import-btn') as HTMLButtonElement | null;
-  const status = document.getElementById('settings-backup-status');
-  if (!exportButton || !importButton || !status || exportButton.dataset.initialized === 'true') return;
-  exportButton.dataset.initialized = 'true';
+function renderLastExport(last: ExportResult | null) {
+  const element = document.getElementById('backup-local-last');
+  if (!element) return;
+  const t = getT();
+  if (!last) {
+    element.textContent = t.backup.last_export_never;
+    return;
+  }
+  element.removeAttribute('data-i18n');
+  element.textContent = interpolate(t.backup.last_export, { date: formatBackupDate(last.created_at), size: formatBytes(last.size) });
+  element.title = last.path;
+}
 
-  const setStatus = (message: string, error = false) => {
-    status.textContent = message;
-    status.classList.toggle('settings-backup-status--error', error);
-  };
+function initLocalCard(progress: BackupProgressView) {
+  const exportButton = document.getElementById('backup-export-btn') as HTMLButtonElement | null;
+  const importButton = document.getElementById('backup-import-btn') as HTMLButtonElement | null;
+  const setStatus = statusSetter(document.getElementById('backup-local-status'));
+  if (!exportButton || !importButton) return;
+
+  getLocalBackupState().then(state => renderLastExport(state.last_export)).catch(() => {});
 
   exportButton.addEventListener('click', async () => {
-    const t = getT();
     const destination = await pickSaveFile().catch(() => null);
     if (!destination) return;
-    exportButton.disabled = true;
+    setStatus('');
     try {
-      await exportBackup(destination);
-      setStatus(t.settings.backup_export_success);
+      const result = await progress.run(() => exportBackup(destination));
+      renderLastExport(result);
+      setStatus(interpolate(getT().backup.export_success, { size: formatBytes(result.size) }), 'success');
     } catch (error) {
-      setStatus(`${t.settings.backup_error}: ${formatAppError(error, t)}`, true);
-    } finally {
-      exportButton.disabled = false;
+      setStatus(describeError(error), 'error');
     }
   });
 
   importButton.addEventListener('click', async () => {
-    const t = getT();
     const backupPath = await pickBackupFile().catch(() => null);
     if (!backupPath) return;
-    const confirmed = window.confirm(t.settings.backup_import_confirm);
-    if (!confirmed) return;
-    importButton.disabled = true;
+    setStatus('');
     try {
-      await prepareRestore(backupPath);
-      setStatus(t.settings.backup_import_success);
-      window.setTimeout(async () => {
-        const { relaunch } = await import('@tauri-apps/plugin-process');
-        await relaunch();
-      }, 900);
+      const info = await inspectBackup(backupPath);
+      if (!(await confirmRestore(summaryFromInfo(info), importButton))) return;
+      const result = await progress.run(() => prepareRestore(backupPath));
+      afterRestorePrepared(result, setStatus);
     } catch (error) {
-      setStatus(`${t.settings.backup_error}: ${formatAppError(error, t)}`, true);
-      importButton.disabled = false;
+      setStatus(describeError(error), 'error');
     }
   });
+}
+
+export function initBackupRestore() {
+  const panel = document.getElementById('panel-backup');
+  if (!panel || panel.dataset.initialized === 'true') return;
+  panel.dataset.initialized = 'true';
+
+  const progress = createBackupProgressView();
+  document.getElementById('backup-restart-btn')?.addEventListener('click', () => { void relaunchApp(); });
+  initLocalCard(progress);
+  initDriveBackup(progress);
 }

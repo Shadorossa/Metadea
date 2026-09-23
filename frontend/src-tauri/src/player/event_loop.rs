@@ -91,7 +91,7 @@ impl EventLoopState {
                     StatusChange::None => {}
                 }
             }
-            MpvEvent::Timeout | MpvEvent::StartFile | MpvEvent::Other => {}
+            MpvEvent::Timeout | MpvEvent::StartFile | MpvEvent::PlaybackRestart | MpvEvent::Other => {}
         }
         if let Some(status) = self.flush(now) {
             out.push(status);

@@ -1,0 +1,187 @@
+/* Spoiler shield (components/spoilers/SpoilerShield.tsx): one look for every
+   hidden thing — the same dark pill as the biography's .spoiler spans
+   (styles/pages/character.css), a strong blur underneath, and a
+   "Spoiler · Reveal" chip reachable by keyboard. */
+
+.spoiler-shield {
+  position: relative;
+  /* Room for the chip even over a one-line synopsis/biography. */
+  min-height: 2.6rem;
+}
+
+.spoiler-shield-content {
+  filter: blur(9px);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Images blurred in place (covers, thumbnails, avatars): several of them
+   carry their own `filter` rules with higher specificity (episode cards,
+   hover states), which the shield has to win over. */
+img.spoiler-blur,
+.spoiler-blur img {
+  filter: blur(14px) saturate(0.7) !important;
+}
+
+/* A title blurred in place inside a card that keeps its layout. */
+.spoiler-blur-text {
+  filter: blur(6px);
+  user-select: none;
+}
+
+.spoiler-shield-chip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  max-width: calc(100% - 1rem);
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: #3f3f46;
+  color: var(--text-main);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Cards whose title stays readable (episodes, relations, cast) keep the chip
+   in their free top-right corner instead of over the text. */
+.spoiler-shield-chip--corner {
+  top: 0.45rem;
+  right: 0.45rem;
+  left: auto;
+  transform: none;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.66rem;
+}
+
+.spoiler-shield-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spoiler-shield-chip-action {
+  color: var(--accent);
+}
+
+.spoiler-shield-chip:hover {
+  background: #52525b;
+  border-color: var(--accent-border);
+}
+
+.spoiler-shield-chip:focus-visible,
+.spoiler-shield-inline:focus-visible,
+.spoiler-banner-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Inline: the biography's .spoiler pill, but it stays hidden until clicked
+   (one click, remembered for the session) instead of peeking on hover. */
+.spoiler-shield-inline {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #3f3f46;
+  color: transparent !important;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.spoiler-shield-inline * {
+  color: transparent !important;
+}
+
+.spoiler-shield-inline:hover {
+  background: #52525b;
+}
+
+/* While the library data is still loading, a synopsis/biography that might
+   need hiding keeps its space but is not painted yet. */
+.spoiler-shield-pending {
+  visibility: hidden;
+}
+
+.spoiler-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md, 10px);
+  background: var(--accent-soft);
+  color: var(--text-main);
+  font-size: 0.8rem;
+}
+
+.spoiler-banner-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.spoiler-banner-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.spoiler-banner-note {
+  color: var(--text-muted);
+}
+
+.spoiler-banner-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.spoiler-banner-btn {
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.spoiler-banner-btn:hover {
+  background: var(--accent-soft);
+}
+
+.spoiler-banner-btn--secondary {
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+/* The pill with its own words, when the hidden text is not rendered at all
+   (stat values, a next episode's title). */
+.spoiler-shield-inline--labelled,
+.spoiler-shield-inline--labelled * {
+  color: var(--text-main) !important;
+}
+
+.spoiler-shield-inline--labelled {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  user-select: none;
+}
+
+.spoiler-shield-inline--labelled .spoiler-shield-chip-action {
+  color: var(--accent) !important;
+}

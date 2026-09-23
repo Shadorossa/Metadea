@@ -1,6 +1,6 @@
 // Where the in-app reader (comic_reader.rs / epub_reader) last left off
 // inside one issue/chapter/volume file — same "resume position" idea as
-// resume_position.rs's VLC seconds. Comics store a page number; EPUBs
+// resume_position.rs's video seconds. Comics store a page number; EPUBs
 // store (chapter_index, chapter_fraction) plus the byte-weighted percent
 // of the book read, and mirror chapter_index + 1 into page_number so
 // everything that only knows the page shape keeps working. See

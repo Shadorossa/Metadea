@@ -1,10 +1,14 @@
 import React from 'react';
+import { CoverImage } from '../../shared/CoverImage';
 
 interface MediaCardShellProps {
   title:   string;
   // Resolved src, or null to show the placeholder icon instead — callers
   // own how (or whether) they resolve a cover; this only renders the result.
   cover:   string | null;
+  // The work the cover belongs to — lets CoverImage swap in its textless
+  // version ("Prefer clean covers"); null for unlinked installs.
+  externalId?: string | null;
   placeholderIcon: React.ReactNode;
   // Videojuegos' own status badge (LocalMediaCard only) — GameCard has none.
   badge?:  React.ReactNode;
@@ -40,7 +44,7 @@ interface MediaCardShellProps {
 // wherever the grid puts them, same as before any of that. Hover scale is
 // plain CSS (.local-game-card:hover) for the same reason.
 export const MediaCardShell = React.forwardRef<HTMLDivElement, MediaCardShellProps>(
-  function MediaCardShell({ title, cover, placeholderIcon, badge, onClick, onContextMenu, selectionKey, lazyImage, onMouseEnter, onMouseLeave, onFocus }, ref) {
+  function MediaCardShell({ title, cover, externalId, placeholderIcon, badge, onClick, onContextMenu, selectionKey, lazyImage, onMouseEnter, onMouseLeave, onFocus }, ref) {
     return (
       <div
         ref={ref}
@@ -58,7 +62,8 @@ export const MediaCardShell = React.forwardRef<HTMLDivElement, MediaCardShellPro
         <div className="local-game-cover">
           {cover
             ? (
-              <img
+              <CoverImage
+                externalId={externalId}
                 src={cover}
                 alt={title}
                 loading={lazyImage ? 'lazy' : undefined}

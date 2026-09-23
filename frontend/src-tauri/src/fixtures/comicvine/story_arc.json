@@ -1,0 +1,46 @@
+{
+  "error": "OK",
+  "limit": 1,
+  "offset": 0,
+  "number_of_page_results": 1,
+  "number_of_total_results": 1,
+  "status_code": 1,
+  "results": {
+    "count_of_isssue_appearances": 6,
+    "deck": "Ichigo and his friends face Aizen's army of Arrancar.",
+    "description": "<p>After <a href=\"/sosuke-aizen/4005-28406/\" data-ref-id=\"4005-28406\">Aizen</a>'s betrayal, the Arrancar invade Karakura Town.</p><h2>Collected Editions</h2><ul><li>Bleach Vol. 21-26</li></ul>",
+    "first_appeared_in_issue": {
+      "api_detail_url": "https://comicvine.gamespot.com/api/issue/4000-139412/",
+      "id": 139412,
+      "name": "Be My Family or Not",
+      "issue_number": "21"
+    },
+    "id": 56251,
+    "image": {
+      "icon_url": "https://comicvine.gamespot.com/a/uploads/square_avatar/6/67663/1453124-arrancar.jpg",
+      "medium_url": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/1453124-arrancar.jpg",
+      "screen_url": "https://comicvine.gamespot.com/a/uploads/screen_medium/6/67663/1453124-arrancar.jpg",
+      "small_url": "https://comicvine.gamespot.com/a/uploads/scale_small/6/67663/1453124-arrancar.jpg",
+      "super_url": "https://comicvine.gamespot.com/a/uploads/scale_large/6/67663/1453124-arrancar.jpg",
+      "thumb_url": "https://comicvine.gamespot.com/a/uploads/scale_avatar/6/67663/1453124-arrancar.jpg",
+      "tiny_url": "https://comicvine.gamespot.com/a/uploads/square_mini/6/67663/1453124-arrancar.jpg",
+      "original_url": "https://comicvine.gamespot.com/a/uploads/original/6/67663/1453124-arrancar.jpg",
+      "image_tags": "All Images"
+    },
+    "issues": [
+      { "api_detail_url": "https://comicvine.gamespot.com/api/issue/4000-139412/", "id": 139412, "name": "Be My Family or Not", "site_detail_url": "https://comicvine.gamespot.com/bleach-21-be-my-family-or-not/4000-139412/" },
+      { "api_detail_url": "https://comicvine.gamespot.com/api/issue/4000-139413/", "id": 139413, "name": "Conquistadores", "site_detail_url": "https://comicvine.gamespot.com/bleach-22-conquistadores/4000-139413/" },
+      { "api_detail_url": "https://comicvine.gamespot.com/api/issue/4000-139414/", "id": 139414, "name": "Mala Suerte!", "site_detail_url": "https://comicvine.gamespot.com/bleach-23-mala-suerte/4000-139414/" },
+      { "api_detail_url": "https://comicvine.gamespot.com/api/issue/4000-139415/", "id": 139415, "name": "Immanent God Blues", "site_detail_url": "https://comicvine.gamespot.com/bleach-24-immanent-god-blues/4000-139415/" },
+      { "api_detail_url": "https://comicvine.gamespot.com/api/issue/4000-139416/", "id": 139416, "name": "No Shaking Throne", "site_detail_url": "https://comicvine.gamespot.com/bleach-25-no-shaking-throne/4000-139416/" },
+      { "api_detail_url": "https://comicvine.gamespot.com/api/issue/4000-702211/", "id": 702211, "name": "Tomo 21", "site_detail_url": "https://comicvine.gamespot.com/bleach-21/4000-702211/" }
+    ],
+    "name": "Arrancar Saga",
+    "publisher": {
+      "api_detail_url": "https://comicvine.gamespot.com/api/publisher/4010-1868/",
+      "id": 1868,
+      "name": "Viz"
+    }
+  },
+  "version": "1.0"
+}

@@ -39,3 +39,6 @@ src-tauri/target/
 
 # libmpv runtime (100 MB, LGPL build downloaded per src-tauri/resources/README-libmpv.md)
 src-tauri/resources/*.dll
+
+# Test coverage reports
+coverage/

@@ -4,24 +4,1163 @@
   color: var(--text-dim);
 }
 
-.user-profile-follow-btn {
-  padding: clamp(0.4rem, 0.8vw, 0.55rem) clamp(1rem, 2vw, 1.5rem);
+/* Follow + heart: the media page's hero-button pattern
+   (.media-banner-badges-container / .media-banner-pr-btn) — floating on the
+   banner's bottom edge, right side, straddling it above the divider. */
+.user-profile-banner-actions {
+  --taste-rose: #f472b6;
+  position: absolute;
+  right: 15%;
+  bottom: 0;
+  transform: translateY(50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Both are icon-only squares of the same size (always rendered, disabled
+   while pending/computing, so the row never shifts). */
+.user-profile-follow-btn,
+.taste-heart-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--accent-border);
-  background: var(--accent);
-  color: #fff;
-  font-size: clamp(0.7rem, 1vw, 0.85rem);
-  font-weight: 700;
+  line-height: 1;
+  background: var(--bg-primary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
-  transition: background var(--anim-fast), opacity var(--anim-fast);
+  box-sizing: border-box;
+  transition: color var(--anim-fast), border-color var(--anim-fast), background var(--anim-fast), opacity var(--anim-fast);
 }
 
-.user-profile-follow-btn.active {
-  background: transparent;
+.user-profile-follow-btn svg,
+.taste-heart-btn svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.user-profile-follow-btn:hover:not(:disabled),
+.taste-heart-btn:hover:not(:disabled) {
   color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg-elevated);
 }
 
-.user-profile-follow-btn:disabled {
+/* Following: the accent marks the state, like an active toggle… */
+.user-profile-follow-btn.active {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+/* …and the button reads as "unfollow" (red) under the pointer/focus. */
+.user-profile-follow-btn.active:hover:not(:disabled),
+.user-profile-follow-btn.active:focus-visible {
+  color: var(--color-error);
+  border-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, var(--bg-elevated));
+}
+
+.user-profile-follow-btn:disabled,
+.taste-heart-btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.user-profile-follow-btn:focus-visible,
+.taste-heart-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.user-profile-follow-btn.active:focus-visible {
+  outline-color: var(--color-error);
+}
+
+/* Pending follow/unfollow: a thin spinning arc around the button. */
+.user-profile-follow-btn.is-pending::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: calc(var(--radius-sm) + 3px);
+  border: 2px solid transparent;
+  border-top-color: var(--accent);
+  animation: user-profile-spin 0.8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes user-profile-spin {
+  to { transform: rotate(360deg); }
+}
+
+.user-profile-follow-btn[data-tooltip]::after,
+.taste-heart-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.95);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--anim-fast) ease;
+  z-index: 20;
+}
+
+.user-profile-follow-btn:hover::after,
+.user-profile-follow-btn:focus-visible::after,
+.taste-heart-btn:hover::after,
+.taste-heart-btn:focus-visible::after {
+  opacity: 1;
+}
+
+/* "Copy web profile link" (own profile: pages/profile.astro; others:
+   UserProfileView.tsx) — the Follow button's box. Dimmed on your own
+   profile while the web profile is private (a click opens that setting). */
+.profile-web-link-btn[hidden] {
+  display: none;
+}
+
+.profile-web-link-btn.is-dimmed {
+  opacity: 0.5;
+}
+
+.profile-web-link-btn.is-dimmed:hover,
+.profile-web-link-btn.is-dimmed:focus-visible {
+  opacity: 0.85;
+}
+
+.profile-web-link-btn.is-dimmed[data-tooltip]::after {
+  width: max-content;
+  max-width: 16rem;
+  white-space: normal;
+  text-align: center;
+}
+
+/* "Link copied" (lib/social/web-profile-link.ts) — its own popup, not the
+   shared runtime toast. Fades + rises in/out over 200 ms; fade only under
+   reduced motion. newspaper-dark restyles it in its theme file. */
+.web-link-copied-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  z-index: 9999;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px) scale(0.97);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.web-link-copied-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .web-link-copied-toast,
+  .web-link-copied-toast.is-visible {
+    transform: translateX(-50%);
+  }
+}
+
+/* ── Taste compatibility (TasteCompatibility.tsx + TasteCompatibilityModal.tsx) ── */
+
+/* Heart: outline, filled accent when the affinity is high — and then it
+   beats softly. */
+.taste-heart-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.taste-heart-btn--high {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.taste-heart-btn--high svg {
+  fill: currentColor;
+  filter: drop-shadow(0 0 4px var(--accent-glow));
+  animation: taste-heartbeat 1.8s ease-in-out infinite;
+}
+
+@keyframes taste-heartbeat {
+  0%, 40%, 100% { scale: 1; }
+  12% { scale: 1.18; }
+  24% { scale: 1; }
+  32% { scale: 1.1; }
+}
+
+/* The affinity ring (TasteRing.tsx): gradient arc that sweeps up to the
+   score on open — same 1.1 s ease-out as the count-up number. */
+.taste-ring {
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.taste-ring circle {
+  fill: none;
+  stroke-width: 4;
+}
+
+.taste-ring-track {
+  stroke: color-mix(in srgb, var(--text-main) 12%, transparent);
+}
+
+.taste-ring-value {
+  stroke-linecap: round;
+  stroke-dashoffset: var(--taste-ring-offset);
+  animation: taste-ring-fill 1.1s cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+.taste-ring-stop-start {
+  stop-color: var(--accent);
+}
+
+.taste-ring-stop-end {
+  stop-color: var(--taste-rose);
+}
+
+@keyframes taste-ring-fill {
+  from { stroke-dashoffset: var(--taste-ring-circumference); }
+}
+
+/* ── Comparison modal. One vertical rhythm (--taste-gap) between blocks;
+   the panel scrolls inside when tall. Tinted by the viewer's accent (left)
+   and a warm rose (right); both banners bleed in, blurred, behind the hero. ── */
+.taste-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.taste-modal-panel {
+  container: taste-panel / inline-size;
+  --taste-gap: 1.35rem;
+  --taste-pad-x: 1.75rem;
+  --taste-rose: #f472b6;
+  --taste-text-soft: color-mix(in srgb, var(--text-main) 72%, transparent);
+  --taste-text-faint: color-mix(in srgb, var(--text-main) 55%, transparent);
+  position: relative;
+  width: min(760px, 100%);
+  max-height: min(88vh, 960px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--taste-gap);
+  padding: 1.25rem var(--taste-pad-x) 1.75rem;
+  box-sizing: border-box;
+  background:
+    radial-gradient(90% 55% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(90% 55% at 100% 0%, color-mix(in srgb, var(--taste-rose) 14%, transparent), transparent 70%),
+    radial-gradient(70% 40% at 50% 100%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%),
+    var(--bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border-color));
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: taste-panel-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  outline: none;
+}
+
+@keyframes taste-panel-in {
+  from { opacity: 0; scale: 0.94; translate: 0 10px; }
+}
+
+.taste-modal-panel > * {
+  flex-shrink: 0;
+}
+
+.taste-modal-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* The app's section-header look (label + hairline), not a heading. */
+.taste-modal-title-row {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.taste-modal-title {
+  margin: 0;
+}
+
+/* The app's section labels are very dim; inside this tinted panel they
+   need a bit more contrast to stay readable. */
+.taste-modal-panel .profile-section-label {
+  color: var(--taste-text-faint);
+}
+
+.taste-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-main) 6%, transparent);
+  color: var(--taste-text-soft);
+  cursor: pointer;
+  transition: color var(--anim-fast), background var(--anim-fast), rotate var(--anim-base) var(--anim-ease);
+}
+
+.taste-modal-close:hover {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--text-main) 12%, transparent);
+  rotate: 90deg;
+}
+
+.taste-modal-close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Hero: avatars ↔ ring ↔ avatar, verdict, hint. */
+.taste-modal-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding-top: 0.25rem;
+  text-align: center;
+}
+
+.taste-backdrop {
+  position: absolute;
+  inset: -5rem calc(-1 * var(--taste-pad-x)) -1rem;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent);
+  mask-image: linear-gradient(to bottom, #000 35%, transparent);
+}
+
+.taste-backdrop-banner {
+  position: absolute;
+  top: 0;
+  width: 60%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.32;
+  filter: blur(26px) saturate(1.35);
+  transform: scale(1.15);
+}
+
+.taste-backdrop-banner--own {
+  left: 0;
+  -webkit-mask-image: linear-gradient(to right, #000 45%, transparent);
+  mask-image: linear-gradient(to right, #000 45%, transparent);
+}
+
+.taste-backdrop-banner--their {
+  right: 0;
+  -webkit-mask-image: linear-gradient(to left, #000 45%, transparent);
+  mask-image: linear-gradient(to left, #000 45%, transparent);
+}
+
+.taste-hero-row {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  /* Room for the names, which hang under the avatars (absolute) so both
+     avatars sit exactly on the ring's centre line. */
+  margin-bottom: 1.75rem;
+}
+
+/* The wave between both avatars, behind the ring: brighter, faster and
+   with livelier hearts the higher the score (--taste-intensity, 0-1). */
+.taste-link {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  opacity: calc(0.35 + var(--taste-intensity, 0.5) * 0.65);
+}
+
+.taste-link path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.taste-link-path {
+  stroke: color-mix(in srgb, var(--accent) 45%, transparent);
+  stroke-width: 2;
+}
+
+.taste-link-flow {
+  stroke: var(--taste-rose);
+  stroke-width: 3;
+  stroke-dasharray: 1 14;
+  animation: taste-flow calc(3.4s - var(--taste-intensity, 0.5) * 2.2s) linear infinite;
+  filter: drop-shadow(0 0 3px var(--taste-rose));
+}
+
+@keyframes taste-flow {
+  to { stroke-dashoffset: -30; }
+}
+
+.taste-link-heart {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  translate: -50% -50%;
+  fill: var(--taste-rose);
+  filter: drop-shadow(0 0 calc(2px + var(--taste-intensity, 0.5) * 8px) var(--taste-rose));
+  opacity: calc(0.45 + var(--taste-intensity, 0.5) * 0.55);
+  animation: taste-heartbeat calc(2.4s - var(--taste-intensity, 0.5) * 1.2s) ease-in-out infinite;
+}
+
+/* On the wave (quadratic "M0 20 Q25 4 50 20 T100 20" at x = 31 / 69). */
+.taste-link-heart--own {
+  left: 31%;
+  top: 31%;
+}
+
+.taste-link-heart--their {
+  left: 69%;
+  top: 69%;
+  animation-delay: 0.3s;
+}
+
+.taste-modal-person {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.taste-modal-avatar {
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+  box-sizing: border-box;
+  border: 3px solid transparent;
+  background:
+    linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+    linear-gradient(135deg, var(--accent), var(--taste-rose)) border-box;
+  box-shadow: 0 0 calc(6px + var(--taste-intensity, 0.5) * 16px) color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.taste-modal-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.taste-modal-person-name {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(11rem, 100%);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The ring sits on a small medallion so the wave passes behind it. */
+.taste-modal-score {
+  position: relative;
+  z-index: 2;
+  width: 8.75rem;
+  height: 8.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.taste-modal-score::before {
+  content: '';
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent) 22%, var(--bg-card)), var(--bg-elevated) 72%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-main) 6%, transparent);
+}
+
+.taste-modal-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 calc(2px + var(--taste-intensity, 0.5) * 9px) color-mix(in srgb, var(--accent) 65%, transparent));
+}
+
+.taste-modal-ring circle {
+  stroke-width: 2.75;
+}
+
+.taste-modal-score-value {
+  position: relative;
+  /* Wide enough for "100%" from the first frame: the count-up never
+     changes the box. */
+  min-width: 4ch;
+  font-size: 2.1rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.taste-verdict {
+  margin: 0;
+  font-size: clamp(1.35rem, 3.4vw, 1.8rem);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  animation: taste-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s both;
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .taste-verdict {
+    background: linear-gradient(90deg, var(--accent), var(--taste-rose));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+@keyframes taste-pop-in {
+  from { opacity: 0; scale: 0.85; }
+}
+
+.taste-verdict-sub {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--taste-text-soft);
+  animation: taste-pop-in 0.5s ease 0.7s both;
+}
+
+.taste-modal-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  text-align: center;
+  color: var(--taste-text-faint);
+}
+
+/* Confetti burst from the ring (score ≥ 85, TasteConfetti.tsx). */
+.taste-confetti {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.taste-confetti-piece {
+  position: absolute;
+  left: -3px;
+  top: -5px;
+  width: 6px;
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: taste-confetti-burst 1.6s cubic-bezier(0.15, 0.7, 0.35, 1) calc(var(--taste-confetti-delay) + 650ms) forwards;
+}
+
+.taste-confetti-piece--round {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+@keyframes taste-confetti-burst {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(0.4); }
+  60% { opacity: 1; transform: translate(var(--taste-confetti-x), var(--taste-confetti-y)) rotate(var(--taste-confetti-rot)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--taste-confetti-x), calc(var(--taste-confetti-y) + 48px)) rotate(calc(var(--taste-confetti-rot) * 1.5)) scale(0.8); }
+}
+
+/* Stats: one row of five equal tiles (small radius), each with its own
+   tinted icon next to the number and a label that may wrap to two lines. */
+.taste-modal-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.taste-modal-stat {
+  --taste-stat-color: var(--accent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.55rem 0.4rem 0.5rem;
+  border-radius: var(--radius-md);
+  text-align: center;
+  background: color-mix(in srgb, var(--bg-card) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--taste-stat-color) 28%, var(--border-color));
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.taste-modal-stat--rated { --taste-stat-color: var(--color-gold-soft); }
+.taste-modal-stat--completed { --taste-stat-color: var(--color-completed); }
+.taste-modal-stat--diff { --taste-stat-color: var(--color-paused); }
+.taste-modal-stat--favs { --taste-stat-color: var(--taste-rose); }
+
+.taste-modal-stat-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.taste-modal-stat-icon {
+  flex-shrink: 0;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  box-sizing: content-box;
+  color: var(--taste-stat-color);
+  background: color-mix(in srgb, var(--taste-stat-color) 16%, transparent);
+}
+
+.taste-modal-stat-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.1rem;
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.taste-modal-stat-suffix {
+  font-size: 0.65em;
+  font-weight: 700;
+  color: var(--taste-text-faint);
+}
+
+.taste-modal-stat-label {
+  max-width: 100%;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--taste-text-soft);
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.taste-modal-section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* "Genres you both love": six squarish chips per row, edge to edge (three
+   in a narrow panel); a short last row keeps the same columns. Labels
+   ellipsize — the full name is in the chip's title. The top three are a
+   little louder. */
+.taste-genres {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.taste-genre {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--taste-rose) 10%, var(--bg-card));
+  border: 1px solid color-mix(in srgb, var(--taste-rose) 30%, transparent);
+  transition: translate var(--anim-base) var(--anim-ease), rotate var(--anim-base) var(--anim-ease);
+}
+
+.taste-genre:hover {
+  translate: 0 -2px;
+  rotate: -2deg;
+}
+
+.taste-genre--top {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, var(--bg-card)), color-mix(in srgb, var(--taste-rose) 26%, var(--bg-card)));
+  border-color: color-mix(in srgb, var(--taste-rose) 50%, transparent);
+}
+
+.taste-genre-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container taste-panel (max-width: 560px) {
+  .taste-genres {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.taste-genre-icon {
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--accent) 55%, var(--taste-rose));
+}
+
+/* "How you spend your time" (TasteTimeSplit.tsx): who | stacked bar | total.
+   No legend — each segment shows the shared speech-bubble tooltip
+   (.saga-strip-format-tooltip, components.css) on hover/focus, so the track
+   doesn't clip (rounded ends come from the first/last segment instead). */
+.taste-time {
+  display: grid;
+  grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr) max-content;
+  align-items: center;
+  column-gap: 0.85rem;
+  row-gap: 0.7rem;
+  font-size: 0.78rem;
+}
+
+.taste-time-row {
+  display: contents;
+}
+
+.taste-time-who {
+  min-width: 0;
+  font-weight: 700;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taste-time-track {
+  display: flex;
+  gap: 2px;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-main) 8%, transparent);
+  transform-origin: left center;
+  animation: taste-grow 0.9s var(--anim-ease) 0.2s both;
+}
+
+.taste-time-segment {
+  position: relative;
+  flex-basis: 0;
+  /* Tiny shares stay hoverable. */
+  min-width: 6px;
+  height: 100%;
+  cursor: default;
+  transition: filter var(--anim-fast) ease;
+}
+
+.taste-time-segment:first-child {
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+}
+
+.taste-time-segment:last-child {
+  border-top-right-radius: 999px;
+  border-bottom-right-radius: 999px;
+}
+
+.taste-time-segment:hover,
+.taste-time-segment:focus-visible {
+  filter: brightness(1.2);
+}
+
+.taste-time-segment:focus-visible {
+  outline: 2px solid var(--text-main);
+  outline-offset: 1px;
+}
+
+.taste-time-segment:hover .saga-strip-format-tooltip,
+.taste-time-segment:focus-visible .saga-strip-format-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.taste-time-empty {
+  align-self: center;
+  padding: 0 0.6rem;
+  font-size: 0.68rem;
+  color: var(--taste-text-faint);
+  white-space: nowrap;
+}
+
+.taste-time-total {
+  justify-self: end;
+  font-weight: 700;
+  color: var(--taste-text-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* label | bar | value — fixed outer columns, so every bar list (breakdown,
+   by type) lines up with the others. */
+.taste-modal-bars {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr) 13rem;
+  align-items: center;
+  column-gap: 0.85rem;
+  row-gap: 0.6rem;
+  font-size: 0.78rem;
+}
+
+.taste-modal-bar {
+  display: contents;
+}
+
+.taste-modal-bar-label {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taste-modal-bar-track {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-main) 9%, transparent);
+  overflow: hidden;
+}
+
+/* Rounded gradient fill that grows in (staggered inline delay), with a
+   soft shimmer passing over it now and then. */
+.taste-modal-bar-fill {
+  position: relative;
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+  background: linear-gradient(90deg, var(--accent), var(--taste-rose));
+  transform-origin: left center;
+  animation: taste-grow 0.8s var(--anim-ease) both;
+}
+
+.taste-modal-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 255, 255, 0.4) 50%, transparent 75%);
+  translate: -100% 0;
+  animation: taste-shimmer 3.2s ease-in-out 1.2s infinite;
+}
+
+@keyframes taste-grow {
+  from { transform: scaleX(0); }
+}
+
+@keyframes taste-shimmer {
+  0% { translate: -100% 0; }
+  45%, 100% { translate: 100% 0; }
+}
+
+.taste-modal-bar-value {
+  justify-self: end;
+  max-width: 100%;
+  text-align: right;
+  font-weight: 600;
+  color: var(--taste-text-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cover rows: one medium size, a slight alternating tilt that straightens
+   and lifts on hover. Padding leaves room for the tilt and the shadow. */
+.taste-covers {
+  display: flex;
+  gap: 0.9rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.35rem 0.6rem;
+}
+
+.taste-cover {
+  flex-shrink: 0;
+  width: 5.5rem;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  transition:
+    rotate var(--anim-base) var(--anim-ease),
+    translate var(--anim-base) var(--anim-ease),
+    scale var(--anim-base) var(--anim-ease),
+    border-color var(--anim-fast) ease,
+    box-shadow var(--anim-base) ease;
+}
+
+.taste-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.taste-cover-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0.35rem;
+  font-size: 0.6rem;
+  text-align: center;
+  color: var(--taste-text-soft);
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.taste-modal-work {
+  flex: 0 0 6.5rem;
+  width: 6.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--text-main);
+  text-decoration: none;
+}
+
+.taste-modal-work .taste-cover {
+  width: 100%;
+}
+
+.taste-modal-work:nth-child(odd) .taste-cover {
+  rotate: -2deg;
+}
+
+.taste-modal-work:nth-child(even) .taste-cover {
+  rotate: 1.5deg;
+}
+
+.taste-modal-work:hover .taste-cover,
+.taste-modal-work:focus-visible .taste-cover {
+  rotate: 0deg;
+  translate: 0 -4px;
+  scale: 1.04;
+  border-color: var(--accent-border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--accent-border);
+}
+
+.taste-modal-work:focus-visible {
+  outline: none;
+}
+
+.taste-modal-work-title {
+  min-height: 2.4em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.taste-modal-ratings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: 0.35rem;
+  row-gap: 0.1rem;
+  font-size: 0.68rem;
+  line-height: 1.3;
+  color: var(--text-main);
+}
+
+.taste-modal-rating-who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--taste-text-faint);
+}
+
+.taste-modal-rating-value {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .taste-modal-panel {
+    --taste-gap: 1.1rem;
+    --taste-pad-x: 1rem;
+    padding: 1rem var(--taste-pad-x) 1.25rem;
+  }
+
+  .taste-hero-row {
+    gap: 0.5rem;
+  }
+
+  .taste-modal-avatar {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .taste-modal-score {
+    width: 6.75rem;
+    height: 6.75rem;
+  }
+
+  .taste-modal-score-value {
+    font-size: 1.65rem;
+  }
+
+  .taste-modal-stats {
+    gap: 0.35rem;
+  }
+
+  .taste-modal-stat {
+    padding: 0.45rem 0.25rem 0.4rem;
+  }
+
+  /* Icon above the number so five tiles still fit one row. */
+  .taste-modal-stat-head {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .taste-modal-stat-value {
+    font-size: 0.95rem;
+  }
+
+  .taste-modal-stat-label {
+    font-size: 0.56rem;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    -webkit-line-clamp: 3;
+  }
+
+  /* No room for the hearts between avatar and ring; the wave stays. */
+  .taste-link-heart {
+    display: none;
+  }
+
+  /* Bar drops under its label/value pair; dense flow backfills the value
+     into the label's row. */
+  .taste-modal-bars {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-auto-flow: row dense;
+    row-gap: 0.35rem;
+  }
+
+  .taste-modal-bar-track {
+    grid-column: 1 / -1;
+  }
+
+  .taste-time {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-auto-flow: row dense;
+    row-gap: 0.35rem;
+  }
+
+  .taste-time-track {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Reduced motion: everything is shown in its final state, nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .user-profile-follow-btn,
+  .taste-heart-btn,
+  .user-profile-follow-btn::after,
+  .taste-heart-btn::after,
+  .taste-cover,
+  .taste-genre,
+  .taste-time-segment,
+  .taste-modal-close {
+    transition: none;
+  }
+
+  .taste-heart-btn--high svg,
+  .taste-modal-panel,
+  .taste-modal-panel *,
+  .taste-modal-panel *::after {
+    animation: none;
+  }
+
+  .user-profile-follow-btn.is-pending::before {
+    animation: none;
+    border-color: var(--accent-border);
+  }
+
+  .taste-confetti {
+    display: none;
+  }
 }

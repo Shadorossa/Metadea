@@ -173,13 +173,18 @@ pub async fn get_all_user_lists(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<ListInfo>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_all_user_lists(&conn)
+}
 
+// Every list the user sees and syncs — never the hidden character reaction
+// lists (character_reactions.rs), which have their own UI.
+pub(crate) fn load_all_user_lists(conn: &rusqlite::Connection) -> Result<Vec<ListInfo>, String> {
     // Both the count and the top-4 preview are correlated subqueries instead
     // of a second prepared statement per list (was N+1 — one extra
     // roundtrip through Rust/SQLite per list on every Lists-tab load).
     // idx_user_list_items_list_key_position (db.rs) makes both an index
     // range scan instead of a full-table scan per row.
-    let mut stmt = conn.prepare(
+    let mut stmt = conn.prepare(&format!(
         "SELECT l.key, l.name, l.description, l.is_fav, l.is_private, COALESCE(l.list_type, 'media'), COALESCE(l.is_ranked, 0),
                 (SELECT COUNT(*) FROM user_list_items i
                  WHERE i.list_key = l.key
@@ -191,8 +196,10 @@ pub async fn get_all_user_lists(
                     ORDER BY position LIMIT 4
                  )) AS preview_csv
          FROM user_lists l
+         WHERE l.key NOT IN {hidden}
          ORDER BY l.is_fav DESC, l.created_at ASC",
-    ).str_err()?;
+        hidden = crate::character_reactions::HIDDEN_LIST_KEYS_SQL,
+    )).str_err()?;
 
     // (key, name, description, is_fav, is_private, list_type, is_ranked, item_count, preview_csv)
     type ListRow = (String, String, String, bool, bool, String, bool, i64, Option<String>);
@@ -376,6 +383,8 @@ pub async fn delete_user_list(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
 ) -> Result<(), String> {
+    // The reaction lists are system lists, never deleted.
+    if crate::character_reactions::is_reaction_list_key(&key) { return Ok(()); }
     let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM user_list_items WHERE list_key = ?1", [&key])
         .str_err()?;
@@ -390,6 +399,11 @@ pub async fn add_item_to_list(
     list_key: String,
     external_id: String,
 ) -> Result<(), String> {
+    // A reaction list keeps a character in only one of the three.
+    if let Some(reaction) = crate::character_reactions::reaction_for_key(&list_key) {
+        let mut conn = state.conn.lock().str_err()?;
+        return crate::character_reactions::set_reaction(&mut conn, &external_id, Some(reaction));
+    }
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
     // Ensure the fav list row exists

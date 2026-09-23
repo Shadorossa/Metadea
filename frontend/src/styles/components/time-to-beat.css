@@ -1,0 +1,149 @@
+/* "How long to beat" block (components/shared/TimeToBeatBlock.tsx): the
+   media page's Datos column and the Local game detail panel. */
+.ttb-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-elevated);
+}
+
+.ttb-block--local {
+  margin: 0.25rem 0 1rem;
+}
+
+.ttb-block--loading {
+  flex-direction: row;
+  min-height: 2.6rem;
+  align-items: center;
+}
+
+.ttb-skeleton {
+  flex: 1;
+  height: 1.6rem;
+  border-radius: var(--radius-sm, 6px);
+  background: linear-gradient(90deg, var(--bg-card) 0%, var(--border-color) 50%, var(--bg-card) 100%);
+  background-size: 200% 100%;
+  animation: ttb-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes ttb-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ttb-skeleton { animation: none; }
+}
+
+.ttb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ttb-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ttb-source {
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.ttb-source-logo {
+  height: 0.95rem;
+  width: auto;
+  opacity: 0.85;
+}
+
+.ttb-source-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.ttb-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ttb-pill {
+  flex: 1 1 0;
+  min-width: 6.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+.ttb-pill--main {
+  border-color: var(--accent-border, var(--border-color));
+}
+
+.ttb-pill-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ttb-pill-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.ttb-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ttb-progress-text {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-main);
+}
+
+.ttb-progress-remaining {
+  color: var(--text-muted);
+}
+
+.ttb-progress-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.ttb-progress-fill {
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--anim-base, 0.25s) var(--anim-ease, ease);
+}
+
+.ttb-progress--done .ttb-progress-fill {
+  background: var(--color-completed, var(--accent));
+}
+
+.ttb-progress--done .ttb-progress-remaining {
+  color: var(--color-completed, var(--accent));
+}

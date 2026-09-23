@@ -1,7 +1,7 @@
 // Runtime binding to libmpv. The library is opened with `libloading` when the
 // player is first used — never linked at build time — so `cargo build`, CI and
 // a machine without the DLL all work; a missing library is reported as
-// `PlayerError::engine_unavailable` and the app falls back to VLC.
+// `PlayerError::engine_unavailable` and the app tells the user it cannot play.
 //
 // Only the entry points the engine uses are bound. Struct layouts and enum
 // values follow client.h of the libmpv 2.x client API.
@@ -20,12 +20,15 @@ const MPV_FORMAT_STRING: c_int = 1;
 const MPV_FORMAT_FLAG: c_int = 3;
 const MPV_FORMAT_INT64: c_int = 4;
 const MPV_FORMAT_DOUBLE: c_int = 5;
+const MPV_FORMAT_NODE_MAP: c_int = 8;
+const MPV_FORMAT_BYTE_ARRAY: c_int = 9;
 
 const MPV_EVENT_NONE: c_int = 0;
 const MPV_EVENT_SHUTDOWN: c_int = 1;
 const MPV_EVENT_START_FILE: c_int = 6;
 const MPV_EVENT_END_FILE: c_int = 7;
 const MPV_EVENT_FILE_LOADED: c_int = 8;
+const MPV_EVENT_PLAYBACK_RESTART: c_int = 21;
 const MPV_EVENT_PROPERTY_CHANGE: c_int = 22;
 
 /// Minimum client API version this binding was written against (2.0).
@@ -46,6 +49,47 @@ struct MpvEventPropertyRaw {
     name: *const c_char,
     format: c_int,
     data: *mut c_void,
+}
+
+/// `mpv_node` (client.h): an 8-byte union followed by the format tag.
+#[repr(C)]
+#[derive(Clone, Copy)]
+union MpvNodeValue {
+    string: *mut c_char,
+    flag: c_int,
+    int64: i64,
+    double_: f64,
+    list: *mut MpvNodeList,
+    ba: *mut MpvByteArray,
+}
+
+#[repr(C)]
+struct MpvNode {
+    u: MpvNodeValue,
+    format: c_int,
+}
+
+#[repr(C)]
+struct MpvNodeList {
+    num: c_int,
+    values: *mut MpvNode,
+    keys: *mut *mut c_char,
+}
+
+#[repr(C)]
+struct MpvByteArray {
+    data: *mut c_void,
+    size: usize,
+}
+
+/// One decoded video frame as `screenshot-raw` hands it out: packed 4-byte
+/// pixels, `stride` bytes per row, in mpv's `format` (normally `bgr0`).
+pub struct RawFrame {
+    pub width: u32,
+    pub height: u32,
+    pub stride: usize,
+    pub format: String,
+    pub data: Vec<u8>,
 }
 
 #[repr(C)]
@@ -72,6 +116,8 @@ type FnWakeup = unsafe extern "C" fn(MpvHandle);
 type FnTerminateDestroy = unsafe extern "C" fn(MpvHandle);
 type FnFree = unsafe extern "C" fn(*mut c_void);
 type FnErrorString = unsafe extern "C" fn(c_int) -> *const c_char;
+type FnCommandRet = unsafe extern "C" fn(MpvHandle, *mut *const c_char, *mut MpvNode) -> c_int;
+type FnFreeNodeContents = unsafe extern "C" fn(*mut MpvNode);
 
 struct MpvFns {
     client_api_version: FnClientApiVersion,
@@ -89,6 +135,10 @@ struct MpvFns {
     terminate_destroy: FnTerminateDestroy,
     free: FnFree,
     error_string: FnErrorString,
+    /// Optional: only the seek-bar thumbnailer needs them (`screenshot-raw`
+    /// returns a node map); a build without them just has no thumbnails.
+    command_ret: Option<FnCommandRet>,
+    free_node_contents: Option<FnFreeNodeContents>,
 }
 
 /// The loaded library. Kept alive for as long as any client exists.
@@ -175,6 +225,8 @@ impl LibMpv {
                 terminate_destroy: *lib.get::<FnTerminateDestroy>(b"mpv_terminate_destroy\0").map_err(|e| e.to_string())?,
                 free: *lib.get::<FnFree>(b"mpv_free\0").map_err(|e| e.to_string())?,
                 error_string: *lib.get::<FnErrorString>(b"mpv_error_string\0").map_err(|e| e.to_string())?,
+                command_ret: lib.get::<FnCommandRet>(b"mpv_command_ret\0").ok().map(|symbol| *symbol),
+                free_node_contents: lib.get::<FnFreeNodeContents>(b"mpv_free_node_contents\0").ok().map(|symbol| *symbol),
             }
         };
         // SAFETY: plain call into a bound symbol with no arguments.
@@ -216,6 +268,13 @@ impl MpvClient {
     /// point where `wid` and `vo` may be set. A rejected option is logged, not
     /// fatal — an older libmpv simply ignores what it does not know.
     pub fn create(lib: Arc<LibMpv>, options: &[(String, String)]) -> Result<MpvClient, PlayerError> {
+        Self::create_requiring(lib, options, &[])
+    }
+
+    /// Like `create`, but an option named in `required` that libmpv rejects
+    /// fails with `PlayerError::unsupported(name)` instead of a warning —
+    /// how the clip encoder finds out that a build has no encoding (`o`).
+    pub fn create_requiring(lib: Arc<LibMpv>, options: &[(String, String)], required: &[&str]) -> Result<MpvClient, PlayerError> {
         // SAFETY: mpv_create has no preconditions; a null return is checked.
         let handle = unsafe { (lib.fns.create)() };
         if handle.is_null() {
@@ -227,6 +286,9 @@ impl MpvClient {
             // SAFETY: valid handle, NUL-terminated strings outlive the call.
             let code = unsafe { (client.lib.fns.set_option_string)(client.handle, name_c.as_ptr(), value_c.as_ptr()) };
             if code < 0 {
+                if required.contains(&name.as_str()) {
+                    return Err(PlayerError::unsupported(format!("{name}: {}", client.lib.error_text(code))));
+                }
                 log::warn!("libmpv rejected option {name}={value}: {}", client.lib.error_text(code));
             }
         }
@@ -265,6 +327,71 @@ impl MpvClient {
             Some(value)
         }
     }
+
+    /// `screenshot-raw video`: the frame the VO last received (with
+    /// `vo=null` too — mpv keeps the current frame in the VO core, not the
+    /// driver), before subtitles/OSD, copied out of mpv's node map.
+    pub fn screenshot_raw(&self) -> Result<RawFrame, PlayerError> {
+        let (Some(command_ret), Some(free_node)) = (self.lib.fns.command_ret, self.lib.fns.free_node_contents) else {
+            return Err(PlayerError::engine_unavailable("mpv_command_ret is not exported"));
+        };
+        let owned = [c_string("screenshot-raw")?, c_string("video")?];
+        let mut argv: Vec<*const c_char> = owned.iter().map(|arg| arg.as_ptr()).collect();
+        argv.push(std::ptr::null());
+        let mut result = MpvNode { u: MpvNodeValue { int64: 0 }, format: MPV_FORMAT_NONE };
+        // SAFETY: NULL-terminated argv of live C strings; `result` is a
+        // valid out-node that mpv fills on success.
+        let code = unsafe { command_ret(self.handle, argv.as_mut_ptr(), &mut result) };
+        self.check(code)?;
+        // SAFETY: on success `result` is an mpv-owned node tree; it is read
+        // (copied) and then released exactly once.
+        let frame = unsafe { read_raw_frame(&result) };
+        unsafe { free_node(&mut result) };
+        frame.ok_or_else(|| PlayerError::mpv("screenshot-raw returned an unexpected node"))
+    }
+}
+
+/// Copies the `w`/`h`/`stride`/`format`/`data` entries of a
+/// `screenshot-raw` result map.
+///
+/// # Safety
+/// `node` must be a node tree returned by libmpv and not yet freed.
+unsafe fn read_raw_frame(node: &MpvNode) -> Option<RawFrame> {
+    if node.format != MPV_FORMAT_NODE_MAP || node.u.list.is_null() {
+        return None;
+    }
+    let list = &*node.u.list;
+    let (mut width, mut height, mut stride) = (0i64, 0i64, 0i64);
+    let mut format = String::new();
+    let mut data: Option<Vec<u8>> = None;
+    for index in 0..usize::try_from(list.num).unwrap_or(0) {
+        let key_ptr = *list.keys.add(index);
+        if key_ptr.is_null() {
+            continue;
+        }
+        let value = &*list.values.add(index);
+        match CStr::from_ptr(key_ptr).to_bytes() {
+            b"w" if value.format == MPV_FORMAT_INT64 => width = value.u.int64,
+            b"h" if value.format == MPV_FORMAT_INT64 => height = value.u.int64,
+            b"stride" if value.format == MPV_FORMAT_INT64 => stride = value.u.int64,
+            b"format" if value.format == MPV_FORMAT_STRING && !value.u.string.is_null() => {
+                format = CStr::from_ptr(value.u.string).to_string_lossy().into_owned();
+            }
+            b"data" if value.format == MPV_FORMAT_BYTE_ARRAY && !value.u.ba.is_null() => {
+                let bytes = &*value.u.ba;
+                if !bytes.data.is_null() {
+                    data = Some(std::slice::from_raw_parts(bytes.data as *const u8, bytes.size).to_vec());
+                }
+            }
+            _ => {}
+        }
+    }
+    let (width, height, stride) = (u32::try_from(width).ok()?, u32::try_from(height).ok()?, usize::try_from(stride).ok()?);
+    let data = data?;
+    if width == 0 || height == 0 || stride < width as usize * 4 || data.len() < stride * height as usize {
+        return None;
+    }
+    Some(RawFrame { width, height, stride, format, data })
 }
 
 impl Drop for MpvClient {
@@ -338,6 +465,7 @@ impl MpvApi for MpvClient {
                 MPV_EVENT_SHUTDOWN => MpvEvent::Shutdown,
                 MPV_EVENT_START_FILE => MpvEvent::StartFile,
                 MPV_EVENT_FILE_LOADED => MpvEvent::FileLoaded,
+                MPV_EVENT_PLAYBACK_RESTART => MpvEvent::PlaybackRestart,
                 MPV_EVENT_END_FILE => {
                     let data = event.data as *const MpvEventEndFileRaw;
                     let reason = if data.is_null() { EndFileReason::Unknown } else { EndFileReason::from_raw((*data).reason) };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useKeyedState } from '../../shared/hooks/useKeyedState';
 import {
-  launchGame, openExternalUrl, startPlaytimeSession,
+  openExternalUrl,
   type LocalGame, type GameInfo, type SteamAchievement, type LibraryEntry,
   readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
@@ -16,13 +16,17 @@ import {
 } from '../../../lib/local/local-read-cache';
 import { getT } from '../../../i18n/runtime';
 import { MediaScreenshotsSection } from './MediaScreenshotsSection';
+import { GameSavesSection } from './GameSavesSection';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { IconMonitor, IconPencil } from '../ui/icons';
-import { formatPlaytime, formatLastPlayed } from '../../../lib/local/formatters';
+import { formatPlaytime, formatLastPlayed, formatLastPlayedRelative } from '../../../lib/local/formatters';
+import { useGamePlayStats } from '../hooks/useGamePlayStats';
+import { interpolate } from '../../../lib/shared/text/interpolate';
 import { formatUnixDateLong } from '../../../lib/shared/text/format-date';
-import { toMediumCover } from '../../../lib/media/small-cover';
-import { setGamePresence } from '../../../lib/local/discord-presence';
+import { launchLocalGameSession } from '../../../lib/local/game-launch-session';
+import { rememberDisc, rememberedDisc } from '../../../lib/local/disc-choice';
+import { DiscSelector } from './DiscSelector';
 import { gameExternalId, firstCsvUrl, catalogReleaseTimestampMs } from '../../../lib/media/mappers/mapper-utils';
 import { parseCSV } from '../../../lib/shared/text/string-utils';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
@@ -31,6 +35,9 @@ import { openMediaEditor } from '../../../lib/media/editor/open-media-editor';
 import { RetroAchievementsControls, RetroAchievementsEmpty } from '../../retro-achievements/RetroAchievementsControls';
 import { useRetroAchievements } from '../../retro-achievements/hooks/useRetroAchievements';
 import { toSteamAchievementsModel } from '../../../lib/retro-achievements/achievement-cell-adapter';
+import type { MediaCompany } from '../../../lib/media/types';
+import { CompanyName } from '../../media/media-page/CompanyLinks';
+import { TimeToBeatBlock } from '../../shared/TimeToBeatBlock';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
@@ -118,6 +125,9 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
 
   const isExe = !!launchTarget.install_path?.toLowerCase().endsWith('.exe');
   const isRom = !isExe && !!launchTarget.rom_platform && !!launchTarget.install_path;
+  // Multi-disc games: the disc Play boots (remembered per game).
+  const [pickedDisc, setPickedDisc] = useKeyedState<string | null>(launchTarget.app_id, null);
+  const selectedDisc = pickedDisc ?? rememberedDisc(launchTarget);
   const [emulatorConfigured, setEmulatorConfigured] = useKeyedState<boolean | null>(`${launchTarget.rom_platform}\n${isExe}`, null);
 
   useEffect(() => {
@@ -142,7 +152,9 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // info.json, which doesn't exist here, so the developer name has nowhere
   // else to come from but a live IGDB lookup (same call already made for
   // storeLink, just also reading its involved_companies this time).
-  const [catalogDevelopers, setCatalogDevelopers] = useKeyedState<string[] | null>(knownExternalId, null);
+  // Kept as company rows (not bare names) so each name links to its
+  // /company page like the media page does (CompanyName).
+  const [catalogDevelopers, setCatalogDevelopers] = useKeyedState<MediaCompany[] | null>(knownExternalId, null);
   // Gates the Nintendo eShop search fallback below — a game merely running
   // ON a Nintendo platform (any third-party Switch release) isn't what
   // "Ver en Nintendo" should mean; only when Nintendo itself is the
@@ -161,7 +173,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     // have it" fast path, not a replacement.
     getMediaCompanies(knownExternalId).then(companies => {
       if (cancelled || companies.length === 0) return;
-      const devs = companies.filter(c => c.role === 'developer').map(c => c.name);
+      const devs = companies.filter(c => c.role === 'developer');
       if (devs.length > 0) setCatalogDevelopers(devs);
       if (companies.some(c => (c.role === 'developer' || c.role === 'publisher') && c.name.toLowerCase().includes('nintendo'))) {
         setIsNintendoCompany(true);
@@ -185,13 +197,21 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           setStoreLink(picked);
         }
       }
-      const companies = detail.involved_companies as { company?: { name?: string }; developer?: boolean; publisher?: boolean }[] | undefined;
-      const developers = companies?.filter(c => c.developer && c.company?.name).map(c => c.company!.name!);
+      const companies = detail.involved_companies as { company?: { id?: number; name?: string }; developer?: boolean; publisher?: boolean }[] | undefined;
+      // Same stored id shape as igdb-mapper.ts (`company:<igdb id>`); a
+      // company without an id stays a plain name.
+      const developers = companies?.flatMap((c): MediaCompany[] => (c.developer && c.company?.name ? [{
+        external_id: c.company.id ? `company:${c.company.id}` : '',
+        name: c.company.name,
+        role: 'developer',
+      }] : []));
       if (developers && developers.length > 0) setCatalogDevelopers(developers);
       setIsNintendoCompany(!!companies?.some(c => (c.developer || c.publisher) && c.company?.name?.toLowerCase().includes('nintendo')));
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [knownExternalId, setStoreLink, setCatalogDevelopers, setIsNintendoCompany]);
+  // "by {names}": the names render as company links between the two halves.
+  const [byPrefix, bySuffix = ''] = t.local.by_developers.split('{names}');
   const STORE_LABELS: Record<string, string> = {
     steam: t.local.view_on_steam,
     nintendo: t.local.view_on_nintendo,
@@ -259,7 +279,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // including the auto-track-on-session-end path below and a manual save
   // from the editor). `progress`, not `minutes_spent` — MediaEditorModal's
   // own handleSave always recomputes minutes_spent FROM progress, and
-  // addPlaytimeHours (auto-tracking) only ever touches progress too, so
+  // the session registry (game_sessions.rs) writes both on auto-tracking, so
   // minutes_spent can go stale between saves — progress is what's actually
   // authoritative.
   const romTrackingId = editTargetId ?? relationsExternalId;
@@ -272,6 +292,15 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     window.addEventListener('refresh-profile-library', load);
     return () => { cancelled = true; window.removeEventListener('refresh-profile-library', load); };
   }, [romTrackingId, setRomLibraryEntry]);
+  // Sessions launched from Metadea: count, average and last played.
+  const playStats = useGamePlayStats(romTrackingId);
+  const lastPlayedUnix = Math.max(launchTarget.last_played ?? 0, playStats?.last_played_unix ?? 0) || undefined;
+  const sessionsTitle = playStats
+    ? interpolate(t.local.stat_sessions_title, {
+      n: playStats.sessions_count,
+      avg: formatPlaytime(playStats.average_session_minutes ?? undefined),
+    })
+    : undefined;
 
   // Identity (banner/cover, metadata) always stays `game`'s own — a season
   // shows ITS OWN art/summary/genres ("estás jugando la season de X"), not
@@ -387,7 +416,10 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // under the season's own name. Shown alongside metaDots (date/genres) on
   // the same line now, not under the title — kept them from looking
   // mismatched once the title itself became centered.
-  const developers = (catalogDevelopers && catalogDevelopers.length > 0) ? catalogDevelopers : gameInfo?.developers;
+  // info.json developers are names only (no provider id) — plain text.
+  const developers: MediaCompany[] | undefined = (catalogDevelopers && catalogDevelopers.length > 0)
+    ? catalogDevelopers
+    : gameInfo?.developers?.map(name => ({ external_id: '', name, role: 'developer' }));
   const hasDevelopers = !!developers && developers.length > 0;
 
   const handleEdit = async () => {
@@ -544,41 +576,15 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
 
                 resolveSourceExternalId().then(resolvedId => {
                   const effectiveExternalId = resolvedId ?? romTrackingId ?? knownExternalId ?? launchTarget.external_id ?? launchTarget.app_id ?? launchTarget.name;
-
-                  launchGame(
-                    launchTarget.launcher,
-                    launchTarget.app_id,
-                    launchTarget.install_path,
-                    isExe ? undefined : launchTarget.rom_platform,
-                    effectiveExternalId,
-                  )
-                    .then(() => {
-                      setHasLaunched(true);
-                      const startTime = Math.floor(Date.now() / 1000);
-                      const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
-                        ? toMediumCover(catalogEntry.cover_url)
-                        : (banner && banner.startsWith('http'))
-                        ? toMediumCover(banner)
-                        : undefined;
-                      setGamePresence({
-                        title: displayTitle,
-                        startTime,
-                        coverUrl,
-                        externalId: effectiveExternalId,
-                        installPath: launchTarget.install_path || undefined,
-                        romPlatform: isExe ? undefined : launchTarget.rom_platform ?? undefined,
-                      });
-
-                      if (launchTarget.install_path && (isExe || !launchTarget.rom_platform)) {
-                        startPlaytimeSession(
-                          launchTarget.install_path,
-                          effectiveExternalId,
-                          isExe ? null : launchTarget.rom_platform,
-                          launchTarget.launcher,
-                          launchTarget.app_id,
-                        ).catch(() => {});
-                      }
-                    })
+                  // Launch + presence + playtime session, shared with Big Picture.
+                  launchLocalGameSession({
+                    target: launchTarget,
+                    externalId: effectiveExternalId,
+                    title: displayTitle,
+                    coverUrl: catalogEntry?.cover_url?.startsWith('http') ? catalogEntry.cover_url : banner,
+                    discPath: selectedDisc,
+                  })
+                    .then(() => setHasLaunched(true))
                     .catch(console.error);
                 });
               }}
@@ -588,6 +594,16 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
               </svg>
               {emulatorMissing ? t.local.no_emulator_configured : (canLaunch ? t.local.play_game : effectiveStoreLinkLabel ?? t.local.not_installed)}
             </button>
+
+            {isRom && launchTarget.discs && (
+              <DiscSelector
+                discs={launchTarget.discs}
+                selected={selectedDisc}
+                onSelect={disc => { rememberDisc(launchTarget.app_id, disc); setPickedDisc(disc); }}
+                discLabel={t.local.disc_label}
+                groupLabel={t.local.disc_selector_label}
+              />
+            )}
 
             <div className="local-media-divider-line" />
 
@@ -608,9 +624,18 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
-                  <span>{formatLastPlayed(launchTarget.last_played)}</span>
+                  <span title={formatLastPlayed(lastPlayedUnix)}>{formatLastPlayedRelative(lastPlayedUnix)}</span>
                   <span className="local-game-detail-stat-label">{t.local.stat_last_played}</span>
                 </div>
+                {playStats && playStats.sessions_count > 0 && (
+                  <div className="local-game-detail-stat" title={sessionsTitle}>
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                    </svg>
+                    <span>{playStats.sessions_count}</span>
+                    <span className="local-game-detail-stat-label">{t.local.stat_sessions}</span>
+                  </div>
+                )}
                 <div className="local-game-detail-stat">
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/>
@@ -641,10 +666,33 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         <div className="local-game-detail-meta-row">
           <p className={`local-game-detail-metadots${metaDots ? ' local-game-detail-metadots--visible' : ''}`}>{metaDots || ' '}</p>
           <p className={`local-game-detail-by${hasDevelopers ? ' local-game-detail-by--visible' : ''}`}>
-            {hasDevelopers ? `by ${developers!.join(', ')}` : ' '}
+            {developers && hasDevelopers ? (
+              <>
+                {byPrefix}
+                {developers.map((company, i) => (
+                  <React.Fragment key={`${company.external_id}-${company.name}-${i}`}>
+                    {i > 0 && ', '}
+                    <CompanyName company={company} mediaType="game" />
+                  </React.Fragment>
+                ))}
+                {bySuffix}
+              </>
+            ) : ' '}
           </p>
         </div>
         {displaySummary && <p className="local-game-detail-summary">{displaySummary}</p>}
+        {relationsExternalId && (
+          <TimeToBeatBlock
+            externalId={relationsExternalId}
+            title={displayTitle}
+            releaseYear={catalogReleaseMs !== null ? new Date(catalogReleaseMs).getUTCFullYear() : undefined}
+            playedMinutes={(!isExe && launchTarget.rom_platform) || launchTarget.playtime_minutes === undefined || launchTarget.playtime_minutes === null
+              ? (romLibraryEntry?.minutes_spent || (romLibraryEntry?.progress ? romLibraryEntry.progress * 60 : undefined))
+              : launchTarget.playtime_minutes}
+            t={t.time_to_beat}
+            variant="local"
+          />
+        )}
 
         <MediaScreenshotsSection
           key={`${contentKey}:${displayTitle}`}
@@ -659,6 +707,15 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           } : undefined}
           emulator={isRom ? { platformId: launchTarget.rom_platform!, romPath: launchTarget.install_path!, title: displayTitle } : undefined}
         />
+
+        {isRom && launchTarget.rom_platform && launchTarget.install_path && (
+          <GameSavesSection
+            key={`saves:${contentKey}`}
+            platformId={launchTarget.rom_platform}
+            romPath={launchTarget.install_path}
+            title={displayTitle}
+          />
+        )}
       </div>
     </>
   );
