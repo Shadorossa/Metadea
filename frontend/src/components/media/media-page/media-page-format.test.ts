@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { formatEpisodeNumber, formatThemeEpisodes, formatMatchDate } from './media-page-format';
+import { formatEpisodeNumber, formatThemeEpisodes, formatMatchDate, mergeSeasonThemes } from './media-page-format';
+import type { MediaTheme } from '../../../lib/tauri';
 
 describe('formatEpisodeNumber', () => {
   it('renders a regular episode as a plain number', () => {
@@ -76,5 +77,38 @@ describe('formatMatchDate', () => {
   it('falls back to joining the raw parts when the date cannot be parsed', () => {
     expect(formatMatchDate('not-a-date', '20:00')).toBe('not-a-date 20:00');
     expect(formatMatchDate('not-a-date', null)).toBe('not-a-date');
+  });
+});
+
+describe('mergeSeasonThemes', () => {
+  const theme = (external_id: string, theme_type: 'OP' | 'ED', sequence: number, song_title: string | null, slug = `${theme_type}${sequence}`): MediaTheme =>
+    ({ external_id, theme_type, sequence, song_title, slug, artists: null, episodes: null, video_url: null });
+
+  it('keeps the first season\'s copy of a song repeated at the same slot', () => {
+    const merged = mergeSeasonThemes([
+      [theme('anime:1', 'OP', 1, 'Song A')],
+      [theme('anime:2', 'OP', 1, 'song a '), theme('anime:2', 'OP', 2, 'Song B')],
+    ]);
+    expect(merged.map(t => `${t.external_id}:${t.theme_type}${t.sequence}`)).toEqual(['anime:1:OP1', 'anime:2:OP2']);
+  });
+
+  it('orders OPs before EDs and by sequence within each type', () => {
+    const merged = mergeSeasonThemes([
+      [theme('anime:1', 'ED', 2, 'E2'), theme('anime:1', 'OP', 2, 'O2')],
+      [theme('anime:2', 'OP', 1, 'O1'), theme('anime:2', 'ED', 1, 'E1')],
+    ]);
+    expect(merged.map(t => `${t.theme_type}${t.sequence}`)).toEqual(['OP1', 'OP2', 'ED1', 'ED2']);
+  });
+
+  it('falls back to the slug when a theme has no song title', () => {
+    const merged = mergeSeasonThemes([
+      [theme('anime:1', 'OP', 1, null, 'OP1')],
+      [theme('anime:2', 'OP', 1, null, 'OP1'), theme('anime:2', 'OP', 1, null, 'OP1-alt')],
+    ]);
+    expect(merged.map(t => `${t.external_id}:${t.slug}`)).toEqual(['anime:1:OP1', 'anime:2:OP1-alt']);
+  });
+
+  it('is empty for no lists', () => {
+    expect(mergeSeasonThemes([])).toEqual([]);
   });
 });

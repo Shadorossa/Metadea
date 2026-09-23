@@ -89,8 +89,25 @@
   display: inline-flex;
 }
 
-/* Main window fullscreen: the page behind must not scroll. */
-html.player-fullscreen,
+/* Player open (windowed or fullscreen): the page behind must not scroll,
+   and the stable scrollbar gutter on <html> must go, or it shows as a black
+   strip along the right edge of the video. */
+html.player-open,
+html.player-fullscreen {
+  scrollbar-gutter: auto;
+  overflow: hidden !important;
+}
+
+html.player-open body,
 html.player-fullscreen body {
   overflow: hidden;
+}
+
+/* Docked controls cannot float over the native video: the skip pill sits
+   right-aligned above the seek bar instead. */
+.player-overlay--docked .player-skip {
+  position: static;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.35rem 1rem 0;
 }

@@ -266,14 +266,17 @@ const SEASON_EPISODE_MARKERS = [
 ];
 
 const EPISODE_MARKERS = [
-  /(?:^|[^0-9])E(?:p(?:isode)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
-  /(?:^|[^0-9])cap(?:[ií]tulo)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
-  /(?:^|[^0-9])ch(?:apter)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  // The E marker must be its own token: with a bare `[^0-9]` boundary the
+  // trailing "e" of a title word matched ("One Piece 1015" -> "One Pie");
+  // same for cap/ch/OVA/SP ("Bleach 3" -> "Blea").
+  /(?:^|[^a-z0-9])E(?:p(?:isode)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^a-z0-9])cap(?:[ií]tulo)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^a-z0-9])ch(?:apter)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   /(?:^|[^a-z0-9])v(?:ol(?:[uú]men|ume)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   /(?:^|[^a-z0-9])tomo[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   /(?:^|[^a-z0-9])n(?:[oº]|um(?:ber|ero)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
-  /(?:^|[^0-9])OVA[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
-  /(?:^|[^0-9])SP(?:ecial)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^a-z0-9])OVA[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^a-z0-9])SP(?:ecial)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   // "#0.8" style specials (SubsPlease and others number these with a decimal
   // instead of a whole episode) — kept as a float, never equals an integer
   // targetEpisode in findMatchingEpisodeFile, which is correct: a special

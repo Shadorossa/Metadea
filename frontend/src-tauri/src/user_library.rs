@@ -33,6 +33,13 @@ pub struct LibraryEntry {
     pub selected_version: Option<String>,
     pub started_at: Option<String>,
     pub finished_at: Option<String>,
+    // Reconsumption ("rewatch / reread / replay") — see migrations/
+    // reconsumption.rs. Both default to 0 so an older frontend payload (or
+    // a caller that spreads a pre-migration row) keeps working unchanged.
+    #[serde(default)]
+    pub reconsumption_count: i64,
+    #[serde(default)]
+    pub reconsuming: i32,
 }
 
 fn default_user() -> String {
@@ -42,7 +49,8 @@ fn default_user() -> String {
 const SELECT_BASE: &str = "
     SELECT id, user_id, external_id, type, status, rating, progress, progress_2,
            minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
-           selected_platform, selected_version, started_at, finished_at, rating_2
+           selected_platform, selected_version, started_at, finished_at, rating_2,
+           reconsumption_count, reconsuming
     FROM user_library
     WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)";
 
@@ -71,15 +79,108 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibraryEntry> {
         started_at:       row.get(17)?,
         finished_at:      row.get(18)?,
         rating_2:         row.get(19)?,
+        reconsumption_count: row.get::<_, Option<i64>>(20)?.unwrap_or(0),
+        reconsuming:      row.get::<_, Option<i32>>(21)?.unwrap_or(0),
     })
+}
+
+// ─── reconsumption (rewatch / reread / replay) ────────────────────────────────
+
+// Catalog totals a re-run snaps progress back to once it's completed again.
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub(crate) struct WorkTotals {
+    pub total_count: Option<f64>,
+    pub total_count_2: Option<f64>,
+}
+
+fn load_work_totals(conn: &rusqlite::Connection, external_id: &str) -> Result<WorkTotals, String> {
+    Ok(conn
+        .query_row(
+            "SELECT total_count, total_count_2 FROM media_catalog WHERE external_id = ?1",
+            [external_id],
+            |row| Ok(WorkTotals { total_count: row.get(0)?, total_count_2: row.get(1)? }),
+        )
+        .optional()
+        .str_err()?
+        .unwrap_or_default())
+}
+
+// The one place every save path (editor, auto-mark on watch/read, imports)
+// funnels through, so the re-run rules live here and not in each caller:
+//
+// - While a re-run is in progress (`reconsuming = 1`, on the incoming entry
+//   or on the stored row) the first run's started_at/finished_at are frozen:
+//   whatever the caller sends for them is replaced by what's on disk.
+// - Completing again while `reconsuming = 1` bumps reconsumption_count,
+//   clears the flag and snaps progress/progress_2 back to the catalog totals
+//   ("as it was"), returning the ordinal of this completion (2 for the
+//   first rewatch) so the caller can log the `complete` event.
+// - Anything else (including a completed entry with `reconsuming = 0`) is
+//   left exactly as the caller sent it.
+pub(crate) fn apply_reconsumption_transition(
+    entry: &mut LibraryEntry,
+    existing: Option<&LibraryEntry>,
+    totals: WorkTotals,
+) -> Option<i64> {
+    let stored_run = existing.map(|e| e.reconsuming != 0).unwrap_or(false);
+    if let Some(prev) = existing {
+        if stored_run || entry.reconsuming != 0 {
+            entry.started_at = prev.started_at.clone();
+            entry.finished_at = prev.finished_at.clone();
+        }
+    }
+    if entry.reconsuming != 0 && entry.status.as_deref() == Some("completed") {
+        entry.reconsumption_count += 1;
+        entry.reconsuming = 0;
+        if let Some(total) = totals.total_count.filter(|t| *t > 0.0) {
+            entry.progress = total;
+        }
+        if let Some(total) = totals.total_count_2.filter(|t| *t > 0.0) {
+            entry.progress_2 = total;
+        }
+        return Some(entry.reconsumption_count + 1);
+    }
+    None
+}
+
+// A `complete` row in user_activity for the completion that just happened,
+// dated today — the first run's finish date stays on the row and on its own
+// occurrence-1 event (frontend/src/lib/profile/journey.ts writes that one).
+pub(crate) fn log_completion_event(
+    conn: &rusqlite::Connection,
+    entry: &LibraryEntry,
+    occurrence: i64,
+    now: &str,
+) -> Result<(), String> {
+    let date = now.get(..10).unwrap_or(now);
+    conn.execute(
+        "INSERT INTO user_activity (id, date, event_type, external_id, media_type, timestamp, occurrence)
+         VALUES (?1, ?2, 'complete', ?3, ?4, ?5, ?6)",
+        rusqlite::params![
+            crate::db::generate_id(), date, &entry.external_id, &entry.entry_type, now, occurrence,
+        ],
+    )
+    .map(|_| ())
+    .str_err()
 }
 
 #[tauri::command]
 pub async fn save_library_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
+    entry: LibraryEntry,
+) -> Result<LibraryEntry, String> {
+    let mut conn = state.conn.lock().str_err()?;
+    save_library_entry_in(&mut conn, entry)
+}
+
+// The command's body, on a bare connection so tests can drive it. One
+// transaction: the row, its favorites-list mirror and the completion event
+// commit together or not at all.
+pub(crate) fn save_library_entry_in(
+    conn: &mut rusqlite::Connection,
     mut entry: LibraryEntry,
 ) -> Result<LibraryEntry, String> {
-    let conn = state.conn.lock().str_err()?;
+    let conn = conn.transaction().str_err()?;
 
     let is_blocked: bool = conn.query_row(
         "SELECT EXISTS(SELECT 1 FROM blocked_media_catalog WHERE external_id = ?1)",
@@ -116,19 +217,24 @@ pub async fn save_library_entry(
         return Err(format!("Cannot log a bundle directly: {}", entry.external_id));
     }
 
-    let existing: Option<(String, Option<String>)> = conn
+    // The stored row (not just id/added_at): the reconsumption rules below
+    // need its dates and its in-progress-re-run flag.
+    let existing = conn
         .query_row(
-            "SELECT id, added_at FROM user_library WHERE external_id = ?1",
+            &format!("{} AND external_id = ?1", SELECT_BASE),
             [&entry.external_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            row_to_entry,
         )
         .optional()
         .str_err()?;
 
-    if let Some((eid, eat)) = existing {
-        if entry.id.is_empty() { entry.id = eid; }
-        entry.added_at = eat;
+    if let Some(prev) = &existing {
+        if entry.id.is_empty() { entry.id = prev.id.clone(); }
+        entry.added_at = prev.added_at.clone();
     }
+
+    let totals = load_work_totals(&conn, &entry.external_id)?;
+    let completed_occurrence = apply_reconsumption_transition(&mut entry, existing.as_ref(), totals);
 
     let now = Utc::now().to_rfc3339();
     if entry.id.is_empty() { entry.id = crate::db::generate_id(); }
@@ -142,8 +248,9 @@ pub async fn save_library_entry(
         "INSERT OR REPLACE INTO user_library (
             id, user_id, external_id, type, status, rating, progress, progress_2,
             minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
-            selected_platform, selected_version, started_at, finished_at, rating_2
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20)",
+            selected_platform, selected_version, started_at, finished_at, rating_2,
+            reconsumption_count, reconsuming
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
         rusqlite::params![
             &entry.id, &entry.user_id, &entry.external_id, &entry.entry_type,
             &entry.status, &entry.rating, entry.progress, entry.progress_2,
@@ -151,8 +258,13 @@ pub async fn save_library_entry(
             &tags_json, &entry.notes, &entry.added_at, &entry.updated_at,
             &entry.selected_platform, &entry.selected_version,
             &entry.started_at, &entry.finished_at, &entry.rating_2,
+            entry.reconsumption_count, entry.reconsuming,
         ],
     ).str_err()?;
+
+    if let Some(occurrence) = completed_occurrence {
+        log_completion_event(&conn, &entry, occurrence, &now)?;
+    }
 
     // Sync fav list
     let fav_key = crate::user_lists::type_to_fav_key(&entry.entry_type);
@@ -180,7 +292,115 @@ pub async fn save_library_entry(
         );
     }
 
+    conn.commit().str_err()?;
     Ok(entry)
+}
+
+#[cfg(test)]
+mod reconsumption_tests {
+    use super::*;
+
+    fn entry(external_id: &str, status: &str) -> LibraryEntry {
+        LibraryEntry {
+            id: String::new(), user_id: "local".into(), external_id: external_id.into(),
+            entry_type: "anime".into(), status: Some(status.into()), rating: None, rating_2: None,
+            progress: 0.0, progress_2: 0.0, minutes_spent: 0.0, is_favorite: 0, is_platinum: 0,
+            tags: None, notes: None, added_at: None, updated_at: None,
+            selected_platform: None, selected_version: None,
+            started_at: Some("2020-01-01".into()), finished_at: Some("2020-02-01".into()),
+            reconsumption_count: 0, reconsuming: 0,
+        }
+    }
+
+    fn completion_events(conn: &rusqlite::Connection, external_id: &str) -> Vec<Option<i64>> {
+        let mut stmt = conn.prepare(
+            "SELECT occurrence FROM user_activity WHERE external_id = ?1 AND event_type = 'complete' ORDER BY timestamp",
+        ).unwrap();
+        stmt.query_map([external_id], |r| r.get(0)).unwrap().flatten().collect()
+    }
+
+    #[test]
+    fn fields_round_trip_through_save_and_read() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let mut conn = db.conn.lock().unwrap();
+        let mut e = entry("anime:1", "completed");
+        e.reconsumption_count = 2;
+        save_library_entry_in(&mut conn, e).unwrap();
+        let loaded = load_library_entry(&conn, "anime:1").unwrap().unwrap();
+        assert_eq!(loaded.reconsumption_count, 2);
+        assert_eq!(loaded.reconsuming, 0);
+
+        // A payload without the new fields (older frontend) deserializes to 0/0.
+        let json = r#"{"id":"","user_id":"local","external_id":"anime:9","type":"anime","status":null,
+            "rating":null,"rating_2":null,"tags":null,"notes":null,"added_at":null,"updated_at":null,
+            "selected_platform":null,"selected_version":null,"started_at":null,"finished_at":null}"#;
+        let parsed: LibraryEntry = serde_json::from_str(json).unwrap();
+        assert_eq!((parsed.reconsumption_count, parsed.reconsuming), (0, 0));
+    }
+
+    #[test]
+    fn completing_a_re_run_bumps_the_count_keeps_dates_and_logs_the_event() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let mut conn = db.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO media_catalog (external_id, type, title_main, total_count, total_count_2) VALUES ('anime:1', 'anime', 'X', 12, 3)",
+            [],
+        ).unwrap();
+        let mut first = entry("anime:1", "completed");
+        first.progress = 12.0;
+        save_library_entry_in(&mut conn, first).unwrap();
+        assert!(completion_events(&conn, "anime:1").is_empty(), "first completion is the frontend journey's job");
+
+        // Toggle "re-watching": status back to in-progress, new run from 0.
+        let mut rerun = entry("anime:1", "watching");
+        rerun.reconsuming = 1;
+        // The auto-mark flows overwrite dates with "today" — frozen here.
+        rerun.started_at = Some("2026-09-23".into());
+        rerun.finished_at = None;
+        rerun.progress = 3.0;
+        let saved = save_library_entry_in(&mut conn, rerun).unwrap();
+        assert_eq!(saved.started_at.as_deref(), Some("2020-01-01"));
+        assert_eq!(saved.finished_at.as_deref(), Some("2020-02-01"));
+        assert_eq!(saved.progress, 3.0);
+        assert_eq!((saved.reconsumption_count, saved.reconsuming), (0, 1));
+
+        // Completed again (editor or auto-mark): count += 1, flag off,
+        // progress snapped back to the catalog totals, dates untouched.
+        let mut done = entry("anime:1", "completed");
+        done.reconsuming = 1;
+        done.progress = 12.0;
+        done.finished_at = Some("2026-09-30".into());
+        let saved = save_library_entry_in(&mut conn, done).unwrap();
+        assert_eq!((saved.reconsumption_count, saved.reconsuming), (1, 0));
+        assert_eq!((saved.progress, saved.progress_2), (12.0, 3.0));
+        assert_eq!(saved.finished_at.as_deref(), Some("2020-02-01"));
+        assert_eq!(completion_events(&conn, "anime:1"), vec![Some(2)]);
+
+        // A completed entry with reconsuming = 0 is saved verbatim (dates included).
+        let mut plain = load_library_entry(&conn, "anime:1").unwrap().unwrap();
+        plain.finished_at = Some("2021-05-05".into());
+        let saved = save_library_entry_in(&mut conn, plain).unwrap();
+        assert_eq!(saved.finished_at.as_deref(), Some("2021-05-05"));
+        assert_eq!(saved.reconsumption_count, 1);
+        assert_eq!(completion_events(&conn, "anime:1").len(), 1);
+    }
+
+    #[test]
+    fn transition_is_pure_over_the_incoming_entry() {
+        let prev = entry("manga:1", "completed");
+        let mut e = entry("manga:1", "completed");
+        e.reconsuming = 1;
+        e.reconsumption_count = 4; // stepper edited in the same save
+        let occ = apply_reconsumption_transition(&mut e, Some(&prev), WorkTotals { total_count: None, total_count_2: Some(20.0) });
+        assert_eq!(occ, Some(6));
+        assert_eq!((e.reconsumption_count, e.reconsuming), (5, 0));
+        assert_eq!(e.progress, 0.0, "unknown total leaves progress alone");
+        assert_eq!(e.progress_2, 20.0);
+
+        let mut untouched = entry("manga:2", "reading");
+        assert_eq!(apply_reconsumption_transition(&mut untouched, None, WorkTotals::default()), None);
+        assert_eq!(untouched.reconsuming, 0);
+    }
 }
 
 #[tauri::command]
@@ -189,9 +409,16 @@ pub async fn get_library_entry(
     external_id: String,
 ) -> Result<Option<LibraryEntry>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_library_entry(&conn, &external_id)
+}
+
+pub(crate) fn load_library_entry(
+    conn: &rusqlite::Connection,
+    external_id: &str,
+) -> Result<Option<LibraryEntry>, String> {
     conn.query_row(
         &format!("{} AND external_id = ?1", SELECT_BASE),
-        [&external_id],
+        [external_id],
         row_to_entry,
     )
     .optional()
@@ -234,6 +461,14 @@ pub async fn get_all_library_entries(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<LibraryEntry>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_all_library_entries(&conn)
+}
+
+// The rows behind get_all_library_entries, shared with the Home bundle
+// (home_bundle.rs) so both read the exact same set.
+pub(crate) fn load_all_library_entries(
+    conn: &rusqlite::Connection,
+) -> Result<Vec<LibraryEntry>, String> {
     let mut stmt = conn.prepare(SELECT_BASE).str_err()?;
     let entries = stmt
         .query_map([], row_to_entry)
@@ -316,16 +551,16 @@ pub async fn write_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>
 pub async fn read_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>) -> Result<String, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
-        "SELECT date, external_id, event_type, media_type, progress_start, progress_end, timestamp
+        "SELECT date, external_id, event_type, media_type, progress_start, progress_end, timestamp, occurrence
          FROM user_activity
          WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
          ORDER BY date DESC, timestamp"
     ).str_err()?;
 
-    struct Row { date: String, ext_id: String, etype: String, mtype: Option<String>, pstart: Option<i64>, pend: Option<i64>, ts: String }
+    struct Row { date: String, ext_id: String, etype: String, mtype: Option<String>, pstart: Option<i64>, pend: Option<i64>, ts: String, occurrence: Option<i64> }
     let rows: Vec<Row> = stmt.query_map([], |r| Ok(Row {
         date: r.get(0)?, ext_id: r.get(1)?, etype: r.get(2)?,
-        mtype: r.get(3)?, pstart: r.get(4)?, pend: r.get(5)?, ts: r.get(6)?
+        mtype: r.get(3)?, pstart: r.get(4)?, pend: r.get(5)?, ts: r.get(6)?, occurrence: r.get(7)?,
     })).str_err()?.filter_map(|r| r.ok()).collect();
 
     // Group by date (maintain descending order from SQL)
@@ -337,6 +572,7 @@ pub async fn read_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>) ->
         });
         if let Some(ps) = row.pstart { event["progressStart"] = ps.into(); }
         if let Some(pe) = row.pend { event["progressEnd"] = pe.into(); }
+        if let Some(occ) = row.occurrence { event["occurrence"] = occ.into(); }
         if let Some(last) = days.last_mut() {
             if last.0 == row.date { last.1.push(event); continue; }
         }
@@ -364,6 +600,10 @@ pub struct JourneyEvent {
     pub progress_start: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub progress_end: Option<i64>,
+    // Which completion a `complete` event is (1 = first finish, 2 = first
+    // rewatch, ...); absent on rows written before migrations/reconsumption.rs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub occurrence: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -374,7 +614,7 @@ pub struct JourneyDay {
 
 pub(crate) fn load_user_journey(conn: &rusqlite::Connection) -> Result<Vec<JourneyDay>, String> {
     let mut stmt = conn.prepare(
-        "SELECT date, external_id, event_type, media_type, progress_start, progress_end, timestamp
+        "SELECT date, external_id, event_type, media_type, progress_start, progress_end, timestamp, occurrence
          FROM user_activity
          WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)
          ORDER BY date DESC, timestamp"
@@ -388,6 +628,7 @@ pub(crate) fn load_user_journey(conn: &rusqlite::Connection) -> Result<Vec<Journ
             progress_start: r.get(4)?,
             progress_end: r.get(5)?,
             timestamp: r.get(6)?,
+            occurrence: r.get(7)?,
         },
     ))).str_err()?;
 
@@ -484,12 +725,13 @@ pub async fn write_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>, c
                 let mtype  = event.get("mediaType").and_then(|x| x.as_str());
                 let pstart = event.get("progressStart").and_then(|x| x.as_i64());
                 let pend   = event.get("progressEnd").and_then(|x| x.as_i64());
+                let occurrence = event.get("occurrence").and_then(|x| x.as_i64());
                 let ts     = event.get("timestamp").and_then(|x| x.as_str()).unwrap_or(date);
                 let id     = crate::db::generate_id();
                 if ext_id.is_empty() || etype.is_empty() { continue; }
                 tx.execute(
-                    "INSERT INTO user_activity (id, date, external_id, event_type, media_type, progress_start, progress_end, timestamp) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
-                    rusqlite::params![id, date, ext_id, etype, mtype, pstart, pend, ts],
+                    "INSERT INTO user_activity (id, date, external_id, event_type, media_type, progress_start, progress_end, timestamp, occurrence) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+                    rusqlite::params![id, date, ext_id, etype, mtype, pstart, pend, ts, occurrence],
                 ).str_err()?;
             }
         }

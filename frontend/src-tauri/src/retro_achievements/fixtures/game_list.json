@@ -1,0 +1,41 @@
+[
+  {
+    "ID": 1446,
+    "Title": "Metadea Test Quest",
+    "ConsoleID": 18,
+    "ConsoleName": "Nintendo DS",
+    "ImageIcon": "/Images/000001.png",
+    "NumAchievements": 3,
+    "NumLeaderboards": 0,
+    "Points": 30,
+    "DateModified": "2024-01-01 00:00:00",
+    "ForumTopicID": 1,
+    "Hashes": ["AABBCCDDEEFF00112233445566778899"]
+  },
+  {
+    "ID": 2000,
+    "Title": "Legend of Cubes, The: Adventure",
+    "ConsoleID": 18,
+    "ConsoleName": "Nintendo DS",
+    "ImageIcon": "/Images/000002.png",
+    "NumAchievements": 40,
+    "NumLeaderboards": 2,
+    "Points": 400,
+    "DateModified": "2024-01-01 00:00:00",
+    "ForumTopicID": 2,
+    "Hashes": ["ffffffffffffffffffffffffffffffff", "00000000000000000000000000000001"]
+  },
+  {
+    "ID": 2001,
+    "Title": "~Hack~ Metadea Test Quest",
+    "ConsoleID": 18,
+    "ConsoleName": "Nintendo DS",
+    "ImageIcon": "/Images/000003.png",
+    "NumAchievements": 5,
+    "NumLeaderboards": 0,
+    "Points": 50,
+    "DateModified": "2024-01-01 00:00:00",
+    "ForumTopicID": 3,
+    "Hashes": []
+  }
+]

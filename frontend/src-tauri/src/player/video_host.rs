@@ -1,5 +1,5 @@
 // The native surface mpv renders into. On Windows it is a plain Win32 child
-// window of the `player` Tauri window, passed to mpv as `wid`; mpv then
+// window of the main Tauri window, passed to mpv as `wid`; mpv then
 // creates its own child inside it. Everything here is thread-affine: create,
 // resize and destroy only ever run on the main (event loop) thread, which
 // commands reach through `AppHandle::run_on_main_thread`.

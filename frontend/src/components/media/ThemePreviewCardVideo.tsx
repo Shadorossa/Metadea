@@ -1,7 +1,15 @@
-import { useRef, useEffect, useState } from 'react';
-import { getThemePreviewFrame, saveThemePreviewFrame, cacheThemeVideo, getThemeVideoPath } from '../../lib/tauri/themes';
+import { useRef, useEffect, useState, useSyncExternalStore } from 'react';
+import { getThemePreviewFrame, getThemeVideoPath } from '../../lib/tauri/themes';
 import { wrapAssetUrl } from '../../lib/tauri';
 import { getCachedThemeVideo, cacheThemeVideo as cacheThemeVideoBlob } from '../../lib/media/themes/theme-video-cache';
+import {
+  enqueueThemeCapture,
+  subscribeToThemeCapture,
+  themeCaptureKey,
+  unsubscribeFromThemeCapture,
+  warmThemeVideo,
+} from '../../lib/media/themes/theme-capture-queue';
+import { isThemeTrafficSuspended, subscribeThemeTraffic, themeBackgroundSignal } from '../../lib/media/themes/theme-traffic';
 
 interface Props {
   externalId: string;
@@ -13,146 +21,15 @@ interface Props {
 }
 
 const PREVIEW_SECONDS = 3;
+// How long a card has to stay hovered before its video is cached ahead of a
+// click (see warmThemeVideo).
+const HOVER_WARMUP_MS = 400;
 
-type QueueItem = {
-  key: string;
-  externalId: string;
-  slug: string;
-  src: string;
-  retryCount: number;
-};
-
-const captureQueue: QueueItem[] = [];
-const queueListeners = new Map<string, (frameUrl: string, videoUrl?: string) => void>();
-let isQueueProcessing = false;
-let isCapturePaused = false;
-
-export function pauseThemeCaptureQueue() {
-  isCapturePaused = true;
-}
-
-export function resumeThemeCaptureQueue() {
-  if (isCapturePaused) {
-    isCapturePaused = false;
-    processNextQueueItem();
-  }
-}
-
-function subscribeToCapture(key: string, callback: (frameUrl: string, videoUrl?: string) => void) {
-  queueListeners.set(key, callback);
-}
-
-function unsubscribeFromCapture(key: string) {
-  queueListeners.delete(key);
-}
-
-function enqueueCapture(item: QueueItem) {
-  if (captureQueue.some(q => q.key === item.key)) return;
-  captureQueue.push(item);
-  processNextQueueItem();
-}
-
-async function processNextQueueItem() {
-  if (isCapturePaused || isQueueProcessing || captureQueue.length === 0) return;
-  isQueueProcessing = true;
-
-  const item = captureQueue.shift()!;
-  const listener = queueListeners.get(item.key);
-
-  try {
-    const existing = await getThemePreviewFrame(item.externalId, item.slug).catch(() => null);
-    if (existing) {
-      if (listener) listener(wrapAssetUrl(existing));
-      isQueueProcessing = false;
-      processNextQueueItem();
-      return;
-    }
-
-    const localVideoPath = await cacheThemeVideo(item.src, item.externalId, item.slug);
-    if (!localVideoPath) {
-      throw new Error('Empty cached video path');
-    }
-
-    const assetUrl = wrapAssetUrl(localVideoPath);
-    const resp = await fetch(assetUrl);
-    const blob = await resp.blob();
-    const blobUrl = URL.createObjectURL(blob);
-
-    await new Promise<void>((resolve, reject) => {
-      const offscreenVideo = document.createElement('video');
-      offscreenVideo.muted = true;
-      offscreenVideo.playsInline = true;
-      offscreenVideo.src = blobUrl;
-
-      let settled = false;
-      const cleanup = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        offscreenVideo.src = '';
-        URL.revokeObjectURL(blobUrl);
-      };
-
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new Error('Offscreen capture timeout'));
-      }, 25000);
-
-      const doCapture = async () => {
-        try {
-          const vw = offscreenVideo.videoWidth || 1280;
-          const vh = offscreenVideo.videoHeight || 720;
-          const targetWidth = Math.min(1280, vw);
-          const aspect = vh / vw;
-          const canvas = document.createElement('canvas');
-          canvas.width = targetWidth;
-          canvas.height = Math.round(targetWidth * aspect);
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(offscreenVideo, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/webp', 0.90);
-            const savedPath = await saveThemePreviewFrame(item.externalId, item.slug, dataUrl);
-            if (savedPath && listener) {
-              listener(wrapAssetUrl(savedPath), assetUrl);
-            }
-          }
-          cleanup();
-          resolve();
-        } catch (e) {
-          cleanup();
-          reject(e);
-        }
-      };
-
-      offscreenVideo.onloadedmetadata = () => {
-        const dur = offscreenVideo.duration;
-        offscreenVideo.currentTime = (dur && isFinite(dur) && dur > 2) ? Math.floor(dur / 2) : 1;
-      };
-
-      offscreenVideo.onseeked = () => {
-        doCapture();
-      };
-
-      offscreenVideo.onerror = () => {
-        cleanup();
-        reject(new Error('Offscreen video load error'));
-      };
-    });
-  } catch (err) {
-    console.warn(`[ThemePreview] Capture failed for ${item.key}:`, err);
-    if (item.retryCount < 2) {
-      setTimeout(() => {
-        enqueueCapture({ ...item, retryCount: item.retryCount + 1 });
-      }, 2000);
-    }
-  } finally {
-    isQueueProcessing = false;
-    processNextQueueItem();
-  }
-}
-
+// A theme card's still frame and, on hover, a few looping seconds of its
+// video. The hover video only ever plays a local copy (the disk cache, or
+// its IndexedDB blob): streaming v.animethemes.moe from every card spent
+// the CDN's tiny per-IP budget and made the OP/ED overlay's own stream fail.
+// An uncached card caches its video after a short hover instead.
 export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl, fallbackUrl, isHovered }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const midpointRef = useRef(0);
@@ -161,76 +38,103 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
     () => initialPreviewUrl ? wrapAssetUrl(initialPreviewUrl) : null,
   );
   const [localVideoSrc, setLocalVideoSrc] = useState<string | null>(null);
+  const trafficSuspended = useSyncExternalStore(subscribeThemeTraffic, isThemeTrafficSuspended, () => false);
 
-  const taskKey = `${externalId}::${slug}`;
+  const taskKey = themeCaptureKey(externalId, slug);
 
   useEffect(() => {
     let cancelled = false;
+    let blobUrl: string | null = null;
+    // The IndexedDB copy made after a capture; aborted with the card or when
+    // the overlay suspends background work.
+    const blobCopy = new AbortController();
+    const background = themeBackgroundSignal();
+    const stopBlobCopy = () => blobCopy.abort();
+    background.addEventListener('abort', stopBlobCopy, { once: true });
 
     const loadVideo = async () => {
-      // Try cache first
-      const cacheKey = `${externalId}::${slug}`;
-      const cachedBlob = await getCachedThemeVideo(cacheKey);
-      if (!cancelled && cachedBlob) {
-        const blobUrl = URL.createObjectURL(cachedBlob);
+      const cachedBlob = await getCachedThemeVideo(taskKey);
+      if (cancelled) return;
+      if (cachedBlob) {
+        blobUrl = URL.createObjectURL(cachedBlob);
         setLocalVideoSrc(blobUrl);
         return;
       }
-
-      // Fall back to Tauri filesystem cache
       getThemeVideoPath(externalId, slug).then(path => {
-        if (!cancelled && path) {
-          setLocalVideoSrc(wrapAssetUrl(path));
-        }
+        if (!cancelled && path) setLocalVideoSrc(wrapAssetUrl(path));
       }).catch(() => {});
     };
 
-    loadVideo();
+    void loadVideo();
 
     if (initialPreviewUrl) {
       setLocalFrameUrl(wrapAssetUrl(initialPreviewUrl));
-      return () => { cancelled = true; };
-    }
-
-    getThemePreviewFrame(externalId, slug).then(path => {
-      if (cancelled) return;
-      if (path) {
-        setLocalFrameUrl(wrapAssetUrl(path));
-      } else if (src) {
-        subscribeToCapture(taskKey, (url, videoUrl) => {
-          if (!cancelled) {
+    } else {
+      getThemePreviewFrame(externalId, slug).then(path => {
+        if (cancelled) return;
+        if (path) {
+          setLocalFrameUrl(wrapAssetUrl(path));
+        } else if (src) {
+          subscribeToThemeCapture(taskKey, (url, videoUrl) => {
+            if (cancelled) return;
             setLocalFrameUrl(url);
-            if (videoUrl) {
-              setLocalVideoSrc(videoUrl);
-              // Also cache this video blob for future use
-              fetch(videoUrl)
-                .then(r => r.blob())
-                .then(blob => cacheThemeVideoBlob(`${externalId}::${slug}`, blob))
-                .catch(() => {});
-            }
-          }
-        });
-        enqueueCapture({
-          key: taskKey,
-          externalId,
-          slug,
-          src,
-          retryCount: 0,
-        });
-      }
-    }).catch(() => {});
+            if (!videoUrl) return;
+            setLocalVideoSrc(videoUrl);
+            if (blobCopy.signal.aborted) return;
+            fetch(videoUrl, { signal: blobCopy.signal })
+              .then(r => r.blob())
+              .then(blob => cacheThemeVideoBlob(taskKey, blob))
+              .catch(() => {});
+          });
+          enqueueThemeCapture({ externalId, slug, src });
+        }
+      }).catch(() => {});
+    }
 
     return () => {
       cancelled = true;
-      unsubscribeFromCapture(taskKey);
+      blobCopy.abort();
+      background.removeEventListener('abort', stopBlobCopy);
+      unsubscribeFromThemeCapture(taskKey);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
   }, [externalId, slug, initialPreviewUrl, src, taskKey]);
 
-  const activeVideoSrc = localVideoSrc || src;
+  // Hover warm-up: cache the video so hovering previews it and a click plays
+  // it from disk.
+  useEffect(() => {
+    if (!isHovered || localVideoSrc || !src || trafficSuspended) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      warmThemeVideo({ externalId, slug, src }).then(url => {
+        if (!cancelled && url) setLocalVideoSrc(url);
+      });
+    }, HOVER_WARMUP_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isHovered, localVideoSrc, src, trafficSuspended, externalId, slug]);
+
+  // Unloaded while the overlay is open.
+  const videoSrc = trafficSuspended ? null : localVideoSrc;
+
+  // Releases the element's media resource when its source goes away (or the
+  // card unmounts) instead of waiting for garbage collection.
+  useEffect(() => {
+    const video = videoRef.current;
+    midpointRef.current = 0;
+    if (!video) return;
+    return () => {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    };
+  }, [videoSrc]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !activeVideoSrc) return;
+    if (!video || !videoSrc) return;
 
     if (isHovered) {
       if (midpointRef.current > 0) {
@@ -247,7 +151,7 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
         video.currentTime = midpointRef.current;
       }
     }
-  }, [isHovered, activeVideoSrc]);
+  }, [isHovered, videoSrc]);
 
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
@@ -269,7 +173,7 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
     }
   };
 
-  const showVideo = isHovered && isPlaying;
+  const showVideo = !!videoSrc && !!isHovered && isPlaying;
   const displayImage = localFrameUrl || fallbackUrl;
 
   return (
@@ -285,11 +189,12 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
           }}
         />
       )}
-      {activeVideoSrc && (
+      {videoSrc && (
         <video
+          key={videoSrc}
           ref={videoRef}
           className={`media-theme-preview-video${showVideo ? ' is-playing' : ' is-idle'}`}
-          src={activeVideoSrc}
+          src={videoSrc}
           muted
           playsInline
           preload="auto"

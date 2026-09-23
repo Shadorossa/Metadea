@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import type { MediaCatalogEntry } from '../../../lib/tauri/catalog';
 import {
-  affectedExternalIds, charactersChanged, createInitialPrEditorState, getPrEditorDiff, hasChanges,
+  affectedExternalIds, canRedo, canUndo, charactersChanged, createInitialPrEditorState, getPrEditorDiff, hasChanges,
   originalBundledIds, originalEditableRelationTypes, originalRecommendationIds, prEditorReducer,
   type PrEditorDraft, type PrEditorState,
 } from './pr-editor-state';
+import { UNDO_HISTORY_LIMIT } from '../../../lib/shared/state/undo-history';
 import { buildPrEditorChangeSummary } from './pr-editor-change-summary';
 
 const ID = 'anime:1';
@@ -118,6 +119,68 @@ describe('prEditorReducer', () => {
     // group names are no group.
     expect(dirty({ sagaRelationTypes: { 'anime:8': 'source', 'anime:2': 'main' } })).toBe(false);
     expect(dirty({ sagaGroups: { [ID]: '  ' } })).toBe(false);
+  });
+});
+
+describe('prEditorReducer undo/redo', () => {
+  it('a fresh load has no history', () => {
+    const state = loaded();
+    expect(canUndo(state)).toBe(false);
+    expect(canRedo(state)).toBe(false);
+    expect(prEditorReducer(state, { type: 'undo' })).toBe(state);
+    expect(prEditorReducer(state, { type: 'redo' })).toBe(state);
+  });
+
+  it('undo restores the draft before the last edit and redo re-applies it', () => {
+    const base = loaded();
+    const renamed = prEditorReducer(base, { type: 'edit', patch: { sagaName: 'Renamed' } });
+    const emptied = prEditorReducer(renamed, { type: 'edit', patch: { characters: [] } });
+    expect(canUndo(emptied)).toBe(true);
+
+    const undone = prEditorReducer(emptied, { type: 'undo' });
+    expect(undone.draft).toEqual(renamed.draft);
+    expect(undone.baseline).toBe(base.baseline);
+    expect(canRedo(undone)).toBe(true);
+
+    const undoneTwice = prEditorReducer(undone, { type: 'undo' });
+    expect(undoneTwice.draft).toEqual(base.draft);
+    expect(hasChanges(undoneTwice, CTX)).toBe(false);
+    expect(canUndo(undoneTwice)).toBe(false);
+
+    const redone = prEditorReducer(undoneTwice, { type: 'redo' });
+    expect(redone.draft).toEqual(renamed.draft);
+    expect(prEditorReducer(redone, { type: 'redo' }).draft).toEqual(emptied.draft);
+  });
+
+  it('an edit after undo drops the redo branch; a no-op edit records nothing', () => {
+    const edited = prEditorReducer(loaded(), { type: 'edit', patch: { sagaName: 'A' } });
+    const undone = prEditorReducer(edited, { type: 'undo' });
+    const branched = prEditorReducer(undone, { type: 'edit', patch: { sagaName: 'B' } });
+    expect(canRedo(branched)).toBe(false);
+    expect(prEditorReducer(branched, { type: 'edit', patch: {} })).toBe(branched);
+  });
+
+  it('coalesces keystrokes on the same field within the window into one step', () => {
+    const base = loaded();
+    const entry = base.draft.entry!;
+    let state = prEditorReducer(base, { type: 'edit', patch: { entry: { ...entry, synopsis: 'N' } }, coalesceKey: 'synopsis', at: 1000 });
+    state = prEditorReducer(state, { type: 'edit', patch: { entry: { ...entry, synopsis: 'Ne' } }, coalesceKey: 'synopsis', at: 1100 });
+    state = prEditorReducer(state, { type: 'edit', patch: { entry: { ...entry, synopsis: 'New' } }, coalesceKey: 'synopsis', at: 1200 });
+    expect(state.history.past).toHaveLength(1);
+    // Slow follow-up: a new step.
+    state = prEditorReducer(state, { type: 'edit', patch: { entry: { ...entry, synopsis: 'New!' } }, coalesceKey: 'synopsis', at: 5000 });
+    expect(state.history.past).toHaveLength(2);
+    const undone = prEditorReducer(state, { type: 'undo' });
+    expect(undone.draft.entry?.synopsis).toBe('New');
+    expect(prEditorReducer(undone, { type: 'undo' }).draft.entry?.synopsis).toBe('Old synopsis');
+  });
+
+  it('is bounded and load/reset/resync start a fresh history', () => {
+    let state = loaded();
+    for (let i = 0; i < UNDO_HISTORY_LIMIT + 5; i++) state = prEditorReducer(state, { type: 'edit', patch: { sagaName: `n${i}` } });
+    expect(state.history.past).toHaveLength(UNDO_HISTORY_LIMIT);
+    expect(canUndo(prEditorReducer(state, { type: 'reset' }))).toBe(false);
+    expect(canUndo(prEditorReducer(state, { type: 'load', patch: { bundleChildren: [] } }))).toBe(false);
   });
 });
 

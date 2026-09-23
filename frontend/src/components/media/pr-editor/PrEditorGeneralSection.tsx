@@ -41,6 +41,7 @@ function detectShopLinkPlatform(raw: string): string {
 export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, onChange, onReplaceEntry }: Props) {
   const tm = t.media;
   const pe = t.pr_editor;
+  const tg = pe.general;
 
   const textField = (field: keyof MediaCatalogEntry, label: string) => (
     <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
@@ -92,21 +93,21 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
   };
 
   const primaryCountLabel = ({
-    anime: 'Nº of episodes',
-    series: 'Nº of episodes',
-    movie: 'Nº of episodes',
-    manga: 'Nº of chapters',
-    comic: 'Nº of chapters',
-    lnovel: 'Nº of chapters',
-    book: 'Pages',
-  } as Record<string, string>)[entry.type] ?? 'Total count';
+    anime: tg.episodes_count,
+    series: tg.episodes_count,
+    movie: tg.episodes_count,
+    manga: tg.chapters_count,
+    comic: tg.chapters_count,
+    lnovel: tg.chapters_count,
+    book: tg.pages_count,
+  } as Record<string, string>)[entry.type] ?? tg.total_count;
   const secondaryCountLabel = ({
-    anime: 'Nº of seasons',
-    series: 'Nº of seasons',
-    manga: 'Nº of volumes',
-    lnovel: 'Nº of volumes',
-    comic: 'Nº of volumes',
-  } as Record<string, string>)[entry.type] ?? 'Secondary count';
+    anime: tg.seasons_count,
+    series: tg.seasons_count,
+    manga: tg.volumes_count,
+    lnovel: tg.volumes_count,
+    comic: tg.volumes_count,
+  } as Record<string, string>)[entry.type] ?? tg.secondary_count;
 
   // Options come straight from the i18n formats dictionary (media.formats) —
   // it already carries every format key both AniList (TV/MOVIE/OVA/...) and
@@ -129,8 +130,8 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
     return (
       <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)} inline={inline}>
         <select value={currentType || ''} onChange={e => onChange(field, e.target.value || null)}>
-          <option value="game">{mediaTypesDict.game || 'Videojuego'}</option>
-          <option value="vnovel">{mediaTypesDict.vnovel || 'Novela Visual'}</option>
+          <option value="game">{mediaTypesDict.game}</option>
+          <option value="vnovel">{mediaTypesDict.vnovel}</option>
         </select>
       </Field>
     );
@@ -167,18 +168,18 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
       <div className="pr-editor-col pr-editor-col--left">
         <div className="pr-editor-section">
           <div className="pr-editor-labeled-row">
-            <span className="pr-editor-vertical-label">Titles</span>
+            <span className="pr-editor-vertical-label">{tg.titles}</span>
             <div className="pr-editor-labeled-content">
               <div className="pr-editor-form-grid">
-                {textField('title_main', 'Main Title')}
-                {textField('title_romaji', 'Romaji Title')}
-                {textField('title_native', 'Native Title')}
+                {textField('title_main', tg.main_title)}
+                {textField('title_romaji', tg.romaji_title)}
+                {textField('title_native', tg.native_title)}
               </div>
             </div>
           </div>
           <div className="pr-editor-labeled-row">
             <span className="pr-editor-vertical-label">
-              Synopsis
+              {tg.synopsis}
               <ChangedDot show={isFieldChanged('synopsis')} className="pr-editor-section-changed-dot" />
             </span>
             <div className="pr-editor-labeled-content">
@@ -196,18 +197,18 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
         <div className="pr-editor-section pr-editor-section--release-progress">
           <div className="pr-editor-field-row pr-editor-field-row--release-progress">
             <div className="pr-editor-subgroup pr-editor-subgroup--vertical-label">
-              <span className="pr-editor-vertical-label">Release</span>
+              <span className="pr-editor-vertical-label">{tg.release}</span>
               <div className="pr-editor-subgroup-fields">
-                {releaseDateField('release_year', 'Year')}
-                {releaseDateField('release_month', 'Month')}
-                {releaseDateField('release_day', 'Day')}
+                {releaseDateField('release_year', tg.year)}
+                {releaseDateField('release_month', tg.month)}
+                {releaseDateField('release_day', tg.day)}
               </div>
             </div>
 
             <div className="pr-editor-subgroup-divider" />
 
             <div className="pr-editor-subgroup pr-editor-subgroup--vertical-label">
-              <span className="pr-editor-vertical-label">Progress</span>
+              <span className="pr-editor-vertical-label">{tg.progress}</span>
               <div className="pr-editor-subgroup-fields">
                 {numberField('total_count', primaryCountLabel, entry.type === 'movie')}
                 {numberField('total_count_2', secondaryCountLabel)}
@@ -218,7 +219,7 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
 
         <div className="pr-editor-section pr-editor-section--shop-links">
           <div className="pr-editor-labeled-row pr-editor-shop-links-row">
-            <span className="pr-editor-vertical-label">Shop Links</span>
+            <span className="pr-editor-vertical-label">{tg.shop_links}</span>
             <div className="pr-editor-shop-links-content">
               {/* One slot per "platform|url" pair (steam|https://...,
                   gog|https://...) - the exact format
@@ -228,7 +229,7 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
                   /media on, see that hook's own comment) can get them
                   added here manually instead of only ever being backfilled
                   by a live IGDB fetch. */}
-              {slotField('shop_links_csv', 'platform|url pairs', { fullWidth: true, transformNewItem: detectShopLinkPlatform })}
+              {slotField('shop_links_csv', tg.shop_links_ph, { fullWidth: true, transformNewItem: detectShopLinkPlatform })}
             </div>
           </div>
         </div>
@@ -239,7 +240,7 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
           <div className="pr-editor-assets-box">
             <div className="pr-editor-labeled-row pr-editor-asset-row">
               <span className="pr-editor-vertical-label">
-                Cover URL
+                {tg.cover_url}
                 <ChangedDot show={isFieldChanged('cover_url')} />
               </span>
               <div className={`pr-editor-cover-section${isLocalOnly('cover_url') ? ' pr-editor-field--dim' : ''}`}>
@@ -262,9 +263,9 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
             </div>
 
             <div className="pr-editor-labeled-row pr-editor-asset-row">
-              <span className="pr-editor-vertical-label">Banner URLs</span>
+              <span className="pr-editor-vertical-label">{tg.banner_urls}</span>
               <div className="pr-editor-banner-section">
-                {slotField('banners_csv', 'Banner URLs', { preview: true, fullWidth: true, dotClass: 'pr-editor-changed-dot--banner' })}
+                {slotField('banners_csv', tg.banner_urls, { preview: true, fullWidth: true, dotClass: 'pr-editor-changed-dot--banner' })}
               </div>
             </div>
           </div>
@@ -272,14 +273,14 @@ export function PrEditorGeneralSection({ t, entry, isFieldChanged, isLocalOnly, 
 
         <div className="pr-editor-section pr-editor-section--classification">
           <div className="pr-editor-labeled-row">
-            <span className="pr-editor-vertical-label">Classification</span>
+            <span className="pr-editor-vertical-label">{tg.classification}</span>
             <div className="pr-editor-labeled-content">
               <div className="pr-editor-classification-grid">
-                {typeField('type', 'Type', true)}
-                {formatField('format', 'Format', true)}
-                {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
-                {slotField('genres_tag_csv', 'Themes / Tags')}
-                {entry.type === 'game' && slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}
+                {typeField('type', tg.type, true)}
+                {formatField('format', tg.format, true)}
+                {slotField('genres_csv', tg.genres, { allowed: ALL_GENRES, restrict: true })}
+                {slotField('genres_tag_csv', tg.themes_tags)}
+                {entry.type === 'game' && slotField('platforms_csv', tg.platforms, { allowed: ALL_PLATFORMS, restrict: true })}
               </div>
             </div>
           </div>

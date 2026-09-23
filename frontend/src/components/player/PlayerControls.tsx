@@ -6,6 +6,7 @@ import type { Translations } from '../../i18n/index';
 import { SEEK_BUTTON_STEP_SECONDS } from '../../lib/player/keymap';
 import { formatClockPair, formatSignedSeconds, formatSpeed } from '../../lib/player/format-time';
 import type { PlayerStatus, PlayerTrack } from '../../lib/player/player-status';
+import type { SkipSegment } from '../../lib/player/skip-segments';
 import {
   playerNext, playerPrev, playerScreenshot, playerSeek, playerSetMute, playerSetTrack, playerSetVolume, playerTogglePause,
 } from '../../lib/tauri/player';
@@ -17,6 +18,8 @@ export type PlayerMenuKind = 'audio' | 'sub' | 'speed';
 
 interface Props {
   status: PlayerStatus;
+  // Opening/ending intervals drawn on the seek bar (usePlayerSkipSegments).
+  segments?: SkipSegment[];
   t: Translations['player'];
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
@@ -55,7 +58,9 @@ function trackItems(status: PlayerStatus, kind: 'audio' | 'sub', t: Translations
   return items;
 }
 
-export function PlayerControls({ status, t, isFullscreen, onToggleFullscreen, menu, onMenuChange, queueOpen, onToggleQueue }: Props) {
+export function PlayerControls({
+  status, segments = [], t, isFullscreen, onToggleFullscreen, menu, onMenuChange, queueOpen, onToggleQueue,
+}: Props) {
   const playing = status.state === 'playing';
   const hasPrev = status.playlist_index > 0;
   const hasNext = status.playlist_index >= 0 && status.playlist_index < status.playlist_len - 1;
@@ -72,7 +77,7 @@ export function PlayerControls({ status, t, isFullscreen, onToggleFullscreen, me
 
   return (
     <div className="player-controls">
-      <PlayerSeekBar positionSecs={status.position_secs} durationSecs={status.duration_secs} seekLabel={t.seek_to} />
+      <PlayerSeekBar positionSecs={status.position_secs} durationSecs={status.duration_secs} seekLabel={t.seek_to} segments={segments} />
       <div className="player-controls__row">
         <button type="button" className="player-icon-btn" onClick={() => swallow(playerPrev())} disabled={!hasPrev} aria-label={t.prev_episode} title={t.prev_episode}>
           <SkipBack size={18} />

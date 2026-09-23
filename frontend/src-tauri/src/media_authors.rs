@@ -156,6 +156,13 @@ pub async fn get_media_authors(
     media_external_id: String,
 ) -> Result<Vec<DbMediaAuthor>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_media_authors(&conn, &media_external_id)
+}
+
+pub(crate) fn load_media_authors(
+    conn: &rusqlite::Connection,
+    media_external_id: &str,
+) -> Result<Vec<DbMediaAuthor>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT ma.external_id, ma.name, ma.author_image_url, ma.author_url, mba.role
@@ -166,7 +173,7 @@ pub async fn get_media_authors(
         .str_err()?;
 
     let rows = stmt
-        .query_map([&media_external_id], |row| {
+        .query_map([media_external_id], |row| {
             Ok(DbMediaAuthor {
                 external_id: row.get(0)?,
                 name: row.get(1)?,

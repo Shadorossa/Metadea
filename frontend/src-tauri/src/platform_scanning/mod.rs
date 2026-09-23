@@ -11,9 +11,13 @@ mod emulator_roms;
 mod epic;
 mod gog;
 mod local_folders;
+pub mod rom_header;
+pub mod rom_library;
+mod scan_cache;
 mod steam_library;
 mod xbox;
 
 pub use commands::*;
 pub use common::*;
+pub use rom_library::*;
 pub use steam_library::*;

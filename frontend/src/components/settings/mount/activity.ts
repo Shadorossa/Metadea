@@ -104,15 +104,15 @@ function initClearAllRatings(showToast: (msg?: string) => void) {
   modal.querySelector('.settings-help-modal-overlay')?.addEventListener('click', closeModal);
 
   confirmBtn.addEventListener('click', async () => {
-    if (confirmBtn!.disabled) return;
-    confirmBtn!.disabled = true;
+    if (confirmBtn.disabled) return;
+    confirmBtn.disabled = true;
     try {
       await clearAllRatings();
       closeModal();
       showToast(getT().settings.clear_notes_done);
     } catch (err) {
       console.error('Failed to clear all ratings:', err);
-      confirmBtn!.disabled = false;
+      confirmBtn.disabled = false;
     }
   });
 }

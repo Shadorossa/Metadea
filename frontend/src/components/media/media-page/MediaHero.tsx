@@ -2,7 +2,8 @@ import type { RefObject } from 'react';
 import type { Translations } from '../../../i18n/index';
 import type { MediaPageData } from '../../../lib/media/types';
 import { CONTAINS_RELATION_TYPES } from '../../../lib/media/saga/saga-relation-types';
-import { IconPlus, IconCheck, IconLayers, IconHeart, IconRefresh } from '../../local/ui/icons';
+import { IconPlus, IconCheck, IconLayers, IconHeart, IconRefresh, IconLink } from '../../local/ui/icons';
+import { getT } from '../../../i18n/runtime';
 import { StarRating, StatusDropdown } from './MediaPageControls';
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
   eventAggregateRating: number;
   onProposeChanges: () => void;
   onRetrySync: () => void;
+  onCopyLink: () => void;
   onOpenSaga: () => void;
   onCoverClick: () => void;
   onToggleFavorite: () => void;
@@ -42,6 +44,7 @@ export function MediaHero({
   eventAggregateRating,
   onProposeChanges,
   onRetrySync,
+  onCopyLink: handleCopyLink,
   onOpenSaga,
   onCoverClick: handleCoverClick,
   onToggleFavorite: handleToggleFavorite,
@@ -66,6 +69,9 @@ export function MediaHero({
   // relation itself is the only reliable signal.
   const isBundle = data.relations.filter(r => !!r.relationType && CONTAINS_RELATION_TYPES.includes(r.relationType)).length >= 2;
   const isUneditable = isBlockedEdition || isBundle;
+  // "Copy link" lives in MediaPage (handleCopyLink) so the `l` shortcut and
+  // this button share one handler.
+  const deepLinkText = getT().deep_link;
   const bannerStyle = !data.bannerImage
     ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
     : undefined;
@@ -104,6 +110,16 @@ export function MediaHero({
               title={tm.retry_sync}
             >
               <IconRefresh />
+            </button>
+          )}
+          {!previewMode && (
+            <button
+              type="button"
+              className="media-banner-pr-btn"
+              onClick={handleCopyLink}
+              title={deepLinkText.copy_link}
+            >
+              <IconLink />
             </button>
           )}
         </div>

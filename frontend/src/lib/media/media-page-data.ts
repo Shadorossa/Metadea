@@ -34,6 +34,7 @@ export type { ComicIssuesResult } from './editions/comic-issues';
 
 export { fetchMediaDataInternal } from './media-page-fetch';
 export { fetchMediaData, fetchMediaDataWithFallback } from './media-page-load';
+export type { MediaPageDataSource } from './media-page-load';
 export { prefetchMediaData } from './media-page-local-data';
 export { fetchExtraRelations, fetchExtraCharacters } from './media-page-enrich';
 export { buildPreviewMediaPageData } from './media-page-preview';

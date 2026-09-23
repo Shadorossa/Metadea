@@ -1,0 +1,24 @@
+---
+// First-paint placeholder for CurrentlySection (client:only): the same
+// markup/classes as the real groups (label icon included), so each skeleton
+// group is exactly as tall as a real one. home.astro's pre-paint script
+// shows as many groups as the layout hint says the last visit had (none
+// without a hint).
+import { typeIconMap } from "../../../lib/dom/icon-strings";
+
+const MAX_GROUPS = 8;
+const PER_GROUP = 5;
+const ICON = typeIconMap(14).anime;
+---
+<div class="home-currently-groups home-currently-skeleton" aria-hidden="true">
+  {Array.from({ length: MAX_GROUPS }, () => (
+    <div class="home-currently-group">
+      <div class="home-currently-group-label"><span set:html={ICON} /><span>&nbsp;</span></div>
+      <div class="home-currently-row">
+        {Array.from({ length: PER_GROUP }, () => (
+          <div class="home-currently-item"><div class="home-currently-cover home-currently-cover--empty"></div></div>
+        ))}
+      </div>
+    </div>
+  ))}
+</div>

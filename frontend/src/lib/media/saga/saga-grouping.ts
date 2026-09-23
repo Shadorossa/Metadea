@@ -91,9 +91,15 @@ export function topoSortByPrecedes(
 ): string[] {
   if (precedes.size === 0) return ids;
 
+  // Edges whose either end is not in `ids` (a member removed from the saga,
+  // a blocked entry) are ignored rather than discarding the whole order.
+  const idSet = new Set(ids);
   const inDegree = new Map(ids.map(id => [id, 0]));
-  for (const targets of precedes.values()) {
-    for (const t of targets) inDegree.set(t, (inDegree.get(t) ?? 0) + 1);
+  for (const [source, targets] of precedes) {
+    if (!idSet.has(source)) continue;
+    for (const t of targets) {
+      if (idSet.has(t)) inDegree.set(t, (inDegree.get(t) ?? 0) + 1);
+    }
   }
 
   const ready = ids.filter(id => inDegree.get(id) === 0);
@@ -103,6 +109,7 @@ export function topoSortByPrecedes(
     const id = ready.shift()!;
     result.push(id);
     for (const next of precedes.get(id) ?? []) {
+      if (!idSet.has(next)) continue;
       const remaining = (inDegree.get(next) ?? 0) - 1;
       inDegree.set(next, remaining);
       if (remaining === 0) ready.push(next);

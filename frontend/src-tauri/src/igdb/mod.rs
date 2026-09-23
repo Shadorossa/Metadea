@@ -4,6 +4,7 @@
 // lib.rs's `generate_handler![igdb::…]` expands to.
 
 mod auth;
+mod batch;
 mod cache;
 mod client;
 mod detail;
@@ -11,6 +12,7 @@ mod images;
 mod mapping;
 mod search;
 
+pub use batch::*;
 pub use cache::*;
 pub(crate) use client::*;
 pub use detail::*;

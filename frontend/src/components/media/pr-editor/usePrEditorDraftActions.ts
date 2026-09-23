@@ -1,14 +1,15 @@
 // Every list-editing handler PrEditorModal's tabs need (add/remove/reorder
 // on each relation list, the saga chain, the cast), built over the modal's
 // own `edit` dispatch. State stays in the modal's reducer; this only turns
-// UI events into draft patches, plus the drag-reorder hooks each list owns.
+// UI events into draft patches, plus the `sortable` actions each list hands
+// to the shared SortableList (mouse and keyboard reordering).
 import type { SearchResult as ApiSearchResult } from '../../../lib/search';
 import type { DbMediaCharacter } from '../../../lib/tauri/characters';
 import type { MediaMeta } from '../../../lib/media/saga/saga-grouping';
 import type { Translations } from '../../../i18n/index';
 import { CANONICAL_RELATION_LABELS } from '../../../lib/media/saga/canonical-relations';
-import { useDragReorder } from '../hooks/useDragReorder';
-import { moveItem, useListReorder } from '../hooks/useListReorder';
+import { moveItem } from '../../../lib/shared/collections/move-item';
+import type { SortableListActions } from '../../shared/SortableList';
 import type { PrEditorDraft, PrEditorDraftPatch } from './pr-editor-state';
 import { canGroupSagaItems, findDuplicateSagaTitleId, groupSagaItems, ungroupSagaItems } from './pr-editor-saga-actions';
 
@@ -29,6 +30,16 @@ const appendRelationPatch = (key: RelationListKey, result: ApiSearchResult): PrE
 const removeRelationPatch = (key: RelationListKey, id: string): PrEditorDraftPatch => draft =>
   ({ [key]: draft[key].filter(r => r.external_id !== id) });
 
+// Reorder-only actions for a list whose only reorder path is the drag itself.
+// Lists that also reorder from elsewhere (the saga chain, whose grouping drop
+// reorders as part of a larger update) build their own actions.
+type ReorderableListKey = RelationListKey | 'editableRelations' | 'sagaOrder';
+
+const reorderListPatch = (key: ReorderableListKey, fromIndex: number, toIndex: number): PrEditorDraftPatch => draft => {
+  const next = moveItem<unknown>(draft[key], fromIndex, toIndex);
+  return next ? { [key]: next } : {};
+};
+
 interface Params {
   pe: Translations['pr_editor'];
   externalId: string;
@@ -39,7 +50,7 @@ interface Params {
 }
 
 export function usePrEditorDraftActions({ pe, externalId, draft, edit, sagaMeta, setSagaMeta }: Params) {
-  const { sagaOrder, bundledRelations, containedRelations, bundleChildren, editableRelations, recommendations, issueRelations, characters } = draft;
+  const { sagaOrder, editableRelations, recommendations, characters } = draft;
   const sagaCtx = { externalId, sagaMeta };
   // Also what the Relations dropdown itself displays (not just what gets
   // persisted) — a curator's own UI language shouldn't decide what a PR
@@ -50,23 +61,21 @@ export function usePrEditorDraftActions({ pe, externalId, draft, edit, sagaMeta,
 
   // ── Saga ───────────────────────────────────────────────────────────────────
 
-  const reorderSaga = (fromIndex: number, toIndex: number) => {
-    const next = moveItem(sagaOrder, fromIndex, toIndex);
-    if (next) edit({ sagaOrder: next });
-  };
-  const sagaDrag = useDragReorder(reorderSaga, {
-    onDwellDrop: (fromIndex, toIndex) => {
+  const sortableFor = (key: ReorderableListKey): SortableListActions => ({
+    onReorder: (fromIndex, toIndex) => edit(reorderListPatch(key, fromIndex, toIndex)),
+  });
+  const sagaSortable: SortableListActions = {
+    onReorder: (fromIndex, toIndex) => edit(reorderListPatch('sagaOrder', fromIndex, toIndex)),
+    // Dropping after dwelling on (or pressing G over) another work groups the
+    // two as alternate versions instead of reordering.
+    onGroup: (fromIndex, toIndex) => {
       const grouped = groupSagaItems(draft, sagaCtx, fromIndex, toIndex);
       if (grouped) edit(grouped);
     },
-    canDwellOver: (fromIndex, toIndex) => canGroupSagaItems(draft, sagaCtx, fromIndex, toIndex),
-    dwellMs: 1000,
-  });
+    canGroup: (fromIndex, toIndex) => canGroupSagaItems(draft, sagaCtx, fromIndex, toIndex),
+  };
   const saga = {
-    draggedIndex: sagaDrag.draggedIndex,
-    dragHandlers: sagaDrag.dragHandlers,
-    groupTargetIndex: sagaDrag.dwellTargetIndex,
-    groupDropReady: sagaDrag.dwellReady,
+    sortable: sagaSortable,
     add: (result: ApiSearchResult) => {
       if (sagaOrder.includes(result.externalId)) return;
 
@@ -94,9 +103,8 @@ export function usePrEditorDraftActions({ pe, externalId, draft, edit, sagaMeta,
 
   // ── Editable relations (ADAPTATION, SPIN_OFF, ...) ─────────────────────────
 
-  const editableDrag = useListReorder(editableRelations, next => edit({ editableRelations: next }));
   const editable = {
-    ...editableDrag,
+    sortable: sortableFor('editableRelations'),
     add: (result: ApiSearchResult) => {
       if (!editableRelations.some(r => r.related_media_external_id === result.externalId)
         && !recommendations.some(r => r.external_id === result.externalId)) {
@@ -125,10 +133,10 @@ export function usePrEditorDraftActions({ pe, externalId, draft, edit, sagaMeta,
   const addTo = (key: RelationListKey) => (result: ApiSearchResult) => edit(appendRelationPatch(key, result));
   const removeFrom = (key: RelationListKey) => (id: string) => edit(removeRelationPatch(key, id));
 
-  const bundled = { ...useListReorder(bundledRelations, next => edit({ bundledRelations: next })), add: addTo('bundledRelations'), remove: removeFrom('bundledRelations') };
-  const contained = { ...useListReorder(containedRelations, next => edit({ containedRelations: next })), add: addTo('containedRelations'), remove: removeFrom('containedRelations') };
+  const bundled = { sortable: sortableFor('bundledRelations'), add: addTo('bundledRelations'), remove: removeFrom('bundledRelations') };
+  const contained = { sortable: sortableFor('containedRelations'), add: addTo('containedRelations'), remove: removeFrom('containedRelations') };
   const bundleChild = {
-    ...useListReorder(bundleChildren, next => edit({ bundleChildren: next })),
+    sortable: sortableFor('bundleChildren'),
     add: (result: ApiSearchResult) => {
       if (result.externalId === externalId) return; // already implied by the Bundled In relation itself
       addTo('bundleChildren')(result);
@@ -136,7 +144,7 @@ export function usePrEditorDraftActions({ pe, externalId, draft, edit, sagaMeta,
     remove: removeFrom('bundleChildren'),
   };
   const recommendation = {
-    ...useListReorder(recommendations, next => edit({ recommendations: next })),
+    sortable: sortableFor('recommendations'),
     add: (result: ApiSearchResult) => {
       // A title already related in some other way shouldn't also show up as a
       // recommendation for the same entry.
@@ -145,7 +153,7 @@ export function usePrEditorDraftActions({ pe, externalId, draft, edit, sagaMeta,
     },
     remove: removeFrom('recommendations'),
   };
-  const issue = { ...useListReorder(issueRelations, next => edit({ issueRelations: next })), remove: removeFrom('issueRelations') };
+  const issue = { sortable: sortableFor('issueRelations'), remove: removeFrom('issueRelations') };
 
   // ── Cast ───────────────────────────────────────────────────────────────────
 

@@ -7,10 +7,11 @@ import type { LocalGame, SteamOwnedGame } from '../tauri';
  *   - Adds playtime_minutes + last_played to installed Steam games
  *   - Appends uninstalled Steam games (installed = false)
  * Without API key: plain local scan.
+ * `force` re-walks every launcher on the Rust side (see scanAllGames).
  */
-export async function scanGamesWithSteam(): Promise<LocalGame[]> {
+export async function scanGamesWithSteam(force = false): Promise<LocalGame[]> {
   const [localGames, cfg] = await Promise.all([
-    scanAllGames(),
+    scanAllGames(force),
     readEnvConfig().catch((): EnvConfig => ({})),
   ]);
 
@@ -31,6 +32,7 @@ export async function scanGamesWithSteam(): Promise<LocalGame[]> {
   const isHidden = (g: LocalGame) => hiddenKeys.has(`${g.launcher}:${g.app_id ?? g.install_path ?? g.name}`);
 
   const steamGames: SteamOwnedGame[] = steamData.games;
+  const steamByAppId = new Map(steamGames.map(s => [String(s.appid), s]));
 
   // Build lookup by app_id for installed Steam games
   const installedIds = new Set(
@@ -42,7 +44,7 @@ export async function scanGamesWithSteam(): Promise<LocalGame[]> {
   // Enrich installed games with playtime
   const enriched = localGames.map(game => {
     if (game.launcher !== 'steam' || !game.app_id) return game;
-    const steamEntry = steamGames.find(s => String(s.appid) === game.app_id);
+    const steamEntry = steamByAppId.get(game.app_id);
     if (!steamEntry) return game;
     return {
       ...game,

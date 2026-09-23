@@ -9,7 +9,7 @@ const lang = getLang(Astro.url);
 const translations = useTranslations(lang);
 ---
 
-<BaseLayout title={`${translations.character.page_title} — Metadea`} lang={lang} activePage="search">
+<BaseLayout title={`${translations.character.page_title} — Metadea`} titleKey="character.page_title" lang={lang} activePage="search">
   <div class="media-page">
     <CharacterPage client:load i18n={{ character: translations.character }} />
   </div>

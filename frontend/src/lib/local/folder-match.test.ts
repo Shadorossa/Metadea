@@ -349,11 +349,24 @@ describe('extractEpisodeInfo', () => {
     expect(extractEpisodeInfo('Title #0.8.mkv')).toEqual({ season: null, episode: 0.8, episodeTitle: 'Title' });
   });
 
-  // Suspected bug: the E marker matches the trailing "e" of the word before
-  // the number, so the show title loses its last letter.
-  it('reads a trailing e + number as an episode marker, truncating the title', () => {
-    expect(extractEpisodeInfo('Title 03.mkv')).toEqual({ season: null, episode: 3, episodeTitle: 'Tit' });
-    expect(extractEpisodeInfo('One Piece 1015.mkv')).toEqual({ season: null, episode: 1015, episodeTitle: 'One Pie' });
+  it('never treats the trailing "e" of a title word as an episode marker', () => {
+    expect(extractEpisodeInfo('Title 03.mkv')).toEqual({ season: null, episode: 3, episodeTitle: 'Title' });
+    expect(extractEpisodeInfo('One Piece 1015.mkv')).toEqual({ season: null, episode: 1015, episodeTitle: 'One Piece' });
+  });
+
+  it('never treats a title ending in ch/cap/sp/ova as an episode marker', () => {
+    expect(extractEpisodeInfo('Bleach 3.mkv')).toEqual({ season: null, episode: 3, episodeTitle: 'Bleach' });
+    expect(extractEpisodeInfo('Handicap 2.mkv')).toEqual({ season: null, episode: 2, episodeTitle: 'Handicap' });
+    expect(extractEpisodeInfo('Wasp 4.mkv')).toEqual({ season: null, episode: 4, episodeTitle: 'Wasp' });
+    expect(extractEpisodeInfo('Nova 5.mkv')).toEqual({ season: null, episode: 5, episodeTitle: 'Nova' });
+    expect(extractEpisodeInfo('Bleach ch03.mkv')).toEqual({ season: null, episode: 3, episodeTitle: 'Bleach' });
+  });
+
+  it('still reads the E marker as a standalone token', () => {
+    expect(extractEpisodeInfo('Title E01.mkv')).toEqual({ season: null, episode: 1, episodeTitle: 'Title' });
+    expect(extractEpisodeInfo('Title - E1.mkv')).toEqual({ season: null, episode: 1, episodeTitle: 'Title' });
+    expect(extractEpisodeInfo('Title.E07.mkv')).toEqual({ season: null, episode: 7, episodeTitle: 'Title' });
+    expect(extractEpisodeInfo('E12.mkv')).toEqual({ season: null, episode: 12, episodeTitle: null });
   });
 
   it('never reads digits glued to letters as an episode', () => {

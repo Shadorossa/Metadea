@@ -18,7 +18,7 @@ const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
 ---
 
-<BaseLayout title={`${t.nav.dropdown_profile} — Metadea`} lang={lang} activePage="profile">
+<BaseLayout title={`${t.nav.dropdown_profile} — Metadea`} titleKey="nav.dropdown_profile" lang={lang} activePage="profile">
   <main class="profile-page">
 
     <div class="profile-banner">

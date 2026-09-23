@@ -56,11 +56,8 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
     return () => { cancelled = true; };
   }, [overrideJourney]);
 
-  const [visible, setVisible] = useState<boolean>(Boolean(overrideJourney));
-  useEffect(() => {
-    if (journey === null) return;
-    setVisible(true);
-  }, [journey]);
+  // Shown once the journey has loaded (immediately when one is supplied).
+  const visible = journey !== null;
 
   useEffect(() => {
     if (!menu) return;

@@ -9,7 +9,43 @@ use crate::igdb::{
 
 type IgdbGameMatch = (String, Option<u64>, serde_json::Value);
 
-fn normalize_name(s: &str) -> String {
+// IGDB platform ids for an emulator_configs platform_id — restricts the
+// name search for an emulated ROM to the console it was scanned under, so
+// "Fire Emblem" from the Wii folder can't resolve to the GBA game.
+pub fn igdb_platform_ids(rom_platform: &str) -> &'static [u64] {
+    match rom_platform {
+        "gamecube" => &[21],
+        "wii" => &[5],
+        "ds" => &[20],
+        "3ds" => &[37, 137],
+        "wiiu" => &[41],
+        "switch" => &[130],
+        "ps1" => &[7],
+        "ps2" => &[8],
+        "psp" => &[38],
+        "ps3" => &[9],
+        "psvita" => &[46],
+        "ps4" => &[48],
+        "ps5" => &[167],
+        "xbox" => &[11],
+        "xbox360" => &[12],
+        "xboxone" => &[49],
+        "xboxseriesx" => &[169],
+        _ => &[],
+    }
+}
+
+// " & platforms = (130)" for the where clause, or "" when unrestricted.
+pub fn igdb_platform_clause(rom_platform: Option<&str>) -> String {
+    let ids = rom_platform.map(igdb_platform_ids).unwrap_or(&[]);
+    if ids.is_empty() {
+        return String::new();
+    }
+    let list = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(",");
+    format!(" & platforms = ({list})")
+}
+
+pub(crate) fn normalize_name(s: &str) -> String {
     s.chars()
         .map(|c| match c {
             '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ', // ™ ® ©
@@ -67,7 +103,7 @@ fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
 }
 
 // Release year from Steam's store API; None on error or unparseable date.
-async fn steam_release_year(client: &reqwest::Client, app_id: &str) -> Option<i32> {
+pub(crate) async fn steam_release_year(client: &reqwest::Client, app_id: &str) -> Option<i32> {
     let url = format!(
         "https://store.steampowered.com/api/appdetails?appids={}&filters=basic",
         app_id
@@ -159,7 +195,7 @@ async fn try_steam_id_match(
 
 // Stage 2: an exact normalized-name match among fuzzy results beats raw
 // search relevance; Steam's release year breaks ties between duplicates.
-fn try_normalized_match(arr: &[serde_json::Value], name_norm: &str, steam_year: Option<i32>) -> Option<IgdbGameMatch> {
+pub(crate) fn try_normalized_match(arr: &[serde_json::Value], name_norm: &str, steam_year: Option<i32>) -> Option<IgdbGameMatch> {
     let norm_matches: Vec<_> = arr
         .iter()
         .filter(|r| !is_non_game(r))
@@ -185,7 +221,7 @@ fn try_normalized_match(arr: &[serde_json::Value], name_norm: &str, steam_year: 
 
 // Stage 3, last resort: fuzzy string similarity, with a Steam-year bonus,
 // only accepted above a minimum confidence threshold.
-fn try_similarity_match(arr: &[serde_json::Value], name_norm: &str, steam_year: Option<i32>) -> Option<IgdbGameMatch> {
+pub(crate) fn try_similarity_match(arr: &[serde_json::Value], name_norm: &str, steam_year: Option<i32>) -> Option<IgdbGameMatch> {
     let best = arr
         .iter()
         .filter_map(|r| {
@@ -226,6 +262,9 @@ pub(crate) async fn resolve_igdb_game(
     // coincidentally hit an unrelated real Steam app and pull its release
     // year or even IGDB match instead of actually resolving by name.
     launcher: &str,
+    // The emulator platform of a scanned ROM (see igdb_platform_ids); None
+    // for a Steam/Epic/GOG/... install.
+    rom_platform: Option<&str>,
 ) -> Result<IgdbGameMatch, String> {
     // "NieR:Automata™" → "NieR Automata", "STEINS;GATE" → "STEINS GATE"
     let search_query = game_name
@@ -256,13 +295,14 @@ pub(crate) async fn resolve_igdb_game(
     }
 
     // Fallback: fuzzy search with cleaned query
+    let platform_clause = igdb_platform_clause(rom_platform);
     let fuzzy = igdb_query(
         client,
         client_id,
         token,
         IGDB_API_GAMES,
         &format!(
-            "fields {IGDB_GAME_FIELDS}; search \"{search_query}\"; where cover != null; limit 10;"
+            "fields {IGDB_GAME_FIELDS}; search \"{search_query}\"; where cover != null{platform_clause}; limit 10;"
         ),
     )
     .await?;

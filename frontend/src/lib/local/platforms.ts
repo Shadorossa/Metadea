@@ -1,4 +1,3 @@
-import { API_ENDPOINTS } from '../api/endpoints';
 import type { Translations } from '../../i18n/index';
 
 export type PlatformId = 'steam' | 'epic' | 'gog' | 'xbox' | 'ea' | 'nintendo' | 'playstation' | 'local';
@@ -33,16 +32,17 @@ export const PLATFORM_LABEL: Record<PlatformId, string> = {
   local:       'Local',
 };
 
-export const CATEGORIES: Array<{ id: CategoryId; label: string }> = [
-  { id: 'videojuegos',  label: 'Videojuegos' },
-  { id: 'visual-novel', label: 'Novela visual' },
-  { id: 'anime',        label: 'Anime' },
-  { id: 'manga',        label: 'Manga' },
-  { id: 'light-novel',  label: 'Novela Ligera' },
-  { id: 'books',        label: 'Libros' },
-  { id: 'comics',       label: 'Comics' },
-  { id: 'series',       label: 'Series' },
-  { id: 'movies',       label: 'Películas' },
+// Display names come from i18n (search.types via LOCAL_CATEGORY_TO_SEARCH_TYPE).
+export const CATEGORIES: Array<{ id: CategoryId }> = [
+  { id: 'videojuegos' },
+  { id: 'visual-novel' },
+  { id: 'anime' },
+  { id: 'manga' },
+  { id: 'light-novel' },
+  { id: 'books' },
+  { id: 'comics' },
+  { id: 'series' },
+  { id: 'movies' },
 ];
 
 export const LAUNCHER_ORDER: PlatformId[] = ['steam', 'epic', 'gog', 'xbox', 'ea', 'nintendo', 'playstation', 'local'];

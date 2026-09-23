@@ -93,6 +93,7 @@ export function buildCharacterStatRows(
   if (character.bloodType) {
     pushStat(t.stat_blood_type, parseStatItems(character.bloodType));
     addedLabels.add('bloodtype');
+    addedLabels.add('blood type'); // AniList biographies spell it with a space
     addedLabels.add('grupo sanguíneo');
   }
   if (character.dateOfBirth && (character.dateOfBirth.day || character.dateOfBirth.month)) {

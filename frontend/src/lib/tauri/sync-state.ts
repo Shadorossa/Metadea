@@ -1,4 +1,5 @@
 import { tauriCmd, tauriRun } from './bridge';
+import { notifyMediaPartChanged } from './change-events';
 
 // Single source of truth for staleness/resync bookkeeping across every
 // entity — media_catalog included as of db.rs migration 32. media-status.ts's
@@ -20,11 +21,13 @@ export async function getSyncStates(externalIds: string[]): Promise<SyncStateEnt
 }
 
 export async function markSynced(externalId: string): Promise<void> {
-  return tauriRun('mark_synced', { externalId });
+  await tauriRun('mark_synced', { externalId });
+  notifyMediaPartChanged('sync_state');
 }
 
 export async function markSyncFailed(externalId: string, error: string): Promise<void> {
-  return tauriRun('mark_sync_failed', { externalId, error });
+  await tauriRun('mark_sync_failed', { externalId, error });
+  notifyMediaPartChanged('sync_state');
 }
 
 // Direct write of all 3 fields — used where the caller needs finer control
@@ -37,5 +40,6 @@ export async function setSyncState(
   syncFailedCount: number | null,
   lastSyncError: string | null,
 ): Promise<void> {
-  return tauriRun('set_sync_state', { externalId, lastSyncedAt, syncFailedCount, lastSyncError });
+  await tauriRun('set_sync_state', { externalId, lastSyncedAt, syncFailedCount, lastSyncError });
+  notifyMediaPartChanged('sync_state');
 }

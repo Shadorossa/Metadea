@@ -1,16 +1,26 @@
-import { getT } from '../../i18n/runtime';
+import { getLangCode, getT } from '../../i18n/runtime';
 
+// `locale` feeds Intl.DisplayNames so the tooltip names the language in the
+// UI's own language; `name` is the value stored on the actor record.
 const VA_LANGUAGES = [
-  { code: 'JP', label: 'Japonés', name: 'Japanese' },
-  { code: 'ES', label: 'Español', name: 'Spanish' },
-  { code: 'EN', label: 'Inglés', name: 'English' },
-  { code: 'IT', label: 'Italiano', name: 'Italian' },
-  { code: 'DE', label: 'Alemán', name: 'German' },
-  { code: 'FR', label: 'Francés', name: 'French' },
-  { code: 'PT', label: 'Portugués', name: 'Portuguese' },
-  { code: 'KR', label: 'Coreano', name: 'Korean' },
-  { code: 'ZH', label: 'Chino', name: 'Chinese' },
+  { code: 'JP', locale: 'ja', name: 'Japanese' },
+  { code: 'ES', locale: 'es', name: 'Spanish' },
+  { code: 'EN', locale: 'en', name: 'English' },
+  { code: 'IT', locale: 'it', name: 'Italian' },
+  { code: 'DE', locale: 'de', name: 'German' },
+  { code: 'FR', locale: 'fr', name: 'French' },
+  { code: 'PT', locale: 'pt', name: 'Portuguese' },
+  { code: 'KR', locale: 'ko', name: 'Korean' },
+  { code: 'ZH', locale: 'zh', name: 'Chinese' },
 ];
+
+function languageDisplayName(locale: string, fallback: string): string {
+  try {
+    return new Intl.DisplayNames([getLangCode()], { type: 'language' }).of(locale) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function getVaLangIndex(rawLang?: string): number {
   if (!rawLang) return 0;
@@ -64,7 +74,7 @@ export function VoiceActorLangStepper({
       <span
         className="pr-editor-va-stepper-label"
         onClick={next}
-        title={`${curLang.label} (${curLang.name})`}
+        title={languageDisplayName(curLang.locale, curLang.name)}
       >
         {curLang.code}
       </span>

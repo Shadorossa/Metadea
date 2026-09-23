@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { MediaEpisode } from '../../../lib/tauri';
+import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import { fetchMediaEpisodes } from '../../../lib/media/media-page-data';
 
@@ -37,6 +37,20 @@ export function formatMatchDate(date: string | null | undefined, time: string | 
   if (Number.isNaN(parsed.getTime())) return [date, time].filter(Boolean).join(' ');
   const dateLabel = parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   return time ? `${dateLabel} · ${time.slice(0, 5)}` : dateLabel;
+}
+
+// One OP/ED list for a unified season chain: each season's own themes in
+// chain order, the same song at the same slot kept once (first season
+// wins), then OPs before EDs and by sequence within each.
+export function mergeSeasonThemes(themeLists: readonly (readonly MediaTheme[])[]): MediaTheme[] {
+  const themeMap = new Map<string, MediaTheme>();
+  for (const th of themeLists.flat()) {
+    const key = `${th.theme_type}_${th.sequence}_${(th.song_title || th.slug).toLowerCase().trim()}`;
+    if (!themeMap.has(key)) themeMap.set(key, th);
+  }
+  return Array.from(themeMap.values()).sort((a, b) =>
+    a.theme_type !== b.theme_type ? (a.theme_type === 'OP' ? -1 : 1) : a.sequence - b.sequence
+  );
 }
 
 export async function fetchUnifiedAnimeEpisodes(chain: SagaEntry[], force = false): Promise<MediaEpisode[]> {

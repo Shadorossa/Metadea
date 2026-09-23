@@ -3,7 +3,8 @@
 // blocked-relation filter, and the persist + sync-state bookkeeping. Split
 // out of media-page-data.ts (still re-exported from there) so the merge
 // rules are readable apart from provider dispatch and render staging.
-import { saveCatalogEntry, getBlockedExternalIds, getSyncState, setSyncState } from '../tauri';
+import { saveCatalogEntry, getSyncState, setSyncState } from '../tauri';
+import { invalidateMediaPageReads, readBlockedExternalIdsCached } from './media-page-read-cache';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData } from './types';
 import { firstCsvUrl, isRecompilationFilm } from './mappers/mapper-utils';
@@ -122,6 +123,8 @@ export async function persistToCatalog(data: MediaPageData, existing: MediaCatal
     };
 
     await saveCatalogEntry(entry).catch(console.error);
+    // The row just changed under any memoised copy the page holds.
+    invalidateMediaPageReads();
 
     // Read by needsResync() to decide when this entry is next due a check —
     // a fetch that brings nothing new widens the backoff too, not just real
@@ -143,7 +146,7 @@ export async function filterBlockedRelations<T extends { relatedExternalId?: str
   relations: T[],
   knownBlockedIds?: readonly string[],
 ): Promise<T[]> {
-  const blockedIds = knownBlockedIds ?? await getBlockedExternalIds().catch(() => [] as string[]);
+  const blockedIds = knownBlockedIds ?? await readBlockedExternalIdsCached().catch(() => [] as string[]);
   const blocked = new Set(blockedIds);
   return relations.filter(r => {
     const relation = r as T & { format?: string | null };

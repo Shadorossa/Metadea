@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useReducer, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useReducer, useRef } from 'react';
+import { errorMessage } from '../../lib/errors/format-error';
+import { useHydrated } from '../shared/hooks/useHydrated';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
 import { BookOpen, GitMerge, Mic, Settings } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { ModalShell } from '../shared/ModalShell';
@@ -52,7 +55,7 @@ interface CharacterEditorDraft {
 
 export function CharacterPrEditorModal() {
   const t = getT().character_editor;
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const [isOpen, setIsOpen] = useState(false);
   const [isSessionTab, setIsSessionTab] = useState(false);
   const [sharedSessionTabs, setSharedSessionTabs] = useState<PrEditorSessionTab[]>([]);
@@ -83,7 +86,7 @@ export function CharacterPrEditorModal() {
   // by hand right after typing its name.
   const pendingAppearanceRef = useRef<CharacterAppearanceSeed | null>(null);
 
-  const [appearancePage, setAppearancePage] = useState(0);
+  const [appearancePage, setAppearancePage] = useKeyedState(currentId, 0);
   // Tracks appearances inserted by this editor session solely because a
   // source character was merged. They must disappear with that merge, while
   // manually-added appearances remain untouched.
@@ -97,14 +100,6 @@ export function CharacterPrEditorModal() {
   const mergeInfoRef = useRef<HTMLButtonElement | null>(null);
   const mergeHint = useAnchoredPopover(mergeInfoRef, { width: 336, height: 96 });
   const contextMenuItemRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setAppearancePage(0);
-  }, [currentId]);
 
   useEffect(() => {
     const syncSession = (detail: { tabs?: PrEditorSessionTab[]; active?: { kind?: string; externalId?: string | null } } | undefined) => {
@@ -248,18 +243,22 @@ export function CharacterPrEditorModal() {
       }
     };
     loadCharacter();
-  }, [isOpen, currentId, loadNonce]);
+  }, [isOpen, currentId, loadNonce, t.load_error]);
 
   const hasChanged = () => hasChanges(editor);
   const appearanceTotalPages = getAppearanceTotalPages(draft.appearances);
   const safeAppearancePage = Math.min(appearancePage, appearanceTotalPages - 1);
-  if (!loading && character && originalCharacter) {
-    currentCharacterDraftRef.current = {
-      externalId: currentId,
-      isOpen,
-      draft: { state: editor, mergeAppearanceIds, activeTab, dirty: hasChanged() },
-    };
-  } else if (!isOpen) currentCharacterDraftRef.current = null;
+  // Snapshot of this render's draft, refreshed on every commit — only ever
+  // read from event handlers (session sync, tab switches), never during render.
+  useLayoutEffect(() => {
+    if (!loading && character && originalCharacter) {
+      currentCharacterDraftRef.current = {
+        externalId: currentId,
+        isOpen,
+        draft: { state: editor, mergeAppearanceIds, activeTab, dirty: hasChanged() },
+      };
+    } else if (!isOpen) currentCharacterDraftRef.current = null;
+  });
   const requestClose = () => {
     if (isSessionTab) {
       window.__metadeaPrEditorSession?.requestClose();
@@ -448,10 +447,10 @@ export function CharacterPrEditorModal() {
         openSubmittedProposal(prUrl);
         handleClose();
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to submit proposal:', err);
       setStatusMsg('');
-      setErrorMsg(err.message || t.pr_error);
+      setErrorMsg(errorMessage(err) || t.pr_error);
     } finally {
       setSubmitting(false);
     }

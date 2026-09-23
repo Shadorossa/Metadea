@@ -3,8 +3,15 @@
 use std::path::PathBuf;
 use super::common::{extract_xml_attr, synthetic_app_id, LocalGame};
 
-pub(super) fn scan_xbox_games() -> Vec<LocalGame> {
-    let mut games = Vec::new();
+// Cheap change signature for scan_xbox_games (see scan_cache.rs): every
+// candidate root's own listing of game folders.
+pub(super) fn xbox_scan_signature() -> Option<String> {
+    Some(super::scan_cache::join_signatures(
+        xbox_candidate_dirs().iter().map(|dir| super::scan_cache::dir_tree_signature(dir)),
+    ))
+}
+
+fn xbox_candidate_dirs() -> Vec<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
 
     for drive in &["C", "D", "E", "F"] {
@@ -47,6 +54,12 @@ pub(super) fn scan_xbox_games() -> Vec<LocalGame> {
     }
 
     candidates.dedup();
+    candidates
+}
+
+pub(super) fn scan_xbox_games() -> Vec<LocalGame> {
+    let mut games = Vec::new();
+    let candidates = xbox_candidate_dirs();
 
     for base_dir in &candidates {
         if !base_dir.exists() {

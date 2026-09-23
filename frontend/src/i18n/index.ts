@@ -14,7 +14,7 @@ export type { Translations };
 
 // Each locale is annotated `: Translations` in its own file, so a missing,
 // renamed or wrongly-shaped key is a compile error there rather than a
-// silent Spanish fallback at runtime. See types.ts for why the leaves are
+// silent English fallback at runtime. See types.ts for why the leaves are
 // widened to `string`.
 const translations: Record<Locale, Translations> = {
   es,
@@ -28,11 +28,11 @@ const translations: Record<Locale, Translations> = {
 };
 
 export function useTranslations(locale: Locale) {
-  return translations[locale] ?? translations['es'];
+  return translations[locale] ?? translations['en'];
 }
 
 export function getLang(url: URL): Locale {
   const [, lang] = url.pathname.split('/');
   if ((LOCALES as readonly string[]).includes(lang)) return lang as Locale;
-  return 'es';
+  return 'en';
 }

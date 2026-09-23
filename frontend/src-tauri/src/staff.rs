@@ -23,6 +23,13 @@ pub async fn get_media_staff(
     media_external_id: String,
 ) -> Result<Vec<MediaStaffMember>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_media_staff(&conn, &media_external_id)
+}
+
+pub(crate) fn load_media_staff(
+    conn: &rusqlite::Connection,
+    media_external_id: &str,
+) -> Result<Vec<MediaStaffMember>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT s.external_id, s.name, s.image_url, sa.role
@@ -32,7 +39,7 @@ pub async fn get_media_staff(
         )
         .str_err()?;
     let rows = stmt
-        .query_map([&media_external_id], |row| {
+        .query_map([media_external_id], |row| {
             Ok(MediaStaffMember {
                 external_id: row.get(0)?,
                 name: row.get(1)?,

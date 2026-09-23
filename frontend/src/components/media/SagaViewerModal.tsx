@@ -10,6 +10,7 @@ import { loadSagaChain, loadSagaArcs, loadSagaAlternativeGroups } from '../../li
 import type { StoryArc } from '../../lib/tauri/story-arcs';
 import { wrapAssetUrl } from '../../lib/tauri/bridge';
 import { toMediumCover } from '../../lib/media/small-cover';
+import { SagaCompletionBar } from './saga/SagaCompletionBar';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
@@ -162,6 +163,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
           <div className="saga-strip-status"><div className="spinner" /></div>
         ) : (
           <>
+        {loadState === 'done' && <SagaCompletionBar members={panels} i18n={t} />}
         <div className="saga-strip-header">
           <button
             type="button"
@@ -234,7 +236,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                     }}
                     onMouseLeave={() => setActiveAlternativeId(null)}
                   >
-                    {panel.map((entry, index) => {
+                    {panel.map(entry => {
                       const isCurrent = entry.externalId === externalId;
                       const isExpanded = activeAlternativeId === entry.externalId;
                       const isCollapsed = isPanelActive && !isExpanded;

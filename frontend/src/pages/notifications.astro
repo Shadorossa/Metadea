@@ -10,6 +10,6 @@ const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
 ---
 
-<BaseLayout title={`${t.notifications.title} — Metadea`} lang={lang} activePage="notifications">
+<BaseLayout title={`${t.notifications.title} — Metadea`} titleKey="notifications.title" lang={lang} activePage="notifications">
   <NotificationsPanel client:load i18n={{ media: t.media, discord: t.discord, notifications: t.notifications, admin: t.admin }} />
 </BaseLayout>

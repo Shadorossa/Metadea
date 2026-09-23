@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../../i18n/index';
+import { getT } from '../../../i18n/runtime';
 import type { PrEditorSessionTab } from '../../../lib/media/editor/pr-editor-types';
 
 export interface SessionTabContextMenuState {
@@ -120,7 +121,7 @@ export function PrEditorSessionTabContextMenu({ menu, sessionTabs, onRequestClos
         else onRequestCloseSessionEntry?.(menu.externalId);
         onClose();
       }}>
-        Cerrar pestaña
+        {getT().pr_editor.close_tab}
       </button>
     </div>,
     document.body,

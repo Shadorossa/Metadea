@@ -7,8 +7,10 @@ import { fetchAniListStreamingEpisodes } from '../../search/providers/anilist';
 import { getLangCode } from '../../../i18n/runtime';
 import { firstCsvUrl, parseExternalId } from '../mappers/mapper-utils';
 import { buildAnimeChain, matchTmdbSeasonsForAnime, getAnimePrequelEpisodeOffset } from './anime-tmdb-match';
-import { getMediaEpisodes, saveMediaEpisodes, type MediaEpisode } from '../../tauri';
-import { getCatalogEntry } from '../../tauri/catalog';
+import { saveMediaEpisodes, type MediaEpisode } from '../../tauri';
+// Visit-scoped memo (plain reads outside a media page visit): the page's own
+// catalog row and cached episode list come out of its mount bundle.
+import { readCatalogEntryCached as getCatalogEntry, readMediaEpisodesCached as getMediaEpisodes } from '../media-page-read-cache';
 
 // AniList's streamingEpisodes titles read like "Episode 12 - The Title"
 // (sometimes just "Episode 12", occasionally missing the "Episode" word
@@ -35,7 +37,7 @@ const TMDB_LANGUAGE_REGIONS: Record<string, string> = {
 };
 
 function tmdbLocaleForAppLanguage(): string {
-  return tmdbLocaleForOriginalLanguage(getLangCode()) ?? 'es-ES';
+  return tmdbLocaleForOriginalLanguage(getLangCode()) ?? 'en-US';
 }
 
 function tmdbLocaleForOriginalLanguage(language?: string): string | null {
@@ -331,7 +333,7 @@ export async function fetchMediaEpisodes(
     }
   }
 
-  let fresh: MediaEpisode[] = [];
+  let fresh: MediaEpisode[];
   if (type === 'anime') {
     fresh = await fetchAnimeEpisodes(rawId, numericId, episodeOffset, reusableCachedEpisodes, mappingKey, expectedAnimeCount,
       catalogEntry?.episode_source_id ? Number(catalogEntry.episode_source_id) : undefined);

@@ -13,11 +13,13 @@
   --player-anim: 180ms ease;
 }
 
-* {
+/* Scoped to the overlay window's own <body>: this file is also imported by
+   PlayerModal into the main window, where a bare `html`/`*` rule would lock
+   scrolling on every page. */
+body.player-overlay-body * {
   box-sizing: border-box;
 }
 
-html,
 body.player-overlay-body {
   width: 100%;
   height: 100%;
@@ -292,3 +294,70 @@ body.player-overlay-body {
   opacity: 1;
 }
 
+
+/* ── Skip opening / ending ───────────────────────────────────────────────
+   Floating pill at the bottom-right of the stage while the position sits
+   inside a skippable segment; stays visible even when the controls have
+   auto-hidden (that is exactly when the user needs it). ────────────────── */
+.player-skip {
+  position: absolute;
+  right: 1rem;
+  bottom: 5.5rem;
+  z-index: 3;
+}
+
+.player-skip__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--player-radius);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background var(--player-anim), border-color var(--player-anim);
+}
+
+.player-skip__button:hover,
+.player-skip__button:focus-visible {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: #fff;
+  color: #000;
+  outline: none;
+}
+
+/* Segments on the seek bar: a thin translucent band per interval. */
+.player-seek__segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.player-seek__segment--recap,
+.player-seek__segment--preview {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.player-toast__action {
+  border: 0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--player-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.player-toast__action:hover,
+.player-toast__action:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}

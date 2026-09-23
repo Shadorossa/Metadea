@@ -1,0 +1,6 @@
+/* Set on <html> by the locale bootstrap (lib/i18n-dom/locale-bootstrap.ts)
+   until the server-rendered text is re-translated, so the build locale never
+   flashes. Removed right after the first translation, or after 1 s anyway. */
+html.i18n-pending body {
+  visibility: hidden;
+}

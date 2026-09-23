@@ -179,8 +179,13 @@
   transition: background var(--anim-fast);
 }
 
-.quick-search-result:hover {
+.quick-search-result:hover,
+.quick-search-result--selected {
   background: var(--bg-card);
+}
+/* Keyboard selection (↑/↓ + Enter, see QuickSearchOverlay.tsx) */
+.quick-search-result--selected {
+  box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 
 .quick-search-result-cover {

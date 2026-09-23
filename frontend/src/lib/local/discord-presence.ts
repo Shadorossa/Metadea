@@ -1,8 +1,23 @@
-import { updateDiscordPresence, resetDiscordPresence } from '../tauri/discord-presence';
+import { updateDiscordPresence, resetDiscordPresence, type PresenceButton } from '../tauri/discord-presence';
 import { formatPresenceLines, formatThemePresenceLines } from '../player/presence-sync';
 import { toMediumCover } from '../media/small-cover';
 import { listenGameSessionEnded, addPlaytimeHours } from '../tauri';
+import { buildShareUrl, isValidDeepLinkTarget } from '../deep-link/deep-link-routes';
 import { createExternalStore } from '../shared/state/external-store';
+import { getRetroProgressSummary } from '../retro-achievements/retro-progress';
+
+// Discord-facing literal (not app UI): the second presence button, a share
+// link that opens the work's page in Metadea.
+const OPEN_IN_METADEA_LABEL = 'Open in Metadea';
+
+// The "Open in Metadea" button for a work, or none when the id is not a
+// shareable external id (local-only entries).
+export function mediaPresenceButton(externalId: string | undefined): PresenceButton | undefined {
+  if (!externalId) return undefined;
+  const target = { kind: 'media', external_id: externalId } as const;
+  if (!isValidDeepLinkTarget(target)) return undefined;
+  return { label: OPEN_IN_METADEA_LABEL, url: buildShareUrl(target) };
+}
 
 export interface GamePresence {
   title: string;
@@ -11,6 +26,9 @@ export interface GamePresence {
   externalId?: string;
   installPath?: string;
   romPlatform?: string;
+  // "12/40 achievements" for emulated games linked to RetroAchievements;
+  // filled asynchronously by setGamePresence.
+  retroLabel?: string;
 }
 
 export interface PlaybackPresence {
@@ -24,6 +42,8 @@ export interface PlaybackPresence {
   startTime?: number;
   endTime?: number;
   coverUrl?: string;
+  // The work's external id: links the "Open in Metadea" button to its page.
+  externalId?: string;
 }
 
 export interface ReadingPresence {
@@ -44,12 +64,16 @@ export interface ThemePresence {
   startTime?: number;
   endTime?: number;
   coverUrl?: string;
+  // Optional: a theme always plays on a media page, so the page's own id is
+  // the fallback for the button.
+  externalId?: string;
 }
 
 export interface MediaPagePresence {
   title: string;
   typeLabel: string;
   coverUrl?: string;
+  externalId?: string;
 }
 
 let activeGame: GamePresence | null = null;
@@ -82,7 +106,7 @@ function applyCurrentPresence() {
     const cover = activeGame.coverUrl ? toMediumCover(activeGame.coverUrl) : undefined;
     updateDiscordPresence(
       `Playing ${activeGame.title}`,
-      "",
+      activeGame.retroLabel ?? "",
       activeGame.startTime,
       undefined,
       cover,
@@ -114,6 +138,7 @@ function applyCurrentPresence() {
       "metadea",
       "Metadea",
       'watching',
+      mediaPresenceButton(activePlayback.externalId),
     ).catch(() => {});
     return;
   }
@@ -133,6 +158,7 @@ function applyCurrentPresence() {
       "metadea",
       "Metadea",
       'listening',
+      mediaPresenceButton(activeTheme.externalId ?? activeMediaPage?.externalId),
     ).catch(() => {});
     return;
   }
@@ -166,7 +192,9 @@ function applyCurrentPresence() {
       cover,
       activeMediaPage.title,
       "metadea",
-      "Metadea"
+      "Metadea",
+      undefined,
+      mediaPresenceButton(activeMediaPage.externalId),
     ).catch(() => {});
     return;
   }
@@ -190,6 +218,17 @@ export function setGamePresence(game: GamePresence) {
   activeGame = game;
   gamePresenceStore.set(game);
   applyCurrentPresence();
+  // RetroAchievements progress is a second line on the game presence; it
+  // arrives after the first update and only when the game is still active.
+  if (game.romPlatform && game.externalId && !game.retroLabel) {
+    getRetroProgressSummary(game.externalId)
+      .then(summary => {
+        if (!summary || activeGame !== game) return;
+        activeGame = { ...game, retroLabel: summary.label };
+        applyCurrentPresence();
+      })
+      .catch(() => {});
+  }
 }
 
 export function clearGamePresence() {

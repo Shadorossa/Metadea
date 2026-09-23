@@ -1,7 +1,7 @@
 ---
 import type { Translations } from "../../i18n/index";
 import '../../styles/pages/settings-emulators.css';
-import { ALL_PLATFORMS, COMPANIES } from '../../lib/local/emulator-catalog';
+import { ALL_PLATFORMS, COMPANIES, DEFAULT_ROM_EXTENSIONS } from '../../lib/local/emulator-catalog';
 
 interface Props {
   t: Translations;
@@ -14,6 +14,17 @@ const { t } = Astro.props;
 <div class="settings-panel hidden" id="panel-emulators">
   <div class="settings-section">
     <h3 class="settings-section-title" data-i18n="settings.emulators_title">{t.settings.emulators_title}</h3>
+
+    <!-- Automatic ROM file clean-up (local.roms.auto_rename) -->
+    <div class="settings-checkbox-row">
+      <div class="settings-checkbox-group">
+        <label class="settings-checkbox-label">
+          <input type="checkbox" id="roms-auto-rename" class="settings-checkbox" />
+          <span class="checkbox-label-text" data-i18n="settings.roms_auto_rename">{t.settings.roms_auto_rename}</span>
+        </label>
+        <p class="settings-hint" data-i18n="settings.roms_auto_rename_hint">{t.settings.roms_auto_rename_hint}</p>
+      </div>
+    </div>
 
     <!-- Selector de empresas -->
     <div class="companies-selector-section">
@@ -70,7 +81,7 @@ const { t } = Astro.props;
                     <select class="form-select emulator-select compact" id={`emulator-select-${platform.id}`} data-platform={platform.id}>
                       <option value="" data-i18n="settings.emulators_no_selection">{t.settings.emulators_no_selection}</option>
                     </select>
-                    <button type="button" class="exe-picker-btn" data-platform={platform.id} title={t.settings.emulators_pick_executable}>
+                    <button type="button" class="exe-picker-btn" data-platform={platform.id} title={t.settings.emulators_pick_executable} data-i18n-title="settings.emulators_pick_executable">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 0 1-2.41 1.97l-5.77-1.72"/>
                         <path d="M2 12a10 10 0 0 1 19.55-3.5"/>
@@ -78,7 +89,7 @@ const { t } = Astro.props;
                       </svg>
                     </button>
                     <div class="emulator-config-middle hidden" id={`supported-container-${platform.id}`}>
-                      <span class="form-label-small">Supported:</span>
+                      <span class="form-label-small" data-i18n="settings.emulators_supported_label">{t.settings.emulators_supported_label}</span>
                       <div class="supported-types" id={`extensions-display-${platform.id}`}></div>
                     </div>
                   </div>
@@ -94,7 +105,7 @@ const { t } = Astro.props;
                       placeholder="{ROM}"
                       data-platform={platform.id}
                     />
-                    <button type="button" class="rom-folder-btn" data-platform={platform.id} title={t.settings.emulators_pick_rom_folder}>
+                    <button type="button" class="rom-folder-btn" data-platform={platform.id} title={t.settings.emulators_pick_rom_folder} data-i18n-title="settings.emulators_pick_rom_folder">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 0 1-2.41 1.97l-5.77-1.72"/>
                         <path d="M2 12a10 10 0 0 1 19.55-3.5"/>
@@ -111,6 +122,40 @@ const { t } = Astro.props;
                 </div>
               </div>
 
+              <div class="emulator-config-row rom-extensions-row">
+                <label class="form-label" for={`rom-extensions-${platform.id}`} data-i18n="settings.emulators_rom_extensions">{t.settings.emulators_rom_extensions}</label>
+                <input
+                  class="form-input"
+                  type="text"
+                  id={`rom-extensions-${platform.id}`}
+                  placeholder={(DEFAULT_ROM_EXTENSIONS[platform.id] ?? []).join(', ')}
+                  data-platform={platform.id}
+                  spellcheck="false"
+                />
+                <p class="settings-hint" data-i18n="settings.emulators_rom_extensions_hint">{t.settings.emulators_rom_extensions_hint}</p>
+              </div>
+
+              <div class="emulator-config-row rom-extensions-row">
+                <label class="form-label" for={`screenshots-dir-${platform.id}`} data-i18n="local.emulator_screenshots_dir">{t.local.emulator_screenshots_dir}</label>
+                <div class="input-row">
+                  <input
+                    class="form-input"
+                    type="text"
+                    id={`screenshots-dir-${platform.id}`}
+                    data-platform={platform.id}
+                    spellcheck="false"
+                  />
+                  <button type="button" class="rom-folder-btn" data-platform={platform.id} data-field="screenshots-dir" title={t.local.emulator_screenshots_pick} data-i18n-title="local.emulator_screenshots_pick">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M2 11h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>
+                      <rect x="6" y="4" width="12" height="7" rx="1"/>
+                      <circle cx="12" cy="7.5" r="1.5"/>
+                    </svg>
+                  </button>
+                </div>
+                <p class="settings-hint" data-i18n="local.emulator_screenshots_dir_hint">{t.local.emulator_screenshots_dir_hint}</p>
+              </div>
+
             </div>
           </div>
         ))}
@@ -121,6 +166,7 @@ const { t } = Astro.props;
 
 <script>
   import { COMPANIES, EMULATORS_DB } from '../../lib/local/emulator-catalog';
+  import type { EmulatorConfig } from '../../lib/tauri/emulators';
 
   // Only the document-level listener REGISTRATION below needs to happen
   // once — the listeners themselves stay attached across Astro's
@@ -131,11 +177,11 @@ const { t } = Astro.props;
   // whatever was saved on a PREVIOUS visit instead of what's actually in
   // the database now.
   let listenersAttached = false;
-  let emulatorsData: Record<string, any> = {};
+  let emulatorsData: Record<string, EmulatorConfig> = {};
   let emulatorSelections: Record<string, string> = {};
   let emulatorsDataReady: Promise<void> = Promise.resolve();
 
-  const selectionsFrom = (configs: Record<string, any>) => Object.fromEntries(
+  const selectionsFrom = (configs: Record<string, EmulatorConfig>) => Object.fromEntries(
     Object.entries(configs).map(([platformId, config]) => [platformId, config?.emulator_name || ''])
   );
 
@@ -271,7 +317,7 @@ const { t } = Astro.props;
     });
 
     window.addEventListener('emulators-config-reset', (event) => {
-      const configs = (event as CustomEvent<Record<string, any>>).detail;
+      const configs = (event as CustomEvent<Record<string, EmulatorConfig>>).detail;
       emulatorsData = configs || {};
       emulatorSelections = selectionsFrom(emulatorsData);
       document.querySelectorAll<HTMLSelectElement>('.emulator-select').forEach((select) => {

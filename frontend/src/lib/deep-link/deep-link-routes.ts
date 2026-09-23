@@ -13,13 +13,19 @@ export type DeepLinkTarget =
   | { kind: 'media'; external_id: string }
   | { kind: 'character'; id: string }
   | { kind: 'profile'; user: string }
-  | { kind: 'home' };
+  | { kind: 'home' }
+  // `metadea://auth/mal?code=…&state=…` — MyAnimeList's OAuth return. Rust
+  // exchanges the code itself (src-tauri/src/mal); the app only navigates
+  // to Settings so the connection status is in view.
+  | { kind: 'auth_mal'; code: string; state: string };
 
 export const DEEP_LINK_SCHEME = 'metadea';
 export const SHARE_URL_BASE = 'https://shadorossa.github.io/Metadea/open/';
 
 const PREFIXED_ID = /^[a-z]+:[A-Za-z0-9_-]+$/;
 const PLAIN_ID = /^[A-Za-z0-9_-]+$/;
+// RFC 3986 unreserved characters, bounded like deep_link.rs's MAX_AUTH_CODE_LEN.
+const AUTH_CODE = /^[A-Za-z0-9_.~-]{1,4096}$/;
 
 export function isValidDeepLinkTarget(target: DeepLinkTarget): boolean {
   switch (target.kind) {
@@ -27,6 +33,7 @@ export function isValidDeepLinkTarget(target: DeepLinkTarget): boolean {
     case 'character': return PREFIXED_ID.test(target.id);
     case 'profile': return PLAIN_ID.test(target.user);
     case 'home': return true;
+    case 'auth_mal': return AUTH_CODE.test(target.code) && PLAIN_ID.test(target.state);
     default: return false;
   }
 }
@@ -38,6 +45,7 @@ export function targetToPath(target: DeepLinkTarget): string {
     case 'character': return `/character?id=${encodeURIComponent(target.id)}`;
     case 'profile': return `/user?id=${encodeURIComponent(target.user)}`;
     case 'home': return '/home';
+    case 'auth_mal': return '/settings';
   }
 }
 
@@ -49,6 +57,7 @@ function targetToLocator(target: DeepLinkTarget): string {
     case 'character': return `character/${target.id}`;
     case 'profile': return `profile/${target.user}`;
     case 'home': return 'home';
+    case 'auth_mal': return `auth/mal?code=${target.code}&state=${target.state}`;
   }
 }
 
@@ -95,6 +104,10 @@ export function parseDeepLinkTarget(payload: unknown): DeepLinkTarget | null {
       break;
     case 'home':
       target = { kind: 'home' };
+      break;
+    case 'auth_mal':
+      if (typeof value.code !== 'string' || typeof value.state !== 'string') return null;
+      target = { kind: 'auth_mal', code: value.code, state: value.state };
       break;
     default:
       return null;

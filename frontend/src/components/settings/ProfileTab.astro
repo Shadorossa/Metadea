@@ -7,6 +7,8 @@ import {
   ICON_TRASH,
 } from "../../lib/dom/icon-strings";
 import type { Translations } from "../../i18n/index";
+import { UiThemesSection } from "../ui-themes/UiThemesSection";
+import "../../styles/components/ui-themes.css";
 
 interface Props {
   t: Translations;
@@ -29,7 +31,7 @@ const { t, onboarding = false } = Astro.props;
           type="text"
           id="display-name-input"
           class="font-preview-input"
-          data-i18n="settings.display_name_placeholder"
+          data-i18n-placeholder="settings.display_name_placeholder"
           placeholder={t.settings.display_name_placeholder}
           maxlength="40"
           autocomplete="off"
@@ -41,7 +43,7 @@ const { t, onboarding = false } = Astro.props;
             class="font-arrow"
             id="font-prev"
             data-i18n-title="settings.font_prev"
-            aria-label={t.settings.font_prev}
+            aria-label={t.settings.font_prev} data-i18n-aria-label="settings.font_prev"
             set:html={ICON_CHEVRON_LEFT}
           />
           <span class="font-name-label" id="font-name-label"></span>
@@ -49,7 +51,7 @@ const { t, onboarding = false } = Astro.props;
             class="font-arrow"
             id="font-next"
             data-i18n-title="settings.font_next"
-            aria-label={t.settings.font_next}
+            aria-label={t.settings.font_next} data-i18n-aria-label="settings.font_next"
             set:html={ICON_CHEVRON_RIGHT}
           />
         </div>
@@ -68,7 +70,7 @@ const { t, onboarding = false } = Astro.props;
           id="avatar-upload-btn"
           data-i18n-title="settings.avatar_upload"
           title={t.settings.avatar_upload}
-          aria-label={t.settings.avatar_upload}
+          aria-label={t.settings.avatar_upload} data-i18n-aria-label="settings.avatar_upload"
           set:html={ICON_UPLOAD_IMAGE}
         ></button>
         <button
@@ -76,7 +78,7 @@ const { t, onboarding = false } = Astro.props;
           id="avatar-remove-btn"
           data-i18n-title="settings.avatar_remove"
           title={t.settings.avatar_remove}
-          aria-label={t.settings.avatar_remove}
+          aria-label={t.settings.avatar_remove} data-i18n-aria-label="settings.avatar_remove"
           set:html={ICON_TRASH}
         ></button>
       </div>
@@ -99,7 +101,7 @@ const { t, onboarding = false } = Astro.props;
           id="share-avatar-upload-btn"
           data-i18n-title="settings.share_avatar_upload"
           title={t.settings.share_avatar_upload}
-          aria-label={t.settings.share_avatar_upload}
+          aria-label={t.settings.share_avatar_upload} data-i18n-aria-label="settings.share_avatar_upload"
           set:html={ICON_UPLOAD_IMAGE}
         ></button>
         <button
@@ -107,7 +109,7 @@ const { t, onboarding = false } = Astro.props;
           id="share-avatar-remove-btn"
           data-i18n-title="settings.share_avatar_remove"
           title={t.settings.share_avatar_remove}
-          aria-label={t.settings.share_avatar_remove}
+          aria-label={t.settings.share_avatar_remove} data-i18n-aria-label="settings.share_avatar_remove"
           set:html={ICON_TRASH}
         ></button>
       </div>
@@ -143,7 +145,7 @@ const { t, onboarding = false } = Astro.props;
         <textarea
           id="bio-textarea"
           class="settings-textarea"
-          data-i18n="settings.bio_placeholder"
+          data-i18n-placeholder="settings.bio_placeholder"
           placeholder={t.settings.bio_placeholder}
           maxlength="500"
           rows="5"
@@ -172,7 +174,7 @@ const { t, onboarding = false } = Astro.props;
           id="color-reset-btn"
           data-i18n-title="settings.color_reset_title"
           title={t.settings.color_reset_title}
-          aria-label={t.settings.color_reset_title}
+          aria-label={t.settings.color_reset_title} data-i18n-aria-label="settings.color_reset_title"
           set:html={ICON_RESET_ARROW}
         ></button>
       </div>
@@ -186,6 +188,20 @@ const { t, onboarding = false } = Astro.props;
       <div class="theme-grid" id="theme-grid"></div>
     </div>
   </div>
+
+  <!-- User UI themes / skins (components/ui-themes, docs/THEMING.md).
+       Not rendered in onboarding: welcome.astro mounts its own island in the
+       skins step, and moving a hydrated island between parents re-hydrates it. -->
+  {!onboarding && (
+    <div class="settings-divider">
+      <div class="settings-section">
+        <h3 class="settings-section-title" data-i18n="ui_themes.section_title">
+          {t.ui_themes.section_title}
+        </h3>
+        <UiThemesSection client:load />
+      </div>
+    </div>
+  )}
 
   <!-- Cerrar sesión -->
   <div class="settings-divider" hidden={onboarding}>

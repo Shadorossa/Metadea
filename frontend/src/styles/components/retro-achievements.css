@@ -1,0 +1,130 @@
+/* RetroAchievements (components/retro-achievements). The achievements tab,
+   its counters, controls and grid all use the Steam tab's own classes from
+   styles/pages/local/base/media.css and the local detail panel; only the
+   pieces with no Steam counterpart live here. */
+
+.ra-settings-link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* ── Manual link picker ───────────────────────────────────────────────────── */
+
+.ra-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.ra-picker-modal {
+  width: min(520px, calc(100vw - 2rem));
+  max-height: min(70vh, 640px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.ra-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.ra-picker-close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.ra-picker-close:hover {
+  color: var(--text-main);
+}
+
+.ra-picker-search-bar {
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ra-picker-search-input {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+}
+
+.ra-picker-status {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ra-picker-status--error {
+  color: var(--color-error);
+}
+
+.ra-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem;
+  overflow-y: auto;
+}
+
+.ra-picker-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ra-picker-card:hover,
+.ra-picker-card:focus-visible {
+  background: var(--bg-elevated);
+}
+
+.ra-picker-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-elevated);
+}
+
+.ra-picker-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ra-picker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ra-picker-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

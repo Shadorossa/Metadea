@@ -6,8 +6,9 @@ import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
 import type { MediaPageData } from '../../../lib/media/types';
 import { saveCharactersSkeleton } from '../../../lib/tauri/characters';
 import { saveStaffSkeleton } from '../../../lib/tauri/staff';
-import { getMediaEpisodes } from '../../../lib/tauri/episodes';
-import { getMediaThemes } from '../../../lib/tauri/themes';
+import {
+  beginMediaPageVisit, endMediaPageVisit, invalidateMediaPageReads, readMediaEpisodesCached, readMediaThemesCached,
+} from '../../../lib/media/media-page-read-cache';
 
 export type MediaPageState = 'loading' | 'error' | 'ready';
 
@@ -88,13 +89,18 @@ export function useMediaPageData({ currentId, previewMode, tm }: Params) {
     setThemes([]);
 
     let cancelled = false;
+    // Every catalog/relations/blocked-ids read below (and in the hooks that
+    // fire alongside this effect) shares one memoised copy per row until
+    // this visit ends — see media-page-read-cache.ts.
+    beginMediaPageVisit(currentId);
 
     // Read the local episode/theme cache immediately so the relation column
-    // can render it while the full media fetch and provider validation run.
-    getMediaEpisodes(currentId).then(cached => {
+    // can render it while the full media fetch and provider validation run
+    // (both come out of the visit's mount bundle, no extra round trip).
+    readMediaEpisodesCached(currentId).then(cached => {
       if (!cancelled && cached.length > 0) setEpisodes(cached);
     }).catch(() => {});
-    getMediaThemes(currentId).then(cached => {
+    readMediaThemesCached(currentId).then(cached => {
       if (!cancelled && cached.length > 0) setThemes(cached);
     }).catch(() => {});
 
@@ -112,7 +118,7 @@ export function useMediaPageData({ currentId, previewMode, tm }: Params) {
         setData(partial);
         setPageState('ready');
       },
-      (full, isFinal) => {
+      (full, isFinal, source) => {
         if (cancelled) return;
         setData(full);
         setPageState('ready');
@@ -129,12 +135,18 @@ export function useMediaPageData({ currentId, previewMode, tm }: Params) {
           setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, ...patch } : prev);
         };
 
-        if (!full.charactersInheritedFromBase && full.characters && full.characters.length > 0) {
+        // A 'local' full result is the catalog-only render: its characters
+        // and staff were just read from character_appearances/
+        // media_staff_relation, so writing them straight back would only
+        // delete and re-insert the same rows (plus re-run the per-character
+        // image store) on every visit. Live and session-cached results still
+        // persist, which is what backfills a row that never had a cast.
+        if (source !== 'local' && !full.charactersInheritedFromBase && full.characters && full.characters.length > 0) {
           const isCastRole = full.type === 'movie' || full.type === 'series';
           const skeletonChars = mediaCharactersToSkeleton(full.characters, isCastRole);
           saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
         }
-        if (full.staff && full.staff.length > 0) {
+        if (source !== 'local' && full.staff && full.staff.length > 0) {
           saveStaffSkeleton(currentId, mediaStaffToSkeleton(full.staff)).catch(console.error);
         }
 
@@ -200,7 +212,7 @@ export function useMediaPageData({ currentId, previewMode, tm }: Params) {
             // editions (see fetchBookEditions) — persisted here the same way
             // a comic's aggregated genres are, once this background fetch
             // actually finds one.
-            if (totalPages !== null) updateCatalogTotalCount(currentId, totalPages).catch(console.error);
+            if (totalPages !== null) updateCatalogTotalCount(currentId, totalPages).then(invalidateMediaPageReads).catch(console.error);
           });
         }
 
@@ -217,7 +229,7 @@ export function useMediaPageData({ currentId, previewMode, tm }: Params) {
             }
 
             if (genreDots || genreTagDots) {
-              updateCatalogGenres(currentId, genreDots ?? null, genreTagDots ?? null).catch(console.error);
+              updateCatalogGenres(currentId, genreDots ?? null, genreTagDots ?? null).then(invalidateMediaPageReads).catch(console.error);
               patchIfCurrent({ genreDots, genreTagDots });
             }
 
@@ -263,8 +275,8 @@ export function useMediaPageData({ currentId, previewMode, tm }: Params) {
       ()      => cancelled,
     );
 
-    return () => { cancelled = true; };
-  }, [currentId, previewMode]);
+    return () => { cancelled = true; endMediaPageVisit(currentId); };
+  }, [currentId, previewMode, tm.relations.EDITIONS, tm.relations.ISSUE]);
 
   // Upsert catalog entry with the latest metadata from the API once we know the type
   // (library entry loading is handled by useLibraryEntry above)
@@ -279,7 +291,9 @@ export function useMediaPageData({ currentId, previewMode, tm }: Params) {
     // MGS3's catalog entry overwritten with MGS2's data.
     if (previewMode || !data?.type || !currentId || data.externalId !== currentId) return;
 
-    saveCatalogEntry(mapMediaDataToCatalogEntry(data, currentId)).catch(err => console.error('Failed to refresh catalog entry from live data:', err));
+    saveCatalogEntry(mapMediaDataToCatalogEntry(data, currentId))
+      .then(invalidateMediaPageReads)
+      .catch(err => console.error('Failed to refresh catalog entry from live data:', err));
   // Re-run when bannerImage/authors changes so partial→full transition saves the banner URL and authors to catalog.
   // currentId is included so navigating between two items of the same type (and same
   // transient bannerImage state) still re-fetches the library entry for the new item.

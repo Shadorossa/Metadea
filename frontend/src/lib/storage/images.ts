@@ -92,7 +92,7 @@ function syncLocalStorageCache(key: string, dataUrl: string | null): void {
 
 export async function saveImage(key: string, dataUrl: string): Promise<boolean> {
   const tauriKey = TAURI_KEYS[key];
-  let ok = false;
+  let ok: boolean;
   if (tauriKey && isTauri()) {
     try {
       await tauriInvoke('save_user_image', { key: tauriKey, dataUrl });
@@ -110,7 +110,7 @@ export async function saveImage(key: string, dataUrl: string): Promise<boolean> 
 
 export async function getImage(key: string): Promise<string | null> {
   const tauriKey = TAURI_KEYS[key];
-  let res: string | null = null;
+  let res: string | null;
   if (tauriKey && isTauri()) {
     try {
       res = await tauriInvoke<string | null>('get_user_image', { key: tauriKey });
@@ -126,7 +126,7 @@ export async function getImage(key: string): Promise<string | null> {
 
 export async function removeImage(key: string): Promise<boolean> {
   const tauriKey = TAURI_KEYS[key];
-  let ok = false;
+  let ok: boolean;
   if (tauriKey && isTauri()) {
     try {
       await tauriInvoke('remove_user_image', { key: tauriKey });

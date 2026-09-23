@@ -1,3 +1,5 @@
+import { getT } from '../../i18n/runtime';
+
 // Thin wrapper around @tauri-apps/plugin-notification. Callers don't need
 // to handle permission checks, and this no-ops cleanly outside Tauri.
 export async function notifySystem(title: string, body: string): Promise<boolean> {
@@ -19,5 +21,5 @@ export async function notifySystem(title: string, body: string): Promise<boolean
 }
 
 export async function notifyNewEpisode(title: string, episodeLabel: string): Promise<void> {
-  await notifySystem('Nuevo episodio disponible', `${title} — ${episodeLabel}`);
+  await notifySystem(getT().notifications.new_episode_title, `${title} — ${episodeLabel}`);
 }

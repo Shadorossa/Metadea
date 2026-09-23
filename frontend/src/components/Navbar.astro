@@ -30,10 +30,10 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
        grid, ver navbar.css) — igual que los botones laterales del ratón
        para atrás/adelante en el historial. -->
   <div class="nav-arrows">
-    <button type="button" id="nav-back-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.go_back}>
+    <button type="button" id="nav-back-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.go_back} data-i18n-title="nav.go_back">
       <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-back" /></svg>
     </button>
-    <button type="button" id="nav-forward-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.go_forward}>
+    <button type="button" id="nav-forward-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.go_forward} data-i18n-title="nav.go_forward">
       <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-forward" /></svg>
     </button>
   </div>
@@ -41,45 +41,45 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
   <div class="nav-main">
     <!-- Izquierda: home + play (biblioteca local) + tier + explorar -->
     <div class="nav-group nav-group--left">
-      <a href="/home"   data-nav="home"   class={`nav-icon-btn nav-icon-btn--plain${activePage === 'home'   ? ' active' : ''}`} title={i18n.home}>
+      <a href="/home"   data-nav="home"   class={`nav-icon-btn nav-icon-btn--plain${activePage === 'home'   ? ' active' : ''}`} title={i18n.home} data-i18n-title="nav.home">
         <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-home" /></svg>
       </a>
-      <a href="/local" data-nav="local" class={`nav-icon-btn nav-icon-btn--plain${activePage === 'local' ? ' active' : ''}`} title={i18n.local}>
+      <a href="/local" data-nav="local" class={`nav-icon-btn nav-icon-btn--plain${activePage === 'local' ? ' active' : ''}`} title={i18n.local} data-i18n-title="nav.local">
         <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-play" /></svg>
       </a>
-      <span class="nav-icon-btn nav-icon-btn--plain nav-icon-btn--tier nav-icon-btn--disabled" aria-disabled="true" title={i18n.tier}>
+      <span class="nav-icon-btn nav-icon-btn--plain nav-icon-btn--tier nav-icon-btn--disabled" aria-disabled="true" title={i18n.tier} data-i18n-title="nav.tier">
         <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-tier" /></svg>
       </span>
-      <a href="/search" data-nav="search" class={`nav-browse-link${activePage === 'search' ? ' active' : ''}`}>
+      <a href="/search" data-nav="search" class={`nav-browse-link${activePage === 'search' ? ' active' : ''}`} data-i18n="nav.browse">
         {i18n.browse}
       </a>
     </div>
 
     <!-- Centro: biblioteca + tipos / portal #nav-center-slot -->
     <div class="nav-center-wrap">
-      <button type="button" id="nav-center-scroll-left" class="nav-center-scroll-btn nav-center-scroll-btn--left nav-center-scroll-btn--hidden" aria-label={i18n.scroll_left}>
+      <button type="button" id="nav-center-scroll-left" class="nav-center-scroll-btn nav-center-scroll-btn--left nav-center-scroll-btn--hidden" aria-label={i18n.scroll_left} data-i18n-aria-label="nav.scroll_left">
         <svg class="nav-symbol nav-symbol--small" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-back" /></svg>
       </button>
       <div id="nav-center-default" class={`nav-center-text${activePage === 'local' || activePage === 'search' ? ' nav-hidden' : ''}`}>
         {LIBRARY_TYPES.map(type => isMediaTypeDisabled(type) ? (
-          <span class="nav-text-link nav-text-link--disabled" aria-disabled="true">
+          <span class="nav-text-link nav-text-link--disabled" aria-disabled="true" data-i18n={`search.types.${type}`}>
             {typeLabels[type as keyof typeof typeLabels] ?? type}
           </span>
         ) : (
-          <a href={`/profile?libtype=${type}#library`} class="nav-text-link">
+          <a href={`/profile?libtype=${type}#library`} class="nav-text-link" data-i18n={`search.types.${type}`}>
             {typeLabels[type as keyof typeof typeLabels] ?? type}
           </a>
         ))}
       </div>
       <div id="nav-center-slot" class="nav-center-slot"></div>
-      <button type="button" id="nav-center-scroll-right" class="nav-center-scroll-btn nav-center-scroll-btn--right nav-center-scroll-btn--hidden" aria-label={i18n.scroll_right}>
+      <button type="button" id="nav-center-scroll-right" class="nav-center-scroll-btn nav-center-scroll-btn--right nav-center-scroll-btn--hidden" aria-label={i18n.scroll_right} data-i18n-aria-label="nav.scroll_right">
         <svg class="nav-symbol nav-symbol--small" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-forward" /></svg>
       </button>
     </div>
 
     <!-- Derecha: buscar + notificaciones + avatar + ajustes -->
     <div class="nav-group nav-group--right">
-      <button type="button" id="nav-quick-search-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.browse}>
+      <button type="button" id="nav-quick-search-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.browse} data-i18n-title="nav.browse">
         <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-explore" /></svg>
       </button>
       <a
@@ -87,6 +87,7 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
         data-nav="notifications"
         class={`nav-icon-btn nav-icon-btn--plain${activePage === 'notifications' ? ' active' : ''}`}
         title={i18n.notifications}
+        data-i18n-title="nav.notifications"
       >
         <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-notifications" /></svg>
       </a>
@@ -96,6 +97,7 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
         data-nav="account"
         class={`nav-icon-btn nav-icon-btn--avatar${activePage === 'profile' ? ' active' : ''}`}
         title={i18n.dropdown_profile}
+        data-i18n-title="nav.dropdown_profile"
       >
         <img id="nav-avatar-img" class="nav-avatar-img" alt="" referrerpolicy="no-referrer" style="display: none;" />
         <svg id="nav-avatar-fallback" class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true" style="display: none;"><use href="#nav-icon-profile" /></svg>
@@ -118,6 +120,7 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
         data-nav="settings"
         class={`nav-icon-btn nav-icon-btn--plain${activePage === 'settings' ? ' active' : ''}`}
         title={i18n.dropdown_settings}
+        data-i18n-title="nav.dropdown_settings"
       >
         <svg class="nav-symbol" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-settings" /></svg>
       </a>
@@ -221,7 +224,7 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
   forwardBtn?.addEventListener('click', () => window.history.forward());
 
   function updateHistoryArrows() {
-    const nav = (window as any).navigation;
+    const nav = window.navigation;
     const canGoBack = nav ? nav.canGoBack : true;
     const canGoForward = nav ? nav.canGoForward : true;
     backBtn?.classList.toggle('nav-icon-btn--disabled', !canGoBack);
@@ -229,7 +232,7 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
   }
   updateHistoryArrows();
   document.addEventListener('astro:page-load', updateHistoryArrows);
-  (window as any).navigation?.addEventListener('currententrychange', updateHistoryArrows);
+  window.navigation?.addEventListener('currententrychange', updateHistoryArrows);
 
   // Media scroll navigation — show/hide arrows when content overflows
   function setupMediaScroll() {

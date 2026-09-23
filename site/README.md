@@ -28,9 +28,13 @@ releases link.
 
 ## Publishing with GitHub Pages (one-time, manual)
 
+GitHub Pages "deploy from a branch" only serves `/` or `/docs`, so this
+folder is published by the `.github/workflows/pages.yml` workflow instead:
+
 1. Repository **Settings → Pages**.
-2. **Source**: "Deploy from a branch".
-3. **Branch**: `main`, **Folder**: `/site`. Save.
+2. **Source**: "GitHub Actions". Save (nothing else to pick).
+3. Push `main` (the workflow runs on changes under `site/`, or start it by
+   hand from **Actions → Publish site (GitHub Pages) → Run workflow**).
 4. After the first deploy the page is served at
    `https://shadorossa.github.io/Metadea/open/`.
 

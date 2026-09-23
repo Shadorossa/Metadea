@@ -3,6 +3,7 @@ import { getLang, useTranslations } from '../i18n/index';
 import '../styles/core/global.css';
 import '../styles/components/components.css';
 import '../styles/pages/login.css';
+import LocaleBootstrap from '../components/i18n/LocaleBootstrap.astro';
 
 const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
@@ -11,13 +12,14 @@ const t    = useTranslations(lang);
 <html lang={lang}>
   <head>
     <meta charset="utf-8" />
+    <LocaleBootstrap buildLang={lang} />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Metadea — {t.auth.login}</title>
+    <title data-i18n-doc-title="auth.login" data-i18n-prefix="Metadea — ">Metadea — {t.auth.login}</title>
   </head>
   <body class="login-body">
     <div class="login-card">
       <span class="login-logo">Metadea</span>
-      <p class="login-subtitle">{t.auth.login_subtitle}</p>
+      <p class="login-subtitle" data-i18n="auth.login_subtitle">{t.auth.login_subtitle}</p>
 
       <form id="login-form" style="width: 100%; display: flex; flex-direction: column; gap: 0.75rem;">
         <input
@@ -25,21 +27,23 @@ const t    = useTranslations(lang);
           id="username-input"
           class="input-dark"
           placeholder={t.auth.username_placeholder}
+          data-i18n-placeholder="auth.username_placeholder"
           required
           minlength="3"
           maxlength="20"
         />
-        <button type="submit" class="btn btn--primary" style="justify-content: center; width: 100%;">
+        <button type="submit" class="btn btn--primary" style="justify-content: center; width: 100%;" data-i18n="auth.start">
           {t.auth.start}
         </button>
       </form>
 
-      <p id="error-msg" class="login-error" style="display:none" data-default-error={t.auth.login_error}></p>
+      <p id="error-msg" class="login-error" style="display:none"></p>
     </div>
 
     <script>
       import { storeAuthToken, initTauriDatabase } from '../lib/tauri';
       import { STORAGE_KEYS } from '../lib/storage/storage-keys';
+      import { getT } from '../i18n/runtime';
 
       const form = document.getElementById('login-form');
       const input = document.getElementById('username-input') as HTMLInputElement;
@@ -62,7 +66,7 @@ const t    = useTranslations(lang);
             window.location.replace(destination);
           } catch (err) {
             if (errorMsg) {
-              errorMsg.textContent = (err instanceof Error ? err.message : null) || errorMsg.dataset.defaultError || '';
+              errorMsg.textContent = (err instanceof Error ? err.message : null) || getT().auth.login_error;
               errorMsg.style.display = 'block';
             }
           }

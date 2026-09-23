@@ -13,6 +13,7 @@
 
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 
+use super::continue_frame;
 use super::engine::PlayerEngineState;
 use super::error::PlayerError;
 
@@ -33,6 +34,9 @@ pub struct EndedPayload {
     pub duration_secs: f64,
     pub playlist_index: i64,
     pub path: Option<String>,
+    /// The "continue watching" frame captured at the stop point
+    /// (continue_frame.rs), when there was one.
+    pub frame_path: Option<String>,
 }
 
 pub fn main_window(app: &AppHandle) -> Result<WebviewWindow, PlayerError> {
@@ -122,13 +126,29 @@ pub fn destroy_overlay_window(app: &AppHandle) {
     }
 }
 
+/// Clips the reported rect to the main window's client area: the overlay is
+/// a separate top-level window, so an unclipped rect would let it hang
+/// outside the window (a stray strip of controls under the bottom edge).
+fn clamp_to_client(rect: VideoRect, client: PhysicalSize<u32>) -> Option<VideoRect> {
+    let (x, y, w, h) = rect;
+    let (client_w, client_h) = (client.width as i32, client.height as i32);
+    let left = x.max(0);
+    let top = y.max(0);
+    let right = (x + w).min(client_w);
+    let bottom = (y + h).min(client_h);
+    (right > left && bottom > top).then_some((left, top, right - left, bottom - top))
+}
+
 /// Aligns the overlay with the video rect in screen space; hides it while
-/// no rect has been reported yet.
+/// no rect has been reported yet or the rect lies entirely off the window.
 pub fn sync_overlay_bounds(app: &AppHandle) {
     let (Ok(main), Some(overlay)) = (main_window(app), app.get_webview_window(OVERLAY_LABEL)) else {
         return;
     };
-    let Some((x, y, w, h)) = current_rect(app).filter(|(_, _, w, h)| *w > 0 && *h > 0) else {
+    let rect = current_rect(app)
+        .filter(|(_, _, w, h)| *w > 0 && *h > 0)
+        .and_then(|rect| main.inner_size().ok().map_or(Some(rect), |client| clamp_to_client(rect, client)));
+    let Some((x, y, w, h)) = rect else {
         let _ = overlay.hide();
         return;
     };
@@ -157,14 +177,21 @@ pub fn sync_video_bounds(app: &AppHandle) {
 }
 
 /// Stops the engine, releases the native surface and the overlay. Safe to
-/// call when nothing is open.
+/// call when nothing is open — then nothing is emitted either, so the two
+/// close paths that race on a normal stop (the close button and the modal
+/// unmounting) produce exactly one `player://ended`: the one carrying the
+/// real position.
 pub async fn teardown(app: &AppHandle, reason: &str) {
     let mut payload = EndedPayload { reason: reason.to_string(), playlist_index: -1, ..Default::default() };
+    let mut was_open = false;
+    let mut stopped_at: Option<(String, f64)> = None;
+    let frames_root = app.path().app_data_dir().ok();
     let host = {
         let state = app.state::<PlayerEngineState>();
         let taken = match state.0.lock() {
             Ok(mut engine) => {
-                if engine.is_open() {
+                was_open = engine.is_open();
+                if was_open {
                     // Read straight from mpv before quitting: the shared
                     // snapshot may be up to a throttle window old.
                     let last = engine.refresh_status();
@@ -172,6 +199,17 @@ pub async fn teardown(app: &AppHandle, reason: &str) {
                     payload.duration_secs = last.duration_secs;
                     payload.playlist_index = last.playlist_index;
                     payload.path = last.path;
+                    // Before quitting: the frame has to come from the live
+                    // decoder. A failed capture only costs the thumbnail.
+                    stopped_at = engine.episode_at(last.playlist_index);
+                    if let (Some((external_id, episode)), Some(root)) = (&stopped_at, &frames_root) {
+                        if continue_frame::worth_capturing(last.position_secs, last.duration_secs) {
+                            let frame = continue_frame::continue_frame_path(root, external_id, *episode);
+                            if engine.capture_frame(&frame).is_ok() {
+                                payload.frame_path = Some(frame.to_string_lossy().into_owned());
+                            }
+                        }
+                    }
                 }
                 engine.close();
                 engine.video_host.take()
@@ -184,7 +222,28 @@ pub async fn teardown(app: &AppHandle, reason: &str) {
         let _ = app.run_on_main_thread(move || host.destroy());
     }
     destroy_overlay_window(app);
-    let _ = app.emit(EVENT_ENDED, payload);
+    // Closing the player always leaves fullscreen: the fullscreen was the
+    // player's, not the page's.
+    if was_open {
+        if let Ok(main) = main_window(app) {
+            if main.is_fullscreen().unwrap_or(false) {
+                let _ = main.set_fullscreen(false);
+            }
+        }
+    }
+    if let Some((external_id, episode)) = &stopped_at {
+        if continue_frame::worth_capturing(payload.position_secs, payload.duration_secs) {
+            let db = app.state::<crate::db::MetadeaDb>();
+            if let Ok(conn) = db.conn.lock() {
+                let _ = continue_frame::record_frame(
+                    &conn, external_id, *episode, payload.frame_path.as_deref(), payload.position_secs, payload.duration_secs,
+                );
+            };
+        }
+    }
+    if was_open {
+        let _ = app.emit(EVENT_ENDED, payload);
+    }
 }
 
 /// Creates the native surface as a child of the main window, on the main
@@ -200,4 +259,28 @@ pub async fn create_video_host(app: &AppHandle, main: &WebviewWindow) -> Result<
         let _ = tx.send(super::video_host::VideoHost::create(parent, w.max(1), h.max(1)));
     })?;
     rx.await.map_err(|_| PlayerError::window("main thread did not answer"))?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ended_payload_carries_the_continue_frame_path() {
+        let payload = EndedPayload { frame_path: Some("C:/data/metadata/continue_frames/anime_21_13.jpg".into()), ..Default::default() };
+        let json = serde_json::to_value(&payload).unwrap();
+        assert_eq!(json["frame_path"], "C:/data/metadata/continue_frames/anime_21_13.jpg");
+        assert!(serde_json::to_value(EndedPayload::default()).unwrap()["frame_path"].is_null());
+    }
+
+    #[test]
+    fn overlay_rect_is_clipped_to_the_client_area() {
+        let client = PhysicalSize::new(1000u32, 600u32);
+        assert_eq!(clamp_to_client((0, 0, 1000, 600), client), Some((0, 0, 1000, 600)));
+        // Hanging below the window (the reported rect included a strip past
+        // the bottom edge) is cut back to the client area.
+        assert_eq!(clamp_to_client((0, 100, 1000, 700), client), Some((0, 100, 1000, 500)));
+        assert_eq!(clamp_to_client((-20, -10, 200, 100), client), Some((0, 0, 180, 90)));
+        assert_eq!(clamp_to_client((1000, 600, 50, 50), client), None);
+    }
 }

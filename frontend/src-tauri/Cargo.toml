@@ -16,9 +16,15 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2.6.3", features = [] }
+# Compiles the vendored rcheevos rc_hash sources (vendor/rcheevos) when they
+# are present — see build.rs and src/retro_achievements/hash.rs.
+cc = "1"
 
 [dependencies]
 serde_json = "1.0"
+# OS randomness for the MyAnimeList PKCE verifier/state (src/mal/oauth.rs);
+# already in the graph through rustls/ring, no new download.
+getrandom = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.3", features = ["protocol-asset"] }
@@ -45,6 +51,10 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 discord-rich-presence = "0.2"
 unrar = "0.5"
 zip = { version = "2.2", default-features = false, features = ["deflate"] }
+# EPUB reader (src/epub_reader): container.xml / OPF / NCX / nav / chapter XHTML
+# parsing. Already in the dependency graph through plist; escape-html resolves
+# the HTML named entities (&nbsp; &mdash; ...) real EPUB chapters use.
+quick-xml = { version = "0.39", features = ["escape-html"] }
 # libmpv is loaded at runtime (see src/player/libmpv_ffi.rs) so that a
 # missing DLL degrades to "engine unavailable" instead of a failed build.
 libloading = "0.8"

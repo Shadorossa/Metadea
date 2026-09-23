@@ -54,6 +54,7 @@ export const SearchResultCard = memo(function SearchResultCard({ result }: { res
             alt={result.titleMain}
             className="card-media-img"
             loading="lazy"
+            decoding="async"
             onLoad={handleCoverLoad}
             onError={() => setLoadFailed(true)}
           />

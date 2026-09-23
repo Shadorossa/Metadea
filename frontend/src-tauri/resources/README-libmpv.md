@@ -7,19 +7,19 @@ is loaded **at runtime** (`src/player/libmpv_ffi.rs`, via `libloading`), so
 the app builds and runs without it: when it cannot be found, "Play" falls
 back to VLC and shows a translated notice.
 
-## 1. Download the LGPL build
+## 1. Get the LGPL build (scripted)
 
-Use the **LGPL** libmpv build, not the default GPL one, so it can ship next
-to Metadea:
+Run once per checkout (CI does the same before `cargo` / `tauri build`):
 
-1. Open the shinchiro mpv builds on SourceForge:
-   <https://sourceforge.net/projects/mpv-player-windows/files/libmpv/>
-2. Download the newest archive whose name matches
-   `mpv-dev-x86_64-<date>-git-<hash>-lgpl.7z` (note the **`-lgpl`** suffix).
-3. Extract `libmpv-2.dll` from it.
+```powershell
+powershell -File scripts/fetch-libmpv.ps1
+```
 
-The client API must be **2.0 or newer** (any build from 2023 on qualifies;
-the app checks `mpv_client_api_version()` and refuses older ones).
+It downloads the pinned **LGPL** `mpv-dev-lgpl-x86_64-*.7z` from
+zhongfly/mpv-winbuild, verifies its SHA-256, and extracts `libmpv-2.dll`
+into this folder. The DLL is git-ignored (≈100 MB). To update mpv, bump the
+URL and hash in the script together. The client API must be **2.0 or
+newer** (the app checks `mpv_client_api_version()` and refuses older ones).
 
 ## 2. Where to put it
 
@@ -35,7 +35,7 @@ For development, either drop the DLL into `src-tauri/target/debug/` or set
 `METADEA_MPV_DIR` to the folder that holds it.
 
 On Linux/macOS the file names are `libmpv.so.2` / `libmpv.2.dylib`; embedding
-the video into the main window (the `/player` route) is only implemented on
+the video into the main window (the player overlay) is only implemented on
 Windows so far (elsewhere mpv opens its own window).
 
 If the transparent controls overlay misbehaves on a machine, switch

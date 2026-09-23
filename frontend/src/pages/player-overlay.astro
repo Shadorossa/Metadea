@@ -5,6 +5,7 @@ import '../styles/player-overlay.css';
 import '../styles/player-overlay-panels.css';
 import { getLang, useTranslations } from '../i18n/index';
 import { PlayerShell } from '../components/player/PlayerShell';
+import LocaleBootstrap from '../components/i18n/LocaleBootstrap.astro';
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -14,8 +15,9 @@ const t = useTranslations(lang);
 <html lang={lang}>
   <head>
     <meta charset="utf-8" />
+    <LocaleBootstrap buildLang={lang} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{t.player.window_title} — Metadea</title>
+    <title data-i18n-doc-title="player.window_title" data-i18n-suffix=" — Metadea">{t.player.window_title} — Metadea</title>
   </head>
   <body class="player-overlay-body">
     <PlayerShell client:only="react" />

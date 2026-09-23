@@ -1,0 +1,401 @@
+/* ── Jukebox mini player (components/jukebox/, lib/jukebox/) ─────────────── */
+
+.jukebox {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 210; /* above the now-playing bars (200) */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  border-radius: 2rem;
+  /* Same box open and closed (border/padding always present, background
+     only when open) so the round button never moves when the panel
+     mounts; the panel's own height matches the button's. */
+  border: 1px solid transparent;
+  padding: 0.4rem;
+  margin: -0.4rem;
+  transition: bottom var(--anim-base) var(--anim-ease);
+}
+
+/* Open: the pill wraps the panel AND the round button at its right end, so
+   the row reads as growing out of the button. */
+.jukebox--open {
+  border-color: var(--border-color);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.jukebox--open .jukebox-toggle {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* A now-playing / now-reading bar occupies the bottom edge. */
+.jukebox--raised {
+  bottom: 4.5rem;
+}
+
+/* ── Round button ─────────────────────────────────────────────────────────── */
+
+.jukebox-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  color: var(--text-main);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transition: color var(--anim-fast) var(--anim-ease), border-color var(--anim-fast) var(--anim-ease);
+}
+
+.jukebox-toggle:hover,
+.jukebox-toggle--open {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.jukebox-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.jukebox-toggle--playing .jukebox-toggle-disc {
+  animation: jukebox-spin 4s linear infinite;
+}
+
+.jukebox-toggle-indicator {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-elevated);
+  animation: jukebox-pulse 1.6s ease-in-out infinite;
+}
+
+/* ── Horizontal panel (slides out to the left of the button) ──────────────── */
+
+.jukebox-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2.75rem;
+  padding: 0 0.3rem 0 0;
+  transform-origin: right center;
+  animation: jukebox-slide var(--anim-base) var(--anim-ease);
+  max-width: min(34rem, calc(100vw - 5rem));
+  overflow: hidden;
+}
+
+/* ── Disc ─────────────────────────────────────────────────────────────────── */
+
+.jukebox-disc-btn {
+  position: relative;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  color: var(--text-main);
+}
+
+.jukebox-disc-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.jukebox-disc-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.jukebox-disc {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-card);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--border-color);
+  animation: jukebox-spin 6s linear infinite;
+  animation-play-state: paused;
+}
+
+.jukebox-disc-btn--spinning .jukebox-disc {
+  animation-play-state: running;
+}
+
+.jukebox-disc-btn--loading .jukebox-disc {
+  opacity: 0.6;
+}
+
+.jukebox-disc-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jukebox-disc-art--empty {
+  background: repeating-radial-gradient(circle, var(--bg-card) 0 3px, var(--bg-elevated) 3px 5px);
+}
+
+.jukebox-disc-hole {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.7rem;
+  height: 0.7rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--bg-base);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* Pause glyph over a paused disc (hover pauses, click resumes). */
+.jukebox-disc-glyph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+}
+
+.jukebox-disc-glyph--hover {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.jukebox-disc-btn:hover .jukebox-disc-glyph--hover,
+.jukebox-disc-btn:focus-visible .jukebox-disc-glyph--hover {
+  opacity: 1;
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+
+.jukebox-ctl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: color var(--anim-fast) var(--anim-ease), background var(--anim-fast) var(--anim-ease);
+}
+
+.jukebox-ctl:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.jukebox-ctl:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.jukebox-ctl:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.jukebox-ctl--active {
+  color: var(--accent);
+}
+
+/* ── Song line + seek ─────────────────────────────────────────────────────── */
+
+.jukebox-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 14rem;
+  min-width: 0;
+}
+
+.jukebox-line {
+  font-size: 0.66rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jukebox-line-song {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.jukebox-line-media {
+  color: inherit;
+  text-decoration: none;
+}
+
+.jukebox-line-media:hover {
+  color: var(--accent);
+}
+
+.jukebox-line-error {
+  color: var(--color-error-strong);
+}
+
+.jukebox-seek {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.jukebox-seek-time {
+  flex-shrink: 0;
+  min-width: 2rem;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.jukebox-range {
+  flex: 1;
+  min-width: 0;
+  height: 3px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.jukebox-range:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Volume (slider unfolds on hover) ─────────────────────────────────────── */
+
+.jukebox-volume {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.jukebox-range--volume {
+  width: 0;
+  opacity: 0;
+  margin: 0;
+  transition: width var(--anim-base) var(--anim-ease), opacity var(--anim-base) var(--anim-ease), margin var(--anim-base) var(--anim-ease);
+}
+
+.jukebox-volume--open .jukebox-range--volume {
+  width: 4.5rem;
+  opacity: 1;
+  margin: 0 0.25rem;
+}
+
+/* ── Star on the media page's OP/ED cards ─────────────────────────────────── */
+
+.media-theme-fav {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-main);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--anim-fast) var(--anim-ease), color var(--anim-fast) var(--anim-ease);
+}
+
+.media-theme-fav:focus-visible,
+.media-theme-fav--on {
+  opacity: 1;
+}
+
+.media-theme-fav:hover,
+.media-theme-fav--on {
+  color: var(--accent);
+}
+
+/* In the theme player's info bar (right of the episodes chip): always
+   visible, laid out inline instead of floating over a card. */
+.media-theme-fav--inline {
+  position: static;
+  flex-shrink: 0;
+  opacity: 1;
+  /* Same chip as .theme-player-episodes next to it. */
+  width: auto;
+  height: auto;
+  align-self: stretch;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.media-theme-fav--inline:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--text-main);
+}
+
+.media-theme-fav--inline.media-theme-fav--on {
+  color: var(--accent);
+}
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
+
+@keyframes jukebox-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes jukebox-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.35); opacity: 0.6; }
+}
+
+@keyframes jukebox-slide {
+  from { opacity: 0; transform: scaleX(0.6); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jukebox-toggle--playing .jukebox-toggle-disc,
+  .jukebox-disc,
+  .jukebox-toggle-indicator,
+  .jukebox-panel {
+    animation: none;
+  }
+}

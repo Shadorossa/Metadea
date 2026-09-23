@@ -1,4 +1,5 @@
 import { tauriCmd, tauriRun } from './bridge';
+import { notifyMediaPartChanged } from './change-events';
 // ── Staff (crew) ─────────────────────────────────────────────────────────────
 
 export interface DbMediaStaffMember {
@@ -21,5 +22,6 @@ export interface SkeletonStaffMember {
 }
 
 export async function saveStaffSkeleton(mediaExternalId: string, staff: SkeletonStaffMember[]): Promise<void> {
-  return tauriRun('save_staff_skeleton', { mediaExternalId, staff });
+  await tauriRun('save_staff_skeleton', { mediaExternalId, staff });
+  notifyMediaPartChanged('staff');
 }

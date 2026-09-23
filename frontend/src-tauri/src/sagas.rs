@@ -560,12 +560,19 @@ pub async fn get_saga_names(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     media_external_ids: Vec<String>,
 ) -> Result<std::collections::HashMap<String, String>, String> {
-    let mut map = std::collections::HashMap::new();
     if media_external_ids.is_empty() {
-        return Ok(map);
+        return Ok(std::collections::HashMap::new());
     }
-
     let conn = state.conn.lock().str_err()?;
+    load_saga_names(&conn, &media_external_ids)
+}
+
+// The map behind get_saga_names, shared with the Home bundle (home_bundle.rs).
+pub(crate) fn load_saga_names(
+    conn: &rusqlite::Connection,
+    media_external_ids: &[String],
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let mut map = std::collections::HashMap::new();
     for chunk in media_external_ids.chunks(crate::db::SQL_IN_CHUNK) {
         let sql = format!(
             "SELECT sr.media_external_id, s.name FROM saga_relations sr JOIN sagas s ON s.id = sr.saga_id

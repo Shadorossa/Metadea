@@ -109,7 +109,7 @@ export function EpisodesTab({ t, active, searchSlot, paging, catalogInfoMap, ope
             value={episodeMediaTypeFilter}
             onChange={e => setEpisodeMediaTypeFilter(e.target.value as EpisodeMediaTypeFilter)}
           >
-            <option value="all">Todos (Anime / Series)</option>
+            <option value="all">{t.episodes_filter_all}</option>
             <option value="anime">Anime</option>
             <option value="series">Series</option>
           </select>

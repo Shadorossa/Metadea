@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
 import { getT } from '../../i18n/runtime';
@@ -18,8 +19,15 @@ import { useDiscordPresence } from './hooks/useDiscordPresence';
 import { readUserFavoritesTyped, syncFavorites } from '../../lib/tauri/favorites';
 import { sanitizeHtml } from '../../lib/shared/text/sanitize-html';
 import { ANILIST_TYPES } from '../../lib/media/media-types';
+import { CONTAINS_RELATION_TYPES } from '../../lib/media/saga/saga-relation-types';
+import { digitToDbRating } from '../../lib/media/rating-digit';
+import { isAniListType, syncToAniList } from '../../lib/media/anilist-sync';
+import { copyDeepLink } from '../../lib/deep-link/copy-deep-link';
+import { showToast } from '../../lib/dom/toast';
+import { useShortcuts } from '../shared/hooks/useShortcuts';
 
 import { getPreferredCover } from '../../lib/media/cover-preferences';
+import { invalidateMediaPageReads } from '../../lib/media/media-page-read-cache';
 import { usePrEditorSession } from './media-page/usePrEditorSession';
 import { ThemePlayerOverlay } from './media-page/ThemePlayerOverlay';
 import { useMediaPageData } from './media-page/useMediaPageData';
@@ -60,10 +68,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   const [currentId, setCurrentId] = useState('');
   const [showEditor,         setShowEditor]         = useState(false);
   const [showSaga,           setShowSaga]           = useState(false);
-  const [relationPage,       setRelationPage]       = useState(1);
-  const [relationsTab,       setRelationsTab]       = useState<RelationsTab>('related');
-  const [characterPage,      setCharacterPage]      = useState(1);
-  const [charTab,            setCharTab]            = useState<CharTab>('characters');
+  // Section tabs/pagination start over on every navigation (keyed on the
+  // id the data hooks load for, so they don't need to know about page UI
+  // state).
+  const [relationPage,       setRelationPage]       = useKeyedState(currentId, 1);
+  const [relationsTab,       setRelationsTab]       = useKeyedState<RelationsTab>(currentId, 'related');
+  const [characterPage,      setCharacterPage]      = useKeyedState(currentId, 1);
+  const [charTab,            setCharTab]            = useKeyedState<CharTab>(currentId, 'characters');
   const {
     data, setData,
     pageState, setPageState,
@@ -76,18 +87,22 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     currentTitle: data?.titleMain,
     pe,
     onSubmitted: () => {
-      if (currentId) fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
+      if (!currentId) return;
+      // The proposal wrote catalog/relation rows the page may hold memoised.
+      invalidateMediaPageReads();
+      fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
     },
   });
   // localStorage is unavailable during Astro's server render.
   const unifySeasonsEnabled = typeof window !== 'undefined' && isUnifySeasonsEnabled();
   const {
     playingTheme, setPlayingTheme,
-    selectedThemeVersion, setSelectedThemeVersion,
-    playingVideoSrc, setPlayingVideoSrc,
-    playerError, setPlayerError,
-    playerRetryKey, setPlayerRetryKey,
-  } = useThemePlayer({ currentId, previewMode, themes });
+    selectedThemeVersion, selectVersion,
+    videoSource,
+    playerError,
+    onVideoError,
+    retry: retryThemePlayer,
+  } = useThemePlayer({ currentId, themes });
   const { animeSeasonChain, animeSeasonChainResolvedFor, episodeOffset } = useEpisodesAndSeasons({
     currentId,
     previewMode,
@@ -181,19 +196,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
       setPageState('ready');
       setIsFetchingFull(false);
     }
-  }, [previewMode, previewData]);
-
-  // Section tabs/pagination start over on every navigation — same trigger
-  // and guards as the main load effect (useMediaPageData) this used to be
-  // part of, kept here so the data hooks don't know about page UI state.
-  useEffect(() => {
-    if (previewMode) return;
-    if (!currentId) return;
-    setRelationPage(1);
-    setRelationsTab('related');
-    setCharacterPage(1);
-    setCharTab('characters');
-  }, [currentId, previewMode]);
+  }, [previewMode, previewData, setData, setPageState, setIsFetchingFull]);
 
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
   useEffect(() => {
@@ -206,15 +209,16 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   // usual "favorite" toggle lives inside MediaEditorModal's library log,
   // which a bundle never gets to open, so its favorite state is tracked
   // standalone here instead, straight off the shared favorites list.
+  const dataType = data?.type;
   useEffect(() => {
-    if (previewMode || !data) return;
+    if (previewMode || !dataType) return;
     let cancelled = false;
     readUserFavoritesTyped().then(favs => {
       if (cancelled) return;
-      setIsFavorited((favs[data.type] || []).includes(currentId));
+      setIsFavorited((favs[dataType] || []).includes(currentId));
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [currentId, data?.type, previewMode]);
+  }, [currentId, dataType, previewMode]);
 
   // The top/bottom fade on the synopsis should only appear when there's
   // actually more text than fits — otherwise a short synopsis gets its
@@ -384,6 +388,72 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     }
   }, [isFavorited, updateLocal, applySaved, rollback, currentId]);
 
+  // "Copy link" — puts the https share form of this work's deep link
+  // (buildShareUrl, the one Discord/chats accept) on the clipboard. Shared
+  // by the hero's button and the `l` shortcut.
+  const handleCopyLink = useCallback(async () => {
+    const deepLinkText = getT().deep_link;
+    const copied = await copyDeepLink({ kind: 'media', external_id: currentId });
+    showToast(copied ? deepLinkText.copied : deepLinkText.copy_failed, copied ? 'success' : 'error');
+  }, [currentId]);
+
+  // `+` / `-`: progress ±1 through the same quick-edit persistence as the
+  // hero (saveLibraryEntry + applySaved) followed by the editor's AniList
+  // sync, with the editor's "reaching the total completes it" rule.
+  const handleStepProgress = useCallback(async (delta: 1 | -1) => {
+    if (!data) return;
+    const current = libEntry?.progress ?? 0;
+    const total = data.totalCount && data.totalCount > 0 ? data.totalCount : null;
+    const next = Math.max(0, total ? Math.min(total, current + delta) : current + delta);
+    if (next === current) return;
+    const overrides: Partial<LibraryEntry> = { progress: next };
+    if (total && next >= total && data.status !== 'NOT_YET_RELEASED' && libStatus !== 'completed') overrides.status = 'completed';
+    const draft = updateLocal(overrides);
+    try {
+      const saved = await saveLibraryEntry(draft);
+      applySaved(saved);
+      if (isAniListType(data.type)) {
+        void syncToAniList({
+          externalId: currentId, type: data.type,
+          status: saved.status ?? '', rating: saved.rating ?? 0,
+          progress: saved.progress ?? 0, progressVolumes: saved.progress_2 ?? 0,
+          startedAt: saved.started_at ?? '', finishedAt: saved.finished_at ?? '', notes: saved.notes ?? '',
+        }).then(result => { if (!result.ok) console.warn('AniList sync failed:', result.error); });
+      }
+    } catch (e) {
+      console.error('Failed to save progress:', e);
+      rollback();
+    }
+  }, [data, libEntry, libStatus, currentId, updateLocal, applySaved, rollback]);
+
+  // ── Keyboard shortcuts (page context) ────────────────────────────────────
+  // Only while nothing sits on top of the page: the editors register their
+  // own `modal` bindings, but keys they do not bind would otherwise fall
+  // through to these (and the saga viewer / theme overlay bind nothing).
+  const isBlockedEdition = !!data?.parentGame && data.format !== 'EXPANSION';
+  const isBundle = (data?.relations ?? []).filter(r => !!r.relationType && CONTAINS_RELATION_TYPES.includes(r.relationType)).length >= 2;
+  const noOverlayOpen = () => !showEditor && !showSaga && !prSession.showPrEditor && !playingTheme;
+  const progressSteppable = !isEventCompetition && data?.type !== 'game' && data?.type !== 'vnovel';
+  useShortcuts('page', [
+    { id: 'media.open_editor', keys: 'e', description: 'shortcuts.media_open_editor', when: () => noOverlayOpen() && !isBlockedEdition && !isBundle, handler: handleCoverClick },
+    { id: 'media.propose', keys: 'p', description: 'shortcuts.media_propose', when: noOverlayOpen, handler: prSession.start },
+    { id: 'media.copy_link', keys: 'l', description: 'shortcuts.media_copy_link', when: noOverlayOpen, handler: () => void handleCopyLink() },
+    { id: 'media.toggle_favorite', keys: 'f', description: 'shortcuts.media_toggle_favorite', when: () => noOverlayOpen() && !isBlockedEdition, handler: () => void handleToggleFavorite() },
+    { id: 'media.progress_increment', keys: '+', description: 'shortcuts.media_progress_increment', when: () => noOverlayOpen() && inLibrary && progressSteppable, handler: () => void handleStepProgress(1) },
+    { id: 'media.progress_decrement', keys: '-', description: 'shortcuts.media_progress_decrement', when: () => noOverlayOpen() && inLibrary && progressSteppable, handler: () => void handleStepProgress(-1) },
+    {
+      id: 'media.rate', keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'], description: 'shortcuts.media_rate',
+      when: () => noOverlayOpen() && !isBlockedEdition && !isBundle && digitToDbRating('1', ratingSystem) !== null,
+      // handleRate takes the 0.5–5 star scale the hero's StarRating uses;
+      // the DB value is twice that.
+      handler: event => {
+        const dbRating = digitToDbRating(event.key, ratingSystem);
+        if (dbRating !== null) void handleRate(dbRating / 2);
+      },
+    },
+    { id: 'media.play_theme', keys: 't', description: 'shortcuts.media_play_theme', when: () => noOverlayOpen() && themes.length > 0, handler: () => setPlayingTheme(themes[0]) },
+  ], { enabled: !!data && pageState === 'ready' && !previewMode });
+
   // ── States: loading / error ──────────────────────────────────────────────
 
   const navigateToThemeEpisodes = (formatted: string) => {
@@ -484,9 +554,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           themes={themes}
           mediaTitle={data?.titleMain ?? ''}
           mediaCover={data?.cover}
-          videoSrc={playingVideoSrc}
+          videoSource={videoSource}
           playerError={playerError}
-          retryKey={playerRetryKey}
           selectedVersion={selectedThemeVersion}
           animeSeasonChain={animeSeasonChain}
           episodes={episodes}
@@ -496,15 +565,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
           t={tm}
           onClose={() => setPlayingTheme(null)}
           onSelectTheme={setPlayingTheme}
-          onSelectVersion={(version, videoUrl) => {
-            setSelectedThemeVersion(version);
-            if (videoUrl) setPlayingVideoSrc(videoUrl);
-          }}
-          onVideoError={() => setPlayerError(true)}
-          onRetry={() => {
-            setPlayerError(false);
-            setPlayerRetryKey(k => k + 1);
-          }}
+          onSelectVersion={selectVersion}
+          onVideoError={onVideoError}
+          onRetry={retryThemePlayer}
           onNavigateToEpisodes={navigateToThemeEpisodes}
         />
       )}
@@ -535,6 +598,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
             onClose={prSession.requestClose}
             onSaved={() => {
               if (externalId !== currentId) return;
+              invalidateMediaPageReads();
               fetchMediaDataWithFallback(currentId, partial => setData(partial), full => setData(full), () => {});
             }}
           />
@@ -581,6 +645,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
         eventAggregateRating={eventAggregateRating}
         onProposeChanges={prSession.start}
         onRetrySync={handleRetrySync}
+        onCopyLink={() => void handleCopyLink()}
         onOpenSaga={() => setShowSaga(true)}
         onCoverClick={handleCoverClick}
         onToggleFavorite={handleToggleFavorite}

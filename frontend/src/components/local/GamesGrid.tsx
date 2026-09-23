@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Translations } from '../../i18n/index';
 import { motion } from 'motion/react';
-import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
+import type { LocalGame, CatalogEntryLike } from '../../lib/tauri';
 import { getT } from '../../i18n/runtime';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
@@ -63,7 +63,7 @@ interface GamesGridProps {
   // IgdbPickerModal), its card should show that entry's own title_main
   // instead of the raw scanned name, which for a ROM is often a messy dump
   // filename (region tags, language codes, ...) rather than the real title.
-  catalogMapById: Map<string, MediaCatalogEntry>;
+  catalogMapById: Map<string, CatalogEntryLike>;
   // Drops a game from useLocalGames' own state immediately (see its own
   // doc comment) — used instead of onRefreshScan for "Eliminar de la
   // lista" so removing one card doesn't re-run the whole scan and flash
@@ -270,7 +270,7 @@ export function GamesGrid({
         <DeleteContextMenu
           x={deleteMenu.x}
           y={deleteMenu.y}
-          label="Eliminar de la lista"
+          label={t.local.remove_from_list}
           onDelete={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
           onClose={closeDeleteMenu}
         />

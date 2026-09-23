@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, memo } from 'react';
+import { useHydrated } from '../shared/hooks/useHydrated';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
 import { wrapAssetUrl } from '../../lib/tauri';
 import type { CatalogSummary } from '../../lib/tauri';
-import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
+import { loadHomeData } from '../../lib/home/home-data';
 import { getT } from '../../i18n/runtime';
 import { ALL_MEDIA_TYPES, getTypeLabel } from '../../lib/media/media-types';
 import {
@@ -10,8 +12,9 @@ import {
   type UpcomingRelease,
   type CalendarDay,
 } from '../../lib/profile/stats-calculators';
-import { fetchGeneralUpcomingReleases } from '../../lib/media/upcoming-general';
+import { fetchGeneralUpcomingReleases } from '../../lib/home/upcoming-general';
 import { formatMonthName } from '../../lib/shared/text/format-date';
+import { localMonthKey, readHomeSnapshot, snapshotCalendar, updateHomeSnapshot } from '../../lib/home/home-snapshot';
 
 import { typeIconMap } from '../../lib/dom/icon-strings';
 
@@ -59,7 +62,7 @@ const TypeTabs = memo(function TypeTabs({ releases, activeType, tabClass, onSele
 
 const ReleaseThumb = memo(function ReleaseThumb({ release }: { release: UpcomingRelease }) {
   return release.cover
-    ? <img className="calendar-popover-cover" src={wrapAssetUrl(release.cover)} alt="" loading="lazy" />
+    ? <img className="calendar-popover-cover" src={wrapAssetUrl(release.cover)} alt="" loading="lazy" decoding="async" />
     : <div className="calendar-popover-cover calendar-popover-cover--empty" />;
 });
 
@@ -123,8 +126,7 @@ const DayPopover = memo(function DayPopover({ releases }: { releases: UpcomingRe
 });
 
 export function CalendarSection() {
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => { setIsMounted(true); }, []);
+  const isMounted = useHydrated();
 
   const t = getT();
   const p = isMounted ? t.profile : (getT().profile || t.profile);
@@ -152,12 +154,21 @@ export function CalendarSection() {
 
   const [mode, setMode] = useState<CalendarMode>('mine');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [openDay, setOpenDay] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const [mineReleases, setMineReleases] = useState<UpcomingRelease[]>([]);
-  const [generalReleases, setGeneralReleases] = useState<UpcomingRelease[] | null>(null);
-  const [generalLoading, setGeneralLoading] = useState(false);
+  // An open day popover doesn't carry over to whatever day number happens
+  // to line up in a different month.
+  const [openDay, setOpenDay] = useKeyedState<number | null>(startOfMonth, null);
+  // "Para ti" paints from the Home snapshot on the first frame (this island
+  // is client:only); with no snapshot the empty month grid shows at its
+  // final size and the covers fill in — never a "loading" line that the
+  // grid then replaces, which shifted everything below it.
+  const [mineReleases, setMineReleases] = useState<UpcomingRelease[]>(
+    () => snapshotCalendar(readHomeSnapshot(), now) ?? [],
+  );
+  // Only valid for the month it was fetched for — navigating to a different
+  // month via the arrows drops it so the effect below actually re-fetches
+  // instead of keeping stale results.
+  const [generalReleases, setGeneralReleases] = useKeyedState<UpcomingRelease[] | null>(startOfMonth, null);
+  const generalLoading = mode === 'general' && generalReleases === null;
 
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -165,35 +176,32 @@ export function CalendarSection() {
     let cancelled = false;
     (async () => {
       // Shared with CurrentlySection (same page) and the profile tabs —
-      // one library/catalog fetch per navigation instead of a fresh 5 MB
+      // one get_home_bundle round trip per navigation instead of a fresh
       // copy per component, and per month-arrow click here.
-      const { items, catalog: catalogEntries } = await getCachedLibraryAndCatalog();
+      const { items, catalog: catalogEntries } = await loadHomeData();
       if (cancelled) return;
       const catalogMap = new Map<string, CatalogSummary>(catalogEntries.map(e => [e.external_id, e]));
-      setMineReleases(computeUpcomingPlanningReleases(items, catalogMap, startOfMonth));
-      setLoading(false);
+      const releases = computeUpcomingPlanningReleases(items, catalogMap, startOfMonth);
+      setMineReleases(releases);
+      if (localMonthKey(startOfMonth) === localMonthKey(now)) {
+        updateHomeSnapshot({
+          calendarMonth: localMonthKey(now),
+          calendar: releases.filter(r => r.year === now.getFullYear() && r.month === now.getMonth() + 1),
+        });
+      }
     })();
     return () => { cancelled = true; };
-  }, [startOfMonth]);
-
-  // Cached generalReleases is only valid for the month it was fetched for —
-  // navigating to a different month via the arrows must invalidate it so
-  // the effect below actually re-fetches instead of keeping stale results.
-  useEffect(() => { setGeneralReleases(null); }, [startOfMonth]);
+  }, [startOfMonth, now]);
 
   useEffect(() => {
     if (mode !== 'general' || generalReleases !== null) return;
     let cancelled = false;
-    setGeneralLoading(true);
-    fetchGeneralUpcomingReleases(startOfMonth, endOfMonth).then(res => {
-      if (!cancelled) { setGeneralReleases(res); setGeneralLoading(false); }
-    });
+    // Cached month first (even a stale one), the refreshed list once it
+    // lands — see lib/home/upcoming-general.ts for the refresh policy.
+    const apply = (res: UpcomingRelease[]) => { if (!cancelled) setGeneralReleases(res); };
+    fetchGeneralUpcomingReleases(startOfMonth, endOfMonth, apply).then(apply);
     return () => { cancelled = true; };
-  }, [mode, generalReleases, startOfMonth, endOfMonth]);
-
-  // An open day popover doesn't carry over to whatever day number happens
-  // to line up in a different month.
-  useEffect(() => { setOpenDay(null); }, [startOfMonth]);
+  }, [mode, generalReleases, startOfMonth, endOfMonth, setGeneralReleases]);
 
   // Click outside any day cell closes whichever popover is open — delegated
   // on the document (not each cell) so it also catches clicks on other
@@ -207,7 +215,7 @@ export function CalendarSection() {
     };
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
-  }, [openDay]);
+  }, [openDay, setOpenDay]);
 
   const releases = useMemo(
     () => mode === 'mine' ? mineReleases : (generalReleases ?? []),
@@ -224,7 +232,7 @@ export function CalendarSection() {
     [filtered, now, currentYear, currentMonth]
   );
 
-  const isBusy = mode === 'mine' ? loading : generalLoading;
+  const isBusy = generalLoading;
 
   const dayHeaders = useMemo(
     () => p.calendar_days || ['L', 'M', 'X', 'J', 'V', 'S', 'D'],
@@ -304,7 +312,7 @@ export function CalendarSection() {
                     // set via inline style silently failed to render in the
                     // packaged production build (same root cause fixed for the
                     // Hall of Fame cards), while <img> elements always rendered fine.
-                    <img className="calendar-day-cover" src={wrapAssetUrl(firstRelease!.cover)} alt="" />
+                    <img className="calendar-day-cover" src={wrapAssetUrl(firstRelease!.cover)} alt="" decoding="async" />
                   )}
                   <span className="calendar-day-num">{day}</span>
                   {hasReleases && !hasCover && <div className="calendar-day-event-dot" />}

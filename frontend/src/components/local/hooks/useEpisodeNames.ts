@@ -1,5 +1,6 @@
 import { useAsyncResource } from '../../shared/hooks/useAsyncResource';
 import { fetchLocalSeasonEpisodeNames } from '../../../lib/media/episodes/episode-list';
+import { memoLocalRead } from '../../../lib/local/local-read-cache';
 import type { LocalMediaItem } from './useLocalMediaEntries';
 
 // Provider-sourced episode names (AniList/TMDB, via the same "Episodios"
@@ -26,7 +27,9 @@ export function useEpisodeNames(
     const ids = new Set<string>([item.externalId, ...currentHistory.map(h => h.external_id)]);
     const merged = new Map<string, string>();
     await Promise.all([...ids].map(async id => {
-      const localMap = await fetchLocalSeasonEpisodeNames(id).catch(() => new Map<number, string>());
+      // Once per id per Local visit (see local-read-cache.ts) — reopening a
+      // work, or the history growing, must not re-run the provider lookup.
+      const localMap = await memoLocalRead('episode-names', id, () => fetchLocalSeasonEpisodeNames(id)).catch(() => new Map<number, string>());
       for (const [num, name] of localMap) merged.set(`${id}|${num}`, name);
     }));
     return merged;

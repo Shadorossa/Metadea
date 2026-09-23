@@ -12,7 +12,7 @@
 //
 // Every read here resolves title/cover/type via a LEFT JOIN against YOUR
 // OWN media_catalog/characters — that's the single source of truth for
-// what a title looks like, same as user_lists.rs's get_list_items_full.
+// what a title looks like, same as user_lists.rs's get_list_items_full_light.
 // An entry you don't have locally still comes back (rating/dates/notes are
 // still real, useful data), just with title/cover as None — the frontend
 // falls back to the bare external_id ("anime:12345") until your own catalog
@@ -189,30 +189,12 @@ pub async fn hydrate_social_profile(
     tx.commit().str_err()
 }
 
-// Every read below comes in two flavours: the original, which inlines a
-// character portrait's bytes as a base64 data URL into cover_url, and a
-// `_light` one that returns the portrait's file path instead (wrap with
-// wrapAssetUrl on the frontend — see image_storage::resolve_reference_path).
-// Media covers are remote URLs and come back untouched either way.
+// Every `_light` read below returns a character portrait's file path in
+// cover_url (wrap with wrapAssetUrl on the frontend — see
+// image_storage::resolve_reference_path), never its bytes as a base64 data
+// URL. Media covers are remote URLs and come back untouched.
 fn app_data_dir(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     app_handle.path().app_data_dir().str_err()
-}
-
-#[tauri::command]
-pub async fn get_social_library(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    social_user_id: String,
-) -> Result<Vec<SocialLibraryItem>, String> {
-    let mut items = {
-        let conn = state.conn.lock().str_err()?;
-        load_social_library(&conn, &social_user_id)?
-    };
-    let data_dir = app_data_dir(&app_handle)?;
-    for item in &mut items {
-        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-    }
-    Ok(items)
 }
 
 #[tauri::command]
@@ -268,23 +250,6 @@ pub(crate) fn load_social_library(
 }
 
 #[tauri::command]
-pub async fn get_social_activity(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    social_user_id: String,
-) -> Result<Vec<SocialActivityItem>, String> {
-    let mut items = {
-        let conn = state.conn.lock().str_err()?;
-        load_social_activity(&conn, &social_user_id)?
-    };
-    let data_dir = app_data_dir(&app_handle)?;
-    for item in &mut items {
-        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-    }
-    Ok(items)
-}
-
-#[tauri::command]
 pub async fn get_social_activity_light(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -331,25 +296,6 @@ pub(crate) fn load_social_activity(
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
     Ok(collected)
-}
-
-#[tauri::command]
-pub async fn get_social_monthly_history(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    social_user_id: String,
-) -> Result<Vec<SocialMonthGroup>, String> {
-    let mut result = {
-        let conn = state.conn.lock().str_err()?;
-        load_social_monthly_history(&conn, &social_user_id)?
-    };
-    let data_dir = app_data_dir(&app_handle)?;
-    for group in &mut result {
-        for item in &mut group.items {
-            item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-        }
-    }
-    Ok(result)
 }
 
 #[tauri::command]
@@ -436,24 +382,6 @@ pub async fn get_social_lists(
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
 
-    Ok(items)
-}
-
-#[tauri::command]
-pub async fn get_social_list_items(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    social_user_id: String,
-    list_key: String,
-) -> Result<Vec<SocialMediaRef>, String> {
-    let mut items = {
-        let conn = state.conn.lock().str_err()?;
-        load_social_list_items(&conn, &social_user_id, &list_key)?
-    };
-    let data_dir = app_data_dir(&app_handle)?;
-    for item in &mut items {
-        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-    }
     Ok(items)
 }
 

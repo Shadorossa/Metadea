@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
 import { isTauri, invoke } from '../tauri/bridge';
 import { parseExternalId } from './mappers/mapper-utils';
+import { syncToMal } from '../mal/sync';
 export type AniListSyncType = typeof ANILIST_TYPES[number];
 
 export function isAniListType(type: string): type is AniListSyncType {
@@ -22,6 +23,8 @@ interface AniListMediaListEntry {
   startedAt: FuzzyDate;
   completedAt: FuzzyDate;
   notes: string | null;
+  // AniList's own rewatch/reread counter — Metadea's reconsumption_count.
+  repeat: number | null;
 }
 
 // Variables sent to SAVE_MUTATION — mirrors AniListMediaListEntry minus `id`,
@@ -35,6 +38,7 @@ interface AniListSyncVariables {
   startedAt: FuzzyDate;
   completedAt: FuzzyDate;
   notes: string | null;
+  repeat: number | null;
 }
 
 function parseFuzzyDate(iso: string | null | undefined): FuzzyDate {
@@ -64,6 +68,7 @@ query GetMediaListEntry($mediaId: Int!, $userId: Int!) {
     startedAt { year month day }
     completedAt { year month day }
     notes
+    repeat
   }
 }`;
 
@@ -136,6 +141,7 @@ mutation SaveMediaListEntry(
   $startedAt: FuzzyDateInput
   $completedAt: FuzzyDateInput
   $notes: String
+  $repeat: Int
 ) {
   SaveMediaListEntry(
     mediaId: $mediaId
@@ -146,6 +152,7 @@ mutation SaveMediaListEntry(
     startedAt: $startedAt
     completedAt: $completedAt
     notes: $notes
+    repeat: $repeat
   ) {
     id
     mediaId
@@ -166,6 +173,12 @@ export interface AniListSyncParams {
   startedAt:       string;
   finishedAt:      string;
   notes:           string;
+  // reconsumption_count → AniList `repeat`. Optional: a caller that doesn't
+  // track it (the player/reader auto-mark flows) leaves AniList's value as is.
+  repeat?:         number;
+  // A re-run in progress → MAL `is_rewatching` / `is_rereading` (AniList
+  // has no such flag; only `repeat` above). Same optionality as `repeat`.
+  reconsuming?:    boolean;
 }
 
 export interface AniListSyncResult {
@@ -208,12 +221,18 @@ function hasChanges(current: AniListMediaListEntry | null, incoming: AniListSync
   if (fuzzyDateToString(current.startedAt) !== fuzzyDateToString(incoming.startedAt)) return true;
   if (fuzzyDateToString(current.completedAt) !== fuzzyDateToString(incoming.completedAt)) return true;
   if ((current.notes ?? '').trim() !== (incoming.notes ?? '')) return true;
+  if (incoming.repeat !== null && (current.repeat ?? 0) !== incoming.repeat) return true;
 
   return false; // No changes
 }
 
 export async function syncToAniList(params: AniListSyncParams): Promise<AniListSyncResult> {
   if (!isAniListType(params.type)) return { ok: false, error: 'Type not supported' };
+
+  // MyAnimeList rides along with every save-time sync (lib/mal/sync.ts):
+  // fire-and-forget, so a slow or failing MAL never delays the AniList
+  // result the caller is waiting on — its outcome lands in sync_state.
+  void syncToMal(params).catch(err => console.error('MyAnimeList sync failed:', err));
 
   const token = await getToken();
   if (!token) return { ok: false, error: 'No AniList token' };
@@ -235,6 +254,7 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
     startedAt:       parseFuzzyDate(params.startedAt),
     completedAt:     parseFuzzyDate(params.finishedAt),
     notes:           params.notes.trim() || null,
+    repeat:          params.repeat ?? null,
   };
 
   // Check current state in AniList

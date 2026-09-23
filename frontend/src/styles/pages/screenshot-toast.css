@@ -112,3 +112,52 @@ body {
   font-weight: 600;
   letter-spacing: 0.015em;
 }
+
+/* ── "Marked as watched" variant: check icon + Undo on the right ─────────── */
+.screenshot-toast-card--watched {
+  border-left-color: #7ed9a4;
+}
+
+.screenshot-toast-card--watched .screenshot-toast-icon {
+  border-color: rgba(126, 217, 164, 0.55);
+  color: #a9ecc5;
+}
+
+.screenshot-toast-card--watched .screenshot-toast-title {
+  color: #d6f5e3;
+}
+
+.screenshot-toast-undo {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 6px 13px;
+  border: 1px solid rgba(220, 205, 185, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f2eee8;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.screenshot-toast-undo:hover,
+.screenshot-toast-undo:focus-visible {
+  border-color: #7ed9a4;
+  background: rgba(126, 217, 164, 0.16);
+  color: #d6f5e3;
+  outline: none;
+}
+
+.screenshot-toast-undo:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.screenshot-toast-undo[hidden],
+.screenshot-toast-meta[hidden],
+.screenshot-toast-icon svg[hidden] {
+  display: none;
+}

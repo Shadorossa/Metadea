@@ -1,19 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { steamAchievementIcon, type SteamAchievement } from '../../../lib/tauri';
+import { wrapAssetUrl, type SteamAchievement } from '../../../lib/tauri';
 import { getT } from '../../../i18n/runtime';
 import { formatDateShort } from '../../../lib/shared/text/format-date';
 
 interface AchievementCellProps {
   ach:   SteamAchievement;
+  // Kept as the cell's identity for callers; icons come from `ach` itself.
   appId: string;
 }
 
-export function AchievementCell({ ach, appId }: AchievementCellProps) {
+const ICON_SIZE = 52;
+
+// The downloaded icon (asset protocol: no IPC round trip, no base64) first,
+// then the remote URL (Steam CDN / RetroAchievements), then the placeholder.
+function iconCandidates(ach: SteamAchievement): string[] {
+  const out: string[] = [];
+  if (ach.icon_local) out.push(wrapAssetUrl(ach.icon_local));
+  if (ach.icon) out.push(ach.icon);
+  return out;
+}
+
+export function AchievementCell({ ach }: AchievementCellProps) {
   const t = getT();
   const isUnachievedSpoiler = !!ach.hidden && !ach.achieved;
-  const localFile = ach.achieved ? ach.icon_unlocked : ach.icon_locked;
-  const [src, setSrc] = useState<string | null>(null);
+  // Sources that failed to load, so the next candidate takes over.
+  const [failed, setFailed] = useState<readonly string[]>([]);
+  const src = iconCandidates(ach).find(candidate => !failed.includes(candidate)) ?? null;
   const cellRef = useRef<HTMLDivElement>(null);
   // Was a plain CSS :hover-shown absolutely-positioned child before — the
   // achievements grid sits inside .local-game-detail-content, which owns
@@ -25,14 +38,6 @@ export function AchievementCell({ ach, appId }: AchievementCellProps) {
   // Rendering into a body-level portal with position:fixed, positioned
   // from the cell's own measured rect, is what actually escapes that.
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
-
-  useEffect(() => {
-    if (localFile) {
-      steamAchievementIcon(appId, localFile).then(url => setSrc(url ?? ach.icon ?? null));
-    } else {
-      setSrc(ach.icon ?? null);
-    }
-  }, [appId, localFile, ach.icon]);
 
   const unlockDate = ach.achieved && ach.unlocktime > 0
     ? formatDateShort(new Date(ach.unlocktime * 1000))
@@ -59,7 +64,16 @@ export function AchievementCell({ ach, appId }: AchievementCellProps) {
       onMouseLeave={() => setTooltipPos(null)}
     >
       {src ? (
-        <img src={src} alt={ach.name || ach.apiname} className="local-game-detail-ach-img" />
+        <img
+          src={src}
+          alt={ach.name || ach.apiname}
+          className="local-game-detail-ach-img"
+          width={ICON_SIZE}
+          height={ICON_SIZE}
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(prev => prev.includes(src) ? prev : [...prev, src])}
+        />
       ) : (
         <div className="local-game-detail-ach-img local-game-detail-ach-placeholder">
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -77,7 +91,7 @@ export function AchievementCell({ ach, appId }: AchievementCellProps) {
           {isUnachievedSpoiler && <span className="local-game-detail-ach-tooltip-spoiler">{t.local.spoiler_label}</span>}
           <span className="local-game-detail-ach-tooltip-name">{ach.name || ach.apiname}</span>
           {ach.description && <span className="local-game-detail-ach-tooltip-desc">{ach.description}</span>}
-          {unlockDate && <span className="local-game-detail-ach-tooltip-date">Desbloqueado: {unlockDate}</span>}
+          {unlockDate && <span className="local-game-detail-ach-tooltip-date">{t.local.achievement_unlocked_on}: {unlockDate}</span>}
         </div>,
         document.body,
       )}

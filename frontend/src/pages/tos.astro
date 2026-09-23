@@ -6,45 +6,45 @@ const lang = getLang(Astro.url);
 const t = useTranslations(lang);
 ---
 
-<BaseLayout title={`${t.tos.title} — Metadea`} lang={lang}>
+<BaseLayout title={`${t.tos.title} — Metadea`} titleKey="tos.title" lang={lang}>
   <div style="max-width: 800px; margin: 3rem auto; padding: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); box-sizing: border-box;">
-    <h1 style="font-size: 1.75rem; color: var(--text-main); font-weight: 800; margin-bottom: 0.5rem; text-align: center;">{t.tos.title}</h1>
-    <p style="font-size: 0.8rem; color: var(--text-dim); text-align: center; margin-bottom: 2rem;">{t.tos.last_updated}</p>
+    <h1 style="font-size: 1.75rem; color: var(--text-main); font-weight: 800; margin-bottom: 0.5rem; text-align: center;" data-i18n="tos.title">{t.tos.title}</h1>
+    <p style="font-size: 0.8rem; color: var(--text-dim); text-align: center; margin-bottom: 2rem;" data-i18n="tos.last_updated">{t.tos.last_updated}</p>
 
     <div style="display: flex; flex-direction: column; gap: 1.5rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.6;">
       <section>
-        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">{t.tos.section1_title}</h2>
-        <p>{t.tos.section1_body}</p>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;" data-i18n="tos.section1_title">{t.tos.section1_title}</h2>
+        <p data-i18n="tos.section1_body">{t.tos.section1_body}</p>
       </section>
 
       <section>
-        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">{t.tos.section2_title}</h2>
-        <p>{t.tos.section2_body}</p>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;" data-i18n="tos.section2_title">{t.tos.section2_title}</h2>
+        <p data-i18n="tos.section2_body">{t.tos.section2_body}</p>
       </section>
 
       <section>
-        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">{t.tos.section3_title}</h2>
-        <p>{t.tos.section3_body}</p>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;" data-i18n="tos.section3_title">{t.tos.section3_title}</h2>
+        <p data-i18n="tos.section3_body">{t.tos.section3_body}</p>
       </section>
 
       <section>
-        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">{t.tos.section4_title}</h2>
-        <p>{t.tos.section4_body}</p>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;" data-i18n="tos.section4_title">{t.tos.section4_title}</h2>
+        <p data-i18n="tos.section4_body">{t.tos.section4_body}</p>
       </section>
 
       <section>
-        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">{t.tos.section5_title}</h2>
-        <p>{t.tos.section5_body}</p>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;" data-i18n="tos.section5_title">{t.tos.section5_title}</h2>
+        <p data-i18n="tos.section5_body">{t.tos.section5_body}</p>
       </section>
 
       <section>
-        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">{t.tos.section6_title}</h2>
-        <p>{t.tos.section6_body}</p>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;" data-i18n="tos.section6_title">{t.tos.section6_title}</h2>
+        <p data-i18n="tos.section6_body">{t.tos.section6_body}</p>
       </section>
     </div>
 
     <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); text-align: center;">
-      <button id="tos-close-btn" class="btn btn--sm btn--primary" style="min-width: 120px;">{t.tos.close_button}</button>
+      <button id="tos-close-btn" class="btn btn--sm btn--primary" style="min-width: 120px;" data-i18n="tos.close_button">{t.tos.close_button}</button>
     </div>
   </div>
 </BaseLayout>

@@ -15,16 +15,42 @@ pub async fn save_game_link(
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
+    // A pick made in the IGDB picker is manual: it wins over every
+    // automatic match on every future scan (see save_auto_game_link).
     conn.execute(
-        "INSERT INTO local_game_links (launcher, link_key, external_id, updated_at)
-         VALUES (?1, ?2, ?3, ?4)
+        "INSERT INTO local_game_links (launcher, link_key, external_id, updated_at, manual)
+         VALUES (?1, ?2, ?3, ?4, 1)
          ON CONFLICT(launcher, link_key) DO UPDATE SET
              external_id = excluded.external_id,
-             updated_at  = excluded.updated_at",
+             updated_at  = excluded.updated_at,
+             manual      = 1",
         rusqlite::params![launcher, link_key, external_id, now],
     )
     .map(|_| ())
     .str_err()
+}
+
+// The automatic counterpart, used when an emulated ROM resolves through
+// IGDB matching on its own (igdb_get_cover_by_steam_id): recorded so the
+// game keeps its catalog identity across scans, but never over a manual
+// pick — a rescan must not undo what the user corrected by hand.
+pub fn save_auto_game_link(
+    conn: &rusqlite::Connection,
+    launcher: &str,
+    link_key: &str,
+    external_id: &str,
+) -> rusqlite::Result<()> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO local_game_links (launcher, link_key, external_id, updated_at, manual)
+         VALUES (?1, ?2, ?3, ?4, 0)
+         ON CONFLICT(launcher, link_key) DO UPDATE SET
+             external_id = excluded.external_id,
+             updated_at  = excluded.updated_at
+         WHERE local_game_links.manual = 0",
+        rusqlite::params![launcher, link_key, external_id, now],
+    )
+    .map(|_| ())
 }
 
 // Single-row counterpart to lookup_game_links (which pulls the whole table
@@ -198,6 +224,20 @@ pub fn lookup_hidden_games(conn: &rusqlite::Connection) -> std::collections::Has
             });
     }
     set
+}
+
+// The automatic clean-up (rom_rename.rs) changes a ROM's path, and a ROM's
+// link_key/app_id is a hash of that path — every row keyed by the old id
+// follows the file to its new name, so links, seen-history and "removed"
+// state all survive the rename (and its undo, which calls this in reverse).
+pub fn move_game_link_key(conn: &rusqlite::Connection, old_key: &str, new_key: &str) -> rusqlite::Result<()> {
+    for table in ["local_game_links", "local_games_seen", "local_hidden_games"] {
+        conn.execute(
+            &format!("UPDATE OR REPLACE {table} SET link_key = ?2 WHERE link_key = ?1"),
+            rusqlite::params![old_key, new_key],
+        )?;
+    }
+    Ok(())
 }
 
 pub fn prune_stale_game_links(conn: &rusqlite::Connection) {

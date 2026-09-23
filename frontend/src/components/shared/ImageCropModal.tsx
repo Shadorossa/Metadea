@@ -336,7 +336,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
                 close(await buildCroppedResult());
               }}
             >
-              {opts.saveLabel ?? 'Guardar'}
+              {opts.saveLabel ?? t.save}
             </button>
           </div>
         </div>

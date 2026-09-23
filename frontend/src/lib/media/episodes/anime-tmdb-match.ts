@@ -23,7 +23,12 @@
 // AniList's own episode data for that one entry — entries matched earlier
 // in the chain keep their mapping regardless.
 import { searchTvIncludingAnime, fetchTmdbDetail, type TmdbTvDetail, type TmdbSeasonSummary } from '../../search/providers/tmdb';
-import { getCatalogEntry, getMediaRelations, type MediaCatalogEntry } from '../../tauri/catalog';
+import type { MediaCatalogEntry } from '../../tauri/catalog';
+import type { AnimeChainRow } from '../../tauri/media-page';
+// Visit-scoped memo (plain reads outside a media page visit): the media page
+// builds this chain several times per open (episode offset, mapping key,
+// theme offsets), and the chain itself is one Rust round trip.
+import { readCatalogEntryCached as getCatalogEntry, readAnimeChainCached } from '../media-page-read-cache';
 import { parseExternalId } from '../mappers/mapper-utils';
 
 export interface AnimeChainEntry {
@@ -52,11 +57,9 @@ export interface TmdbSeasonMatch {
   slices: TmdbEpisodeSlice[];
 }
 
-// Safety cap against a corrupt/cyclic relations graph — no real anime saga
-// runs anywhere near this many entries.
-const MAX_CHAIN_LENGTH = 25;
-
-function toChainEntry(e: MediaCatalogEntry): AnimeChainEntry {
+// Accepts a full catalog row or the narrower AnimeChainRow the Rust chain
+// walk returns — both carry the same title/count/format/year columns.
+export function toChainEntry(e: Pick<MediaCatalogEntry, 'external_id' | 'title_romaji' | 'title_main' | 'title_english' | 'title_native' | 'total_count' | 'format' | 'release_year'> | AnimeChainRow): AnimeChainEntry {
   const titles = [e.title_romaji, e.title_main, e.title_english, e.title_native]
     .filter((title): title is string => !!title?.trim())
     .filter((title, index, all) => all.findIndex(candidate => candidate.toLowerCase() === title.toLowerCase()) === index);
@@ -75,57 +78,21 @@ function contributesToTvEpisodeStream(entry: AnimeChainEntry): boolean {
   return format !== 'MOVIE' && !(format === 'SPECIAL' && entry.totalCount <= 1);
 }
 
-// Walks PREQUEL/SEQUEL relations both ways from rawId, entirely off the
-// local catalog (getMediaRelations/getCatalogEntry are DB reads, no network)
-// — every entry in the chain is already curated locally, same data
-// addSequelToPlanning (tauri/library.ts) reads for the same relation edges.
-// Stops at the first non-anime entry (a manga SOURCE relation, say) or a
-// repeat id, so it never wanders off the actual season chain.
+// The anime's PREQUEL/SEQUEL chain (prequels first, then itself, then
+// sequels), entirely off the local catalog — every entry in the chain is
+// already curated locally, same data addSequelToPlanning (tauri/library.ts)
+// reads for the same relation edges. The walk itself runs in Rust
+// (get_anime_chain, media_page_bundle.rs): from each entry it follows the
+// first PREQUEL/SEQUEL row in curated order, stops at the first non-anime
+// entry (a manga SOURCE relation, say) or a repeat id so it never wanders
+// off the actual season chain, and is bounded to 25 hops each way. Empty
+// for anything that isn't a visible anime row.
 export async function buildAnimeChain(rawId: string): Promise<AnimeChainEntry[]> {
-  const self = await getCatalogEntry(rawId).catch(() => null);
-  if (!self || self.type !== 'anime') return [];
-
-  const visited = new Set<string>([rawId]);
-
-  const backward: AnimeChainEntry[] = [];
-  let cursor = rawId;
-  for (let i = 0; i < MAX_CHAIN_LENGTH; i++) {
-    const relations = await getMediaRelations(cursor).catch(() => []);
-    const prequel = relations.find(r => r.relation_type === 'PREQUEL');
-    if (!prequel || visited.has(prequel.related_media_external_id)) break;
-    const entry = await getCatalogEntry(prequel.related_media_external_id).catch(() => null);
-    if (entry && entry.type !== 'anime') break;
-    if (!entry && !prequel.related_media_external_id.startsWith('anime:')) break;
-    backward.unshift(entry ? toChainEntry(entry) : {
-      externalId: prequel.related_media_external_id,
-      title: '',
-      titles: [],
-      totalCount: 0,
-    });
-    visited.add(prequel.related_media_external_id);
-    cursor = prequel.related_media_external_id;
-  }
-
-  const forward: AnimeChainEntry[] = [toChainEntry(self)];
-  cursor = rawId;
-  for (let i = 0; i < MAX_CHAIN_LENGTH; i++) {
-    const relations = await getMediaRelations(cursor).catch(() => []);
-    const sequel = relations.find(r => r.relation_type === 'SEQUEL');
-    if (!sequel || visited.has(sequel.related_media_external_id)) break;
-    const entry = await getCatalogEntry(sequel.related_media_external_id).catch(() => null);
-    if (entry && entry.type !== 'anime') break;
-    if (!entry && !sequel.related_media_external_id.startsWith('anime:')) break;
-    forward.push(entry ? toChainEntry(entry) : {
-      externalId: sequel.related_media_external_id,
-      title: '',
-      titles: [],
-      totalCount: 0,
-    });
-    visited.add(sequel.related_media_external_id);
-    cursor = sequel.related_media_external_id;
-  }
-
-  return [...backward, ...forward];
+  // Only an 'anime:' row can ever have type 'anime' (the type is the id's
+  // own prefix), so the round trip is skipped for every other kind of page.
+  if (parseExternalId(rawId).type !== 'anime') return [];
+  const rows = await readAnimeChainCached(rawId).catch(() => [] as AnimeChainRow[]);
+  return rows.map(toChainEntry);
 }
 
 export async function getAnimePrequelEpisodeOffset(rawId: string): Promise<number> {

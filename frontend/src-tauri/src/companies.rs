@@ -24,6 +24,13 @@ pub async fn get_media_companies(
     media_external_id: String,
 ) -> Result<Vec<DbMediaCompany>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_media_companies(&conn, &media_external_id)
+}
+
+pub(crate) fn load_media_companies(
+    conn: &rusqlite::Connection,
+    media_external_id: &str,
+) -> Result<Vec<DbMediaCompany>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT c.external_id, c.name, c.logo_url, mc.role
@@ -33,7 +40,7 @@ pub async fn get_media_companies(
         )
         .str_err()?;
     let rows = stmt
-        .query_map([&media_external_id], |row| {
+        .query_map([media_external_id], |row| {
             Ok(DbMediaCompany {
                 external_id: row.get(0)?,
                 name: row.get(1)?,

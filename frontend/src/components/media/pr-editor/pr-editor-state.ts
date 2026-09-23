@@ -12,6 +12,10 @@ import { DIFF_FIELDS } from '../../../lib/media/constants';
 import { normField } from '../../shared/PrEditorField';
 import { applyResyncToDraft } from './pr-editor-resync';
 import type { BundledRelation, EditableRelation } from '../../../lib/media/editor/pr-editor-types';
+import {
+  canRedo as historyCanRedo, canUndo as historyCanUndo, createUndoHistory, recordUndoSnapshot, redoSnapshot, undoSnapshot,
+  type UndoHistory,
+} from '../../../lib/shared/state/undo-history';
 
 export interface PrEditorDraft {
   entry: MediaCatalogEntry | null;
@@ -54,6 +58,10 @@ export interface PrEditorDraft {
 export interface PrEditorState {
   baseline: PrEditorDraft;
   draft: PrEditorDraft;
+  // Undo/redo over `draft` (mod+z / mod+y in the modal). Every
+  // draft-changing action records the previous draft; load/reset/resync
+  // start a fresh history since their result is a new "origin".
+  history: UndoHistory<PrEditorDraft>;
 }
 
 export type PrEditorDraftPatch = Partial<PrEditorDraft> | ((draft: PrEditorDraft) => Partial<PrEditorDraft>);
@@ -63,10 +71,14 @@ export type PrEditorAction =
   // lazy load of one list, e.g. the referenced bundle's children) does.
   | { type: 'load'; patch: Partial<PrEditorDraft> }
   // Curator edit: draft only. A function patch reads the latest draft, the
-  // reducer equivalent of a functional setState updater.
-  | { type: 'edit'; patch: PrEditorDraftPatch }
+  // reducer equivalent of a functional setState updater. `coalesceKey` +
+  // `at` (ms) mark a text-field keystroke so a burst on one field is a
+  // single undo step (see lib/shared/state/undo-history.ts).
+  | { type: 'edit'; patch: PrEditorDraftPatch; coalesceKey?: string; at?: number }
   | { type: 'reset' }
-  | { type: 'resync'; liveData: MediaPageData; externalId: string };
+  | { type: 'resync'; liveData: MediaPageData; externalId: string }
+  | { type: 'undo' }
+  | { type: 'redo' };
 
 // Values that don't live in the draft but every derived check needs.
 export interface PrEditorContext {
@@ -99,8 +111,11 @@ export function createEmptyDraft(externalId: string): PrEditorDraft {
 }
 
 export function createInitialPrEditorState(externalId: string): PrEditorState {
-  return { baseline: createEmptyDraft(externalId), draft: createEmptyDraft(externalId) };
+  return { baseline: createEmptyDraft(externalId), draft: createEmptyDraft(externalId), history: createUndoHistory() };
 }
+
+export function canUndo(state: PrEditorState): boolean { return historyCanUndo(state.history); }
+export function canRedo(state: PrEditorState): boolean { return historyCanRedo(state.history); }
 
 // The draft's entry always carries the movie rule; the baseline keeps the
 // row exactly as loaded (so a movie whose stored total_count isn't 1 shows
@@ -115,6 +130,7 @@ export function prEditorReducer(state: PrEditorState, action: PrEditorAction): P
       return {
         baseline: { ...state.baseline, ...action.patch },
         draft: { ...state.draft, ...toDraftPatch(action.patch) },
+        history: createUndoHistory(),
       };
     case 'edit': {
       const patch = typeof action.patch === 'function' ? action.patch(state.draft) : action.patch;
@@ -122,12 +138,24 @@ export function prEditorReducer(state: PrEditorState, action: PrEditorAction): P
       // no new state object when nothing actually changed.
       const keys = Object.keys(patch) as (keyof PrEditorDraft)[];
       if (keys.every(key => patch[key] === state.draft[key])) return state;
-      return { ...state, draft: { ...state.draft, ...patch } };
+      return {
+        ...state,
+        draft: { ...state.draft, ...patch },
+        history: recordUndoSnapshot(state.history, state.draft, { coalesceKey: action.coalesceKey, at: action.at }),
+      };
     }
     case 'reset':
-      return { ...state, draft: toDraftPatch(state.baseline) };
+      return { ...state, draft: toDraftPatch(state.baseline), history: createUndoHistory() };
     case 'resync':
-      return { ...state, draft: applyResyncToDraft(state.draft, action.liveData, action.externalId) };
+      return { ...state, draft: applyResyncToDraft(state.draft, action.liveData, action.externalId), history: createUndoHistory() };
+    case 'undo': {
+      const step = undoSnapshot(state.history, state.draft);
+      return step ? { ...state, draft: step.snapshot, history: step.history } : state;
+    }
+    case 'redo': {
+      const step = redoSnapshot(state.history, state.draft);
+      return step ? { ...state, draft: step.snapshot, history: step.history } : state;
+    }
     default:
       return state;
   }

@@ -89,12 +89,18 @@ describe('topoSortByPrecedes', () => {
     expect(topoSortByPrecedes(ids, precedes, byIndex(ids))).toBe(ids);
   });
 
-  // Characterization: an edge to an id outside the list makes the result
-  // longer than the input, which is treated like an inconsistency.
-  it('falls back to the given order when an edge points outside the id list', () => {
+  it('ignores an edge that points outside the id list', () => {
     const ids = ['a'];
     const precedes = new Map([['a', new Set(['z'])]]);
-    expect(topoSortByPrecedes(ids, precedes, byIndex(ids))).toBe(ids);
+    expect(topoSortByPrecedes(ids, precedes, byIndex(ids))).toEqual(['a']);
+  });
+
+  it('keeps the manual order of the other members when one edge leaves the saga', () => {
+    // release-date order c, b, a; manual order a -> b, plus a stray edge to
+    // a removed member `z` and an edge from `z` back into the saga.
+    const ids = ['c', 'b', 'a'];
+    const precedes = new Map([['a', new Set(['b', 'z'])], ['z', new Set(['c'])]]);
+    expect(topoSortByPrecedes(ids, precedes, byIndex(ids))).toEqual(['c', 'a', 'b']);
   });
 
   it('handles a single id', () => {

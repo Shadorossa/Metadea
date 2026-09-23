@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useHydrated } from '../shared/hooks/useHydrated';
 import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../shared/hooks/useOwnerGate';
 import { isRepoOwner } from '../../lib/github/ownership';
@@ -15,8 +15,7 @@ interface Props {
 // Every other state (loading, signed-out, not-owner)
 // falls back to the same "coming soon" placeholder the page used to show statically.
 export function NotificationsPanel({ i18n }: Props) {
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => { setIsMounted(true); }, []);
+  const isMounted = useHydrated();
 
   const gate = useOwnerGate();
   const t = isMounted ? getT().notifications : i18n.notifications;

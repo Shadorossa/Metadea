@@ -73,7 +73,7 @@ export function PrEditorRelationsTab({
           externalId={externalId}
           sagaOrder={sagaOrder}
           sagaGroups={sagaGroups}
-          sortable={actions.saga.dragHandlers.sortable}
+          sortable={actions.saga.sortable}
           onRemove={actions.saga.remove}
           onUngroup={actions.saga.ungroup}
           onEditWork={onEditWork}
@@ -99,8 +99,7 @@ export function PrEditorRelationsTab({
           editableRelations={editableRelations}
           relationOptions={EDITABLE_RELATION_OPTIONS}
           relationLabels={actions.canonicalRelationLabels}
-          draggedIndex={actions.editable.draggedIndex}
-          dragHandlers={actions.editable.dragHandlers}
+          sortable={actions.editable.sortable}
           onRemove={actions.editable.remove}
           onUpdateType={actions.editable.updateType}
           onAdd={() => onOpenSearch('relations')}
@@ -128,8 +127,7 @@ export function PrEditorRelationsTab({
           issueRelations={issueRelations}
           isLoadingIssuePreview={issuePreview.loading}
           issuePreviewError={issuePreview.error}
-          draggedIndex={actions.issue.draggedIndex}
-          dragHandlers={actions.issue.dragHandlers}
+          sortable={actions.issue.sortable}
           onRemove={actions.issue.remove}
           onSelectVolume={() => onOpenSourceMapping('issues')}
           onResetSource={onResetIssueSource}
@@ -159,9 +157,7 @@ export function PrEditorRelationsTab({
           separately open the bundle's own editor afterward. */}
       {subtab === 'bundle-children' && bundledRelations.length > 0 && (
         <div className="pr-editor-section">
-          <p className="pr-editor-bundle-children-hint">
-            Esta obra ya queda incluida automáticamente — añade aquí el resto de obras del bundle.
-          </p>
+          <p className="pr-editor-bundle-children-hint">{pe.bundle_children_hint}</p>
           <PrEditorRelationCardList
             relations={bundleChildren}
             sortable={actions.bundleChild.sortable}

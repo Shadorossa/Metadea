@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { errorMessage } from '../../lib/errors/format-error';
 import {
   listDatabaseFiles, getFileAtRef, deleteFileFromMain, type GitHubDirEntry,
 } from '../../lib/github/api';
@@ -34,9 +35,9 @@ export function useGithubCatalogFiles({
       if (!token) return [];
       try {
         return await listDatabaseFiles(token);
-      } catch (err: any) {
+      } catch (err) {
         // 404 means that type's catalog/ folder doesn't exist yet — not an error worth logging
-        if (!String(err?.message ?? err).includes('Not Found')) {
+        if (!errorMessage(err).includes('Not Found')) {
           console.error('[CatalogAdminPanel] Failed to list GitHub database files:', err);
         }
         return [];

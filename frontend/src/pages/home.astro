@@ -4,6 +4,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import { getLang, useTranslations } from "../i18n/index";
 import { ActivityFeedSection } from "../components/home/ActivityFeedSection";
 import { CurrentlySection } from "../components/home/CurrentlySection";
+import { FinishAnniversaryBanner } from "../components/home/FinishAnniversaryBanner";
+import { CalendarSection } from "../components/home/CalendarSection";
+import AnniversarySkeleton from "../components/home/skeletons/AnniversarySkeleton.astro";
+import CurrentlySkeleton from "../components/home/skeletons/CurrentlySkeleton.astro";
+import CalendarSkeleton from "../components/home/skeletons/CalendarSkeleton.astro";
+import ActivityFeedSkeleton from "../components/home/skeletons/ActivityFeedSkeleton.astro";
+import HomeRailSkeleton from "../components/home/skeletons/HomeRailSkeleton.astro";
+import { HomeRail } from "../components/home/HomeRail";
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -11,9 +19,36 @@ const t = useTranslations(lang);
 
 <BaseLayout title="Metadea" lang={lang} activePage="home">
   <main class="home-page-container">
-    <h1 class="home-title" id="home-title">
-      {t.home.title}
-    </h1>
+    <!-- Pre-paint layout hint (lib/home/home-snapshot.ts writes it): reserves
+         the anniversary block, the "currently" groups, the feed cards and
+         the right rail's cards the last visit had, and this month's
+         calendar week count, before any module loads. -->
+    <script is:inline>
+      (function () {
+        const d = document.documentElement;
+        d.removeAttribute("data-home-anniv");
+        d.removeAttribute("data-home-currently");
+        d.removeAttribute("data-home-feed");
+        d.removeAttribute("data-home-feed-paged");
+        d.removeAttribute("data-home-continue");
+        try {
+          const n = new Date();
+          const pad = (x) => (x < 10 ? "0" : "") + x;
+          const today = n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate());
+          const first = new Date(n.getFullYear(), n.getMonth(), 1);
+          const days = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+          d.setAttribute("data-home-cal-rows", String(Math.ceil(((first.getDay() + 6) % 7 + days) / 7)));
+          const h = JSON.parse(localStorage.getItem('metadea_home_layout') || "null");
+          if (h && h.d === today && h.a > 0) d.setAttribute("data-home-anniv", "");
+          if (h && h.g > 0) d.setAttribute("data-home-currently", String(Math.min(h.g, 8)));
+          if (h && h.f > 0) d.setAttribute("data-home-feed", String(Math.min(h.f, 10)));
+          if (h && h.fp > 0) d.setAttribute("data-home-feed-paged", "");
+          if (h && h.c > 0) d.setAttribute("data-home-continue", "");
+        } catch {
+          // No hint: the sections simply start empty.
+        }
+      })();
+    </script>
 
     <div
       id="google-link-container"
@@ -44,20 +79,45 @@ const t = useTranslations(lang);
             d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.2 5.2C41.4 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-3.9z"
           ></path>
         </svg>
-        <span id="home-google-btn-text">{t.auth.link_google}</span>
+        <span id="home-google-btn-text" data-i18n="auth.link_google">{t.auth.link_google}</span>
       </a>
     </div>
 
-    <div class="home-content-grid">
-      <div class="home-main-col">
-        <CurrentlySection client:load />
-        <div id="home-calendar" class="home-calendar-section"></div>
+    <!-- The grid keeps its own width; the rail sits in the right gutter
+         when there is one, else stacks below (home.css, .home-layout). -->
+    <div class="home-layout">
+      <div class="home-content-grid">
+        <div class="home-main-col">
+          <CurrentlySection client:only="react">
+            <CurrentlySkeleton slot="fallback" />
+          </CurrentlySection>
+          <div class="home-calendar-section">
+            <CalendarSection client:only="react">
+              <CalendarSkeleton slot="fallback" p={t.profile} />
+            </CalendarSection>
+          </div>
+        </div>
+
+        <aside class="home-side-col">
+          <FinishAnniversaryBanner client:only="react">
+            <AnniversarySkeleton slot="fallback" heading={t.home.anniversary_heading} />
+          </FinishAnniversaryBanner>
+          <section class="home-activity-section">
+            <ActivityFeedSection client:only="react">
+              <ActivityFeedSkeleton slot="fallback" title={t.profile.recent_activity} p={t.profile} />
+            </ActivityFeedSection>
+          </section>
+        </aside>
       </div>
 
-      <aside class="home-side-col">
-        <section class="home-activity-section">
-          <ActivityFeedSection client:load title={t.profile.recent_activity} i18n={t.profile} />
-        </section>
+      <aside class="home-rail">
+        <HomeRail client:only="react">
+          <HomeRailSkeleton
+            slot="fallback"
+            continueHeading={t.home.continue_heading}
+            airingHeading={t.home.airing_heading}
+          />
+        </HomeRail>
       </aside>
     </div>
 
@@ -68,12 +128,22 @@ const t = useTranslations(lang);
       hidden
     >
       <div class="home-profile-sync-copy">
-        <h2 id="home-profile-sync-title">{t.home.profile_sync_prompt}</h2>
-        <p>{t.home.profile_sync_description}</p>
+        <h2 id="home-profile-sync-title" data-i18n="home.profile_sync_prompt">{t.home.profile_sync_prompt}</h2>
         <p id="home-profile-sync-status" class="home-profile-sync-status" aria-live="polite"></p>
       </div>
-      <button id="home-profile-sync-button" class="btn btn--accent" type="button">
+      <button id="home-profile-sync-button" class="btn btn--accent home-profile-sync-action" type="button" data-i18n="home.profile_sync_button">
         {t.home.profile_sync_button}
+      </button>
+      <button
+        id="home-profile-sync-dismiss"
+        class="home-profile-sync-dismiss"
+        type="button"
+        aria-label={t.home.profile_sync_dismiss}
+        title={t.home.profile_sync_dismiss}
+        data-i18n-aria-label="home.profile_sync_dismiss"
+        data-i18n-title="home.profile_sync_dismiss"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
       </button>
     </aside>
   </main>
@@ -81,16 +151,14 @@ const t = useTranslations(lang);
   <script>
     import { getAuthToken } from "../lib/tauri";
     import { API_URL } from "../lib/api/urls";
-    import { renderReleaseCalendar } from "../components/home/mount/render-calendar";
     import { refreshGeneralActivityFeed } from "../lib/social/activity-feed";
     import { STORAGE_KEYS } from "../lib/storage/storage-keys";
     import { getT } from "../i18n/runtime";
 
+    // Server-rendered text follows the UI locale through its data-i18n*
+    // attributes (components/i18n/LocaleBootstrap.astro); only the sync
+    // button's runtime states are set here.
     const ht = getT();
-    const titleEl = document.getElementById("home-title");
-    if (titleEl && ht.home?.title) titleEl.textContent = ht.home.title;
-    const googleText = document.getElementById("home-google-btn-text");
-    if (googleText && ht.auth?.link_google) googleText.textContent = ht.auth.link_google;
 
     async function checkSession() {
       const session = await getAuthToken().catch(() => null);
@@ -112,15 +180,23 @@ const t = useTranslations(lang);
         : null;
       if (lastSyncDate === new Date().toDateString()) return;
 
+      const hidePrompt = () => {
+        prompt.classList.remove("is-visible");
+        window.setTimeout(() => { prompt.hidden = true; }, 180);
+      };
+
       prompt.hidden = false;
       requestAnimationFrame(() => prompt.classList.add("is-visible"));
+      // "Not now" only closes it for this visit — the prompt keeps its
+      // once-a-day rule (it returns until a sync succeeds today).
+      document.getElementById("home-profile-sync-dismiss")?.addEventListener("click", hidePrompt);
       syncButton?.addEventListener("click", async () => {
         if (!syncButton || syncButton.disabled) return;
 
         const status = document.getElementById("home-profile-sync-status");
         syncButton.disabled = true;
         prompt.setAttribute("aria-busy", "true");
-        syncButton.textContent = ht.home?.profile_syncing ?? "Sincronizando…";
+        syncButton.textContent = ht.home.profile_syncing;
         if (status) status.textContent = "";
 
         let synced = false;
@@ -132,13 +208,12 @@ const t = useTranslations(lang);
         prompt.setAttribute("aria-busy", "false");
         if (synced) {
           await refreshGeneralActivityFeed(true);
-          prompt.classList.remove("is-visible");
-          window.setTimeout(() => { prompt.hidden = true; }, 180);
+          hidePrompt();
           return;
         }
 
-        if (status) status.textContent = ht.home?.profile_sync_error ?? "No se pudo sincronizar. Comprueba la conexión e inténtalo de nuevo.";
-        syncButton.textContent = ht.home?.profile_sync_button ?? "Sincronizar";
+        if (status) status.textContent = ht.home.profile_sync_error;
+        syncButton.textContent = ht.home.profile_sync_button;
         syncButton.disabled = false;
       });
     }
@@ -162,9 +237,6 @@ const t = useTranslations(lang);
         });
 
       checkSession();
-
-      const calendarEl = document.getElementById("home-calendar");
-      if (calendarEl) renderReleaseCalendar(calendarEl).catch(console.error);
     });
   </script>
 </BaseLayout>

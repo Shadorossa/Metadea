@@ -8,13 +8,13 @@ import { fr } from '../src/i18n/fr';
 import { ca } from '../src/i18n/ca';
 import { ru } from '../src/i18n/ru';
 
-// Cross-cutting test (lives in tests/, not next to a module): es.ts is the source of truth (`type Translations = typeof es`) and the other
-// locales are cast, so `tsc` cannot catch a key that is missing, renamed or
-// the wrong shape. At runtime deepMerge(es, locale) papers over the gap by
-// falling back to Spanish, which is invisible in testing and wrong for the
-// user. These tests are the only thing standing in for that type check.
+// Cross-cutting test (lives in tests/, not next to a module): en.ts is the
+// reference locale (`type Translations = WidenLeaves<typeof en>`). tsc already
+// rejects missing/renamed keys in the other locales; these tests also catch
+// orphans, shape drift and lost {placeholders}. At runtime deepMerge(en, locale)
+// would silently fall back to English, which is wrong for the user.
 const others: Array<[string, unknown]> = [
-  ['en', en], ['de', de], ['ja', ja], ['it', itLocale],
+  ['es', es], ['de', de], ['ja', ja], ['it', itLocale],
   ['fr', fr], ['ca', ca], ['ru', ru],
 ];
 
@@ -55,37 +55,37 @@ function placeholdersAt(node: unknown, path: string): Set<string> {
   return typeof value === 'string' ? new Set(value.match(PLACEHOLDER) ?? []) : new Set();
 }
 
-const esKeys = flatten(es);
+const refKeys = flatten(en);
 
-describe('locale key parity against es', () => {
-  it.each(others)('%s has every key es has', (name, locale) => {
+describe('locale key parity against en', () => {
+  it.each(others)('%s has every key en has', (name, locale) => {
     const keys = flatten(locale);
-    const missing = [...esKeys.keys()].filter(k => !keys.has(k));
-    expect(missing, `${name}.ts is missing ${missing.length} key(s); they will silently render Spanish`).toEqual([]);
+    const missing = [...refKeys.keys()].filter(k => !keys.has(k));
+    expect(missing, `${name}.ts is missing ${missing.length} key(s); they will silently render English`).toEqual([]);
   });
 
-  it.each(others)('%s has no keys es does not have', (name, locale) => {
+  it.each(others)('%s has no keys en does not have', (name, locale) => {
     const keys = flatten(locale);
-    const orphans = [...keys.keys()].filter(k => !esKeys.has(k));
+    const orphans = [...keys.keys()].filter(k => !refKeys.has(k));
     expect(orphans, `${name}.ts has ${orphans.length} orphan key(s); nothing can read them`).toEqual([]);
   });
 
-  it.each(others)('%s matches the shape of es at every key', (name, locale) => {
+  it.each(others)('%s matches the shape of en at every key', (name, locale) => {
     const keys = flatten(locale);
     const mismatched = [...keys.entries()]
-      .filter(([path, shape]) => esKeys.has(path) && esKeys.get(path) !== shape)
-      .map(([path, shape]) => `${path}: es=${esKeys.get(path)} ${name}=${shape}`);
-    expect(mismatched, `${name}.ts disagrees with es on the shape of these keys`).toEqual([]);
+      .filter(([path, shape]) => refKeys.has(path) && refKeys.get(path) !== shape)
+      .map(([path, shape]) => `${path}: en=${refKeys.get(path)} ${name}=${shape}`);
+    expect(mismatched, `${name}.ts disagrees with en on the shape of these keys`).toEqual([]);
   });
 });
 
 describe('placeholder parity', () => {
-  const stringKeys = [...esKeys.entries()].filter(([, shape]) => shape === 'string').map(([path]) => path);
+  const stringKeys = [...refKeys.entries()].filter(([, shape]) => shape === 'string').map(([path]) => path);
 
-  it.each(others)('%s keeps every {placeholder} es uses', (name, locale) => {
+  it.each(others)('%s keeps every {placeholder} en uses', (name, locale) => {
     const broken: string[] = [];
     for (const path of stringKeys) {
-      const expected = placeholdersAt(es, path);
+      const expected = placeholdersAt(en, path);
       if (expected.size === 0) continue;
       // A key absent from this locale is the parity test's business, not ours;
       // a key that is present but dropped its placeholder is exactly what this
@@ -102,12 +102,15 @@ describe('placeholder parity', () => {
   });
 });
 
-describe('es itself', () => {
+describe('en itself', () => {
   it('has no empty string values', () => {
-    const empty = [...esKeys.entries()]
-      .filter(([path, shape]) => shape === 'string' && placeholdersAt(es, path).size === 0)
+    const empty = [...refKeys.entries()]
+      .filter(([path, shape]) => shape === 'string' && placeholdersAt(en, path).size === 0)
       .filter(([path]) => {
-        const value = path.split('.').reduce<any>((acc, k) => acc?.[k], es as any);
+        const value = path.split('.').reduce<unknown>(
+          (acc, k) => (typeof acc === 'object' && acc !== null ? (acc as Record<string, unknown>)[k] : undefined),
+          en,
+        );
         return typeof value === 'string' && value.trim() === '';
       })
       .map(([path]) => path);

@@ -261,7 +261,7 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
     if (message.includes('Missing Comic Vine API key')) {
       throw new MissingApiKeyError(['comicvine']);
     }
-    throw new Error(message);
+    throw new Error(message, { cause: e });
   }
 
   const candidates = parseRows(pageResult.volumes, parseVolumeRow).filter(v => coverUrlFrom(v) && !isManga(v));
@@ -328,7 +328,7 @@ export async function searchComicVineCharacters(searchQuery: string, _signal: Ab
     if (message.includes('Missing Comic Vine API key')) {
       throw new MissingApiKeyError(['comicvine']);
     }
-    throw new Error(message);
+    throw new Error(message, { cause: e });
   }
 
   const results: SearchResult[] = parseRows(pageResult.characters, parseCharacterRow)

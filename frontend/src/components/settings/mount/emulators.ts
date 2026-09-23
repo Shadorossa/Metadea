@@ -1,6 +1,7 @@
 import { pickFolder, pickFile } from '../../../lib/tauri/local-library';
 import { getT } from '../../../i18n/runtime';
 import { invoke, tauriCmd } from '../../../lib/tauri/bridge';
+import { isRomAutoRenameEnabled, setRomAutoRenameEnabled } from '../../../lib/storage/preferences';
 
 interface EmulatorConfig {
   emulator_name: string;
@@ -9,6 +10,23 @@ interface EmulatorConfig {
   rom_folder: string;
   /** Kept for database compatibility; emulator sessions are always process-monitored. */
   tracking_mode: string;
+  /** Extensions the ROM scanner considers (lowercase, no dot); [] = platform default. */
+  rom_extensions: string[];
+  /** Emulator screenshot folder; '' = auto-detected from the executable's layout. */
+  screenshots_dir: string;
+}
+
+const EMPTY_CONFIG: EmulatorConfig = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process', rom_extensions: [], screenshots_dir: '' };
+
+// "  .NSP, xci ;Iso" -> ["nsp", "xci", "iso"] — same normalization Rust
+// applies on write (emulators::normalize_extensions).
+function parseExtensionList(raw: string): string[] {
+  const out: string[] = [];
+  for (const token of raw.split(/[,;\s]+/)) {
+    const ext = token.trim().replace(/^\.+/, '').toLowerCase();
+    if (ext && !out.includes(ext)) out.push(ext);
+  }
+  return out;
 }
 
 interface EmulatorsData {
@@ -37,6 +55,17 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     loadEmulatorInputs();
   }, 100);
 
+  // local.roms.auto_rename — a plain per-device preference, saved on toggle
+  // (not part of the emulator configs' pending-changes flow).
+  const autoRename = document.getElementById('roms-auto-rename');
+  if (autoRename instanceof HTMLInputElement) {
+    autoRename.checked = isRomAutoRenameEnabled();
+    autoRename.addEventListener('change', () => {
+      setRomAutoRenameEnabled(autoRename.checked);
+      showToast(getT().settings.env_saved);
+    });
+  }
+
   if (listenersAttached) return;
   listenersAttached = true;
 
@@ -59,7 +88,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       }
 
       if (!pendingChanges[platformId]) {
-        pendingChanges[platformId] = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
+        pendingChanges[platformId] = { ...EMPTY_CONFIG };
       }
       pendingChanges[platformId].executable_path = chosen;
 
@@ -86,15 +115,23 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       if (!chosen) return;
 
       if (!pendingChanges[platformId]) {
-        pendingChanges[platformId] = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
+        pendingChanges[platformId] = { ...EMPTY_CONFIG };
       }
-      pendingChanges[platformId].rom_folder = chosen;
+      // The same folder button serves the ROM folder and, with
+      // data-field="screenshots-dir", the emulator's screenshot folder.
+      if (btn.dataset.field === 'screenshots-dir') {
+        pendingChanges[platformId].screenshots_dir = chosen;
+        const input = document.getElementById(`screenshots-dir-${platformId}`);
+        if (input instanceof HTMLInputElement) input.value = chosen;
+      } else {
+        pendingChanges[platformId].rom_folder = chosen;
 
-      // Update display immediately
-      const display = document.getElementById(`rom-folder-display-${platformId}`);
-      if (display) {
-        display.textContent = chosen;
-        display.style.display = 'block';
+        // Update display immediately
+        const display = document.getElementById(`rom-folder-display-${platformId}`);
+        if (display) {
+          display.textContent = chosen;
+          display.style.display = 'block';
+        }
       }
 
       if (!hasChanges) {
@@ -118,7 +155,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     if (!platformId) return;
 
     if (!pendingChanges[platformId]) {
-      pendingChanges[platformId] = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
+      pendingChanges[platformId] = { ...EMPTY_CONFIG };
     }
 
     // Check by class and ID patterns
@@ -126,6 +163,10 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       pendingChanges[platformId].emulator_name = input.value;
     } else if (input.id.includes('launch-args')) {
       pendingChanges[platformId].launch_args = input.value;
+    } else if (input.id.includes('rom-extensions')) {
+      pendingChanges[platformId].rom_extensions = parseExtensionList(input.value);
+    } else if (input.id.includes('screenshots-dir')) {
+      pendingChanges[platformId].screenshots_dir = input.value.trim();
     }
 
     if (!hasChanges) {
@@ -254,6 +295,10 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       } else if (input.id.includes('launch-args')) {
         const savedValue = emulatorsData[platformId]?.launch_args || '';
         input.value = savedValue;
+      } else if (input.id.includes('rom-extensions')) {
+        input.value = (emulatorsData[platformId]?.rom_extensions ?? []).join(', ');
+      } else if (input.id.includes('screenshots-dir')) {
+        input.value = emulatorsData[platformId]?.screenshots_dir ?? '';
       } else if (input.id.includes('rom-folder')) {
         const savedValue = emulatorsData[platformId]?.rom_folder || '';
         input.value = savedValue;

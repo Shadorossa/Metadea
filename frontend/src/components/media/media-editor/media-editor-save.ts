@@ -98,6 +98,8 @@ export async function saveMediaEditorLogs({
       selected_version:  isBase ? (entryLog.selectedVersion || null) : null,
       started_at:       entryLog.startedAt || null,
       finished_at:      entryLog.finishedAt || null,
+      reconsumption_count: entryLog.reconsumptionCount,
+      reconsuming:      entryLog.reconsuming ? 1 : 0,
     });
 
     if (logId === externalId) {

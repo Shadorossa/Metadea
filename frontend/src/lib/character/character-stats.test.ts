@@ -88,11 +88,24 @@ describe('buildCharacterStatRows', () => {
       { kind: 'stat', label: t.stat_weight, items: ['60 kg'] },
       { kind: 'header', label: t.section_career_family },
       { kind: 'stat', label: t.stat_occupation, items: ['Pirate'] },
-      // "blood type" (with a space) is not the dedupe key AniList's own
-      // field registers ("bloodtype"), so the biography line still shows.
-      { kind: 'stat', label: t.stat_blood_type, items: ['F'] },
       { kind: 'stat', label: t.stat_status, items: ['Alive'] },
     ]);
+  });
+
+  it('drops a biography "Blood Type" line when the structured field already provides one', () => {
+    const rows = buildCharacterStatRows({ gender: null, age: null, bloodType: 'O', dateOfBirth: null }, [
+      { label: 'Blood Type', value: 'F' },
+      { label: 'Blood type', value: 'AB' },
+      { label: 'BloodType', value: 'A' },
+    ], t);
+    expect(rows).toEqual([{ kind: 'stat', label: t.stat_blood_type, items: ['O'] }]);
+  });
+
+  it('keeps the biography "Blood Type" line when there is no structured field', () => {
+    const rows = buildCharacterStatRows({ gender: null, age: null, bloodType: null, dateOfBirth: null }, [
+      { label: 'Blood Type', value: 'F' },
+    ], t);
+    expect(rows).toEqual([{ kind: 'stat', label: t.stat_blood_type, items: ['F'] }]);
   });
 
   it('drops a stat whose value parses to nothing and keeps the first of two same-label lines', () => {

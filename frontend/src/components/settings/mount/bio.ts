@@ -21,7 +21,7 @@ export async function initBio(showToast: (msg?: string) => void) {
   const { trigger } = debouncedSave(1500, save, showToast, 'Failed to save bio:');
 
   bioTextarea.addEventListener('input', () => {
-    bioCharCount!.textContent = bioTextarea!.value.length.toString();
+    bioCharCount.textContent = bioTextarea.value.length.toString();
     trigger();
   });
 }

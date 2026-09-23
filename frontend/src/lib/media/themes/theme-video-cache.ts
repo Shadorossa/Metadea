@@ -4,7 +4,6 @@
 const DB_NAME = 'metadea-theme-cache';
 const STORE_NAME = 'videos';
 const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
-const PREVIEW_DURATION = 3; // seconds
 
 interface CacheEntry {
   key: string;

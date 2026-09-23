@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 // The "clear the previous timer, start a new one" debounce shape was
 // independently copy-pasted in IgdbPickerModal.tsx and SearchIsland.tsx —
@@ -23,7 +23,9 @@ export function useDebouncedCallback<Args extends unknown[]>(
 ): [(...args: Args) => void, () => void] {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const callbackRef = useRef(callback);
-  callbackRef.current = callback;
+  useLayoutEffect(() => {
+    callbackRef.current = callback;
+  });
 
   const cancel = useCallback(() => {
     if (timerRef.current) {

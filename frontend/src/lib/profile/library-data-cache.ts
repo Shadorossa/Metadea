@@ -15,7 +15,7 @@ export interface LibraryAndCatalog {
   catalog: CatalogSummary[];
 }
 
-interface ProfileData extends LibraryAndCatalog {
+export interface ProfileData extends LibraryAndCatalog {
   relations: DbMediaRelation[];
 }
 
@@ -65,6 +65,25 @@ function loadProfileData(): Promise<ProfileData> {
 function getCachedProfileData(): Promise<ProfileData> {
   if (!profileCache) profileCache = loadProfileData();
   return profileCache;
+}
+
+/** Fills the cache from `load` when it is empty — Home's one-round-trip
+ *  bundle (lib/home/home-data.ts) instead of the per-command chain — and
+ *  returns whatever is cached either way. `load` resolving to null, or
+ *  rejecting, means "no bundle": the chain runs as usual and nothing is
+ *  memoised from the failed attempt. Same rows, same invalidation. */
+export function primeProfileData(load: () => Promise<ProfileData | null>): Promise<ProfileData> {
+  if (profileCache) return profileCache;
+  const pending: Promise<ProfileData> = load()
+    .catch((err) => { logLoadFailure('home bundle', err); return null; })
+    .then(loaded => {
+      if (loaded) return loaded;
+      const fallback = loadProfileData();
+      if (profileCache === pending) profileCache = fallback;
+      return fallback;
+    });
+  profileCache = pending;
+  return pending;
 }
 
 export function getCachedLibraryAndCatalog(): Promise<LibraryAndCatalog> {

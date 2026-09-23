@@ -52,8 +52,23 @@ export async function renamePath(oldPath: string, newPath: string): Promise<void
   return tauriRun('rename_path', { oldPath, newPath });
 }
 
-export async function scanAllGames(): Promise<LocalGame[]> {
-  return tauriCmd<LocalGame[]>('scan_all_games', []);
+// `force` drops the Rust-side per-launcher memo first (see scan_cache.rs) —
+// the "Escanear de nuevo" button; a plain Local visit lets every launcher
+// whose registry/manifests/folders haven't changed answer from the memo.
+export async function scanAllGames(force = false): Promise<LocalGame[]> {
+  return tauriCmd<LocalGame[]>('scan_all_games', [], { force });
+}
+
+export interface TaggedPathMatch {
+  abs_path: string;
+  is_dir: boolean;
+}
+
+// folder-match.ts's findTaggedPathRecursive walk, done in one round trip on
+// the Rust side (see find_tagged_path): the first "[tag]"-named entry under
+// basePath, depth-first in listing order, at most maxDepth levels down.
+export async function findTaggedPath(basePath: string, tag: string, maxDepth = 3): Promise<TaggedPathMatch | null> {
+  return tauriCmd<TaggedPathMatch | null>('find_tagged_path', null, { basePath, tag, maxDepth });
 }
 
 // Durable, manual (launcher, linkKey) -> catalog external_id override —

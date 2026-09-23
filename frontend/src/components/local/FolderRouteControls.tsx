@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useHydrated } from '../shared/hooks/useHydrated';
 import { getT } from '../../i18n/runtime';
 import { IconFolder, IconX } from './ui/icons';
 
@@ -20,8 +20,7 @@ export function FolderRouteControls({ rootFolder, onSetRoute, onClearRoute }: Fo
   // Same hydration-mismatch avoidance as everywhere else these fallback
   // strings appear — the server render has no i18n context, so isMounted
   // gates using the real translation until after the client's first paint.
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => { setIsMounted(true); }, []);
+  const isMounted = useHydrated();
 
   return (
     <>

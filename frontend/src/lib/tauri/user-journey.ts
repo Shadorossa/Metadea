@@ -6,6 +6,10 @@ export interface UserJourneyEvent {
   type:           'start' | 'complete' | 'progress';
   progressStart?: number;
   progressEnd?:   number;
+  /** Which completion a 'complete' event is: 1 (or absent, on rows older
+   *  than the reconsumption migration) for the first finish, 2 for the
+   *  first rewatch, and so on. */
+  occurrence?:    number;
   mediaType:      string;
   timestamp:      string; // ISO String
 }

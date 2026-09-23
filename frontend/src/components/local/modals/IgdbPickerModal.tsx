@@ -62,8 +62,10 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
     setLoading(true);
     setError(null);
 
+    // A scanned ROM's console (rom_platform) pre-filters the IGDB side so
+    // "Fire Emblem" from the Wii folder lists Wii releases first.
     Promise.allSettled([
-      igdbSearchCandidates(trimmed),
+      igdbSearchCandidates(trimmed, game.rom_platform),
       searchCatalog(trimmed),
     ]).then(([igdbRes, catalogRes]) => {
       if (cancelledRef.current) return;
@@ -128,7 +130,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
         setError(String(igdbRes.reason));
       }
     });
-  }, []);
+  }, [game.rom_platform]);
 
   useEffect(() => { runSearch(game.name); }, [game.name, runSearch]);
 

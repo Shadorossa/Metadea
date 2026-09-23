@@ -11,7 +11,7 @@ const { t, version } = Astro.props;
 <!-- Tab: Novedades -->
 <div class="settings-panel hidden" id="panel-novedades">
   <div class="settings-section settings-novedades-section">
-    <p class="settings-hint settings-novedades-hint">
+    <p class="settings-hint settings-novedades-hint" data-i18n="settings.novedades_hint">
       {t.settings.novedades_hint}
     </p>
 
@@ -19,7 +19,7 @@ const { t, version } = Astro.props;
       <div class="settings-novedades-card-wrap">
         <div class="settings-version-card">
           <div class="settings-novedades-version-heading">
-            <span class="settings-auth-name">{t.settings.app_version_label}</span>
+            <span class="settings-auth-name" data-i18n="settings.app_version_label">{t.settings.app_version_label}</span>
             <span
               class="app-curr-ver settings-auth-status settings-auth-status--mono"
               data-version={version}
@@ -27,7 +27,7 @@ const { t, version } = Astro.props;
           </div>
           <button
             class="btn btn--sm btn--secondary"
-            id="app-check-update-btn">{t.settings.app_check_update}</button
+            id="app-check-update-btn" data-i18n="settings.app_check_update">{t.settings.app_check_update}</button
           >
         </div>
         <div
@@ -40,11 +40,11 @@ const { t, version } = Astro.props;
       <div class="settings-novedades-card-wrap">
         <div class="settings-version-card">
           <div class="settings-novedades-card-heading">
-            <span class="settings-auth-name">{t.settings.community_catalog_sync_label}</span>
+            <span class="settings-auth-name" data-i18n="settings.community_catalog_sync_label">{t.settings.community_catalog_sync_label}</span>
           </div>
           <button
             class="btn btn--sm btn--secondary"
-            id="community-catalog-sync-btn">{t.settings.community_catalog_sync_btn}</button
+            id="community-catalog-sync-btn" data-i18n="settings.community_catalog_sync_btn">{t.settings.community_catalog_sync_btn}</button
           >
         </div>
         <div
@@ -57,11 +57,11 @@ const { t, version } = Astro.props;
       <div class="settings-novedades-card-wrap">
         <div class="settings-version-card">
           <div class="settings-novedades-card-heading">
-            <span class="settings-auth-name">{t.settings.fix_character_ids_label}</span>
+            <span class="settings-auth-name" data-i18n="settings.fix_character_ids_label">{t.settings.fix_character_ids_label}</span>
           </div>
           <button
             class="btn btn--sm btn--secondary"
-            id="fix-character-ids-btn">{t.settings.fix_character_ids_btn}</button
+            id="fix-character-ids-btn" data-i18n="settings.fix_character_ids_btn">{t.settings.fix_character_ids_btn}</button
           >
         </div>
         <div

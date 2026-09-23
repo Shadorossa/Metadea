@@ -36,6 +36,10 @@ export interface PlayerOpenRequest {
   workName: string;
   episodeLabels: string[];
   titles?: string[];
+  // Catalog id of the work and the episode number of each queue entry —
+  // what the skip-segment lookup (usePlayerSkipSegments) keys on.
+  externalId?: string | null;
+  episodeNumbers?: number[];
   // false = docked controls in the main WebView, no overlay window.
   overlay?: boolean;
 }
@@ -60,6 +64,10 @@ export const playerSetVolume = (volume: number) => runPlayer('player_set_volume'
 export const playerSetMute = (muted: boolean) => runPlayer('player_set_mute', { muted });
 export const playerSetSpeed = (speed: number) => runPlayer('player_set_speed', { speed });
 export const playerSetSubDelay = (seconds: number) => runPlayer('player_set_sub_delay', { seconds });
+// mpv `frame-back-step` / `frame-step` — pauses and moves one frame.
+export const playerFrameStep = (direction: 'back' | 'forward') => runPlayer('player_frame_step', { direction });
+// mpv `cycle sub` / `cycle audio` — next track of that kind, wrapping through "off".
+export const playerCycleTrack = (kind: 'sub' | 'audio') => runPlayer('player_cycle_track', { kind });
 // `reason` comes back in the `player://ended` event: 'stopped' (user
 // closed the player) vs 'navigate' (route left) let the page decide
 // whether it still has to navigate away itself.

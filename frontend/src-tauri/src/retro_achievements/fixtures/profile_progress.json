@@ -1,0 +1,32 @@
+{
+  "Count": 2,
+  "Total": 2,
+  "Results": [
+    {
+      "GameID": 1446,
+      "Title": "Metadea Test Quest",
+      "ImageIcon": "/Images/000001.png",
+      "ConsoleID": 18,
+      "ConsoleName": "Nintendo DS",
+      "MaxPossible": 3,
+      "NumAwarded": 3,
+      "NumAwardedHardcore": 3,
+      "MostRecentAwardedDate": "2026-09-21T10:00:00+00:00",
+      "HighestAwardKind": "mastered",
+      "HighestAwardDate": "2026-09-21T10:00:00+00:00"
+    },
+    {
+      "GameID": 2000,
+      "Title": "Cube Adventure",
+      "ImageIcon": "/Images/000002.png",
+      "ConsoleID": 16,
+      "ConsoleName": "GameCube",
+      "MaxPossible": 40,
+      "NumAwarded": 4,
+      "NumAwardedHardcore": 0,
+      "MostRecentAwardedDate": "2026-09-19T10:00:00+00:00",
+      "HighestAwardKind": null,
+      "HighestAwardDate": null
+    }
+  ]
+}

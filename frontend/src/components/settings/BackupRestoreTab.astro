@@ -9,13 +9,13 @@ const { t } = Astro.props;
 
 <div class="settings-panel hidden" id="panel-backup">
   <div class="settings-section">
-    <h3 class="settings-section-title">{t.settings.backup_title}</h3>
-    <p class="settings-hint">{t.settings.backup_hint}</p>
+    <h3 class="settings-section-title" data-i18n="settings.backup_title">{t.settings.backup_title}</h3>
+    <p class="settings-hint" data-i18n="settings.backup_hint">{t.settings.backup_hint}</p>
     <div class="settings-backup-actions">
-      <button type="button" class="settings-save-btn" id="settings-backup-export-btn">
+      <button type="button" class="settings-save-btn" id="settings-backup-export-btn" data-i18n="settings.backup_export">
         {t.settings.backup_export}
       </button>
-      <button type="button" class="settings-save-btn" id="settings-backup-import-btn">
+      <button type="button" class="settings-save-btn" id="settings-backup-import-btn" data-i18n="settings.backup_import">
         {t.settings.backup_import}
       </button>
     </div>

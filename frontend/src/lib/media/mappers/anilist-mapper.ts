@@ -81,10 +81,6 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   // actually finishes (at which point raw.episodes takes over).
   const airedEpisodes = raw.nextAiringEpisode ? raw.nextAiringEpisode.episode - 1 : undefined;
 
-  const seasonInfo = (raw.season && raw.seasonYear)
-    ? `${lookupLabel(tm.seasons, raw.season, raw.season)} ${raw.seasonYear}`
-    : formatDateParts(raw.startDate);
-
   const startFmt = formatDateParts(raw.startDate);
   const endFmt   = formatDateParts(raw.endDate);
   const dateBadge = startFmt

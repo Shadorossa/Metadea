@@ -9,15 +9,15 @@ describe('getStatusBadge', () => {
   });
 
   it('maps each terminal status to its own badge', () => {
-    expect(getStatusBadge('planning')).toEqual({ label: 'Pendiente', modifier: 'planning' });
-    expect(getStatusBadge('completed')).toEqual({ label: 'Completado', modifier: 'completed' });
-    expect(getStatusBadge('paused')).toEqual({ label: 'Pausado', modifier: 'paused' });
-    expect(getStatusBadge('dropped')).toEqual({ label: 'Abandonado', modifier: 'dropped' });
+    expect(getStatusBadge('planning')).toEqual({ labelKey: 'status_planning', modifier: 'planning' });
+    expect(getStatusBadge('completed')).toEqual({ labelKey: 'status_completed', modifier: 'completed' });
+    expect(getStatusBadge('paused')).toEqual({ labelKey: 'status_paused', modifier: 'paused' });
+    expect(getStatusBadge('dropped')).toEqual({ labelKey: 'status_dropped', modifier: 'dropped' });
   });
 
   it('maps every in-progress status to the same progress badge', () => {
     for (const status of ['watching', 'reading', 'playing']) {
-      expect(getStatusBadge(status)).toEqual({ label: 'En progreso', modifier: 'progress' });
+      expect(getStatusBadge(status)).toEqual({ labelKey: 'section_in_progress', modifier: 'progress' });
     }
   });
 

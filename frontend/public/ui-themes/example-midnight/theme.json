@@ -1,0 +1,27 @@
+{
+  "id": "example-midnight",
+  "name": "Midnight (example)",
+  "author": "Metadea",
+  "version": "1.0.0",
+  "description": "Starter UI theme: a cool, deep-blue palette built only from design tokens. Copy this folder, rename it, and edit theme.json / theme.css.",
+  "homepage": "https://github.com/Shadorossa/Metadea/blob/main/docs/THEMING.md",
+  "minAppVersion": "0.5.5",
+  "variables": {
+    "--bg-base": "#050810",
+    "--bg-primary": "#050810",
+    "--bg-elevated": "#0d1424",
+    "--bg-card": "#111a2e",
+    "--bg-card-rgb": "17 26 46",
+    "--text-main": "#e6ecff",
+    "--text-muted": "#6b7aa8",
+    "--text-dim": "#36426a",
+    "--border-color": "rgba(140, 170, 255, 0.10)",
+    "--accent": "#6ea8ff",
+    "--accent-rgb": "110 168 255",
+    "--accent-soft": "rgba(110, 168, 255, 0.12)",
+    "--accent-border": "rgba(110, 168, 255, 0.28)",
+    "--accent-glow": "rgba(110, 168, 255, 0.32)",
+    "--radius-md": "10px"
+  },
+  "css": ["theme.css"]
+}

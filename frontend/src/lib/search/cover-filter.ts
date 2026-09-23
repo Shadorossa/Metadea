@@ -8,8 +8,12 @@
 // probes the actual image client-side — a CDN image load, not an extra
 // AniList GraphQL request, and the same image the card needs to render
 // anyway (the browser's HTTP cache makes the card's own <img> load an
-// instant hit right after).
+// instant hit right after) — which only holds if the probe asks for the
+// exact URL the card renders, i.e. the small variant SearchResultCard's
+// toSmallCover() picks, not the large one the result carries. Probing the
+// large one used to cost a second, bigger image download per row.
 import type { SearchResult } from './index';
+import { toSmallCover } from '../media/small-cover';
 
 function probeIsPortrait(url: string): Promise<boolean> {
   return new Promise(resolve => {
@@ -22,6 +26,6 @@ function probeIsPortrait(url: string): Promise<boolean> {
 
 export async function filterValidAnimeCovers(results: SearchResult[]): Promise<SearchResult[]> {
   const withCover = results.filter((r): r is SearchResult & { coverUrl: string } => !!r.coverUrl);
-  const isPortrait = await Promise.all(withCover.map(r => probeIsPortrait(r.coverUrl)));
+  const isPortrait = await Promise.all(withCover.map(r => probeIsPortrait(toSmallCover(r.coverUrl))));
   return withCover.filter((_, i) => isPortrait[i]);
 }

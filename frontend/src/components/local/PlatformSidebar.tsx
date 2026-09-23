@@ -1,17 +1,18 @@
 import React from 'react';
-import { getT } from '../../i18n/runtime';
+import type { Translations } from '../../i18n/index';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type PlatformId } from '../../lib/local/platforms';
 import { IconFolder } from './ui/icons';
 
 interface PlatformSidebarProps {
+  // Server-safe strings until hydration (see LocalLibrary's ssrLocal).
+  localT:             Translations['local'];
   activePlatform:     PlatformId | null;
   availablePlatforms: Set<string>;
   onSelect:           (id: PlatformId) => void;
   onFetchMetadata?:   () => void;
 }
 
-export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, onFetchMetadata }: PlatformSidebarProps) {
-  const t = getT();
+export function PlatformSidebar({ localT, activePlatform, availablePlatforms, onSelect, onFetchMetadata }: PlatformSidebarProps) {
   return (
     <aside className="local-platform-sidebar">
       {LAUNCHER_ORDER.map(id => (
@@ -45,7 +46,7 @@ export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, 
             type="button"
             className="local-platform-btn local-metadata-btn"
             onClick={onFetchMetadata}
-            title={t.local.fetch_igdb_metadata}
+            title={localT.fetch_igdb_metadata}
           >
             <span className="local-platform-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -53,7 +54,7 @@ export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, 
                 <line x1="5" y1="21" x2="19" y2="21"/>
               </svg>
             </span>
-            <span className="local-platform-label">{t.local.metadata_label}</span>
+            <span className="local-platform-label">{localT.metadata_label}</span>
           </button>
         </>
       )}

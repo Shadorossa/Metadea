@@ -1,21 +1,21 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Unlink2, Trash2 } from 'lucide-react';
 import { getStoryArcsForMedia, saveStoryArc, reorderStoryArcs, deleteStoryArc, type StoryArc } from '../../../lib/tauri/story-arcs';
 import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri/catalog';
 import { fetchMediaEpisodes } from '../../../lib/media/episodes/episode-list';
 import type { MediaEpisode } from '../../../lib/tauri';
 import {
   applyGlobalRangeToItems, buildDisplayUnits, canGroupUnits, flattenUnits, formatRange, getUnifiedEpisodes,
-  getUnitGlobalRange, groupUnits, reorderUnits, resolveEpisodeClickRange,
+  getUnitGlobalRange, groupUnits, reorderUnits,
   type StoryArcDisplayUnit, type StoryArcEditingItem, type UnifiedEpisode,
 } from '../../../lib/media/editor/story-arc-units';
 import { openImageCropModal } from '../../shared/ImageCropModal';
-import { SortableItem, SortableList } from '../../shared/SortableList';
+import { SortableList } from '../../shared/SortableList';
 import { MediaSearchPopup } from '../../search-popups/MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../../lib/search';
 import { getT } from '../../../i18n/runtime';
 import { PrEditorAddButton } from './PrEditorAddButton';
+import { PrEditorStoryArcUnitRow } from './PrEditorStoryArcUnitRow';
+import { PrEditorEpisodePopover } from './PrEditorEpisodePopover';
 
 interface EditingArc {
   id: string;
@@ -35,6 +35,11 @@ interface Props {
 
 const newGroupId = () => `grp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
+// The "Arcs" panel: the saga's story arcs as cards, and the editor for one
+// arc (name, image, the works it spans with their episode ranges). Each row
+// of that editor is a PrEditorStoryArcUnitRow; the episode-range picker is
+// PrEditorEpisodePopover. Arcs save straight to the local table here (no
+// "Submit" step); pr-editor-submit reads them back fresh.
 export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCover, sagaOrder, resolveSagaMeta, onArcDeleted }: Props) {
   const t = getT().pr_editor.story_arcs;
   const [arcs, setArcs] = useState<StoryArc[]>([]);
@@ -142,11 +147,11 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
 
   async function handleImagePick() {
     const result = await openImageCropModal({
-      title: 'Imagen del arco',
+      title: t.image_title,
       initialUrl: editingArc?.imageBase64 ?? '',
       aspectRatio: 2 / 3,
-      saveLabel: 'Usar esta imagen',
-      removeLabel: editingArc?.imageBase64 ? 'Quitar imagen' : undefined,
+      saveLabel: t.image_save,
+      removeLabel: editingArc?.imageBase64 ? t.image_remove : undefined,
     });
     if (result.action === 'saved') setEditingArc(prev => prev && { ...prev, imageBase64: result.imageUrl });
     else if (result.action === 'removed') setEditingArc(prev => prev && { ...prev, imageBase64: null });
@@ -242,110 +247,22 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
   const renderUnit = (unit: StoryArcDisplayUnit) => {
     const unifiedEps = getUnifiedEpisodes(unit, episodesMap);
     const { globalStart, globalEnd } = getUnitGlobalRange(unit, unifiedEps);
-    const hasEpisodes = unifiedEps.length > 0;
-
-    const rangeLabel = globalStart != null && globalEnd != null
-      ? (globalStart === globalEnd ? `Ep. ${globalStart}` : `Ep. ${globalStart}–${globalEnd}`)
-      : (globalStart != null ? `Ep. ${globalStart}+` : 'Episodios');
-
     return (
-      <SortableItem key={unit.id} id={unit.id}>
-        {({ handleProps, isDragging, groupState, dropSide }) => {
-          const isGroupTarget = groupState === 'ready';
-          return (
-            <div
-              className={`pr-editor-arc-item-row ${isDragging ? 'is-dragging' : ''} ${isGroupTarget ? 'is-drop-target-group' : ''} ${dropSide === 'before' ? 'is-drop-target-before' : ''} ${dropSide === 'after' ? 'is-drop-target-after' : ''}`}
-              title={unit.items.map(i => i.title).join(' + ')}
-              {...handleProps}
-            >
-              {isGroupTarget && (
-                <div className="pr-editor-arc-group-overlay">
-                  + Agrupar
-                </div>
-              )}
-
-              <div className="pr-editor-arc-item-cover-col">
-                {unit.isGroup ? (
-                  <div className="pr-editor-arc-stacked-covers">
-                    {unit.items.slice(0, 3).map(item => (
-                      <div key={item.media_external_id} className="pr-editor-arc-stacked-covers-item">
-                        {item.cover ? <img className="cover-image-fill" src={item.cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
-                      </div>
-                    ))}
-                    <span className="pr-editor-arc-group-count-badge">{unit.items.length} obras</span>
-                  </div>
-                ) : (
-                  <div className="pr-editor-arc-item-cover">
-                    {unit.items[0].cover ? <img className="cover-image-fill" src={unit.items[0].cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
-                  </div>
-                )}
-
-                {hasEpisodes ? (
-                  <button
-                    type="button"
-                    className={`pr-editor-arc-ep-trigger ${activePopoverUnitId === unit.id ? 'is-active' : ''}`}
-                    onClick={e => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const top = rect.bottom + 6 + 280 > window.innerHeight ? Math.max(10, rect.top - 280) : rect.bottom + 6;
-                      const left = Math.min(Math.max(10, rect.left - 60), window.innerWidth - 380);
-                      setPopoverPos({ top, left });
-                      setActivePopoverUnitId(activePopoverUnitId === unit.id ? null : unit.id);
-                    }}
-                  >
-                    <span>{rangeLabel}</span>
-                    <span style={{ fontSize: '0.55rem', opacity: 0.7 }}>▼</span>
-                  </button>
-                ) : (
-                  <div className="pr-editor-arc-item-range">
-                    <input
-                      type="number"
-                      placeholder={t.ep_start_ph}
-                      value={unit.items[0].ep_start ?? ''}
-                      onChange={e => updateItemRange(unit.items[0].media_external_id, 'ep_start', e.target.value)}
-                      className="pr-editor-arc-item-range-input"
-                    />
-                    <span className="pr-editor-arc-item-range-sep">–</span>
-                    <input
-                      type="number"
-                      placeholder={t.ep_end_ph}
-                      value={unit.items[0].ep_end ?? ''}
-                      onChange={e => updateItemRange(unit.items[0].media_external_id, 'ep_end', e.target.value)}
-                      className="pr-editor-arc-item-range-input"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="pr-editor-arc-item-actions">
-                {unit.isGroup && (
-                  <button
-                    type="button"
-                    className="pr-editor-arc-card-action-btn"
-                    onClick={e => {
-                      e.stopPropagation();
-                      ungroupUnit(unit);
-                    }}
-                    title="Separar obras agrupadas"
-                  >
-                    <Unlink2 size={12} strokeWidth={2.2} />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="pr-editor-arc-card-delete"
-                  onClick={e => {
-                    e.stopPropagation();
-                    unit.items.forEach(i => removeItem(i.media_external_id));
-                  }}
-                  title="Eliminar del arco"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          );
+      <PrEditorStoryArcUnitRow
+        key={unit.id}
+        unit={unit}
+        unifiedEps={unifiedEps}
+        globalStart={globalStart}
+        globalEnd={globalEnd}
+        isPopoverOpen={activePopoverUnitId === unit.id}
+        onTogglePopover={position => {
+          setPopoverPos(position);
+          setActivePopoverUnitId(activePopoverUnitId === unit.id ? null : unit.id);
         }}
-      </SortableItem>
+        onUpdateItemRange={updateItemRange}
+        onUngroup={() => ungroupUnit(unit)}
+        onRemove={() => unit.items.forEach(i => removeItem(i.media_external_id))}
+      />
     );
   };
 
@@ -355,86 +272,15 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     if (!unit) return null;
     const unifiedEps = getUnifiedEpisodes(unit, episodesMap);
     const { globalStart, globalEnd } = getUnitGlobalRange(unit, unifiedEps);
-    const rangeSelect = (value: number | null, emptyLabel: string, onPick: (val: number | null) => void) => (
-      <select
-        className="pr-editor-arc-ep-select"
-        value={value ?? ''}
-        onChange={e => onPick(e.target.value === '' ? null : parseInt(e.target.value, 10))}
-      >
-        <option value="">{emptyLabel}</option>
-        {unifiedEps.map(ep => (
-          <option key={ep.generalEpNumber} value={ep.generalEpNumber}>
-            Ep. {ep.generalEpNumber}
-          </option>
-        ))}
-      </select>
-    );
-
-    return createPortal(
-      <div
-        className="pr-editor-arc-ep-popover"
-        style={{ top: popoverPos.top, left: popoverPos.left }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="pr-editor-arc-ep-range-row">
-          <div className="pr-editor-arc-ep-range-field">
-            <span className="pr-editor-arc-ep-range-label">Desde:</span>
-            {rangeSelect(globalStart, '(Inicio)', val => applyGlobalRangeToUnit(unit, unifiedEps, val, globalEnd ?? val))}
-          </div>
-
-          <div className="pr-editor-arc-ep-range-field">
-            <span className="pr-editor-arc-ep-range-label">Hasta:</span>
-            {rangeSelect(globalEnd, '(Fin)', val => applyGlobalRangeToUnit(unit, unifiedEps, globalStart ?? unifiedEps[0]?.generalEpNumber ?? val, val))}
-          </div>
-
-          <button
-            type="button"
-            className="pr-editor-arc-ep-clear-btn"
-            onClick={() => applyGlobalRangeToUnit(unit, unifiedEps, null, null)}
-            title="Limpiar rango"
-          >
-            <Trash2 size={13} />
-          </button>
-        </div>
-
-        <div className="pr-editor-arc-ep-list">
-          {unifiedEps.map(ep => {
-            const isSelected = globalStart != null && globalEnd != null
-              && ep.generalEpNumber >= Math.min(globalStart, globalEnd)
-              && ep.generalEpNumber <= Math.max(globalStart, globalEnd);
-            return (
-              <button
-                type="button"
-                key={ep.generalEpNumber}
-                className={`pr-editor-arc-ep-item ${isSelected ? 'is-selected' : ''}`}
-                title="Clic: fijar inicio (Desde) · Ctrl+Clic: fijar final (Hasta)"
-                onClick={e => {
-                  const { start, end } = resolveEpisodeClickRange(ep.generalEpNumber, globalStart, globalEnd, e.ctrlKey || e.metaKey);
-                  applyGlobalRangeToUnit(unit, unifiedEps, start, end);
-                }}
-              >
-                {ep.coverUrl ? (
-                  <img className="pr-editor-arc-ep-thumb" src={ep.coverUrl} alt="" />
-                ) : (
-                  <div className="pr-editor-arc-ep-thumb" />
-                )}
-                <div className="pr-editor-arc-ep-info">
-                  <span className="pr-editor-arc-ep-name">
-                    Ep. {ep.generalEpNumber}{ep.name ? ` · ${ep.name}` : ''}
-                    {(unit.isGroup || ep.generalEpNumber !== ep.seasonEpNumber) && (
-                      <> (<strong className="pr-editor-arc-ep-season-num">Ep. {ep.seasonEpNumber}</strong>)</>
-                    )}
-                  </span>
-                  {unit.isGroup && (
-                    <span className="pr-editor-arc-ep-sub">{ep.mediaTitle}</span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>,
-      document.body,
+    return (
+      <PrEditorEpisodePopover
+        unit={unit}
+        unifiedEps={unifiedEps}
+        globalStart={globalStart}
+        globalEnd={globalEnd}
+        position={popoverPos}
+        onApplyRange={(startGen, endGen) => applyGlobalRangeToUnit(unit, unifiedEps, startGen, endGen)}
+      />
     );
   };
 

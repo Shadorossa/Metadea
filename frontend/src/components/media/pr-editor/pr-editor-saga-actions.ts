@@ -2,7 +2,7 @@
 // duplicate-title detection) — each takes the draft and returns the patch
 // the modal dispatches, so the modal keeps only the wiring.
 import type { MediaMeta } from '../../../lib/media/saga/saga-grouping';
-import { moveItem } from '../hooks/useListReorder';
+import { moveItem } from '../../../lib/shared/collections/move-item';
 import type { PrEditorDraft } from './pr-editor-state';
 
 export interface SagaActionContext {

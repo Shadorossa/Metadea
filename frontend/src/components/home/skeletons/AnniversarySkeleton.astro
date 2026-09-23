@@ -1,0 +1,15 @@
+---
+// First-paint placeholder for FinishAnniversaryBanner (client:only). Hidden
+// unless home.astro's pre-paint script found anniversaries for today in the
+// layout hint; then it shows the same header and an empty stage of the
+// exact height, so "Recent activity" below never moves when the island
+// mounts.
+interface Props { heading: string }
+const { heading } = Astro.props;
+---
+<section class="home-anniversary home-anniversary-skeleton" aria-hidden="true">
+  <div class="home-activity-header home-anniversary-header">
+    <h2 class="home-activity-title" data-i18n="home.anniversary_heading">{heading}</h2>
+  </div>
+  <div class="home-anniversary-stage"></div>
+</section>

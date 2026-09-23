@@ -9,6 +9,7 @@ describe('targetToPath', () => {
     expect(targetToPath({ kind: 'character', id: 'a:12345' })).toBe('/character?id=a%3A12345');
     expect(targetToPath({ kind: 'profile', user: 'Shadorossa' })).toBe('/user?id=Shadorossa');
     expect(targetToPath({ kind: 'home' })).toBe('/home');
+    expect(targetToPath({ kind: 'auth_mal', code: 'c', state: 's' })).toBe('/settings');
   });
 });
 
@@ -18,6 +19,7 @@ describe('buildDeepLink', () => {
     expect(buildDeepLink({ kind: 'character', id: 'co:678' })).toBe('metadea://character/co:678');
     expect(buildDeepLink({ kind: 'profile', user: 'user_1-x' })).toBe('metadea://profile/user_1-x');
     expect(buildDeepLink({ kind: 'home' })).toBe('metadea://home');
+    expect(buildDeepLink({ kind: 'auth_mal', code: 'def50200a-b_c.~', state: 'st4te' })).toBe('metadea://auth/mal?code=def50200a-b_c.~&state=st4te');
   });
 
   it('refuses ids that the Rust parser would reject', () => {
@@ -27,6 +29,9 @@ describe('buildDeepLink', () => {
     expect(() => buildDeepLink({ kind: 'character', id: '12345' })).toThrow();
     expect(() => buildDeepLink({ kind: 'profile', user: 'user name' })).toThrow();
     expect(() => buildDeepLink({ kind: 'profile', user: '' })).toThrow();
+    expect(() => buildDeepLink({ kind: 'auth_mal', code: 'a b', state: 's' })).toThrow();
+    expect(() => buildDeepLink({ kind: 'auth_mal', code: '', state: 's' })).toThrow();
+    expect(() => buildDeepLink({ kind: 'auth_mal', code: 'a', state: 's:1' })).toThrow();
   });
 });
 
@@ -53,6 +58,7 @@ describe('parseDeepLinkTarget', () => {
     expect(parseDeepLinkTarget({ kind: 'character', id: 'a:1' })).toEqual({ kind: 'character', id: 'a:1' });
     expect(parseDeepLinkTarget({ kind: 'profile', user: 'u' })).toEqual({ kind: 'profile', user: 'u' });
     expect(parseDeepLinkTarget({ kind: 'home' })).toEqual({ kind: 'home' });
+    expect(parseDeepLinkTarget({ kind: 'auth_mal', code: 'c0de', state: 's' })).toEqual({ kind: 'auth_mal', code: 'c0de', state: 's' });
   });
 
   it('drops extra fields and rejects anything malformed', () => {
@@ -63,6 +69,8 @@ describe('parseDeepLinkTarget', () => {
     expect(parseDeepLinkTarget({ kind: 'media' })).toBeNull();
     expect(parseDeepLinkTarget({ kind: 'media', external_id: 'anime:1?x=<script>' })).toBeNull();
     expect(parseDeepLinkTarget({ kind: 'profile', user: '../x' })).toBeNull();
+    expect(parseDeepLinkTarget({ kind: 'auth_mal', code: 'c' })).toBeNull();
+    expect(parseDeepLinkTarget({ kind: 'auth_mal', code: 'c<script>', state: 's' })).toBeNull();
   });
 });
 

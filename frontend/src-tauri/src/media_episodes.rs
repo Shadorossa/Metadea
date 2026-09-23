@@ -49,6 +49,13 @@ pub async fn get_media_episodes(
     external_id: String,
 ) -> Result<Vec<MediaEpisode>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_media_episodes(&conn, &external_id)
+}
+
+pub(crate) fn load_media_episodes(
+    conn: &rusqlite::Connection,
+    external_id: &str,
+) -> Result<Vec<MediaEpisode>, String> {
     let mut stmt = conn.prepare(
         "SELECT episodes.external_id, episodes.season_number, episodes.episode_number, episodes.name, episodes.cover_url, episodes.source_key, episodes.mapping_key
          FROM media_episode episodes
@@ -57,7 +64,7 @@ pub async fn get_media_episodes(
          ORDER BY CASE WHEN episode_number > 0 THEN 0 ELSE 1 END,
                   CASE WHEN episodes.episode_number > 0 THEN episodes.episode_number ELSE -episodes.episode_number END ASC"
     ).str_err()?;
-    let rows = stmt.query_map([&external_id], |r| {
+    let rows = stmt.query_map([external_id], |r| {
         Ok(MediaEpisode {
             external_id:    r.get(0)?,
             season_number:  r.get(1)?,

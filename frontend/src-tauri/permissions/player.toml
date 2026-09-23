@@ -15,6 +15,8 @@ commands.allow = [
   "player_set_mute",
   "player_set_speed",
   "player_set_sub_delay",
+  "player_frame_step",
+  "player_cycle_track",
   "player_screenshot",
   "player_get_status",
   "player_get_session",
@@ -23,6 +25,9 @@ commands.allow = [
   "player_set_fullscreen",
   "player_is_fullscreen",
   "player_focus_overlay",
+  "aniskip_get_segments",
+  "get_catalog_mal_id",
+  "set_catalog_mal_id",
 ]
 
 [[permission]]

@@ -130,10 +130,18 @@ describe('findEditionPrefixMatch', () => {
     expect(findEditionPrefixMatch('Ico Okami', [hd2])).toBe(hd2);
   });
 
-  // Suspected bug: normalizeForMatch splits "Director's" into "director s",
-  // so the apostrophe spelling never hits the "directors" keyword.
-  it('does not match the apostrophe spelling of Director\'s Cut', () => {
-    expect(findEditionPrefixMatch('Death Stranding', [game("Death Stranding Director's Cut")])).toBeUndefined();
+  it('matches every apostrophe spelling of Director\'s Cut', () => {
+    const straight = game("Death Stranding Director's Cut");
+    expect(findEditionPrefixMatch('Death Stranding', [straight])).toBe(straight);
+    const curly = game('Death Stranding Director’s Cut');
+    expect(findEditionPrefixMatch('Death Stranding', [curly])).toBe(curly);
+    const backtick = game('Death Stranding Director`s Cut');
+    expect(findEditionPrefixMatch('Death Stranding', [backtick])).toBe(backtick);
+  });
+
+  it('ignores apostrophes on the title side too', () => {
+    const remastered = game("Marvel's Spider-Man Remastered");
+    expect(findEditionPrefixMatch('Marvel’s Spider-Man', [remastered])).toBe(remastered);
   });
 
   it('rejects trailing words that are not edition keywords', () => {

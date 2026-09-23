@@ -8,6 +8,7 @@
 // real character yet. Provider-backed fields are fetched and merged by
 // PrPreviewModal; this component only renders the supplied preview state.
 import { useEffect, useState } from 'react';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
 export type { CharacterPreviewChangeKind, CharacterPreviewAppearance, CharacterPreviewChanges } from '../../lib/github/proposal-diff';
 import type { CharacterPreviewChangeKind, CharacterPreviewAppearance, CharacterPreviewChanges } from '../../lib/github/proposal-diff';
 import { mapById } from '../../lib/shared/collections/batch';
@@ -17,7 +18,7 @@ import { parseStatSectionLabel, StatSectionTracker } from '../../lib/media/stat-
 import { sanitizeHtml, sanitizeStatValue } from '../../lib/shared/text/sanitize-html';
 import { getCatalogEntry, type MediaCatalogEntry } from '../../lib/tauri/catalog';
 import type { CharacterEntry } from '../../lib/tauri/characters';
-import type { CharacterProposalActor, CharacterProposalAppearance } from '../../lib/github/submit-collaborative-proposal';
+import type { CharacterProposalActor } from '../../lib/github/submit-collaborative-proposal';
 
 
 
@@ -65,8 +66,7 @@ function formatStatValue(rawValue: string) {
 function CharacterStatItem({ label, value }: { label: string; value: string }) {
   const t = getT().character;
   const values = parseStatItems(value);
-  const [activeIndex, setActiveIndex] = useState(0);
-  useEffect(() => setActiveIndex(0), [value]);
+  const [activeIndex, setActiveIndex] = useKeyedState(value, 0);
   if (values.length === 0) return null;
 
   const move = (direction: -1 | 1) => {
@@ -157,8 +157,7 @@ export function CharacterPreviewCard({ character, appearances, actors = [], merg
       return a.localeCompare(b);
     });
   const preferredLanguage = actorLanguages.includes('JP') ? 'JP' : actorLanguages[0] ?? '';
-  const [activeActorLanguage, setActiveActorLanguage] = useState(preferredLanguage);
-  useEffect(() => setActiveActorLanguage(preferredLanguage), [preferredLanguage]);
+  const [activeActorLanguage, setActiveActorLanguage] = useKeyedState(preferredLanguage, preferredLanguage);
 
   // Resolving each appearance's title/cover is the one thing here that
   // isn't already sitting in the bundle — same local-catalog lookup the

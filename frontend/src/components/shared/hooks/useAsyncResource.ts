@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // The "let cancelled = false; ...; return () => { cancelled = true; }" effect
 // shape, pulled out of LocalMediaDetailPanel where it was independently
@@ -45,7 +45,9 @@ export function useAsyncResource<T>(
   initial: T,
 ): AsyncResourceState<T> {
   const loadRef = useRef(load);
-  loadRef.current = load;
+  useLayoutEffect(() => {
+    loadRef.current = load;
+  });
   const initialRef = useRef(initial);
   const [state, setState] = useState<AsyncResourceState<T>>({ value: initial, loading: true, error: undefined });
 

@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { LocalGame } from '../../../lib/tauri';
 import { IconMonitor } from '../ui/icons';
 import type { CoverCache } from '../details/GameDetailPanel';
 import { MediaCardShell } from './MediaCardShell';
 import { getStatusBadge } from '../../../lib/local/status-badge';
+import { getT } from '../../../i18n/runtime';
+import { prefetchLocalSteamAchievements } from '../../../lib/local/local-read-cache';
+
+// A hover this long reads as intent to open the card: its achievements are
+// read from disk ahead of the click so the panel opens with them.
+const PREFETCH_HOVER_MS = 300;
 
 interface GameCardProps {
   game:       LocalGame;
@@ -32,6 +38,14 @@ interface GameCardProps {
 export function GameCard({ game, coverCache, onClick, status, onRequestDelete, displayName }: GameCardProps) {
   const cover = (game.app_id ? coverCache[game.app_id]?.cover : undefined) ?? null;
   const badgeInfo = getStatusBadge(status);
+  const steamAppId = game.launcher === 'steam' && game.app_id ? Number(game.app_id) : null;
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPrefetch = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+  };
+  useEffect(() => cancelPrefetch, []);
+  const prefetch = steamAppId === null ? undefined : () => prefetchLocalSteamAchievements(steamAppId);
 
   return (
     <MediaCardShell
@@ -40,10 +54,13 @@ export function GameCard({ game, coverCache, onClick, status, onRequestDelete, d
       placeholderIcon={<IconMonitor />}
       badge={badgeInfo && (
         <span className={`local-media-status-badge local-media-status-badge--${badgeInfo.modifier}`}>
-          {badgeInfo.label}
+          {getT().profile[badgeInfo.labelKey]}
         </span>
       )}
-      onClick={() => onClick(game)}
+      onClick={() => { cancelPrefetch(); prefetch?.(); onClick(game); }}
+      onMouseEnter={prefetch && (() => { cancelPrefetch(); hoverTimer.current = setTimeout(prefetch, PREFETCH_HOVER_MS); })}
+      onMouseLeave={prefetch && cancelPrefetch}
+      onFocus={prefetch}
       selectionKey={game.external_id ?? game.app_id ?? game.name}
       onContextMenu={onRequestDelete ? e => {
         e.preventDefault();

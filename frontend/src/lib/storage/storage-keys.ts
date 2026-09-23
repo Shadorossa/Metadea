@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   profileBannerCustom: 'profile_banner_custom',
   shareAvatarCustom: 'share_avatar_custom',
   communityCatalogLastSync: 'community_catalog_last_sync',
+  communityCatalogSyncedThisSession: 'metadea_community_catalog_synced_this_session',
   lastVisitedPath: 'metadea_last_visited_path',
   onboardingCompleted: 'metadea_onboarding_completed',
   onboardingStep: 'metadea_onboarding_step',
@@ -44,9 +45,22 @@ export const STORAGE_KEYS = {
   rating2Max: 'metadea_rating_2_max',
   libraryActiveRatingSlot: 'metadea_library_active_rating_slot',
   emulatorsConfig: 'emulators_config',
+  romAutoRename: 'metadea_local_roms_auto_rename',
   unifySeasonsEnabled: 'metadea_unify_seasons_enabled',
   unifySeasonsHighestRatedCover: 'metadea_unify_seasons_highest_rated_cover',
   completedMangaIssueCover: 'metadea_completed_manga_issue_cover',
   mediaCoverPreferences: 'metadea_media_cover_preferences',
   libraryReleaseNotifications: 'metadea_library_release_notifications',
+  jukeboxPreferences: 'metadea_jukebox_preferences',
+  // "Watch for changes" dev toggle of the user UI themes (lib/ui-themes).
+  uiThemeWatch: 'metadea_ui_theme_watch',
+  // Local > Videojuegos: IGDB's launcher verdict per pending game, 7-day TTL
+  // (lib/local/pending-launcher-memo.ts).
+  pendingLauncherMemo: 'metadea_local_pending_launcher_memo',
+  // Home's last rendered view-model, for an instant first paint
+  // (lib/home/home-snapshot.ts), and the tiny layout hint derived from it
+  // that home.astro's inline pre-paint script reads (it mirrors this
+  // literal — see home-snapshot.test.ts).
+  homeSnapshot: 'metadea_home_snapshot',
+  homeLayoutHint: 'metadea_home_layout',
 } as const;

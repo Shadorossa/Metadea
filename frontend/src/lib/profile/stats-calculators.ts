@@ -3,6 +3,7 @@ import { isInProgressStatus, ALL_MEDIA_TYPES, SUB_WORK_FORMATS } from '../media/
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 import { buildEditionMaps, sagaIdentityOf } from './library-grouping';
 import { buildDirectSagaGraph } from './saga-graph';
+import { consumedUnitsOf } from './consumption-units';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -143,14 +144,22 @@ export function groupSagaChains(
 // progress*60 that ignores real episode length entirely. Recompute from the
 // catalog here instead of trusting the stored value, so both new and
 // already-imported/logged entries get correct hours without a migration.
+//
+// Rewatches/rereads/replays count too: every unit summed here goes through
+// consumedUnitsOf (lib/profile/consumption-units.ts), which multiplies a
+// finished work by 1 + reconsumption_count and adds a running re-run's
+// partial progress — the only place that multiplier lives.
 const DEFAULT_EPISODE_MINUTES = 24;
 
 export function getItemMinutes(item: Items[number], catalogMap: Map<string, CatalogSummary>): number {
   if (item.type === 'anime' || item.type === 'series') {
-    const perEpisodeMinutes = catalogMap.get(item.external_id)?.time_length || DEFAULT_EPISODE_MINUTES;
-    return item.progress * perEpisodeMinutes;
+    const catalog = catalogMap.get(item.external_id);
+    const perEpisodeMinutes = catalog?.time_length || DEFAULT_EPISODE_MINUTES;
+    return consumedUnitsOf(item, item.progress, catalog?.total_count) * perEpisodeMinutes;
   }
-  return item.minutes_spent || 0;
+  // minutes_spent is per run (the editor rewrites it from the run's own
+  // progress); no catalog total in minutes exists for the earlier runs.
+  return consumedUnitsOf(item, item.minutes_spent || 0);
 }
 
 // Single source of truth for every "how many works" stat shown across the

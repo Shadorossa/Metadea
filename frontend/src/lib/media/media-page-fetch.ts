@@ -12,7 +12,8 @@ import { mapOpenLibToMedia } from './mappers/openlibrary-mapper';
 import { mapComicVineToMedia } from './mappers/comicvine-mapper';
 import { mapTmdbToMedia } from './mappers/tmdb-mapper';
 import { mapIgdbToMedia, dedupeRelationsByTarget } from './mappers/igdb-mapper';
-import { igdbGetGameDetail, getBlockedExternalIds } from '../tauri';
+import { igdbGetGameDetail } from '../tauri';
+import { readBlockedExternalIdsCached } from './media-page-read-cache';
 import type { MediaPageData, MediaAuthor } from './types';
 import { parseExternalId } from './mappers/mapper-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from './media-types';
@@ -29,7 +30,7 @@ export function isIgdbMediaType(value: string): value is typeof IGDB_TYPES[numbe
 
 export async function fetchMediaDataInternal(rawId: string, allowBlocked = false): Promise<MediaPageData | null> {
   if (!rawId) return null;
-  if (!allowBlocked && (await getBlockedExternalIds().catch(() => [] as string[])).includes(rawId)) return null;
+  if (!allowBlocked && (await readBlockedExternalIdsCached().catch(() => [] as string[])).includes(rawId)) return null;
 
   const { type, id: numericId } = parseExternalId(rawId);
 

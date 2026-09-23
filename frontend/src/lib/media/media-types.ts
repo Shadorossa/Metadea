@@ -1,7 +1,6 @@
 // ─── Media type groupings ─────────────────────────────────────────────────────
 
 export const ANILIST_TYPES = ['anime', 'manga', 'lnovel'] as const;
-type AniListMediaType = typeof ANILIST_TYPES[number];
 
 export const IGDB_TYPES = ['game', 'vnovel'] as const;
 
@@ -55,8 +54,8 @@ export function getTypeLabel(type: string): string {
 
 export function getGenreLabel(genre: string): string {
   const t = getT();
-  const genres = (t as any).genres as Record<string, string> | undefined;
-  return genres?.[genre] || genre;
+  const genres: Readonly<Record<string, string | undefined>> = t.genres;
+  return genres[genre] || genre;
 }
 
 // ─── AniList formats ──────────────────────────────────────────────────────────

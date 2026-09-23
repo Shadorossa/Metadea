@@ -1,4 +1,17 @@
 import type { ParsedCharacteristic } from './biography-parser';
+import { getT } from '../../i18n/runtime';
+
+// One `query.pages` entry of a MediaWiki `prop=imageinfo` response.
+interface FandomImagePage {
+  title?: string;
+  imageinfo?: Array<{
+    url?: string;
+    thumburl?: string;
+    width?: number;
+    height?: number;
+    mime?: string;
+  }>;
+}
 
 export interface ExtractedVoiceActor {
   name: string;
@@ -34,7 +47,7 @@ export function parseFandomUrl(url: string): FandomUrlParts {
   const match = trimmed.match(/^https?:\/\/([a-zA-Z0-9-]+)\.(?:fandom|wikia)\.com(?:\/([a-z]{2}(?:-[a-z]{2})?))?\/wiki\/([^?#]+)/i);
 
   if (!match) {
-    throw new Error('URL de Fandom no válida. Formato esperado: https://<wiki>.fandom.com/wiki/<Página>');
+    throw new Error(getT().character_editor.import_fandom_invalid_url);
   }
 
   return {
@@ -271,7 +284,7 @@ export async function fetchFandomCharacter(url: string): Promise<FandomCharacter
 
   const json = await response.json();
   if (json.error || !json.parse) {
-    throw new Error(json.error?.info || 'No se pudo encontrar la página en Fandom');
+    throw new Error(json.error?.info || getT().character_editor.import_fandom_page_not_found);
   }
 
   const rawHtml = json.parse.text?.['*'] || '';
@@ -416,7 +429,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     const valHtml = valEl.innerHTML;
 
     const lis = valEl.querySelectorAll('li');
-    let cleanVal = '';
+    let cleanVal: string;
     if (lis.length > 0) {
       cleanVal = Array.from(lis)
         .map(li => formatCharacteristicItem(li.innerHTML))
@@ -555,25 +568,22 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
         });
         const imageResponse = await fetch(`https://${subdomain}.fandom.com/${prefix}api.php?${imageParams}`);
         if (!imageResponse.ok) continue;
-        const imageJson = await imageResponse.json();
+        const imageJson = await imageResponse.json() as { query?: { pages?: Record<string, FandomImagePage> } };
         imageOptions.push(...Object.values(imageJson.query?.pages ?? {})
-          .flatMap((page: any) => {
+          .flatMap(page => {
             const imageInfo = page.imageinfo?.[0];
             const resolvedUrl = imageInfo?.url;
-            const meetsMinimumSize = imageInfo?.width >= 100 && imageInfo?.height >= 100;
+            const meetsMinimumSize = (imageInfo?.width ?? 0) >= 100 && (imageInfo?.height ?? 0) >= 100;
             const imageMime = String(imageInfo?.mime ?? '').toLowerCase();
             const imageFile = String(page.title ?? resolvedUrl ?? '').split(/[?#]/, 1)[0].toLowerCase();
             const isGif = /\.gif$/i.test(imageFile) || imageMime === 'image/gif';
             const isImage = imageMime ? imageMime.startsWith('image/') : /\.(?:jpe?g|png|webp|avif|bmp|svg|tiff?)$/i.test(imageFile);
-            const previewUrl = imageInfo.thumburl || resolvedUrl;
-            return resolvedUrl && meetsMinimumSize && isImage && !isGif ? [{
-              title: page.title || '',
-              // Fandom's original `/revision/latest` URLs can return 404 even
-              // when its API thumbnail URL is valid; use that same served
-              // image for preview and selection.
-              url: previewUrl,
-              previewUrl,
-            }] : [];
+            if (!resolvedUrl || !meetsMinimumSize || !isImage || isGif) return [];
+            // Fandom's original `/revision/latest` URLs can return 404 even
+            // when its API thumbnail URL is valid; use that same served
+            // image for preview and selection.
+            const previewUrl = imageInfo?.thumburl || resolvedUrl;
+            return [{ title: page.title || '', url: previewUrl, previewUrl }];
           }));
       }
     } catch {

@@ -99,6 +99,8 @@ fn open_builds_the_playlist_and_arms_the_start_offset() {
             work_name: "Show".into(),
             episode_labels: vec!["S01E01".into(), "S01E02".into(), "S01E03".into()],
             titles: vec![],
+            external_id: None,
+            episode_numbers: vec![],
             capture_dir: std::env::temp_dir(),
         })
         .unwrap();
@@ -149,6 +151,8 @@ fn screenshot_name_uses_the_current_queue_index_and_position() {
             work_name: "Teen Titans".into(),
             episode_labels: vec!["S01E24".into(), "S01E25".into()],
             titles: vec![],
+            external_id: None,
+            episode_numbers: vec![],
             capture_dir: PathBuf::from("/captures"),
         })
         .unwrap();
@@ -167,6 +171,29 @@ fn commands_without_a_client_report_not_open() {
     let engine = PlayerEngine::default();
     assert_eq!(engine.toggle_pause().unwrap_err().code, "player_not_open");
     assert!(engine.set_track("video", Some(1)).is_err());
+    assert_eq!(engine.frame_step("back").unwrap_err().code, "player_not_open");
+    assert_eq!(engine.cycle_track("sub").unwrap_err().code, "player_not_open");
+}
+
+#[test]
+fn frame_step_and_cycle_track_forward_the_matching_mpv_commands() {
+    let fake = FakeMpv::new(vec![]);
+    let sink = Arc::new(RecordingSink::default());
+    let mut engine = PlayerEngine::default();
+    engine.attach(fake.clone(), Box::new(SinkHandle(sink))).unwrap();
+    engine.frame_step("back").unwrap();
+    engine.frame_step("forward").unwrap();
+    engine.cycle_track("sub").unwrap();
+    engine.cycle_track("audio").unwrap();
+    assert!(engine.frame_step("sideways").is_err());
+    assert!(engine.cycle_track("video").is_err());
+    engine.close();
+
+    let commands = fake.commands.lock().unwrap().clone();
+    assert!(commands.contains(&vec!["frame-back-step".to_string()]));
+    assert!(commands.contains(&vec!["frame-step".to_string()]));
+    assert!(commands.contains(&vec!["cycle".to_string(), "sub".into()]));
+    assert!(commands.contains(&vec!["cycle".to_string(), "audio".into()]));
 }
 
 #[test]
@@ -243,6 +270,8 @@ mod real_library_tests {
                 work_name: "Test".into(),
                 episode_labels: vec![],
                 titles: vec![],
+                external_id: None,
+                episode_numbers: vec![],
                 capture_dir: std::env::temp_dir(),
             })
             .unwrap();

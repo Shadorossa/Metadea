@@ -2,6 +2,7 @@
 import { ICON_STAR, ICON_RATING_FACES } from "../../lib/dom/icon-strings";
 import type { Translations } from "../../i18n/index";
 import { LOCALES } from "../../i18n/index";
+import { KeyboardShortcutsSection } from "./KeyboardShortcutsSection";
 
 interface Props {
   t: Translations;
@@ -82,7 +83,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               type="button"
               class="rating-system-btn-2"
               data-value="5-star"
-              title={t.settings.rating_5star_title}
+              title={t.settings.rating_5star_title} data-i18n-title="settings.rating_5star_title"
               set:html={ICON_STAR}
             >
             </button>
@@ -90,7 +91,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               type="button"
               class="rating-system-btn-2"
               data-value="10-dec"
-              title={t.settings.rating_10dec_title}
+              title={t.settings.rating_10dec_title} data-i18n-title="settings.rating_10dec_title"
             >
               <span class="rating-value-text">10.00</span>
             </button>
@@ -98,7 +99,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               type="button"
               class="rating-system-btn-2"
               data-value="10"
-              title={t.settings.rating_10int_title}
+              title={t.settings.rating_10int_title} data-i18n-title="settings.rating_10int_title"
             >
               <span class="rating-value-text">10</span>
             </button>
@@ -106,7 +107,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               type="button"
               class="rating-system-btn-2"
               data-value="3-emoji"
-              title={t.settings.rating_3emoji_title}
+              title={t.settings.rating_3emoji_title} data-i18n-title="settings.rating_3emoji_title"
               set:html={ICON_RATING_FACES}
             >
             </button>
@@ -120,7 +121,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
                 type="number"
                 id="rating-2-min"
                 class="settings-modal-input"
-                placeholder={t.settings.dual_rating_min_label}
+                placeholder={t.settings.dual_rating_min_label} data-i18n-placeholder="settings.dual_rating_min_label"
                 step="1"
               />
             </div>
@@ -129,7 +130,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
                 type="number"
                 id="rating-2-max"
                 class="settings-modal-input"
-                placeholder={t.settings.dual_rating_max_label}
+                placeholder={t.settings.dual_rating_max_label} data-i18n-placeholder="settings.dual_rating_max_label"
                 step="1"
               />
             </div>
@@ -144,7 +145,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               type="text"
               id="rating-name-1"
               class="settings-modal-input"
-              placeholder={t.settings.dual_rating_name1_label}
+              placeholder={t.settings.dual_rating_name1_label} data-i18n-placeholder="settings.dual_rating_name1_label"
               maxlength="20"
             />
           </div>
@@ -153,7 +154,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               type="text"
               id="rating-name-2"
               class="settings-modal-input"
-              placeholder={t.settings.dual_rating_name2_label}
+              placeholder={t.settings.dual_rating_name2_label} data-i18n-placeholder="settings.dual_rating_name2_label"
               maxlength="20"
             />
           </div>
@@ -309,6 +310,86 @@ const LANGUAGE_NAMES: Record<string, string> = {
       </div>
     </div>
   </div>
+
+  <!-- Reproductor: engine (libmpv/VLC), controls mode, opening/ending skip.
+       Stored in lib/player/player-settings.ts; wired by mount/player-preferences.ts -->
+  <div class="settings-divider">
+    <div class="settings-section" id="player-preferences-section" data-onboarding-part="player">
+      <h3 class="settings-section-title" data-i18n="player.window_title">{t.player.window_title}</h3>
+      <div class="player-preferences-grid">
+        <div class="player-preferences-group">
+          <div class="settings-checkbox-label-wrapper player-preferences-group-header">
+            <span class="player-preferences-group-title" data-i18n="player.settings_engine_title">{t.player.settings_engine_title}</span>
+            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_engine_hint" title={t.player.settings_engine_hint}>
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+          </div>
+          <div class="player-preferences-options">
+            <label class="settings-checkbox-label">
+              <input type="radio" name="playback-engine" value="internal" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_engine_internal">{t.player.settings_engine_internal}</span>
+            </label>
+            <label class="settings-checkbox-label">
+              <input type="radio" name="playback-engine" value="vlc" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_engine_vlc">{t.player.settings_engine_vlc}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="player-preferences-group">
+          <div class="settings-checkbox-label-wrapper player-preferences-group-header">
+            <span class="player-preferences-group-title" data-i18n="player.settings_controls_title">{t.player.settings_controls_title}</span>
+            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_controls_hint" title={t.player.settings_controls_hint}>
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+          </div>
+          <div class="player-preferences-options">
+            <label class="settings-checkbox-label">
+              <input type="radio" name="player-controls-mode" value="overlay" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_controls_overlay">{t.player.settings_controls_overlay}</span>
+            </label>
+            <label class="settings-checkbox-label">
+              <input type="radio" name="player-controls-mode" value="docked" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_controls_docked">{t.player.settings_controls_docked}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="player-preferences-group">
+          <div class="settings-checkbox-label-wrapper player-preferences-group-header">
+            <span class="player-preferences-group-title" data-i18n="player.settings_skip_title">{t.player.settings_skip_title}</span>
+            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_skip_hint" title={t.player.settings_skip_hint}>
+              <span class="info-indicator" aria-hidden="true">i</span>
+            </button>
+          </div>
+          <div class="player-preferences-options">
+            <label class="settings-checkbox-label">
+              <input type="radio" name="player-skip-mode" value="button" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_skip_button">{t.player.settings_skip_button}</span>
+            </label>
+            <label class="settings-checkbox-label">
+              <input type="radio" name="player-skip-mode" value="auto" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_skip_auto">{t.player.settings_skip_auto}</span>
+            </label>
+            <label class="settings-checkbox-label">
+              <input type="radio" name="player-skip-mode" value="off" class="settings-checkbox" />
+              <span class="checkbox-label-text" data-i18n="player.settings_skip_off">{t.player.settings_skip_off}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Atajos de teclado (solo lectura por ahora) -->
+  <div class="settings-divider">
+    <div class="settings-section">
+      <h3 class="settings-section-title" data-i18n="shortcuts.settings_section_title">
+        {t.shortcuts.settings_section_title}
+      </h3>
+      <KeyboardShortcutsSection client:load />
+    </div>
+  </div>
 </div>
 
 <!-- Confirmación: eliminar todas las notas -->
@@ -317,7 +398,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   <div class="settings-help-modal-content settings-danger-modal-content">
     <div class="settings-help-modal-header">
       <h3 data-i18n="settings.clear_notes_confirm_title">{t.settings.clear_notes_confirm_title}</h3>
-      <button type="button" class="settings-help-modal-close" id="clear-notes-modal-close" aria-label={t.settings.close}>&times;</button>
+      <button type="button" class="settings-help-modal-close" id="clear-notes-modal-close" aria-label={t.settings.close} data-i18n-aria-label="settings.close">&times;</button>
     </div>
     <div class="settings-help-modal-body">
       <p data-i18n="settings.clear_notes_confirm_warning">{t.settings.clear_notes_confirm_warning}</p>
@@ -325,7 +406,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
         <button type="button" class="settings-btn-cancel" id="clear-notes-cancel-btn" data-i18n="settings.clear_notes_cancel">
           {t.settings.clear_notes_cancel}
         </button>
-        <button type="button" class="settings-btn-danger-confirm" id="clear-notes-confirm-btn" disabled>
+        <button type="button" class="settings-btn-danger-confirm" id="clear-notes-confirm-btn" disabled data-i18n="settings.clear_notes_confirm_yes">
           {t.settings.clear_notes_confirm_yes}
         </button>
       </div>

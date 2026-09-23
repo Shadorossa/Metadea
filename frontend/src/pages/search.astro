@@ -16,7 +16,7 @@ const rawType       = Astro.url.searchParams.get('type') ?? 'all';
 const type: MediaType = (VALID_MEDIA_TYPES as string[]).includes(rawType) ? rawType as MediaType : 'all';
 ---
 
-<BaseLayout title={`${t.search.title} — Metadea`} lang={lang} activePage="search">
+<BaseLayout title={`${t.search.title} — Metadea`} titleKey="search.title" lang={lang} activePage="search">
   <main class="search-page-wrapper">
     <SearchIsland
       client:load

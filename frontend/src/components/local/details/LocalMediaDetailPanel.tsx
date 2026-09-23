@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useKeyedState } from '../../shared/hooks/useKeyedState';
+import type { LocalFolderEntry, MediaCatalogEntry } from '../../../lib/tauri';
+// Visit-scoped reads (lib/local/local-read-cache.ts): folder listings and
+// catalog rows are memoised while Local is mounted, so reopening a work or
+// switching away and back never re-reads what hasn't changed.
 import {
-  scanFolderContents, getCatalogEntry,
-  type LocalFolderEntry,
-} from '../../../lib/tauri';
+  readLocalFolderContents as scanFolderContents, readLocalCatalogEntry as getCatalogEntry, readLocalFullCatalogEntries,
+} from '../../../lib/local/local-read-cache';
 import { ReaderModal } from '../../reader/ReaderModal';
 import { setReadingSession } from '../../../lib/reader/reading-session';
 import { getT } from '../../../i18n/runtime';
+import { interpolateTranslation } from '../../../lib/i18n-dom/apply-translations';
+import { formatAppError } from '../../../lib/errors/format-error';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import {
   findMatchingFolder, findMatchingEpisodeFile, findMatchingFile, soleMediaFile,
@@ -65,7 +71,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // directly (see the auto-descend effect below).
   const [subContainerPath, setSubContainerPath] = useState<string | null>(null);
   const [subLoading, setSubLoading] = useState(false);
-  const [playError, setPlayError] = useState<string | null>(null);
   // The one global playback-service.ts instance, not per-panel state — reads
   // as "idle" for this item whenever the shared session belongs to some
   // other item (or nothing at all), so this naturally reflects the real
@@ -82,11 +87,23 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // useMediaNeighbors.
   const { prequel: prequelInfo, sequel: sequelInfo, bundleChildren } = useMediaNeighbors(item.externalId, item.title);
 
+  // The grid's catalog rows are CatalogSummary projections (no banners_csv
+  // — see useLocalMediaData); the one open panel reads its own full row by
+  // id, memoised for the visit. A row that already carries the column (the
+  // library's game/visual-novel entries ship as full rows) skips the read.
+  const hasFullRow = !!item.catalogEntry && 'banners_csv' in item.catalogEntry;
+  const { value: fullCatalogEntry } = useAsyncResource<MediaCatalogEntry | null>(
+    () => hasFullRow ? Promise.resolve(null) : readLocalFullCatalogEntries([item.externalId]).then(rows => rows.get(item.externalId) ?? null),
+    [item.externalId, hasFullRow],
+    null,
+  );
+  const catalogRow = hasFullRow ? item.catalogEntry : (fullCatalogEntry ?? item.catalogEntry);
+
   // AniList's banner art (wide, no logo/text baked in) instead of the cover
   // — the cover is a portrait poster, stretched across this wide header it
   // just looks like a cropped-in blur of the same image already shown on
   // the card. Falls back to the cover only when this entry has no banner.
-  const bannerUrl = firstCsvUrl(item.catalogEntry?.banners_csv) || item.cover;
+  const bannerUrl = firstCsvUrl(catalogRow?.banners_csv) || item.cover;
 
   const candidateTitles = useMemo(
     () => [item.title, item.titleRomaji, item.titleNative].filter((t): t is string => !!t),
@@ -166,9 +183,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
   // A stale VLC-launch error shouldn't outlive the work it belonged to —
   // cleared on the exact same triggers that refetch the chain history.
-  useEffect(() => {
-    setPlayError(null);
-  }, [item.externalId, item.title, itemSeason]);
+  const [playError, setPlayError] = useKeyedState<string | null>(`${item.externalId}\n${item.title}\n${itemSeason}`, null);
 
   useEffect(() => {
     if (!folderToScan) { setSubEntries(null); setSubContainerPath(null); return; }
@@ -318,7 +333,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       detail: {
         externalId:  item.externalId,
         libraryEntry: item.libraryEntry,
-        catalogEntry: item.catalogEntry,
+        catalogEntry: catalogRow,
       },
     }));
   };
@@ -378,7 +393,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       libraryEntry: item.libraryEntry,
       totalCount,
       queue,
-    }).catch(err => setPlayError(String(err)));
+    }).catch(err => setPlayError(formatAppError(err, getT())));
   };
 
   // Once playback-service.ts actually has a session for this item, the play
@@ -424,8 +439,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     ? activePlaybackItem.episodeTitle ?? episodeNames.get(`${item.externalId}|${activePlaybackItem.episodeNumber}`)
     : undefined;
   const playingButtonLabel = activePlaybackCode
-    ? `Reproduciendo ${activePlaybackCode}${activePlaybackTitle ? ` - ${activePlaybackTitle}` : ''}`
-    : 'Reproduciendo';
+    ? interpolateTranslation(t.local.now_playing_item, { item: `${activePlaybackCode}${activePlaybackTitle ? ` - ${activePlaybackTitle}` : ''}` })
+    : t.local.now_playing;
 
   return (
     <>
@@ -482,7 +497,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   type="button"
                   className="local-game-detail-play"
                   disabled={isUnreleased || !playPath}
-                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : tomosMismatch ? `Se esperaban exactamente ${totalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})` : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado' : 'No se encontró el archivo del próximo volumen'}
+                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? t.local.caught_up : tomosMismatch ? interpolateTranslation(t.local.volumes_mismatch, { expected: totalVols, found: mediaFiles.length }) : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? t.local.volume_not_found : t.local.next_volume_file_missing}
                   onClick={() => setReaderOpen(true)}
                 >
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -493,11 +508,11 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     ? releaseLabel
                     : readingProgress
                     ? (isSingleEpisode
-                      ? `Seguir por la página ${readingProgress.pageNumber}`
+                      ? interpolateTranslation(t.local.continue_page, { page: readingProgress.pageNumber })
                       : item.libraryEntry.type === 'comic'
-                      ? `Seguir por la página ${readingProgress.pageNumber} del número ${nextNumber}`
-                      : `Seguir por la página ${readingProgress.pageNumber} del volumen ${nextNumber}`)
-                    : 'Empezar a leer'}
+                      ? interpolateTranslation(t.local.continue_page_issue, { page: readingProgress.pageNumber, number: nextNumber })
+                      : interpolateTranslation(t.local.continue_page_volume, { page: readingProgress.pageNumber, number: nextNumber }))
+                    : t.local.start_reading}
                 </button>
               ) : (
                 <button
@@ -510,7 +525,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   // goes stale or empty from episodes the queue already
                   // played through.
                   disabled={!isThisPlaying && (isUnreleased || !playPath)}
-                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : isMovieFormat ? 'No se encontró el archivo de la película' : 'No se encontró el archivo del próximo episodio/capítulo'}
+                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? t.local.caught_up : isMovieFormat ? t.local.movie_file_missing : t.local.next_episode_file_missing}
                   onClick={handlePlayButtonClick}
                 >
                   {playState === 'playing' ? (
@@ -525,7 +540,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     </svg>
                   )}
                   <span className="local-game-detail-play-label">
-                    {playState === 'playing' ? playingButtonLabel : playState === 'paused' ? 'En pausa' : isUnreleased ? releaseLabel : (resumeSeconds && resumeSeconds > 5 ? `Seguir viendo en ${formatPlaybackTime(resumeSeconds)}` : 'Reproducir')}
+                    {playState === 'playing' ? playingButtonLabel : playState === 'paused' ? t.local.paused_label : isUnreleased ? releaseLabel : (resumeSeconds && resumeSeconds > 5 ? interpolateTranslation(t.local.resume_watching_at, { time: formatPlaybackTime(resumeSeconds) }) : t.local.play_media)}
                   </span>
                 </button>
               )}
@@ -536,13 +551,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   subLoading ? (
                     <span className="local-media-match-chip">
                       <div className="spinner spinner--sm" />
-                      {isReading ? 'Buscando próximo volumen…' : 'Buscando próximo episodio…'}
+                      {isReading ? t.local.searching_next_volume : t.local.searching_next_episode}
                     </span>
                   ) : isCaughtUp ? (
                     <span className="local-media-match-chip ok">
                       {isReading
-                        ? `Al día — no hay volúmenes nuevos (${totalCount} en total)`
-                        : `Al día — no hay episodios/capítulos nuevos (${totalCount} en total)`}
+                        ? interpolateTranslation(t.local.caught_up_volumes, { total: totalCount })
+                        : interpolateTranslation(t.local.caught_up_episodes, { total: totalCount })}
                     </span>
                   ) : (
                     <span className={`local-media-match-chip local-media-match-chip--labeled${nextFile ? ' ok' : ' fail'}`}>
@@ -572,11 +587,11 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                           </strong>
                         </>
                       ) : (
-                        isMovieFormat ? 'Película no encontrada'
-                          : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado'
-                          : tomosMismatch ? `Se esperaban exactamente ${totalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})`
-                          : item.libraryEntry.type === 'comic' ? `Próximo número (${nextNumber}) no encontrado`
-                          : isReading ? `Próximo volumen (${nextNumber}) no encontrado`
+                        isMovieFormat ? t.local.movie_not_found
+                          : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? t.local.volume_not_found
+                          : tomosMismatch ? interpolateTranslation(t.local.volumes_mismatch, { expected: totalVols, found: mediaFiles.length })
+                          : item.libraryEntry.type === 'comic' ? interpolateTranslation(t.local.next_issue_not_found, { number: nextNumber })
+                          : isReading ? interpolateTranslation(t.local.next_volume_not_found, { number: nextNumber })
                           : (item.libraryEntry.type === 'anime' || item.libraryEntry.type === 'series') ? (
                             <>
                               <span className="local-media-match-label">{t.local.next_episode_label}</span>{' '}
@@ -592,7 +607,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                               </strong>
                             </>
                           )
-                          : `Próximo episodio (${nextNumber}) no encontrado`
+                          : interpolateTranslation(t.local.next_episode_not_found, { number: nextNumber })
                       )}
                     </span>
                   )

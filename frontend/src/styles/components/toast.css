@@ -46,6 +46,23 @@
   animation: slideUp 0.3s ease-out;
 }
 
+.metadea-runtime-toast__action {
+  margin-left: 16px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.metadea-runtime-toast__action:hover,
+.metadea-runtime-toast__action:focus-visible {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 .metadea-runtime-toast--wide {
   max-width: 90%;
   overflow-wrap: break-word;

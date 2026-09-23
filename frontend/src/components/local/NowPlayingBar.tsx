@@ -21,9 +21,13 @@ export function NowPlayingBar() {
   const playback = usePlaybackState();
   // The built-in player modal is hosted here because this island is on
   // every page (BaseLayout, transition:persist), same as the reader's bar.
-  // The modal simply covers the strip (z-index 600 over 200); the strip
-  // itself is left untouched and is back the moment the player closes.
+  // While it is open the strips below are not rendered at all: the modal
+  // must own the entire viewport (its native video surface and controls
+  // overlay are aligned to it), and a fixed strip at z-index 200 under a
+  // z-index 600 panel still bled through at the bottom edge. The strip's
+  // own markup is untouched and is back the moment the player closes.
   const playerModalOpen = useExternalStore(playerModalStore);
+  const showStrips = !playerModalOpen;
   const game = useGamePresence();
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
@@ -47,7 +51,7 @@ export function NowPlayingBar() {
   return (
     <AnimatePresence>
       {playerModalOpen && <PlayerModal key="player-modal" />}
-      {playback && (
+      {showStrips && playback && (
         <NowMediaBar
           key="video-playback"
           className="now-playing-bar"
@@ -95,7 +99,7 @@ export function NowPlayingBar() {
           }
         />
       )}
-      {!playback && game && (
+      {showStrips && !playback && game && (
         <NowMediaBar
           key="game-session"
           className="now-playing-bar now-playing-bar--game"

@@ -1,4 +1,4 @@
-import { readEnvConfig } from '../../tauri/env';
+import { readSearchEnvConfig } from '../env-config-read';
 import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../types';
 import { SEASON_MONTHS } from '../types';
 import { API_ENDPOINTS } from '../../api/endpoints';
@@ -284,7 +284,7 @@ export async function getTmdbAuth(): Promise<{ accessToken: string; apiKey: stri
   let apiKey = '';
 
   try {
-    const cfg = await readEnvConfig();
+    const cfg = await readSearchEnvConfig();
     accessToken = cfg.tmdb_access_token ?? '';
     apiKey = cfg.tmdb_api_key ?? '';
   } catch {

@@ -16,7 +16,7 @@ export function dedupeByKey<T>(
 }
 
 // Dedupe by a specific property (common case)
-export function dedupeByProperty<T extends Record<string, any>>(
+export function dedupeByProperty<T extends object>(
   items: T[],
   property: keyof T
 ): T[] {

@@ -26,13 +26,24 @@ async fn download_game_metadata(
     } else {
         None
     };
+    download_game_files(client, game_dir, igdb_game, cover_image_id, banner_id.as_deref(), app_id).await
+}
 
+// The disk half of download_game_metadata, with the banner already
+// resolved — shared with the batched fetch (batch.rs), which looks banner
+// candidates up for ten games per request instead of two requests per game.
+pub(super) async fn download_game_files(
+    client: &reqwest::Client,
+    game_dir: &std::path::Path,
+    igdb_game: &serde_json::Value,
+    cover_image_id: &str,
+    banner_id: Option<&str>,
+    app_id: &str,
+) -> Result<(), String> {
     std::fs::create_dir_all(game_dir).str_err()?;
 
     let cover_path = game_dir.join(format!("{}_cover.webp", cover_image_id));
-    let banner_path = banner_id
-        .as_ref()
-        .map(|bid| game_dir.join(format!("{}_banner.webp", bid)));
+    let banner_path = banner_id.map(|bid| game_dir.join(format!("{}_banner.webp", bid)));
 
     let cover_fut = async {
         if cover_path.exists() {
@@ -46,7 +57,7 @@ async fn download_game_metadata(
         .await;
     };
     let banner_fut = async {
-        if let (Some(bid), Some(bpath)) = (&banner_id, &banner_path) {
+        if let (Some(bid), Some(bpath)) = (banner_id, &banner_path) {
             if bpath.exists() {
                 return;
             }
@@ -62,7 +73,120 @@ async fn download_game_metadata(
     Ok(())
 }
 
-fn save_game_info(
+// ── index.json ────────────────────────────────────────────────────────────────
+// One entry per app_id: the cover/banner paths plus, since INDEX_META_VERSION
+// 2, the two facts read_metadata_index used to dig out of every game's own
+// info.json on every Local open (igdb_id, is_vn). Entries written before
+// that carry no `meta_v` and are backfilled from info.json the first time
+// they're read, so the per-game file reads happen once more at most.
+
+pub(super) const INDEX_META_VERSION: u64 = 2;
+
+pub(super) fn is_visual_novel_info(info: &serde_json::Value) -> bool {
+    info["genres"]
+        .as_array()
+        .map(|genres| genres.iter().any(|g| g.as_str() == Some("Visual Novel")))
+        .unwrap_or(false)
+}
+
+// `igdb_game` is the raw IGDB row (genres as {name} objects) — the same
+// genre names save_game_info persists, so this classifies exactly like the
+// info.json read it replaces.
+fn is_visual_novel_game(igdb_game: &serde_json::Value) -> bool {
+    igdb_game["genres"]
+        .as_array()
+        .map(|genres| genres.iter().any(|g| g["name"].as_str() == Some("Visual Novel")))
+        .unwrap_or(false)
+}
+
+pub(super) fn find_banner_file(game_dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    std::fs::read_dir(game_dir)
+        .ok()?
+        .flatten()
+        .find(|e| e.file_name().to_string_lossy().ends_with("_banner.webp"))
+        .map(|e| e.path())
+}
+
+pub(super) fn build_index_entry(
+    game_dir: &std::path::Path,
+    game_name: &str,
+    cover_path: &std::path::Path,
+    igdb_game: &serde_json::Value,
+) -> serde_json::Value {
+    let mut entry = serde_json::json!({
+        "name": game_name,
+        "cover": cover_path.to_string_lossy(),
+        "meta_v": INDEX_META_VERSION,
+    });
+    // Banner filename uses image_id hash, not igdb_game_id number.
+    // Scan for any *_banner.webp file in the game directory.
+    if let Some(banner_path) = find_banner_file(game_dir) {
+        entry["banner"] = serde_json::Value::String(banner_path.to_string_lossy().to_string());
+    }
+    if let Some(igdb_id) = igdb_game["id"].as_u64() {
+        entry["igdb_id"] = serde_json::Value::Number(igdb_id.into());
+    }
+    if is_visual_novel_game(igdb_game) {
+        entry["is_vn"] = serde_json::Value::Bool(true);
+    }
+    entry
+}
+
+pub(super) fn read_index(meta_root: &std::path::Path) -> serde_json::Value {
+    std::fs::read_to_string(meta_root.join("index.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .filter(|v: &serde_json::Value| v.is_object())
+        .unwrap_or_else(|| serde_json::json!({}))
+}
+
+pub(super) fn write_index(meta_root: &std::path::Path, index: &serde_json::Value) {
+    let _ = std::fs::create_dir_all(meta_root);
+    let _ = std::fs::write(
+        meta_root.join("index.json"),
+        serde_json::to_string_pretty(index).unwrap_or_default(),
+    );
+}
+
+fn upsert_index_entry(meta_root: &std::path::Path, app_id: &str, entry: serde_json::Value) {
+    let mut index = read_index(meta_root);
+    if let Some(obj) = index.as_object_mut() {
+        obj.insert(app_id.to_string(), entry);
+    }
+    write_index(meta_root, &index);
+}
+
+// The read_metadata_index projection of one index entry (cover_path/
+// banner_path only when the files still exist, is_vn only when true,
+// igdb_id when known). `legacy_info` is consulted for entries written
+// before INDEX_META_VERSION; the caller backfills those afterwards.
+pub(super) fn project_index_entry(entry: &serde_json::Value, legacy_info: Option<&serde_json::Value>) -> serde_json::Value {
+    let mut result = serde_json::json!({});
+    if let Some(p) = entry["cover"].as_str() {
+        if std::path::Path::new(p).exists() {
+            result["cover_path"] = serde_json::Value::String(p.to_string());
+        }
+    }
+    if let Some(p) = entry["banner"].as_str() {
+        if std::path::Path::new(p).exists() {
+            result["banner_path"] = serde_json::Value::String(p.to_string());
+        }
+    }
+    let (is_vn, igdb_id) = if let Some(info) = legacy_info {
+        (is_visual_novel_info(info), info["igdb_id"].as_u64())
+    } else {
+        (entry["is_vn"].as_bool().unwrap_or(false), entry["igdb_id"].as_u64())
+    };
+    if is_vn {
+        result["is_vn"] = serde_json::Value::Bool(true);
+    }
+    if let Some(igdb_id) = igdb_id {
+        result["igdb_id"] = serde_json::Value::Number(igdb_id.into());
+    }
+    result
+}
+
+pub(super) fn save_game_info(
     game_dir: &std::path::Path,
     igdb_game: &serde_json::Value,
     app_id: &str,
@@ -176,6 +300,10 @@ pub async fn igdb_get_cover_by_steam_id(
     // is actually found again below instead of silently never matching,
     // now that this isn't hardcoded to "steam" either.
     launcher: String,
+    // Set for an emulated ROM (LocalGame.rom_platform): restricts the IGDB
+    // name search to that console and records the automatic match in
+    // local_game_links so the card keeps its catalog identity on rescans.
+    rom_platform: Option<String>,
 ) -> Result<Option<String>, String> {
     let app_data_dir = app_handle
         .path()
@@ -226,7 +354,15 @@ pub async fn igdb_get_cover_by_steam_id(
     let (cover_image_id, _igdb_game_id, igdb_game) = if let Some(igdb_id) = manual_igdb_id {
         fetch_igdb_game_by_id(client, &client_id, &token, igdb_id).await?
     } else {
-        resolve_igdb_game(client, &client_id, &token, &app_id, &game_name, &launcher).await?
+        let resolved =
+            resolve_igdb_game(client, &client_id, &token, &app_id, &game_name, &launcher, rom_platform.as_deref()).await?;
+        if rom_platform.is_some() {
+            if let Some(igdb_id) = resolved.2["id"].as_u64() {
+                let conn = state.conn.lock().str_err()?;
+                crate::game_links::save_auto_game_link(&conn, &launcher, &app_id, &format!("game:{igdb_id}")).str_err()?;
+            }
+        }
+        resolved
     };
 
     download_game_metadata(
@@ -241,39 +377,18 @@ pub async fn igdb_get_cover_by_steam_id(
     .await?;
 
     let cover_path = game_dir.join(format!("{}_cover.webp", cover_image_id));
-
-    let index_path = meta_root.join("index.json");
-    let mut index: serde_json::Value = std::fs::read_to_string(&index_path)
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_else(|| serde_json::json!({}));
-    if let Some(obj) = index.as_object_mut() {
-        let mut entry = serde_json::json!({
-            "name": game_name,
-            "cover": cover_path.to_string_lossy(),
-        });
-        // Banner filename uses image_id hash, not igdb_game_id number.
-        // Scan for any *_banner.webp file in the game directory.
-        if let Ok(entries) = std::fs::read_dir(game_dir) {
-            if let Some(banner_path) = entries
-                .flatten()
-                .find(|e| e.file_name().to_string_lossy().ends_with("_banner.webp"))
-                .map(|e| e.path())
-            {
-                entry["banner"] =
-                    serde_json::Value::String(banner_path.to_string_lossy().to_string());
-            }
-        }
-        obj.insert(app_id.clone(), entry);
-    }
-    let _ = std::fs::write(
-        &index_path,
-        serde_json::to_string_pretty(&index).unwrap_or_default(),
-    );
+    upsert_index_entry(&meta_root, &app_id, build_index_entry(&game_dir, &game_name, &cover_path, &igdb_game));
 
     Ok(Some(cover_path.to_string_lossy().to_string()))
 }
 
+// is_vn: each game's IGDB genre names, set once at fetch time (see
+// save_game_info/build_index_entry) — genre NAMES, not ids, unlike
+// detect_vn's id-based check used during IGDB search. igdb_id lets the
+// frontend match a game to its own catalog entry by real identity
+// ("vnovel:<id>"/"game:<id>", the same prefix "Ver en catálogo" links to)
+// instead of a fuzzy title guess. Both live in index.json itself now; an
+// entry from before that is read from its info.json once and backfilled.
 #[tauri::command]
 pub async fn read_metadata_index(
     app_handle: tauri::AppHandle,
@@ -283,50 +398,38 @@ pub async fn read_metadata_index(
         .app_data_dir()
         .str_err()?
         .join("metadata");
-    let index_path = meta_root.join("index.json");
-    if !index_path.exists() {
+    if !meta_root.join("index.json").exists() {
         return Ok(std::collections::HashMap::new());
     }
-    let data = std::fs::read_to_string(&index_path).str_err()?;
-    let index: serde_json::Value =
-        serde_json::from_str(&data).unwrap_or_else(|_| serde_json::json!({}));
-    let mut out = std::collections::HashMap::new();
+    tokio::task::spawn_blocking(move || read_metadata_index_in(&meta_root)).await.str_err()
+}
 
-    if let Some(obj) = index.as_object() {
-        for (app_id, entry) in obj {
-            let mut result = serde_json::json!({});
-            if let Some(p) = entry["cover"].as_str() {
-                if std::path::Path::new(p).exists() {
-                    result["cover_path"] = serde_json::Value::String(p.to_string());
-                }
-            }
-            if let Some(p) = entry["banner"].as_str() {
-                if std::path::Path::new(p).exists() {
-                    result["banner_path"] = serde_json::Value::String(p.to_string());
-                }
-            }
-            // Read straight off each game's own info.json genres — set once
-            // at fetch time by save_game_info, so this also classifies games
-            // fetched before is_vn existed at all, no re-fetch needed. Genre
-            // NAMES (not ids, unlike detect_vn's id-based check used during
-            // IGDB search) since that's all info.json ever stored.
-            let info_path = meta_root.join(app_id).join("info.json");
-            if let Ok(info_data) = std::fs::read_to_string(&info_path) {
-                if let Ok(info) = serde_json::from_str::<serde_json::Value>(&info_data) {
-                    let is_vn = info["genres"]
-                        .as_array()
-                        .map(|genres| genres.iter().any(|g| g.as_str() == Some("Visual Novel")))
-                        .unwrap_or(false);
-                    if is_vn {
-                        result["is_vn"] = serde_json::Value::Bool(true);
+pub(super) fn read_metadata_index_in(meta_root: &std::path::Path) -> std::collections::HashMap<String, serde_json::Value> {
+    let mut index = read_index(meta_root);
+    let mut out = std::collections::HashMap::new();
+    let mut backfilled = false;
+
+    if let Some(obj) = index.as_object_mut() {
+        for (app_id, entry) in obj.iter_mut() {
+            let is_current = entry["meta_v"].as_u64() == Some(INDEX_META_VERSION);
+            let legacy_info = if is_current {
+                None
+            } else {
+                std::fs::read_to_string(meta_root.join(app_id).join("info.json"))
+                    .ok()
+                    .and_then(|data| serde_json::from_str::<serde_json::Value>(&data).ok())
+            };
+            let result = project_index_entry(entry, legacy_info.as_ref());
+            if !is_current {
+                if let Some(entry_obj) = entry.as_object_mut() {
+                    entry_obj.insert("meta_v".into(), serde_json::Value::Number(INDEX_META_VERSION.into()));
+                    if let Some(igdb_id) = result["igdb_id"].as_u64() {
+                        entry_obj.insert("igdb_id".into(), serde_json::Value::Number(igdb_id.into()));
                     }
-                    // Lets the frontend match this game to its own catalog
-                    // entry by real identity ("vnovel:<id>"/"game:<id>",
-                    // same prefix "Ver en catálogo" links to) instead of a
-                    // fuzzy title guess.
-                    if let Some(igdb_id) = info["igdb_id"].as_u64() {
-                        result["igdb_id"] = serde_json::Value::Number(igdb_id.into());
+                    if result["is_vn"].as_bool() == Some(true) {
+                        entry_obj.insert("is_vn".into(), serde_json::Value::Bool(true));
                     }
+                    backfilled = true;
                 }
             }
             if result.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
@@ -334,8 +437,10 @@ pub async fn read_metadata_index(
             }
         }
     }
-
-    Ok(out)
+    if backfilled {
+        write_index(meta_root, &index);
+    }
+    out
 }
 
 #[tauri::command]
@@ -397,33 +502,65 @@ pub async fn igdb_force_by_igdb_id(
     .await?;
 
     let cover_path = game_dir.join(format!("{}_cover.webp", cover_image_id));
-
-    let index_path = meta_root.join("index.json");
-    let mut index: serde_json::Value = std::fs::read_to_string(&index_path)
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_else(|| serde_json::json!({}));
-    if let Some(obj) = index.as_object_mut() {
-        let mut entry = serde_json::json!({
-            "name": game_name,
-            "cover": cover_path.to_string_lossy(),
-        });
-        if let Ok(entries) = std::fs::read_dir(&game_dir) {
-            if let Some(banner_path) = entries
-                .flatten()
-                .find(|e| e.file_name().to_string_lossy().ends_with("_banner.webp"))
-                .map(|e| e.path())
-            {
-                entry["banner"] =
-                    serde_json::Value::String(banner_path.to_string_lossy().to_string());
-            }
-        }
-        obj.insert(app_id.clone(), entry);
-    }
-    let _ = std::fs::write(
-        &index_path,
-        serde_json::to_string_pretty(&index).unwrap_or_default(),
-    );
+    upsert_index_entry(&meta_root, &app_id, build_index_entry(&game_dir, &game_name, &cover_path, &igdb_game));
 
     Ok(cover_path.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod index_tests {
+    use super::*;
+
+    fn temp_root(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("metadea-index-{}-{}", std::process::id(), name));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn legacy_entries_are_read_from_info_json_once_then_backfilled() {
+        let root = temp_root("legacy");
+        let game_dir = root.join("42");
+        std::fs::create_dir_all(&game_dir).unwrap();
+        let cover = game_dir.join("abc_cover.webp");
+        std::fs::write(&cover, b"").unwrap();
+        std::fs::write(game_dir.join("info.json"), r#"{"igdb_id": 7, "genres": ["Visual Novel"]}"#).unwrap();
+        write_index(&root, &serde_json::json!({ "42": { "name": "G", "cover": cover.to_string_lossy() } }));
+
+        let first = read_metadata_index_in(&root);
+        assert_eq!(first["42"]["igdb_id"].as_u64(), Some(7));
+        assert_eq!(first["42"]["is_vn"].as_bool(), Some(true));
+        assert!(first["42"]["cover_path"].is_string());
+
+        // Backfilled: the info.json can go away and the answer is the same.
+        std::fs::remove_file(game_dir.join("info.json")).unwrap();
+        let index = read_index(&root);
+        assert_eq!(index["42"]["meta_v"].as_u64(), Some(INDEX_META_VERSION));
+        let second = read_metadata_index_in(&root);
+        assert_eq!(second["42"]["igdb_id"].as_u64(), Some(7));
+        assert_eq!(second["42"]["is_vn"].as_bool(), Some(true));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn new_entries_carry_igdb_id_and_vn_flag_and_drop_missing_files() {
+        let root = temp_root("new");
+        let game_dir = root.join("7");
+        std::fs::create_dir_all(&game_dir).unwrap();
+        let cover = game_dir.join("c_cover.webp");
+        let igdb_game = serde_json::json!({ "id": 99, "genres": [{ "name": "Adventure" }, { "name": "Visual Novel" }] });
+        let entry = build_index_entry(&game_dir, "Game", &cover, &igdb_game);
+        assert_eq!(entry["igdb_id"].as_u64(), Some(99));
+        assert_eq!(entry["is_vn"].as_bool(), Some(true));
+        assert_eq!(entry["meta_v"].as_u64(), Some(INDEX_META_VERSION));
+        write_index(&root, &serde_json::json!({ "7": entry }));
+        // The cover file was never written: no cover_path, but identity stays.
+        let read = read_metadata_index_in(&root);
+        assert!(read["7"].get("cover_path").is_none());
+        assert_eq!(read["7"]["igdb_id"].as_u64(), Some(99));
+        let plain = build_index_entry(&game_dir, "Game", &cover, &serde_json::json!({ "id": 1, "genres": [{ "name": "RPG" }] }));
+        assert!(plain.get("is_vn").is_none());
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }

@@ -279,16 +279,16 @@ fn find_gog_galaxy_client() -> Option<PathBuf> {
 #[cfg(windows)]
 fn launch_gog_game(app_id: Option<String>, install_path: Option<String>) -> Result<(), String> {
     let id = app_id.ok_or("No GOG game ID")?;
-    let client = find_gog_galaxy_client().ok_or("No se encontró GOG Galaxy (GalaxyClient.exe)")?;
+    let client = find_gog_galaxy_client().ok_or(crate::error_codes::GOG_GALAXY_NOT_FOUND)?;
     let mut command = std::process::Command::new(client);
     command.arg("/command=runGame").arg(format!("/gameId={}", id));
     if let Some(path) = install_path {
         command.arg(format!("/path={}", path));
     }
-    command.spawn().map(|_| ()).map_err(|e| format!("No se pudo iniciar el juego de GOG: {}", e))
+    command.spawn().map(|_| ()).map_err(|e| crate::error_codes::with_detail(crate::error_codes::GOG_LAUNCH, e))
 }
 
 #[cfg(not(windows))]
 fn launch_gog_game(_app_id: Option<String>, _install_path: Option<String>) -> Result<(), String> {
-    Err("El inicio de juegos de GOG solo está disponible en Windows".into())
+    Err(crate::error_codes::GOG_WINDOWS_ONLY.into())
 }

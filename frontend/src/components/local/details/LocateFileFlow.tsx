@@ -5,6 +5,7 @@ import {
   pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/runtime';
+import { interpolateTranslation } from '../../../lib/i18n-dom/apply-translations';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import {
   extractEpisodeInfo, hasMediaFiles,
@@ -86,11 +87,11 @@ export function useLocateFileFlow({ item, rootFolder, itemSeason, isBookOrNovel,
     const normalizedRoot = rootFolder.replace(/\\/g, '/').replace(/\/+$/, '');
     const normalizedPicked = picked.replace(/\\/g, '/').replace(/\/+$/, '');
     if (normalizedPicked === normalizedRoot) {
-      setLocateError('Esa es la carpeta raíz de la categoría — elige la carpeta/archivo de esta obra en concreto, dentro de ella.');
+      setLocateError(getT().local.locate_is_root);
       return null;
     }
     if (!normalizedPicked.startsWith(`${normalizedRoot}/`)) {
-      setLocateError(`Debe estar dentro de "${rootFolder}".`);
+      setLocateError(interpolateTranslation(getT().local.locate_outside_root, { folder: rootFolder }));
       return null;
     }
     return normalizedPicked;
@@ -145,7 +146,7 @@ export function useLocateFileFlow({ item, rootFolder, itemSeason, isBookOrNovel,
     try {
       const entries = await scanFolderContents(picked);
       if (!hasMediaFiles(entries)) {
-        setLocateError('Esa carpeta no tiene archivos de vídeo/lectura directamente dentro.');
+        setLocateError(getT().local.locate_no_media);
         return;
       }
       const resolvedSeason = await resolveOwnSeasonNumber(item.externalId, item.title) ?? itemSeason;
@@ -158,7 +159,7 @@ export function useLocateFileFlow({ item, rootFolder, itemSeason, isBookOrNovel,
       const relatedMatches = await findRelatedSiblingMatches(parent, normalizedPicked);
       setLocatePreview({ pickedPath: normalizedPicked, parentDir: parent, plan, relatedMatches });
     } catch (err) {
-      setLocateError(err instanceof Error ? err.message : 'No se pudo leer esa carpeta.');
+      setLocateError(err instanceof Error ? err.message : getT().local.locate_read_failed);
     } finally {
       setLocateBusy(false);
     }
@@ -213,7 +214,7 @@ export function useLocateFileFlow({ item, rootFolder, itemSeason, isBookOrNovel,
       setLocatePreview(null);
       await onRenamed();
     } catch (err) {
-      setLocateError(err instanceof Error ? err.message : 'Fallo al renombrar. Puede que se haya renombrado solo una parte.');
+      setLocateError(err instanceof Error ? err.message : getT().local.locate_rename_failed_partial);
     } finally {
       setLocateBusy(false);
     }
@@ -234,7 +235,7 @@ export function useLocateFileFlow({ item, rootFolder, itemSeason, isBookOrNovel,
     const normalizedPicked = validatePickedPath(picked);
     if (!normalizedPicked) return;
     if (!MEDIA_EXTENSIONS.test(normalizedPicked)) {
-      setLocateError('Ese archivo no parece ser un vídeo/lectura reconocido.');
+      setLocateError(getT().local.locate_not_media_file);
       return;
     }
 
@@ -279,7 +280,7 @@ export function useLocateFileFlow({ item, rootFolder, itemSeason, isBookOrNovel,
       setLocateFilePreview(null);
       await onRenamed();
     } catch (err) {
-      setLocateError(err instanceof Error ? err.message : 'Fallo al renombrar.');
+      setLocateError(err instanceof Error ? err.message : getT().local.locate_rename_failed);
     } finally {
       setLocateBusy(false);
     }

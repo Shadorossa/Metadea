@@ -1,4 +1,5 @@
 import { invoke, tauriCmd, tauriRun, isTauri } from './bridge';
+import { notifyMediaPartChanged } from './change-events';
 import { getPreferredCover, getCoverPreference, readCoverPreferences } from '../media/cover-preferences';
 
 export interface MediaCatalogEntry {
@@ -410,7 +411,8 @@ export interface DbMediaAuthor {
 }
 
 export async function saveMediaAuthors(mediaExternalId: string, authors: DbMediaAuthor[]): Promise<void> {
-  return tauriRun('save_media_authors', { mediaExternalId, authors });
+  await tauriRun('save_media_authors', { mediaExternalId, authors });
+  notifyMediaPartChanged('authors');
 }
 
 export async function getMediaAuthors(mediaExternalId: string): Promise<DbMediaAuthor[]> {
@@ -440,7 +442,8 @@ export interface AuthorWorkRelation {
 }
 
 export async function saveAuthorProfileAndRelations(author: DbMediaAuthor, relations: AuthorWorkRelation[]): Promise<void> {
-  return tauriRun('save_author_profile_and_relations', { author, relations });
+  await tauriRun('save_author_profile_and_relations', { author, relations });
+  notifyMediaPartChanged('authors');
 }
 
 // Downloads the repo's shared community catalog (built from merged

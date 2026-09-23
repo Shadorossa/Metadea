@@ -22,6 +22,9 @@ const ENV_FIELDS: Array<[keyof EnvConfig, string]> = [
   ['anilist_client_id',  'anilist-client-id'],
   ['comicvine_api_key',  'comicvine-api-key'],
   ['apisports_api_key',  'apisports-api-key'],
+  ['ra_username',        'ra-username'],
+  ['ra_api_key',         'ra-api-key'],
+  ['mal_client_id',      'mal-client-id'],
 ];
 
 export async function initEnvironment(showToast: (msg?: string) => void) {
@@ -90,7 +93,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
         const row = document.createElement('div');
         row.className = 'local-route-row';
         row.innerHTML = `
-          <span class="local-route-label">${escapeHtml(t.search.types[LOCAL_CATEGORY_TO_SEARCH_TYPE[cat.id]] ?? cat.label)}</span>
+          <span class="local-route-label">${escapeHtml(t.search.types[LOCAL_CATEGORY_TO_SEARCH_TYPE[cat.id]])}</span>
           <input
             type="text"
             readonly

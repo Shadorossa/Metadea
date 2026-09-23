@@ -41,12 +41,16 @@ describe('buildPrEditorChangeSummary', () => {
       .toBe('- Unblocked (restored to Metadea)');
   });
 
-  // Characterization: a brand-new entry (no original) whose blocked_at is
-  // an explicit null reads as "unblocked" because null !== undefined.
-  it('reports a new entry with an explicit null blocked_at as unblocked', () => {
-    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: null }), originalEntry: null })))
-      .toBe('- Unblocked (restored to Metadea)');
+  it('never reports a new entry with an explicit null blocked_at as unblocked', () => {
+    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: null }), originalEntry: null }))).toBe(NO_CHANGES);
     expect(buildPrEditorChangeSummary(params({ entry: catalog(), originalEntry: null }))).toBe(NO_CHANGES);
+    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: null }), originalEntry: catalog() }))).toBe(NO_CHANGES);
+    expect(buildPrEditorChangeSummary(params({ entry: catalog(), originalEntry: catalog({ blocked_at: null }) }))).toBe(NO_CHANGES);
+  });
+
+  it('still reports a new entry that is blocked from the start', () => {
+    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: '2024-01-01' }), originalEntry: null })))
+      .toBe('- Blocked (hidden from Metadea)');
   });
 
   it('formats an added, removed and changed field with its DIFF_FIELDS label', () => {

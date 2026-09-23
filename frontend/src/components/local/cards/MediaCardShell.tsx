@@ -18,6 +18,11 @@ interface MediaCardShellProps {
   // (Chromium/WebView2) sometimes never repaint the image at all after an F5
   // reload, until something else forced a reflow.
   lazyImage?: boolean;
+  // Hover/focus hooks for callers that warm what the card opens (GameCard's
+  // achievements prefetch).
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+  onFocus?: () => void;
 }
 
 // Shared shell for every "cover + placeholder-on-missing + title" card in
@@ -35,13 +40,16 @@ interface MediaCardShellProps {
 // wherever the grid puts them, same as before any of that. Hover scale is
 // plain CSS (.local-game-card:hover) for the same reason.
 export const MediaCardShell = React.forwardRef<HTMLDivElement, MediaCardShellProps>(
-  function MediaCardShell({ title, cover, placeholderIcon, badge, onClick, onContextMenu, selectionKey, lazyImage }, ref) {
+  function MediaCardShell({ title, cover, placeholderIcon, badge, onClick, onContextMenu, selectionKey, lazyImage, onMouseEnter, onMouseLeave, onFocus }, ref) {
     return (
       <div
         ref={ref}
         className="local-game-card"
         onClick={onClick}
         onContextMenu={onContextMenu}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onFocus={onFocus}
         data-local-selection-key={selectionKey}
         role="button"
         tabIndex={0}

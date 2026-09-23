@@ -59,6 +59,12 @@ jobs:
       # been formatted, so it fails on every file. Run `cargo fmt` once as its
       # own commit, then add the check back as the first step of this job.
 
+      # libmpv-2.dll is a bundle resource (tauri.conf.json) but git-ignored;
+      # tauri's build script fails without it, so clippy/test need it too.
+      - name: Fetch libmpv (LGPL)
+        run: powershell -File scripts/fetch-libmpv.ps1
+        working-directory: frontend/src-tauri
+
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
         working-directory: frontend/src-tauri

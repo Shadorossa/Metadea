@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getT } from '../../i18n/runtime';
 import { closePlayerModal } from '../../lib/player/player-modal-state';
 import { getControlsMode } from '../../lib/player/player-settings';
@@ -9,6 +9,7 @@ import { usePlayerStatus } from './hooks/usePlayerStatus';
 import { useVideoBounds } from './hooks/useVideoBounds';
 
 const FULLSCREEN_CLASS = 'player-fullscreen';
+const PLAYER_OPEN_CLASS = 'player-open';
 
 // Body of the player modal. The native mpv surface is placed over
 // `.player-stage__video` (see useVideoBounds); playback lives only while
@@ -36,6 +37,14 @@ export function PlayerStage() {
       disposed = true;
       window.removeEventListener('resize', refresh);
     };
+  }, []);
+
+  // While the player is open the page behind must not scroll or keep its
+  // scrollbar gutter (html has `scrollbar-gutter: stable`), which otherwise
+  // shows as a black strip down the right edge of the video.
+  useEffect(() => {
+    document.documentElement.classList.add(PLAYER_OPEN_CLASS);
+    return () => document.documentElement.classList.remove(PLAYER_OPEN_CLASS);
   }, []);
 
   useEffect(() => {
@@ -67,8 +76,15 @@ export function PlayerStage() {
     };
   }, []);
 
+  // Docked mode: the shell below owns the skip segments but this window
+  // owns the keys, so the shell hands its skip action up through a ref.
+  const skipRef = useRef<() => void>(() => {});
+  const onSkipReady = useCallback((skip: () => void) => { skipRef.current = skip; }, []);
+
   const noop = () => false;
-  usePlayerKeys({ status, isFullscreen: fullscreen, setFullscreen, toggleQueue: () => {}, dismissOverlays: noop });
+  usePlayerKeys({
+    status, isFullscreen: fullscreen, setFullscreen, toggleQueue: () => {}, dismissOverlays: noop, skipSegment: () => skipRef.current(),
+  });
 
   return (
     <div className={`player-stage${docked ? ' player-stage--docked' : ''}${fullscreen ? ' player-stage--fullscreen' : ''}`}>
@@ -79,7 +95,7 @@ export function PlayerStage() {
       >
         {status.state === 'idle' && <p className="player-stage__loading">{t.state_loading}</p>}
       </div>
-      {docked && <PlayerShell docked />}
+      {docked && <PlayerShell docked onSkipReady={onSkipReady} />}
     </div>
   );
 }

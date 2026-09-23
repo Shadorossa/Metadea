@@ -1,0 +1,208 @@
+/* ── Keyboard shortcut sheet (ShortcutSheet.tsx) + Settings listing ───────── */
+.shortcut-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.shortcut-sheet-panel {
+  position: relative;
+  width: min(1040px, 100%);
+  max-height: min(85vh, 900px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+  animation: fade-in 0.2s var(--anim-ease) both;
+  outline: none;
+}
+
+.shortcut-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shortcut-sheet-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.shortcut-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--anim-fast), background var(--anim-fast);
+}
+.shortcut-sheet-close:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.shortcut-sheet-hint,
+.shortcut-list-empty {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* Each context group is a full-width block whose rows flow into a 3-column
+   grid (2 below 720px, 1 below 460px). Breakpoints are container queries on
+   the group, not the viewport: in Settings the list sits beside the sidebar
+   and is far narrower than the window, while the "?" sheet is a modal. */
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.shortcut-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.shortcut-group-title {
+  margin: 0 0 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.shortcut-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 2rem;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+@container (max-width: 720px) {
+  .shortcut-rows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 460px) {
+  .shortcut-rows {
+    grid-template-columns: 1fr;
+  }
+}
+.shortcut-row--disabled {
+  opacity: 0.45;
+}
+
+.shortcut-row-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.shortcut-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.shortcut-keys-alt,
+.shortcut-combo-plus {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.shortcut-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-medium);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Settings › Keyboard shortcuts (KeyboardShortcutsSection.tsx) */
+/* Pre-hydration placeholder for KeyboardShortcutsSection: roughly the height
+   of the hint + global bindings list + button, so nothing jumps on mount. */
+.settings-shortcuts-pending {
+  min-height: 15rem;
+}
+
+.settings-shortcuts-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.settings-shortcuts-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--anim-fast), border-color var(--anim-fast);
+}
+.settings-shortcuts-open-btn:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: var(--accent);
+}

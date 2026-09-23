@@ -4,14 +4,20 @@
 // button). Each loader memoizes its in-flight/resolved promise per key, so
 // whichever caller asks first pays the fetch — the other just gets the same
 // promise, already warm by the time the modal opens.
+// Every local read here is batched: catalog rows through
+// getCatalogEntriesByIds, relation rows through the media page's visit
+// cache (one get_media_relations_for_ids for whatever the open page hasn't
+// already loaded — its own rows come from the mount bundle), blocked ids
+// through the same visit memo. Same rows, same order as the per-id reads
+// this replaced; a saga open used to cost 2N+3 round trips for N members.
 import { fetchAniListSaga, type SagaEntry } from '../../anilist/saga';
-import { mapById } from '../../shared/collections/batch';
 import { compareByReleaseDate } from '../mappers/mapper-utils';
 import { reconstructSagaOrder, filterToSequelChain } from './saga-grouping';
-import { getCachedSaga, saveCachedSaga, getSagaName, getMediaRelations } from '../../tauri';
-import { getCatalogEntry, getBlockedExternalIds, type MediaCatalogEntry, type DbMediaRelation } from '../../tauri/catalog';
+import { getCachedSaga, saveCachedSaga, getSagaName } from '../../tauri';
+import { getCatalogEntriesByIds, type CatalogSummary, type DbMediaRelation } from '../../tauri/catalog';
 import { getStoryArcsForMediaBatchLight, type StoryArc } from '../../tauri/story-arcs';
 import { fetchMediaData } from '../media-page-data';
+import { readBlockedExternalIdsCached, readMediaRelationsBatchCached } from '../media-page-read-cache';
 
 export interface SagaChainResult {
   entries: SagaEntry[];
@@ -34,7 +40,7 @@ async function fetchSagaAlternativeGroups(entries: SagaEntry[]): Promise<SagaEnt
   const baseById = new Map(entries.map(entry => [entry.externalId, entry]));
   const adjacency = new Map<string, Set<string>>();
   const orderById = new Map<string, number>();
-  const rowsById = await mapById(entries.map(entry => entry.externalId), id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]));
+  const rowsById = await readMediaRelationsBatchCached(entries.map(entry => entry.externalId));
 
   for (const [ownerId, rows] of rowsById) {
     for (const relation of rows) {
@@ -52,7 +58,7 @@ async function fetchSagaAlternativeGroups(entries: SagaEntry[]): Promise<SagaEnt
     }
   }
 
-  const blockedIds = new Set(await getBlockedExternalIds().catch(() => [] as string[]));
+  const blockedIds = new Set(await readBlockedExternalIdsCached().catch(() => [] as string[]));
   const entriesById = new Map(entries.filter(entry => !blockedIds.has(entry.externalId)).map(entry => [entry.externalId, entry] as const));
   const visited = new Set<string>();
   const componentById = new Map<string, SagaEntry[]>();
@@ -116,12 +122,17 @@ async function reconstructFromRelations(externalId: string): Promise<SagaEntry[]
   const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
   if (transitiveIds.length <= 1) return null;
 
-  const entriesData = await Promise.all(
-    transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
-  );
-  const validEntries = entriesData.filter(
-    (x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null,
-  );
+  // One round trip for every member's row; an unknown/blocked id is simply
+  // absent, exactly like the per-id lookup returning null. Kept in the
+  // closure's own order before the date sort so ties break the same way.
+  const rowsById = new Map<string, CatalogSummary>();
+  for (const row of await getCatalogEntriesByIds(transitiveIds).catch(() => [] as CatalogSummary[])) {
+    rowsById.set(row.external_id, row);
+  }
+  const validEntries = transitiveIds.flatMap(id => {
+    const entry = rowsById.get(id);
+    return entry ? [{ id, entry }] : [];
+  });
 
   validEntries.sort((a, b) => compareByReleaseDate(
     { ...a.entry, id: a.id },
@@ -130,9 +141,8 @@ async function reconstructFromRelations(externalId: string): Promise<SagaEntry[]
 
   const byId = new Map(validEntries.map(x => [x.id, x.entry]));
   const dateOrderedIds = validEntries.map(x => x.id);
-  const relsByIndex: DbMediaRelation[][] = await Promise.all(
-    dateOrderedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))
-  );
+  const relationsById = await readMediaRelationsBatchCached(dateOrderedIds);
+  const relsByIndex: DbMediaRelation[][] = dateOrderedIds.map(id => relationsById.get(id) ?? []);
   const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
 
   // get_transitive_relation_ids' closure includes ALTERNATIVE-linked entries
@@ -173,7 +183,7 @@ const sameOrder = (a: SagaEntry[], b: SagaEntry[]) =>
 // real chain — a blocked entry just never reaches the caller.
 async function filterBlockedSagaEntries(entries: SagaEntry[]): Promise<SagaEntry[]> {
   if (entries.length === 0) return entries;
-  const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+  const blockedIds = await readBlockedExternalIdsCached().catch(() => [] as string[]);
   const blocked = new Set(blockedIds);
   return entries.filter(e => !blocked.has(e.externalId) && e.format?.trim().toUpperCase() !== 'SUMMARY');
 }
@@ -303,12 +313,10 @@ async function fetchSagaArcs(entries: SagaEntry[]): Promise<SagaArcsResult> {
   }
   if (missingIds.size === 0) return { arcs, arcItemMeta: {} };
 
-  const metaEntries = await Promise.all(
-    [...missingIds].map(async id => [id, await getCatalogEntry(id).catch(() => null)] as const)
-  );
+  const metaEntries = await getCatalogEntriesByIds([...missingIds]).catch(() => [] as CatalogSummary[]);
   const arcItemMeta: Record<string, { title: string; cover: string | null }> = {};
-  for (const [id, entry] of metaEntries) {
-    if (entry) arcItemMeta[id] = { title: entry.title_main || id, cover: entry.cover_url || null };
+  for (const entry of metaEntries) {
+    arcItemMeta[entry.external_id] = { title: entry.title_main || entry.external_id, cover: entry.cover_url || null };
   }
   return { arcs, arcItemMeta };
 }

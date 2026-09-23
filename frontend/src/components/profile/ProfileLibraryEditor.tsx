@@ -110,7 +110,7 @@ export function ProfileLibraryEditor({ i18n }: Props) {
       window.removeEventListener('open-profile-editor', handleOpen as EventListener);
       document.removeEventListener('astro:page-load', attach);
     };
-  }, []);
+  }, [t.progress_in_progress]);
 
   return (
     <AnimatePresence>

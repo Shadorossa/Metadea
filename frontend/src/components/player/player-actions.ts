@@ -2,11 +2,11 @@
 // into the matching engine command. Shared by the overlay and the stage
 // page so both windows react to the same keys.
 
-import type { PlayerKeyAction } from '../../lib/player/keymap';
+import { clampSpeed, SEEK_END_MARGIN_SECONDS, type PlayerKeyAction } from '../../lib/player/keymap';
 import type { PlayerStatus } from '../../lib/player/player-status';
 import {
-  playerNext, playerPrev, playerScreenshot, playerSeek, playerSetFullscreen, playerSetMute, playerSetSpeed, playerSetSubDelay,
-  playerSetVolume, playerStopClose, playerTogglePause,
+  playerCycleTrack, playerFrameStep, playerNext, playerPrev, playerScreenshot, playerSeek, playerSetFullscreen, playerSetMute,
+  playerSetSpeed, playerSetSubDelay, playerSetVolume, playerStopClose, playerTogglePause,
 } from '../../lib/tauri/player';
 
 export const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
@@ -20,6 +20,9 @@ export interface PlayerActionContext {
   // Escape: closes whatever is open; returns true when something was closed
   // so fullscreen is only left when nothing else needed dismissing.
   dismissOverlays: () => boolean;
+  // S: seeks past the opening/ending the position is inside, if any
+  // (usePlayerSkipSegments); a no-op when nothing is active.
+  skipSegment: () => void;
 }
 
 function swallow(promise: Promise<unknown>) {
@@ -73,6 +76,27 @@ export function runPlayerAction(action: PlayerKeyAction, context: PlayerActionCo
       break;
     case 'toggle_queue':
       context.toggleQueue();
+      break;
+    case 'skip_segment':
+      context.skipSegment();
+      break;
+    case 'frame_step':
+      swallow(playerFrameStep(action.direction));
+      break;
+    case 'speed_delta':
+      swallow(playerSetSpeed(clampSpeed(status.speed + action.delta)));
+      break;
+    case 'cycle_track':
+      swallow(playerCycleTrack(action.kind));
+      break;
+    case 'seek_fraction':
+      if (status.duration_secs > 0) swallow(playerSeek(status.duration_secs * action.fraction, false));
+      break;
+    case 'seek_start':
+      swallow(playerSeek(0, false));
+      break;
+    case 'seek_end':
+      if (status.duration_secs > 0) swallow(playerSeek(Math.max(0, status.duration_secs - SEEK_END_MARGIN_SECONDS), false));
       break;
   }
 }

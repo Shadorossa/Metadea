@@ -56,14 +56,9 @@ pub fn steam_root() -> Option<PathBuf> {
         .find(|p| p.join("steamapps").exists())
 }
 
-pub(super) fn scan_steam_games() -> Vec<LocalGame> {
-    let mut games = Vec::new();
-
-    let steam_root = match steam_root() {
-        Some(r) => r,
-        None => return games,
-    };
-
+// Every steamapps directory: the root's own plus each extra library
+// folder listed in libraryfolders.vdf.
+pub(super) fn steam_library_paths(steam_root: &std::path::Path) -> Vec<PathBuf> {
     let vdf_path = steam_root.join("steamapps").join("libraryfolders.vdf");
     let mut library_paths: Vec<PathBuf> = vec![steam_root.join("steamapps")];
 
@@ -87,6 +82,30 @@ pub(super) fn scan_steam_games() -> Vec<LocalGame> {
             }
         }
     }
+    library_paths
+}
+
+// Cheap change signature for scan_steam_games (see scan_cache.rs): the
+// library list file plus every appmanifest's name/mtime/size per library.
+pub(super) fn steam_scan_signature() -> Option<String> {
+    let Some(root) = steam_root() else { return Some("absent".into()) };
+    let vdf = root.join("steamapps").join("libraryfolders.vdf");
+    let parts = std::iter::once(super::scan_cache::path_signature(&vdf)).chain(
+        steam_library_paths(&root).into_iter().map(|lib| {
+            super::scan_cache::dir_children_signature(&lib, |name, _| name.starts_with("appmanifest_") && name.ends_with(".acf"))
+        }),
+    );
+    Some(super::scan_cache::join_signatures(parts))
+}
+
+pub(super) fn scan_steam_games() -> Vec<LocalGame> {
+    let mut games = Vec::new();
+
+    let steam_root = match steam_root() {
+        Some(r) => r,
+        None => return games,
+    };
+    let library_paths = steam_library_paths(&steam_root);
 
     for lib_path in &library_paths {
         if let Ok(entries) = std::fs::read_dir(lib_path) {

@@ -9,115 +9,164 @@ import EnvironmentTab from '../components/settings/EnvironmentTab.astro';
 import EmulatorsTab from '../components/settings/EmulatorsTab.astro';
 import ConnectionsTab from '../components/settings/ConnectionsTab.astro';
 import HelpModals from '../components/settings/HelpModals.astro';
+import { UiThemesSection } from '../components/ui-themes/UiThemesSection';
+import OnboardingStep from '../components/welcome/OnboardingStep.astro';
+import OnboardingStepIcon from '../components/welcome/OnboardingStepIcon.astro';
+import OnboardingNavGuide from '../components/welcome/OnboardingNavGuide.astro';
+import { ONBOARDING_STEPS } from '../lib/welcome/onboarding-steps';
+import { SERVICE_BRAND_NAMES, SERVICE_PLATFORM_IDS } from '../lib/welcome/settings-tabs';
+import { BookOpen, Gamepad2, Library, MonitorPlay, RefreshCw } from 'lucide-react';
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
 const w = t.onboarding;
+const step = (id: string) => ONBOARDING_STEPS.findIndex((item) => item.id === id);
+const def = (id: string) => ONBOARDING_STEPS[step(id)];
+const highlights = [
+  { id: 'track', Icon: Library },
+  { id: 'play', Icon: Gamepad2 },
+  { id: 'watch', Icon: MonitorPlay },
+  { id: 'sync', Icon: RefreshCw },
+] as const;
+const emulatorChecklist = ['emulator', 'roms', 'extensions', 'screenshots', 'rename'] as const;
+const connectionNotes = ['anilist', 'mal', 'github', 'vndb'] as const;
+const finishTips = ['search', 'shortcuts', 'discord', 'jukebox'] as const;
 ---
 
-<BaseLayout title={`${w.title} - Metadea`} lang={lang} activePage="home">
-  <main class="onboarding-page" data-step-template={w.step_count}>
+<BaseLayout title={`${w.title} - Metadea`} titleKey="onboarding.title" titleSuffix=" - Metadea" lang={lang} activePage="home">
+  <main class="onboarding-page">
     <section class="onboarding-card" aria-labelledby="onboarding-title">
       <header class="onboarding-header">
         <span class="onboarding-brand">METADEA</span>
-        <h1 id="onboarding-title">{w.title}</h1>
-        <p>{w.subtitle}</p>
-        <span id="onboarding-step-count" class="onboarding-step-count" aria-live="polite"></span>
-        <div class="onboarding-progress" role="progressbar" aria-label={w.title} aria-valuemin="1" aria-valuemax="9" aria-valuenow="1">
+        <h1 id="onboarding-title" data-i18n="onboarding.title">{w.title}</h1>
+        <p data-i18n="onboarding.subtitle">{w.subtitle}</p>
+        <nav class="onboarding-stepper" aria-label={w.stepper_label} data-i18n-aria-label="onboarding.stepper_label">
+          <ol>
+            {ONBOARDING_STEPS.map((item, index) => (
+              <li>
+                <button
+                  type="button"
+                  class="onboarding-stepper-btn"
+                  data-step-target={index}
+                  aria-label={w.steps[item.id].label}
+                  title={w.steps[item.id].label}
+                  data-i18n-title={`onboarding.steps.${item.id}.label`}
+                  data-i18n-aria-label={`onboarding.steps.${item.id}.label`}
+                >
+                  <OnboardingStepIcon icon={item.icon} size={16} />
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <div class="onboarding-progress-row">
+          <span id="onboarding-step-count" class="onboarding-step-count" aria-live="polite"></span>
+          <span id="onboarding-step-label" class="onboarding-step-label"></span>
+        </div>
+        <div class="onboarding-progress" role="progressbar" aria-label={w.title} data-i18n-aria-label="onboarding.title" aria-valuemin="1" aria-valuemax={ONBOARDING_STEPS.length} aria-valuenow="1">
           <span id="onboarding-progress-fill"></span>
         </div>
       </header>
 
-      <section class="onboarding-step" data-step="0" aria-labelledby="onboarding-intro-title">
-        <h2 id="onboarding-intro-title">{w.intro_title}</h2>
-        <p>{w.intro_body}</p>
-      </section>
+      <OnboardingStep t={t} step={def('intro')} index={step('intro')}>
+        <ul class="onboarding-highlights">
+          {highlights.map(({ id, Icon }) => (
+            <li class="onboarding-highlight">
+              <span class="onboarding-highlight-icon" aria-hidden="true"><Icon size={20} strokeWidth={1.8} /></span>
+              <strong data-i18n={`onboarding.highlights.${id}_title`}>{w.highlights[`${id}_title`]}</strong>
+              <small data-i18n={`onboarding.highlights.${id}_body`}>{w.highlights[`${id}_body`]}</small>
+            </li>
+          ))}
+        </ul>
+      </OnboardingStep>
 
-      <section class="onboarding-step" data-step="1" aria-labelledby="onboarding-basics-title" hidden>
-        <div class="onboarding-section-intro">
-          <h2 id="onboarding-basics-title">{w.basics_title}</h2>
-          <p>{w.basics_body}</p>
-        </div>
+      <OnboardingStep t={t} step={def('basics')} index={step('basics')}>
         <div class="onboarding-basic-grid">
           <div id="onboarding-basic-language" class="onboarding-config-slot"></div>
           <div id="onboarding-basic-theme" class="onboarding-config-slot"></div>
         </div>
-      </section>
+      </OnboardingStep>
 
-      <section class="onboarding-step" data-step="2" aria-labelledby="onboarding-profile-title" hidden>
-        <div class="onboarding-section-intro">
-          <h2 id="onboarding-profile-title">{w.profile_step_title}</h2>
-          <p>{w.profile_step_body}</p>
+      <OnboardingStep t={t} step={def('ui_theme')} index={step('ui_theme')}>
+        <div class="onboarding-config-slot onboarding-ui-themes">
+          <UiThemesSection client:only="react" />
         </div>
+      </OnboardingStep>
+
+      <OnboardingStep t={t} step={def('profile')} index={step('profile')}>
         <div id="onboarding-profile-content" class="onboarding-profile-slot"></div>
-      </section>
+      </OnboardingStep>
 
-      <section class="onboarding-step" data-step="3" aria-labelledby="onboarding-preferences-title" hidden>
-        <div class="onboarding-section-intro">
-          <h2 id="onboarding-preferences-title">{w.preferences_step_title}</h2>
-          <p>{w.library_step_body}</p>
-        </div>
+      <OnboardingStep t={t} step={def('library')} index={step('library')}>
         <div id="onboarding-library-content" class="onboarding-library-slot">
           <div id="onboarding-library-rating-row" class="onboarding-library-rating-row"></div>
         </div>
-      </section>
+      </OnboardingStep>
 
-      <section class="onboarding-step" data-step="4" aria-labelledby="onboarding-local-title" hidden>
-        <div class="onboarding-section-intro">
-          <h2 id="onboarding-local-title">{w.local_step_title}</h2>
-          <p>{w.local_step_body}</p>
-        </div>
+      <OnboardingStep t={t} step={def('player')} index={step('player')}>
+        <div id="onboarding-player-content" class="onboarding-config-slot"></div>
+        <p class="onboarding-note" data-i18n="onboarding.player_libmpv_note">{w.player_libmpv_note}</p>
+      </OnboardingStep>
+
+      <OnboardingStep t={t} step={def('local')} index={step('local')}>
         <div id="onboarding-local-content" class="onboarding-config-slot"></div>
-      </section>
+      </OnboardingStep>
 
-      <section class="onboarding-step" data-step="5" aria-labelledby="onboarding-api-title" hidden>
-        <div class="onboarding-section-intro">
-          <h2 id="onboarding-api-title">{w.api_step_title}</h2>
-          <p>{w.api_step_body}</p>
-        </div>
+      <OnboardingStep t={t} step={def('services')} index={step('services')}>
+        <ul class="onboarding-service-list" aria-label={w.services_list_label} data-i18n-aria-label="onboarding.services_list_label">
+          {SERVICE_PLATFORM_IDS.map((platform) => (
+            <li>
+              <button type="button" class="onboarding-service-btn" data-open-platform={platform}>
+                <strong>{SERVICE_BRAND_NAMES[platform]}</strong>
+                <small data-i18n={`onboarding.services.${platform}_why`}>{w.services[`${platform}_why`]}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
         <div id="onboarding-api-content" class="onboarding-config-slot"></div>
-      </section>
+      </OnboardingStep>
 
-      <section class="onboarding-step" data-step="6" aria-labelledby="onboarding-emulators-title" hidden>
-        <div class="onboarding-section-intro">
-          <h2 id="onboarding-emulators-title">{w.emulators_step_title}</h2>
-          <p>{w.emulators_step_body}</p>
-        </div>
+      <OnboardingStep t={t} step={def('emulators')} index={step('emulators')}>
+        <ol class="onboarding-checklist">
+          {emulatorChecklist.map((id) => (
+            <li data-i18n={`onboarding.emulator_checklist.${id}`}>{w.emulator_checklist[id]}</li>
+          ))}
+        </ol>
         <div id="onboarding-emulators-content" class="onboarding-config-slot"></div>
-      </section>
+      </OnboardingStep>
 
-      <section class="onboarding-step" data-step="7" aria-labelledby="onboarding-connections-title" hidden>
-        <div class="onboarding-section-intro">
-          <h2 id="onboarding-connections-title">{w.connections_step_title}</h2>
-          <p>{w.connections_step_body}</p>
-        </div>
+      <OnboardingStep t={t} step={def('connections')} index={step('connections')}>
+        <ul class="onboarding-checklist onboarding-checklist--plain">
+          {connectionNotes.map((id) => (
+            <li data-i18n={`onboarding.connection_notes.${id}`}>{w.connection_notes[id]}</li>
+          ))}
+        </ul>
         <div id="onboarding-connections-content" class="onboarding-config-slot"></div>
-      </section>
+      </OnboardingStep>
 
-      <section class="onboarding-step" data-step="8" aria-labelledby="onboarding-finish-title" hidden>
-        <h2 id="onboarding-finish-title">{w.finish_title}</h2>
-        <p>{w.finish_body}</p>
-        <div class="onboarding-nav-guide">
-          <h3>{w.navigation_guide_title}</h3>
-          <p>{w.navigation_guide_body}</p>
-          <div class="onboarding-nav-guide-grid">
-            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-home" /></svg><span><strong>{t.nav.home}</strong><small>{w.navigation_guide_home}</small></span></div>
-            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-play" /></svg><span><strong>{t.nav.local}</strong><small>{w.navigation_guide_play}</small></span></div>
-            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-explore" /></svg><span><strong>{t.nav.browse}</strong><small>{w.navigation_guide_browse}</small></span></div>
-            <div class="onboarding-nav-guide-item onboarding-nav-guide-item--text"><span class="onboarding-nav-guide-media-links" aria-hidden="true"><i>{t.search.types.anime}</i><i>{t.search.types.manga}</i><i>{t.search.types.game}</i></span><span><strong>{w.navigation_guide_library_title}</strong><small>{w.navigation_guide_library}</small></span></div>
-            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-notifications" /></svg><span><strong>{t.nav.notifications}</strong><small>{w.navigation_guide_notifications}</small></span></div>
-            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-profile" /></svg><span><strong>{t.nav.dropdown_profile}</strong><small>{w.navigation_guide_profile}</small></span></div>
-            <div class="onboarding-nav-guide-item"><svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#nav-icon-settings" /></svg><span><strong>{t.nav.dropdown_settings}</strong><small>{w.navigation_guide_settings}</small></span></div>
+      <OnboardingStep t={t} step={def('finish')} index={step('finish')}>
+        <div class="onboarding-guide-cta">
+          <span class="onboarding-guide-cta-icon" aria-hidden="true"><BookOpen size={26} strokeWidth={1.7} /></span>
+          <div>
+            <strong data-i18n="onboarding.guide_cta_title">{w.guide_cta_title}</strong>
+            <small data-i18n="onboarding.guide_cta_body">{w.guide_cta_body}</small>
           </div>
+          <button id="onboarding-open-guide" class="btn btn--secondary" type="button" data-i18n="onboarding.guide_cta_button">{w.guide_cta_button}</button>
         </div>
-      </section>
+        <ul class="onboarding-tips">
+          {finishTips.map((id) => (
+            <li data-i18n={`onboarding.finish_tips.${id}`}>{w.finish_tips[id]}</li>
+          ))}
+        </ul>
+        <OnboardingNavGuide t={t} />
+      </OnboardingStep>
 
       <footer class="onboarding-footer">
-        <button id="onboarding-skip" class="btn btn--ghost" type="button">{w.skip}</button>
+        <button id="onboarding-skip" class="btn btn--ghost" type="button" data-i18n="onboarding.skip">{w.skip}</button>
         <div class="onboarding-nav-buttons">
-          <button id="onboarding-back" class="btn btn--secondary" type="button" hidden>{w.back}</button>
-          <button id="onboarding-next" class="btn btn--primary" type="button">{w.next}</button>
-          <button id="onboarding-finish" class="btn btn--primary" type="button" hidden>{w.finish}</button>
+          <button id="onboarding-back" class="btn btn--secondary" type="button" hidden data-i18n="onboarding.back">{w.back}</button>
+          <button id="onboarding-next" class="btn btn--primary" type="button" data-i18n="onboarding.next">{w.next}</button>
+          <button id="onboarding-finish" class="btn btn--primary" type="button" hidden data-i18n="onboarding.finish">{w.finish}</button>
         </div>
       </footer>
     </section>
@@ -130,218 +179,16 @@ const w = t.onboarding;
     <ConnectionsTab t={t} />
   </div>
   <HelpModals t={t} />
-  <div class="settings-toast" id="settings-toast">{t.settings.env_saved}</div>
+  <div class="settings-toast" id="settings-toast" data-i18n="settings.env_saved">{t.settings.env_saved}</div>
 </BaseLayout>
 
 <script>
-  import { getAuthToken } from '../lib/tauri';
-  import { decodeJwtPayload } from '../lib/profile/media-type-label';
-  import { STORAGE_KEYS } from '../lib/storage/storage-keys';
-  import { getT } from '../i18n/runtime';
-  import { initAvatar, initShareAvatar } from '../components/settings/mount/avatar';
-  import { initBanner } from '../components/settings/mount/banner';
-  import { initThemePicker } from '../components/settings/mount/theme';
-  import { initEnvironment } from '../components/settings/mount/environment';
-  import { initEmulators } from '../components/settings/mount/emulators';
-  import { initGitHubAuth } from '../components/settings/mount/github';
-  import { initAniListAuth } from '../components/settings/mount/anilist';
-  import { initAniListImportUI } from '../components/settings/mount/anilist-import-ui';
-  import { initDisplayName } from '../components/settings/mount/display-name';
-  import { initFontPicker } from '../components/settings/mount/fonts';
-  import { initRatingSystem } from '../components/settings/mount/rating-system';
-  import { initCustomColor } from '../components/settings/mount/custom-color';
-  import { initActivitySettings } from '../components/settings/mount/activity';
-  import { initDualRating } from '../components/settings/mount/dual-rating';
-  import { initLanguageSwitcher } from '../components/settings/mount/language';
-  import { initBio } from '../components/settings/mount/bio';
-
-  let initializedRoot: HTMLElement | null = null;
-
-  async function initWelcomePage() {
-    const root = document.querySelector<HTMLElement>('.onboarding-page');
-    if (!root || root === initializedRoot) return;
-    initializedRoot = root;
-
-    const session = await getAuthToken().catch(() => null);
-    if (!session?.token) {
-      window.location.replace('/login');
-      return;
-    }
-
-    const previewMode = new URLSearchParams(window.location.search).get('preview') === '1';
-    const steps = Array.from(root.querySelectorAll<HTMLElement>('.onboarding-step'));
-    const configSource = document.getElementById('welcome-config-source');
-    const counter = document.getElementById('onboarding-step-count');
-    const progress = root.querySelector<HTMLElement>('.onboarding-progress');
-    const progressFill = document.getElementById('onboarding-progress-fill');
-    const back = document.getElementById('onboarding-back') as HTMLButtonElement | null;
-    const next = document.getElementById('onboarding-next') as HTMLButtonElement | null;
-    const skip = document.getElementById('onboarding-skip') as HTMLButtonElement | null;
-    const finish = document.getElementById('onboarding-finish') as HTMLButtonElement | null;
-    const countTemplate = root.dataset.stepTemplate;
-
-    function moveConfigPart(part: string, targetId: string, multiple = false) {
-      const target = document.getElementById(targetId);
-      if (!target || !configSource) return;
-      const selector = `[data-onboarding-part="${part}"]`;
-      const parts = multiple
-        ? Array.from(configSource.querySelectorAll<HTMLElement>(selector))
-        : [configSource.querySelector<HTMLElement>(selector)].filter((item): item is HTMLElement => !!item);
-      parts.forEach((item) => target.appendChild(item));
-    }
-
-    moveConfigPart('basics-language', 'onboarding-basic-language');
-    moveConfigPart('appearance-theme', 'onboarding-basic-theme');
-    moveConfigPart('profile-media', 'onboarding-profile-content');
-    moveConfigPart('profile-details', 'onboarding-profile-content');
-    const libraryContent = document.getElementById('onboarding-library-content');
-    const ratingRow = document.getElementById('onboarding-library-rating-row');
-    const ratingParts = Array.from(configSource.querySelectorAll<HTMLElement>('[data-onboarding-part="library-rating"]'));
-    if (libraryContent && ratingRow) ratingParts.forEach((part) => ratingRow.appendChild(part));
-    moveConfigPart('library-options', 'onboarding-library-content');
-    document.querySelector('#onboarding-basic-language [data-i18n="settings.language_hint"]')?.remove();
-    document.querySelector('#onboarding-library-content #clear-all-notes-btn')?.closest('.settings-checkbox-group')?.remove();
-    moveConfigPart('local-routes', 'onboarding-local-content');
-    moveConfigPart('api-keys', 'onboarding-api-content');
-    const emulatorsPanel = configSource.querySelector<HTMLElement>('#panel-emulators');
-    if (emulatorsPanel) document.getElementById('onboarding-emulators-content')?.appendChild(emulatorsPanel);
-    const connectionsPanel = configSource.querySelector<HTMLElement>('#panel-application');
-    if (connectionsPanel) document.getElementById('onboarding-connections-content')?.appendChild(connectionsPanel);
-    configSource.remove();
-
-    let currentStep = previewMode ? 0 : Number.parseInt(localStorage.getItem(STORAGE_KEYS.onboardingStep) ?? '0', 10);
-    if (!Number.isFinite(currentStep) || currentStep < 0 || currentStep >= steps.length) currentStep = 0;
-
-    function renderStep() {
-      steps.forEach((step, index) => {
-        step.hidden = index !== currentStep;
-        step.querySelector<HTMLElement>('.settings-panel')?.classList.remove('hidden');
-      });
-      const current = String(currentStep + 1);
-      const total = String(steps.length);
-      if (counter) {
-        counter.textContent = (countTemplate ?? 'Step {current} of {total}')
-          .replace('{current}', current)
-          .replace('{total}', total);
-      }
-      progress?.setAttribute('aria-valuenow', current);
-      if (progressFill) progressFill.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
-      if (back) back.hidden = currentStep === 0;
-      if (next) next.hidden = currentStep === steps.length - 1;
-      if (finish) finish.hidden = currentStep !== steps.length - 1;
-      document.body.classList.toggle('onboarding-guide-final', currentStep === steps.length - 1);
-      if (!previewMode) localStorage.setItem(STORAGE_KEYS.onboardingStep, String(currentStep));
-      root.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    }
-
-    function finishOnboarding() {
-      if (previewMode) {
-        window.location.replace('/settings?tab=profile');
-        return;
-      }
-      localStorage.setItem(STORAGE_KEYS.onboardingCompleted, '1');
-      localStorage.removeItem(STORAGE_KEYS.onboardingStep);
-      window.location.replace('/home');
-    }
-
-    back?.addEventListener('click', () => { if (currentStep > 0) currentStep -= 1; renderStep(); });
-    next?.addEventListener('click', () => { if (currentStep < steps.length - 1) currentStep += 1; renderStep(); });
-    skip?.addEventListener('click', finishOnboarding);
-    finish?.addEventListener('click', finishOnboarding);
-    renderStep();
-
-    function showToast(message?: string) {
-      const toast = document.getElementById('settings-toast');
-      if (!toast) return;
-      toast.textContent = message || getT().settings.env_saved;
-      toast.classList.add('visible');
-      window.setTimeout(() => toast.classList.remove('visible'), 2200);
-    }
-
-    const payload = decodeJwtPayload(session.token);
-    const avatar = payload.avatar as string | null;
-    initAvatar(avatar, session.username, showToast);
-    initShareAvatar(showToast);
-    initBanner(showToast);
-    initFontPicker(session.username, showToast);
-    initThemePicker(showToast);
-    initEnvironment(showToast);
-    initEmulators(showToast);
-    initGitHubAuth();
-    initAniListAuth();
-    initAniListImportUI(showToast);
-    initDisplayName(showToast);
-    initRatingSystem(showToast);
-    initCustomColor(showToast);
-    initActivitySettings(showToast);
-    initDualRating(showToast);
-    initLanguageSwitcher();
-    initBio(showToast);
-
-    const t = getT();
-    document.querySelectorAll<HTMLElement>('[data-i18n], [data-i18n-title]').forEach((el) => {
-      const keyPath = el.getAttribute('data-i18n') ?? el.getAttribute('data-i18n-title');
-      if (!keyPath) return;
-      let value: any = t;
-      for (const part of keyPath.split('.')) value = value?.[part];
-      if (typeof value !== 'string') return;
-      if (el.hasAttribute('data-i18n-title')) el.setAttribute('title', value);
-      else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-        el.setAttribute(el.dataset.i18nAttr || 'placeholder', value);
-      } else el.textContent = value;
-    });
-
-    document.querySelectorAll<HTMLButtonElement>('.api-platform-tab-btn').forEach((button) => {
-      button.addEventListener('click', () => {
-        const platform = button.dataset.platform;
-        const wasActive = button.classList.contains('active');
-        document.querySelectorAll('.api-platform-tab-btn').forEach((item) => item.classList.remove('active'));
-        document.querySelectorAll('.api-platform-form-block').forEach((form) => form.classList.add('hidden'));
-        document.getElementById('api-keys-placeholder')?.classList.toggle('hidden', !wasActive);
-        if (!wasActive && platform) {
-          button.classList.add('active');
-          document.getElementById(`api-form-${platform}`)?.classList.remove('hidden');
-        }
-      });
-    });
-
-    document.querySelectorAll<HTMLButtonElement>('button[data-help]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const modal = document.getElementById(`${button.dataset.help}-help-modal`);
-        if (modal) {
-          modal.classList.remove('hidden');
-          modal.style.display = 'flex';
-        }
-      });
-    });
-    document.querySelectorAll<HTMLElement>('.settings-help-modal-close, .settings-help-modal-overlay').forEach((control) => {
-      control.addEventListener('click', (event) => {
-        const modal = (event.target as HTMLElement).closest<HTMLElement>('.settings-help-modal');
-        if (modal) {
-          modal.style.display = 'none';
-          modal.classList.add('hidden');
-        }
-      });
-    });
-  }
+  import { mountOnboarding, syncOnboardingChrome } from '../components/welcome/mount/onboarding';
 
   document.addEventListener('astro:page-load', () => {
-    const isOnboarding = !!document.querySelector('.onboarding-page');
-    const navbar = document.querySelector<HTMLElement>('.navbar');
-    document.body.classList.toggle('onboarding-active', isOnboarding);
-    if (navbar) {
-      if (isOnboarding) {
-        navbar.setAttribute('inert', '');
-        navbar.setAttribute('aria-hidden', 'true');
-      } else {
-        navbar.removeAttribute('inert');
-        navbar.removeAttribute('aria-hidden');
-      }
-    }
+    const isOnboarding = syncOnboardingChrome();
     if (isOnboarding) {
-      initWelcomePage().catch((error) => console.error('[Welcome] Failed to initialize:', error));
+      mountOnboarding().catch((error) => console.error('[Welcome] Failed to initialize:', error));
     }
   });
 </script>

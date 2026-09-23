@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getLibraryEntry } from '../../../lib/tauri';
 import type { LibraryEntry } from '../../../lib/tauri';
+// Served from the media page's mount bundle while its visit is active, a
+// plain get_library_entry otherwise.
+import { readLibraryEntryCached } from '../../../lib/media/media-page-read-cache';
 
 export interface UseLibraryEntryResult {
   entry: LibraryEntry | null;
@@ -34,7 +36,7 @@ export function useLibraryEntry(currentId: string, mediaType: string | undefined
   useEffect(() => {
     if (!mediaType || !currentId) return;
 
-    getLibraryEntry(currentId)
+    readLibraryEntryCached(currentId)
       .then(fetched => {
         lastKnownEntry.current = fetched;
         setEntry(fetched);

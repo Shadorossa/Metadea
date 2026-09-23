@@ -644,3 +644,85 @@
 .saga-arc-hover-row-range {
   color: var(--text-muted);
 }
+
+/* Saga completion meter (SagaCompletionBar): one line of text plus a thin
+   track, sitting above the strip header inside .saga-strip-container. */
+.saga-completion {
+  position: relative;
+  width: min(100%, 720px);
+  margin: 0 auto 1rem;
+  padding: 0 1.25rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.saga-completion-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.saga-completion-headline {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.saga-completion-percent {
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.saga-completion-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.saga-completion-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.4s ease-out;
+}
+
+/* Per-type breakdown, revealed on hover/focus of the whole meter. */
+.saga-completion-tooltip {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 0.72rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--anim-fast);
+}
+
+.saga-completion:hover .saga-completion-tooltip,
+.saga-completion:focus-within .saga-completion-tooltip {
+  opacity: 1;
+}
+
+.saga-completion-tooltip-upcoming {
+  color: var(--text-dim);
+}

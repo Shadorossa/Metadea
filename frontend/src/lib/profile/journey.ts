@@ -28,10 +28,17 @@ export async function logJourneyEvent(
     const wasNotCompleted = !existing || existing.status !== 'completed';
     const isNowCompleted = entry.status === 'completed';
     const finishDate = getCleanDate(entry.finished_at);
-    if (wasNotCompleted && isNowCompleted && finishDate) {
-      // Remove any existing complete event for this media to avoid duplicates
+    // Finishing a re-run (rewatch/reread/replay) also goes "not completed →
+    // completed", but its event was already inserted by save_library_entry
+    // (user_library.rs, dated today, occurrence = count + 1) — the finish
+    // date on the row still belongs to the FIRST run, so filing another
+    // event under it here would be wrong twice over.
+    const finishedRerun = (entry.reconsumption_count ?? 0) > (existing?.reconsumption_count ?? 0);
+    if (wasNotCompleted && isNowCompleted && finishDate && !finishedRerun) {
+      // Remove any existing first-completion event for this media to avoid
+      // duplicates. Re-run completions (occurrence >= 2) are history and stay.
       journey.forEach(day => {
-        day.events = day.events.filter(e => !(e.externalId === externalId && e.type === 'complete'));
+        day.events = day.events.filter(e => !(e.externalId === externalId && e.type === 'complete' && (e.occurrence ?? 1) === 1));
       });
 
       let finishDayEntry = journey.find(d => d.date === finishDate);
@@ -44,6 +51,7 @@ export async function logJourneyEvent(
         externalId,
         type: 'complete',
         mediaType,
+        occurrence: 1,
         // Anchored to the finish date itself, not "now" — this is what
         // both the local feed's sort order and the synced social feed
         // order by, so an old work completed/dated today must never

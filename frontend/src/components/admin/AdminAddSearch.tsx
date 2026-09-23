@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
 import { getT } from '../../i18n/runtime';
+import { interpolateTranslation } from '../../lib/i18n-dom/apply-translations';
 import { igdbSearchUnfiltered, igdbImageUrl } from '../../lib/tauri';
 import { comicVineSearch } from '../../lib/tauri/comicvine';
 import { isTauri } from '../../lib/tauri/bridge';
@@ -26,13 +28,18 @@ interface RawResult {
   extra: string | null;
 }
 
-const PROVIDER_LABELS: Record<ApiProvider, string> = {
-  igdb:        'IGDB (Juegos / VNs)',
-  anilist:     'AniList (Anime / Manga)',
-  tmdb:        'TMDB (Películas / Series)',
-  openlibrary: 'Open Library (Libros)',
-  comicvine:   'Comic Vine (Cómics)',
-};
+const PROVIDERS: readonly ApiProvider[] = ['igdb', 'anilist', 'tmdb', 'openlibrary', 'comicvine'];
+
+function providerLabel(provider: ApiProvider): string {
+  const a = getT().admin;
+  switch (provider) {
+    case 'igdb': return a.provider_igdb;
+    case 'anilist': return 'AniList (Anime / Manga)';
+    case 'tmdb': return a.provider_tmdb;
+    case 'openlibrary': return a.provider_openlibrary;
+    case 'comicvine': return a.provider_comicvine;
+  }
+}
 
 // Why these don't go through lib/search's `search()` / provider functions:
 // every one of those applies the exact filtering this component exists to
@@ -219,7 +226,8 @@ interface AdminAddSearchProps {
 export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
   const [provider, setProvider] = useState<ApiProvider>('igdb');
   const [query, setQuery] = useState('');
-  const [page, setPage] = useState(1);
+  // Back to page 1 whenever the query or provider changes.
+  const [page, setPage] = useKeyedState(`${provider}\n${query}`, 1);
 
   const { results, isLoading } = useDebouncedSearch<RawResult>(
     query,
@@ -237,7 +245,6 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
     [provider],
   );
 
-  useEffect(() => setPage(1), [query, provider]);
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const visibleResults = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -247,7 +254,7 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
       <div className="pr-editor-search-controls">
         <input
           type="text"
-          placeholder={`Buscar en ${PROVIDER_LABELS[provider]}...`}
+          placeholder={interpolateTranslation(getT().admin.add_search_placeholder, { provider: providerLabel(provider) })}
           value={query}
           onChange={e => setQuery(e.target.value)}
           autoFocus
@@ -258,8 +265,8 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
           value={provider}
           onChange={e => { setProvider(e.target.value as ApiProvider); setQuery(''); }}
         >
-          {(Object.entries(PROVIDER_LABELS) as [ApiProvider, string][]).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+          {PROVIDERS.map(k => (
+            <option key={k} value={k}>{providerLabel(k)}</option>
           ))}
         </select>
       </div>

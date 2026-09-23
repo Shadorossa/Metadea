@@ -184,7 +184,7 @@ export async function loadCharacterEditorData(
       };
     }));
   } else if (anilistDetail?.media?.edges) {
-    resolved = anilistDetail.media.edges.map((edge: any): AppearanceRow => {
+    resolved = anilistDetail.media.edges.map((edge): AppearanceRow => {
       const extId = `${mapExternalFormatToType(edge.node.type, edge.node.format)}:${edge.node.id}`;
       return {
         media_external_id: extId,

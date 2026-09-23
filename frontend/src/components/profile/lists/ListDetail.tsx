@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useKeyedState } from '../../shared/hooks/useKeyedState';
 import {
   useFloating, offset, flip, shift, useDismiss, useRole, useListNavigation, useInteractions,
 } from '@floating-ui/react';
@@ -74,13 +75,12 @@ export function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDel
     onMetaSaved(list.name, trimmed, list.is_private, listType, isRanked);
   });
 
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteCountdown, setDeleteCountdown] = useState(0);
+  // Both start over for every list this detail view is pointed at.
+  const [confirmDelete, setConfirmDelete] = useKeyedState(list.key, false);
+  const [deleteCountdown, setDeleteCountdown] = useKeyedState(list.key, 0);
   const deleteTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setConfirmDelete(false);
-    setDeleteCountdown(0);
     if (deleteTimerRef.current) {
       window.clearInterval(deleteTimerRef.current);
       deleteTimerRef.current = null;
@@ -91,7 +91,9 @@ export function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDel
   }, [list.key]);
 
   const listItemsRef = useRef(listItems);
-  listItemsRef.current = listItems;
+  useLayoutEffect(() => {
+    listItemsRef.current = listItems;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -569,7 +571,7 @@ export function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDel
               {isCharacters
                 ? p.lists_empty_characters
                 : isEpisodes
-                  ? (p.lists_empty_episodes || 'Esta lista está vacía. Añade episodios a tu lista.')
+                  ? p.lists_empty_episodes
                   : p.lists_empty_items}
             </p>
           </div>
@@ -603,7 +605,7 @@ export function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDel
           {!readOnly && (
             <button className="list-btn list-btn--primary" onClick={() => setShowAddPanel(s => !s)}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-              {isCharacters ? p.lists_add_characters : isEpisodes ? (p.lists_add_episodes || 'Añadir episodios') : p.lists_add_items}
+              {isCharacters ? p.lists_add_characters : isEpisodes ? p.lists_add_episodes : p.lists_add_items}
             </button>
           )}
         </div>

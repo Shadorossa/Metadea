@@ -268,7 +268,7 @@ pub async fn get_deleted_relations(
     Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
-fn load_media_relations(
+pub(crate) fn load_media_relations(
     conn: &rusqlite::Connection,
     media_external_id: &str,
     include_blocked: bool,
@@ -376,63 +376,10 @@ pub async fn get_base_edition_candidates_for_redirect(
     Ok(rows.filter_map(|row| row.ok()).collect())
 }
 
-// Bulk fetch for the library grid's "group by edition/saga" toggle - grouping
-// anime/manga/lnovel by SEQUEL/PREQUEL needs every relation up front to build
-// the parent/child map client-side, instead of one get_media_relations round
-// trip per library item (which is what the per-media query above is for).
-#[tauri::command]
-pub async fn get_all_media_relations(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-) -> Result<Vec<DbMediaRelation>, String> {
-    let conn = state.conn.lock().str_err()?;
-    load_all_media_relations(&conn)
-}
-
-pub(crate) fn load_all_media_relations(
-    conn: &rusqlite::Connection,
-) -> Result<Vec<DbMediaRelation>, String> {
-    let mut stmt = conn
-        .prepare(
-            // ORDER BY mr.rowid — same convention as get_media_relations.
-            // save_media_relations always deletes+reinserts a media's whole
-            // relation list in the curated (possibly drag-reordered) array
-            // order, so rowid IS that order. Without this, the profile
-            // library's bundle grouping (groupBundles) — the only caller of
-            // this bulk query — showed a bundle's "Contains" children in
-            // whatever order SQLite's query planner happened to return them,
-            // not the order curated in the editor.
-            "SELECT mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
-             FROM media_relations mr
-             JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
-             JOIN visible_media_catalog owner ON owner.external_id = mr.media_external_id
-             WHERE UPPER(COALESCE(mc.format, '')) <> 'SUMMARY'
-             ORDER BY mr.rowid",
-        )
-        .str_err()?;
-
-    let rows = stmt
-        .query_map([], |row| {
-            Ok(DbMediaRelation {
-                media_external_id: row.get(0)?,
-                related_media_external_id: row.get(1)?,
-                relation_type: row.get(2)?,
-                type_label: row.get(3)?,
-                title: row.get::<_, Option<String>>(4)?.unwrap_or_default(),
-                cover: row.get(5)?,
-                format: None,
-                release_day: row.get(6)?,
-                release_month: row.get(7)?,
-                release_year: row.get(8)?,
-            })
-        })
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    Ok(rows)
-}
-
-// Scoped counterpart of get_all_media_relations: only edges touching one of
+// Bulk fetch for the profile's "group by edition/saga" toggle, which
+// needs every relation up front to build the parent/child map client-side
+// instead of one get_media_relations round trip per library item. Scoped:
+// only edges touching one of
 // the given ids (as owner OR related side), so the profile's saga/bundle
 // grouping can ask for the library's own ids instead of every relation in
 // the catalog. exclude_types drops relation kinds the caller never groups
@@ -445,7 +392,9 @@ pub(crate) fn load_all_media_relations(
 // side, idx_media_relations_related for the other). The results are merged
 // and deduplicated by (owner, related) — an edge whose both sides are in
 // the set matches from both passes — then re-sorted by rowid to keep
-// get_all_media_relations' curated order.
+// the curated order: save_media_relations always deletes+reinserts a
+// media's whole relation list in the curated (possibly drag-reordered)
+// array order, so rowid IS that order (same convention as get_media_relations).
 pub(crate) fn load_media_relations_for_ids(
     conn: &rusqlite::Connection,
     external_ids: &[String],

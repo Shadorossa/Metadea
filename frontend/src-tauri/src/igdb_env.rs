@@ -13,14 +13,20 @@ pub struct EnvConfig {
     pub anilist_client_id: Option<String>,
     pub comicvine_api_key: Option<String>,
     pub apisports_api_key: Option<String>,
+    // RetroAchievements (src/retro_achievements reads these two rows itself).
+    pub ra_username: Option<String>,
+    pub ra_api_key: Option<String>,
+    // MyAnimeList OAuth client id (src/mal reads it).
+    pub mal_client_id: Option<String>,
 }
 
-fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
+pub(crate) fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
     let conn = db.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT name, value FROM app_env WHERE name IN (
             'anilist_client_id','igdb_client_id','igdb_client_secret',
-            'steam_api_key','tmdb_access_token','tmdb_api_key','comicvine_api_key','apisports_api_key'
+            'steam_api_key','tmdb_access_token','tmdb_api_key','comicvine_api_key','apisports_api_key',
+            'ra_username','ra_api_key','mal_client_id'
          )"
     ).str_err()?;
     let mut cfg = EnvConfig {
@@ -28,6 +34,9 @@ fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
         steam_api_key: None, tmdb_access_token: None, tmdb_api_key: None,
         comicvine_api_key: None,
         apisports_api_key: None,
+        ra_username: None,
+        ra_api_key: None,
+        mal_client_id: None,
     };
     let rows: Vec<(String, String)> = stmt
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
@@ -46,6 +55,9 @@ fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
             "tmdb_api_key"       => cfg.tmdb_api_key       = opt,
             "comicvine_api_key"  => cfg.comicvine_api_key  = opt,
             "apisports_api_key"  => cfg.apisports_api_key  = opt,
+            "ra_username"        => cfg.ra_username        = opt,
+            "ra_api_key"         => cfg.ra_api_key         = opt,
+            "mal_client_id"      => cfg.mal_client_id      = opt,
             _ => {}
         }
     }
@@ -65,7 +77,7 @@ pub async fn write_env_config(
 ) -> Result<String, String> {
     let db = app_handle.state::<crate::db::MetadeaDb>();
     let mut conn = db.conn.lock().str_err()?;
-    // All eight credentials are saved together; a partial write mixes the old
+    // All credentials are saved together; a partial write mixes the old
     // and new sets and leaves providers authenticating with mismatched pairs.
     let tx = conn.transaction().str_err()?;
     let now = chrono::Utc::now().to_rfc3339();
@@ -78,6 +90,9 @@ pub async fn write_env_config(
         ("tmdb_api_key",       config.tmdb_api_key.as_deref().unwrap_or("")),
         ("comicvine_api_key",  config.comicvine_api_key.as_deref().unwrap_or("")),
         ("apisports_api_key",  config.apisports_api_key.as_deref().unwrap_or("")),
+        ("ra_username",        config.ra_username.as_deref().unwrap_or("")),
+        ("ra_api_key",         config.ra_api_key.as_deref().unwrap_or("")),
+        ("mal_client_id",      config.mal_client_id.as_deref().unwrap_or("")),
     ];
     for (name, value) in pairs {
         // An empty value means "unset" to env_from_db, so it stays empty.

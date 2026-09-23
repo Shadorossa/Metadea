@@ -17,6 +17,7 @@
 // ("anime:12345") until your own catalog catches up, at which point the
 // exact same cached row resolves correctly next render.
 import { useEffect, useMemo, useState } from 'react';
+import { useHydrated } from '../shared/hooks/useHydrated';
 import { getPublicProfile, followUser, unfollowUser, type PublicProfile } from '../../lib/social/users';
 import {
   getUserInfo,
@@ -58,11 +59,9 @@ async function goToOwnProfile(): Promise<void> {
 }
 
 function useQueryUserId(): string | null {
-  const [id, setId] = useState<string | null>(null);
-  useEffect(() => {
-    setId(new URLSearchParams(window.location.search).get('id'));
-  }, []);
-  return id;
+  // No URL to read during the server render; read it once hydrated.
+  const hydrated = useHydrated();
+  return hydrated ? new URLSearchParams(window.location.search).get('id') : null;
 }
 
 // Re-hydrates the local social_user_* cache for this profile at most once a

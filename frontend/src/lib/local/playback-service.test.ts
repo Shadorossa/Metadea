@@ -16,13 +16,23 @@ const mocks = vi.hoisted(() => ({
   getResumePosition: vi.fn(async () => 42.5),
   clearResumePosition: vi.fn(async () => {}),
   saveLibraryEntry: vi.fn(async (entry: unknown) => entry),
+  deleteEpisodeHistoryEntry: vi.fn(async () => {}),
+  deleteLibraryEntry: vi.fn(async () => {}),
+  showEpisodeWatchedToast: vi.fn(async () => {}),
   endedHandlers: [] as Array<(payload: unknown) => void>,
+  toastHandlers: [] as Array<(payload: unknown) => void>,
 }));
 
 vi.mock('../tauri', () => ({
   saveLibraryEntry: mocks.saveLibraryEntry,
   saveEpisodeHistoryEntry: vi.fn(async () => {}),
-  addSequelToPlanning: vi.fn(async () => {}),
+  addSequelToPlanning: vi.fn(async () => null),
+  getEpisodeHistory: vi.fn(async () => [
+    { id: 'older', external_id: 'anime-1', episode_number: 4, watched_at: '2026-01-01 10:00:00' },
+    { id: 'newest', external_id: 'anime-1', episode_number: 4, watched_at: '2026-02-01 10:00:00' },
+  ]),
+  deleteEpisodeHistoryEntry: mocks.deleteEpisodeHistoryEntry,
+  deleteLibraryEntry: mocks.deleteLibraryEntry,
 }));
 vi.mock('../tauri/resume-position', () => ({
   getResumePosition: mocks.getResumePosition,
@@ -47,6 +57,11 @@ vi.mock('../tauri/player', () => ({
     mocks.endedHandlers.push(handler);
     return () => {};
   }),
+  showEpisodeWatchedToast: mocks.showEpisodeWatchedToast,
+  listenToastAction: vi.fn(async (handler: (payload: unknown) => void) => {
+    mocks.toastHandlers.push(handler);
+    return () => {};
+  }),
 }));
 vi.mock('../media/anilist-sync', () => ({ syncToAniList: vi.fn(async () => {}), isAniListType: () => false }));
 vi.mock('../media/small-cover', () => ({ toMediumCover: (url: string) => url }));
@@ -54,7 +69,17 @@ vi.mock('./discord-presence', () => ({ setPlaybackPresence: vi.fn(), clearPlayba
 vi.mock('../dom/toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../i18n/runtime', () => ({ getT: () => ({ player: { engine_unavailable_fallback: 'fallback' } }) }));
 
-// Vitest runs in node: give the settings module a Storage to read.
+// Vitest runs in node: the service announces marks with a window event, and
+// the settings module reads a Storage.
+const dispatchedEvents: string[] = [];
+Object.defineProperty(globalThis, 'window', {
+  configurable: true,
+  value: { dispatchEvent: (event: { type: string }) => { dispatchedEvents.push(event.type); return true; } },
+});
+Object.defineProperty(globalThis, 'CustomEvent', {
+  configurable: true,
+  value: class { type: string; detail: unknown; constructor(type: string, init?: { detail?: unknown }) { this.type = type; this.detail = init?.detail; } },
+});
 const memoryStorage = new Map<string, string>();
 Object.defineProperty(globalThis, 'localStorage', {
   configurable: true,
@@ -86,6 +111,7 @@ function target() {
 describe('startQueuePlayback (internal engine)', () => {
   beforeEach(() => {
     localStorage.clear();
+    dispatchedEvents.length = 0;
     closePlayerModal();
     // The service subscribes to player events once per module load, so
     // the captured `endedHandlers` are kept across tests on purpose.
@@ -133,6 +159,41 @@ describe('startQueuePlayback (internal engine)', () => {
     expect(mocks.saveLibraryEntry).toHaveBeenCalledTimes(1);
     expect((mocks.saveLibraryEntry.mock.calls[0][0] as { progress: number }).progress).toBe(4);
     expect(mocks.saveResumePosition).not.toHaveBeenCalled();
+  });
+
+  it('shows the native Undo toast for the mark and reverts it on toast://action', async () => {
+    const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+    await startQueuePlayback(target());
+    mocks.endedHandlers.forEach(handler => handler({
+      reason: 'stopped', position_secs: 1300, duration_secs: 1420, playlist_index: 1, path: 'C:\\S\\e4.mkv',
+    }));
+    await flush();
+
+    expect(mocks.showEpisodeWatchedToast).toHaveBeenCalledTimes(1);
+    const [workName, label, token] = mocks.showEpisodeWatchedToast.mock.calls[0] as unknown as [string, string, number];
+    expect(workName).toBe('Show');
+    expect(label).toBe('S01E04');
+    expect(mocks.toastHandlers.length).toBeGreaterThan(0);
+
+    // A stale token is ignored; the live one reverts everything the mark did.
+    mocks.toastHandlers.forEach(handler => handler({ action: 'undo', token: token + 1000 }));
+    await flush();
+    expect(mocks.saveLibraryEntry).toHaveBeenCalledTimes(1);
+
+    mocks.toastHandlers.forEach(handler => handler({ action: 'undo', token }));
+    await flush();
+    expect(mocks.saveLibraryEntry).toHaveBeenCalledTimes(2);
+    expect((mocks.saveLibraryEntry.mock.calls[1][0] as { progress: number; status: string })).toMatchObject({ progress: 0, status: 'watching' });
+    expect(mocks.deleteEpisodeHistoryEntry).toHaveBeenCalledWith('newest');
+    expect(mocks.saveResumePosition).toHaveBeenCalledWith('anime-1', 4, 1300);
+    expect(mocks.deleteLibraryEntry).not.toHaveBeenCalled();
+    // Mark and undo both tell open panels to refresh.
+    expect(dispatchedEvents.filter(type => type === 'metadea:episode-marked')).toHaveLength(2);
+
+    // Pressing Undo twice cannot revert twice.
+    mocks.toastHandlers.forEach(handler => handler({ action: 'undo', token }));
+    await flush();
+    expect(mocks.saveLibraryEntry).toHaveBeenCalledTimes(2);
   });
 
   it('falls back to VLC when libmpv is unavailable', async () => {

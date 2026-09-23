@@ -1,0 +1,16 @@
+---
+import '../styles/pages/guide.css';
+import '../styles/components/shortcut-sheet.css';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getLang, useTranslations } from '../i18n/index';
+import { GuideView } from '../components/guide/GuideView';
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+---
+
+<BaseLayout title={`${t.guide.page_title} — Metadea`} titleKey="guide.page_title" lang={lang} activePage="settings">
+  <div class="guide-page">
+    <GuideView client:only="react" />
+  </div>
+</BaseLayout>

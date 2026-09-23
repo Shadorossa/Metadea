@@ -399,6 +399,19 @@
   height: clamp(10px, 1.5vw, 14px);
 }
 
+/* "×3" — the work was finished 3 times (rewatch/reread/replay counter);
+   only rendered when there is at least one re-run. */
+.library-card-reconsumption {
+  margin-left: auto;
+  padding: 0 0.3rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text-main);
+  font-size: clamp(0.6rem, 1vw, 0.72rem);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .library-card-type {
   flex-shrink: 0;
   color: var(--text-dim);

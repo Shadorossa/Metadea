@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useEffect, useMemo, type ReactElement } from 'react';
+import { useHydrated } from '../shared/hooks/useHydrated';
 import { createPortal } from 'react-dom';
 import { search, topRated, type MediaType, type SearchResult, type SeasonId, type SearchFilters, MissingApiKeyError } from '../../lib/search/index';
 import type { ApiSportsDiscipline } from '../../lib/search/providers/apisports';
 import { getCachedBrowsePage, setCachedBrowsePage } from '../../lib/search/browse-cache';
 import { filterValidAnimeCovers } from '../../lib/search/cover-filter';
+import { SearchRequestGuard } from '../../lib/search/search-request-guard';
 import { ANILIST_GENRES } from '../../lib/search/providers/anilist';
 import { IGDB_GENRES } from '../../lib/search/providers/igdb';
 import { TMDB_MOVIE_GENRE_NAMES, TMDB_TV_GENRE_NAMES } from '../../lib/search/providers/tmdb';
@@ -20,6 +22,7 @@ import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
 import { useDebouncedCallback } from '../shared/hooks/useDebouncedCallback';
 import { interpolate } from '../../lib/shared/text/interpolate';
 import { useNavSlot } from '../shared/hooks/useNavSlot';
+import { useShortcuts } from '../shared/hooks/useShortcuts';
 import { SearchResultCard } from './SearchResultCard';
 import { EventDisciplinePicker } from './EventDisciplinePicker';
 import { SearchFilterBar, type SearchDropdown, type SearchSortDirection, type SearchSortField } from './SearchFilterBar';
@@ -60,13 +63,10 @@ const PROVIDER_SETTINGS_LINK: Record<string, string> = {
   apisports: '/settings?tab=environment&platform=apisports',
 };
 
-// ── In-flight request de-duplication ────────────────────────────────────────
-// No result caching — just prevents the exact same type+query from firing
-// two overlapping network requests (e.g. debounce and Enter racing each other).
-// The entry is removed as soon as the request settles, so nothing is reused
-// after the fact; a repeat search always hits the API again.
-
-const inFlightSearches = new Map<string, ReturnType<typeof search>>();
+// In-flight de-duplication (debounce and Enter racing each other) and the
+// 10-minute exact-query memo both live in lib/search now (search-memo.ts,
+// shared with the quick-search overlay) — this component only owns the
+// "which response is current" bookkeeping, via SearchRequestGuard.
 
 // A fixed genre list per type — not derived from whatever's currently on
 // screen, so the filter can search for a genre regardless of whether it
@@ -96,7 +96,7 @@ interface Props {
 }
 
 export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
-  const [isMounted, setIsMounted] = useState(false);
+  const isMounted = useHydrated();
   const navSlot = useNavSlot();
   const [query, setQuery]         = useState(initialQuery);
   const [mediaType, setMediaType] = useState<MediaType>(initialType);
@@ -151,12 +151,26 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const abortControllerRef        = useRef<AbortController | null>(null);
+  // One AbortController + sequence id per search — a response is only ever
+  // applied while its sequence is still the latest, so an older request
+  // that outlives a newer (e.g. memo-instant) one can't overwrite it. The
+  // local-catalog preview of a search is likewise only shown until that
+  // same search's full page has been applied (settledSeqRef).
+  const guardRef                  = useRef(new SearchRequestGuard());
+  const settledSeqRef             = useRef(0);
+  const previewSeqRef             = useRef(0);
   const searchInputRef            = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  // mod+F jumps to the search box instead of opening the WebView's find bar.
+  useShortcuts('page', [{
+    id: 'search.focus_input',
+    keys: 'mod+f',
+    description: 'shortcuts.search_focus_input',
+    handler: () => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    },
+  }]);
 
 
   // Results come 50 at a time per provider (see lib/search — this used to
@@ -202,47 +216,71 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       setIsLoadingMore(true);
     }
 
-    // If the exact same type+query+page+filters is already in flight (e.g.
-    // debounce and Enter racing each other), ride that request instead of
-    // firing another one — this is the only thing avoided, no results are
-    // ever reused later.
-    const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}:${JSON.stringify(filters ?? {})}:${type === 'event' ? `${discipline}:${isUnifySeasonsEnabled()}` : ''}`;
+    // A fresh page-1 search cancels whatever was running and takes a new
+    // sequence; "Load more" and an auto-chained page belong to the current
+    // search and reuse its signal/sequence instead.
+    const guard = guardRef.current;
+    const { seq, signal } = pageNum === 1 && !autoChain ? guard.begin() : guard.current();
+
+    // Browse-mode cache key (session-scoped, see browse-cache.ts).
+    const key = `browse:${type}:${pageNum}:${JSON.stringify(filters ?? {})}:${type === 'event' ? `${discipline}:${isUnifySeasonsEnabled()}` : ''}`;
 
     try {
       let pageResults: SearchResult[];
       let more: boolean;
 
       // Browse mode's top-rated list barely changes minute to minute — a
-      // cache hit skips the network (and the in-flight dedup below) entirely
-      // instead of re-fetching the same page from AniList/IGDB/TMDB every
-      // time this tab/page is revisited within the session.
+      // cache hit skips the network entirely instead of re-fetching the
+      // same page from AniList/IGDB/TMDB every time this tab/page is
+      // revisited within the session.
       const cached = isBrowseMode ? getCachedBrowsePage(key) : null;
       if (cached) {
         pageResults = cached.results;
         more = cached.hasMore;
-      } else {
-        let promise = inFlightSearches.get(key);
-        if (!promise) {
-          if (pageNum === 1) abortControllerRef.current?.abort();
-          abortControllerRef.current = new AbortController();
-          promise = (isBrowseMode
-            ? topRated(type, abortControllerRef.current.signal, pageNum, filters)
-            : search(searchQuery, type, abortControllerRef.current.signal, pageNum, discipline || null)
-          ).finally(() => inFlightSearches.delete(key));
-          inFlightSearches.set(key, promise);
-        }
-        const fetched = await promise;
+      } else if (isBrowseMode) {
+        const fetched = await topRated(type, signal, pageNum, filters);
         pageResults = fetched.results;
         more = fetched.hasMore;
-        if (isBrowseMode) setCachedBrowsePage(key, fetched);
+        setCachedBrowsePage(key, fetched);
+      } else {
+        // Local catalog rows render the moment they're read (one IPC call),
+        // before any provider answers — but only for a page-1 search, and
+        // only until that search's full page lands (or a newer one starts).
+        const onLocalResults = pageNum === 1 && !autoChain
+          ? (local: SearchResult[]) => {
+            if (!guard.isCurrent(seq) || settledSeqRef.current === seq) return;
+            const apply = (rows: SearchResult[]) => {
+              if (!guard.isCurrent(seq) || settledSeqRef.current === seq || rows.length === 0) return;
+              // The first preview of a search replaces the previous
+              // search's grid; later ones (other types of an "all"
+              // search) merge in without touching what's already shown.
+              const isFirstPreview = previewSeqRef.current !== seq;
+              previewSeqRef.current = seq;
+              setResults(prev => {
+                if (isFirstPreview) return rows;
+                const seen = new Set(prev.map(r => r.externalId));
+                return [...prev, ...rows.filter(r => !seen.has(r.externalId))];
+              });
+            };
+            if (type === 'anime') filterValidAnimeCovers(local).then(apply);
+            else apply(local);
+          }
+          : undefined;
+        const fetched = await search(searchQuery, type, signal, pageNum, discipline || null, { onLocalResults });
+        pageResults = fetched.results;
+        more = fetched.hasMore;
       }
+
+      if (!guard.isCurrent(seq)) return;
 
       // No cover, or a landscape ("horizontal") one — same idea as
       // openlibrary.ts's book filter, just needing an actual image probe
       // since AniList exposes no width/height field to check server-side.
       const filteredResults = type === 'anime' ? await filterValidAnimeCovers(pageResults) : pageResults;
+      if (!guard.isCurrent(seq)) return;
       const totalSoFar = (autoChain?.accumulated ?? 0) + filteredResults.length;
 
+      if (pageNum === 1 && !autoChain) settledSeqRef.current = seq;
       setResults(prev => (!autoChain && pageNum === 1) ? filteredResults : [...prev, ...filteredResults]);
       setHasMore(more);
       setPage(pageNum);
@@ -269,7 +307,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       }
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
-      if (isAbort) return;
+      if (isAbort || !guard.isCurrent(seq)) return;
       if (isBrowseMode) {
         // A background nicety, not something the user explicitly asked
         // for — falls back to idle instead of surfacing a missing-API-key
@@ -359,8 +397,9 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         if (groupingChanged) executeSearch(saved.query, saved.mediaType, 1, undefined, undefined, savedDiscipline);
       }
     }
+    const guard = guardRef.current;
     return () => {
-      abortControllerRef.current?.abort();
+      guard.cancel();
       cancelDebouncedSearch();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -451,7 +490,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // the quick-search version — this stays on the very same component/page.
   const handleViewAllType = (type: MediaType, typeResults: SearchResult[]) => {
     cancelDebouncedSearch();
-    abortControllerRef.current?.abort();
+    guardRef.current.cancel();
     setMediaType(type);
     setEventDiscipline('');
     setResults(typeResults);

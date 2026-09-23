@@ -81,7 +81,7 @@ pub(super) fn extract_xml_attr(content: &str, attr: &str) -> Option<String> {
 // so anything else (slashes, a drive letter's colon) would either break the
 // join or, worse, get treated as an absolute path and silently escape the
 // intended metadata folder entirely.
-pub(super) fn synthetic_app_id(prefix: &str, install_path: &str) -> String {
+pub(crate) fn synthetic_app_id(prefix: &str, install_path: &str) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     let mut hasher = DefaultHasher::new();

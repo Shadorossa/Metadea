@@ -3,15 +3,27 @@
 use std::path::PathBuf;
 use super::common::LocalGame;
 
-pub(super) fn scan_epic_games() -> Vec<LocalGame> {
-    let mut games = Vec::new();
-
-    if let Ok(prog_data) = std::env::var("PROGRAMDATA") {
-        let manifests_dir = PathBuf::from(&prog_data)
+fn epic_manifests_dir() -> Option<PathBuf> {
+    std::env::var("PROGRAMDATA").ok().map(|prog_data| {
+        PathBuf::from(&prog_data)
             .join("Epic")
             .join("EpicGamesLauncher")
             .join("Data")
-            .join("Manifests");
+            .join("Manifests")
+    })
+}
+
+// Cheap change signature for scan_epic_games (see scan_cache.rs): every
+// *.item manifest's name/mtime/size.
+pub(super) fn epic_scan_signature() -> Option<String> {
+    let Some(dir) = epic_manifests_dir() else { return Some("absent".into()) };
+    Some(super::scan_cache::dir_children_signature(&dir, |name, _| name.ends_with(".item")))
+}
+
+pub(super) fn scan_epic_games() -> Vec<LocalGame> {
+    let mut games = Vec::new();
+
+    if let Some(manifests_dir) = epic_manifests_dir() {
         if manifests_dir.exists() {
             if let Ok(entries) = std::fs::read_dir(&manifests_dir) {
                 for entry in entries.flatten() {

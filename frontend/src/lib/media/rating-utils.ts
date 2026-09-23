@@ -29,6 +29,14 @@ export function dbRatingToStars5(rating: number): number {
   return Math.max(0, Math.min(5, rating / 2));
 }
 
+/** DB 0-10 rating → the 1-10 integer scale MyAnimeList scores use; 0 (or
+ *  nothing) stays 0, MAL's "no score". Any positive rating is at least 1 so
+ *  a low score is never mistaken for "unset". */
+export function dbRatingToTenPointInt(rating: number | null | undefined): number {
+  if (!rating || rating <= 0) return 0;
+  return Math.max(1, Math.min(10, Math.round(rating)));
+}
+
 export function ratingToEmoji(rating: number): { emoji: string; color: string } {
   if (rating <= 3.5) return { emoji: '😞', color: '#ef4444' };
   if (rating > 7)    return { emoji: '😊', color: '#10b981' };

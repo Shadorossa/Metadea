@@ -262,7 +262,7 @@ export function groupBundles<T extends { external_id: string; started_at: string
       // Bundle container doesn't have a catalog entry yet — create a synthetic one
       // from the first child's metadata plus the container ID. This allows bundles
       // to display even before visiting the media page.
-      const firstChildMeta = catalogMap.get((representative as any).external_id);
+      const firstChildMeta = catalogMap.get(representative.external_id);
       if (firstChildMeta) {
         catalogEntry = {
           ...firstChildMeta,

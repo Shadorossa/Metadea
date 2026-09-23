@@ -227,29 +227,10 @@ pub async fn get_all_user_lists(
     Ok(result)
 }
 
-#[tauri::command]
-pub async fn get_list_items_full(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    list_key: String,
-) -> Result<Vec<ListItemFull>, String> {
-    let mut items: Vec<ListItemFull> = {
-        let conn = state.conn.lock().str_err()?;
-        load_list_items_full(&conn, &list_key)?
-    };
-
-    let data_dir = app_handle.path().app_data_dir().str_err()?;
-    for item in &mut items {
-        item.cover_url = crate::image_storage::resolve_image_value(&data_dir, item.cover_url.take())?;
-    }
-
-    Ok(items)
-}
-
-// Same as get_list_items_full, but a character item's cover_url is its
-// portrait's file path (wrap with wrapAssetUrl) instead of an inlined
-// base64 data URL — see image_storage::resolve_reference_path. Media
-// covers are remote URLs either way and come back untouched.
+// Full rows of one list. A character item's cover_url is its portrait's
+// file path (wrap with wrapAssetUrl), never an inlined base64 data URL —
+// see image_storage::resolve_reference_path. Media covers are remote URLs
+// and come back untouched.
 #[tauri::command]
 pub async fn get_list_items_full_light(
     app_handle: tauri::AppHandle,

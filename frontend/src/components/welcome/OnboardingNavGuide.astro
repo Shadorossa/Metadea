@@ -1,0 +1,45 @@
+---
+// Final onboarding step: what each navbar icon opens. The icons reuse the
+// navbar's own SVG sprite (`#nav-icon-*`, rendered by Navbar.astro).
+import type { Translations } from '../../i18n/index';
+
+interface Props {
+  t: Translations;
+}
+
+const { t } = Astro.props;
+const w = t.onboarding;
+const items = [
+  { icon: 'home', title: t.nav.home, titleKey: 'nav.home', body: w.navigation_guide_home, bodyKey: 'navigation_guide_home' },
+  { icon: 'play', title: t.nav.local, titleKey: 'nav.local', body: w.navigation_guide_play, bodyKey: 'navigation_guide_play' },
+  { icon: 'explore', title: t.nav.browse, titleKey: 'nav.browse', body: w.navigation_guide_browse, bodyKey: 'navigation_guide_browse' },
+  { icon: 'notifications', title: t.nav.notifications, titleKey: 'nav.notifications', body: w.navigation_guide_notifications, bodyKey: 'navigation_guide_notifications' },
+  { icon: 'profile', title: t.nav.dropdown_profile, titleKey: 'nav.dropdown_profile', body: w.navigation_guide_profile, bodyKey: 'navigation_guide_profile' },
+  { icon: 'settings', title: t.nav.dropdown_settings, titleKey: 'nav.dropdown_settings', body: w.navigation_guide_settings, bodyKey: 'navigation_guide_settings' },
+] as const;
+---
+
+<div class="onboarding-nav-guide">
+  <h3 data-i18n="onboarding.navigation_guide_title">{w.navigation_guide_title}</h3>
+  <p data-i18n="onboarding.navigation_guide_body">{w.navigation_guide_body}</p>
+  <div class="onboarding-nav-guide-grid">
+    {items.map((item) => (
+      <div class="onboarding-nav-guide-item">
+        <svg class="onboarding-nav-guide-icon" viewBox="0 0 24 24" aria-hidden="true"><use href={`#nav-icon-${item.icon}`} /></svg>
+        <span>
+          <strong data-i18n={item.titleKey}>{item.title}</strong>
+          <small data-i18n={`onboarding.${item.bodyKey}`}>{item.body}</small>
+        </span>
+      </div>
+    ))}
+    <div class="onboarding-nav-guide-item onboarding-nav-guide-item--text">
+      <span class="onboarding-nav-guide-media-links" aria-hidden="true">
+        <i data-i18n="search.types.anime">{t.search.types.anime}</i><i data-i18n="search.types.manga">{t.search.types.manga}</i><i data-i18n="search.types.game">{t.search.types.game}</i>
+      </span>
+      <span>
+        <strong data-i18n="onboarding.navigation_guide_library_title">{w.navigation_guide_library_title}</strong>
+        <small data-i18n="onboarding.navigation_guide_library">{w.navigation_guide_library}</small>
+      </span>
+    </div>
+  </div>
+</div>

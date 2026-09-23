@@ -6,6 +6,7 @@ import type { FriendScore } from '../../../lib/anilist/friends';
 import { formatRatingHtml, type RatingSystem } from '../../../lib/media/rating-utils';
 import { openLink } from '../MediaStoreLinks';
 import { ThemePreviewCardVideo } from '../ThemePreviewCardVideo';
+import { toMediumCover } from '../../../lib/media/small-cover';
 import { formatEpisodeNumber, formatMatchDate, splitTitleAfterColon } from './media-page-format';
 
 export const EpisodeCard = memo(function EpisodeCard({ ep }: { ep: MediaEpisode }) {
@@ -13,7 +14,7 @@ export const EpisodeCard = memo(function EpisodeCard({ ep }: { ep: MediaEpisode 
   return (
     <div className="media-relation-card media-relation-card--static">
       <div className="media-relation-bg-layer media-episode-bg-layer">
-        {ep.cover_url && <img src={ep.cover_url} alt="" loading="lazy" />}
+        {ep.cover_url && <img src={ep.cover_url} alt="" loading="lazy" decoding="async" />}
       </div>
       <div className="media-relation-card-overlay" />
       <span className="media-relation-type">{`#${episodeLabel}`}</span>
@@ -33,7 +34,7 @@ export const MatchCard = memo(function MatchCard({ match }: { match: EventMatch 
   return (
     <div className="media-relation-card media-relation-card--static media-match-card">
       <div className="media-relation-bg-layer">
-        {match.image && <img src={match.image} alt="" loading="lazy" />}
+        {match.image && <img src={match.image} alt="" loading="lazy" decoding="async" />}
       </div>
       <div className="media-relation-card-overlay" />
       <span className="media-relation-type">{formatMatchDate(match.date, match.time)}</span>
@@ -48,21 +49,34 @@ export const MatchCard = memo(function MatchCard({ match }: { match: EventMatch 
   );
 });
 
-export const RelationCard = memo(function RelationCard({ relation, changeKind }: { relation: any; changeKind?: 'added' | 'updated' }) {
+// The subset of a relation row the card actually paints — every caller's
+// relation shape (page relations, comic issues, bundle children) carries at
+// least these.
+export interface RelationCardData {
+  url?: string | null;
+  cover?: string | null;
+  typeLabel?: string | null;
+  title: string;
+}
+
+export const RelationCard = memo(function RelationCard({ relation, changeKind }: { relation: RelationCardData; changeKind?: 'added' | 'updated' }) {
   const Wrapper = relation.url ? 'a' : 'div';
+  // A grid thumbnail (and its blurred backdrop, which shares the same
+  // request) never needs the full-size cover the hero shows.
+  const cover = relation.cover ? toMediumCover(relation.cover) : null;
   return (
     <Wrapper
-      href={relation.url}
+      href={relation.url ?? undefined}
       className={`media-relation-card${relation.url ? '' : ' media-relation-card--static'}${changeKind ? ` media-relation-card--${changeKind}` : ''}`}
     >
       <div className="media-relation-bg-layer">
-        {relation.cover && <img src={relation.cover} alt="" loading="lazy" />}
+        {cover && <img src={cover} alt="" loading="lazy" decoding="async" />}
       </div>
       <div className="media-relation-card-overlay" />
       <span className="media-relation-type">{relation.typeLabel}</span>
       <div className="media-relation-card-content">
         <div className="media-relation-thumb">
-          {relation.cover && <img src={relation.cover} alt={relation.title} loading="lazy" />}
+          {cover && <img src={cover} alt={relation.title} loading="lazy" decoding="async" />}
         </div>
         <div className="media-relation-info">
           <span className="media-relation-title">{splitTitleAfterColon(relation.title)}</span>
@@ -72,8 +86,16 @@ export const RelationCard = memo(function RelationCard({ relation, changeKind }:
   );
 });
 
+export interface CharacterCardData {
+  id?: string | null;
+  hrefId?: string | null;
+  name: string;
+  role?: string | null;
+  image?: string | null;
+}
+
 interface CharacterCardProps {
-  character: any;
+  character: CharacterCardData;
   charTab: 'characters' | 'staff';
   customImagesMap: Map<string, FavoriteCustomImage>;
 }
@@ -89,12 +111,12 @@ export const CharacterCard = memo(function CharacterCard({ character: c, charTab
   return (
     <a href={href} className="media-char-card">
       <div className="media-char-bg-layer">
-        {displayImg && <img src={displayImg} alt="" loading="lazy" />}
+        {displayImg && <img src={displayImg} alt="" loading="lazy" decoding="async" />}
       </div>
       <div className="media-char-card-overlay" />
       <div className="media-char-card-content">
         <div className="media-char-thumb">
-          {displayImg && <img src={displayImg} alt={c.name} loading="lazy" />}
+          {displayImg && <img src={displayImg} alt={c.name} loading="lazy" decoding="async" />}
         </div>
         <div className="media-char-info">
           {c.role && <span className="media-char-role">{c.role}</span>}

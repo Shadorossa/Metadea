@@ -23,6 +23,11 @@ pub struct PlayerSessionInfo {
     pub queue: Vec<String>,
     pub episode_labels: Vec<String>,
     pub titles: Vec<String>,
+    /// Catalog id of the work (`anime:<anilistId>`) and the episode number
+    /// of each queue entry, so the controls (a separate window in overlay
+    /// mode) can look up skip segments for what is playing.
+    pub external_id: Option<String>,
+    pub episode_numbers: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -40,6 +45,8 @@ pub struct OpenRequest {
     pub work_name: String,
     pub episode_labels: Vec<String>,
     pub titles: Vec<String>,
+    pub external_id: Option<String>,
+    pub episode_numbers: Vec<i64>,
     pub capture_dir: PathBuf,
 }
 
@@ -136,6 +143,9 @@ impl PlayerEngine {
         if let Some(track_list) = client.get_property_string("track-list") {
             apply("track-list", PropertyValue::Str(track_list));
         }
+        if let Some(chapter_list) = client.get_property_string("chapter-list") {
+            apply("chapter-list", PropertyValue::Str(chapter_list));
+        }
         let mut refreshed = tracker.status;
         if refreshed.path.is_none() {
             // A fake/unavailable read must not wipe what the event thread
@@ -229,6 +239,8 @@ impl PlayerEngine {
             queue: request.queue,
             episode_labels: request.episode_labels,
             titles: request.titles,
+            external_id: request.external_id,
+            episode_numbers: request.episode_numbers,
         };
         self.session = Some(session.clone());
         self.capture_dir = Some(request.capture_dir);
@@ -286,6 +298,26 @@ impl PlayerEngine {
         self.client()?.set_property("sub-delay", &format!("{seconds:.3}"))
     }
 
+    /// One frame back or forward; mpv pauses playback as a side effect.
+    pub fn frame_step(&self, direction: &str) -> Result<(), PlayerError> {
+        let command = match direction {
+            "back" => "frame-back-step",
+            "forward" => "frame-step",
+            _ => return Err(PlayerError::invalid_argument(format!("unknown frame step direction {direction}"))),
+        };
+        self.client()?.command(&[command])
+    }
+
+    /// Next subtitle/audio track, wrapping through "off" (mpv `cycle sub|audio`).
+    pub fn cycle_track(&self, kind: &str) -> Result<(), PlayerError> {
+        let property = match kind {
+            "audio" => "audio",
+            "sub" => "sub",
+            _ => return Err(PlayerError::invalid_argument(format!("unknown track kind {kind}"))),
+        };
+        self.client()?.command(&["cycle", property])
+    }
+
     /// Where the next F12 capture goes and what it is called, from the
     /// current status — separated from the mpv call so it is testable.
     pub fn next_screenshot(&self) -> Result<(PathBuf, ScreenshotSaved), PlayerError> {
@@ -312,6 +344,26 @@ impl PlayerEngine {
         let path_text = path.to_string_lossy();
         self.client()?.command(&["screenshot-to-file", &path_text, "subtitles"])?;
         Ok(saved)
+    }
+
+    /// The work and episode number of the queue entry at `playlist_index`
+    /// — what a "continue watching" frame is filed under.
+    pub fn episode_at(&self, playlist_index: i64) -> Option<(String, f64)> {
+        let session = self.session.as_ref()?;
+        let external_id = session.external_id.clone()?;
+        let index = usize::try_from(playlist_index).ok()?;
+        let episode = *session.episode_numbers.get(index)?;
+        Some((external_id, episode as f64))
+    }
+
+    /// One video-only frame (no subtitles/OSD) of the current position into
+    /// `path`; mpv picks the format from the extension.
+    pub fn capture_frame(&self, path: &std::path::Path) -> Result<(), PlayerError> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let path_text = path.to_string_lossy();
+        self.client()?.command(&["screenshot-to-file", &path_text, "video"])
     }
 
     /// Quits mpv, waits for the event thread and releases the client. The

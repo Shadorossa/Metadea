@@ -17,6 +17,7 @@ import { ALL_CHAIN_RELATION_TYPES } from '../../../lib/media/saga/saga-relation-
 import { setField } from '../../../lib/shared/collections/object-utils';
 import { uploadImageToSharedCatalog } from '../../../lib/character/shared-image-storage';
 import type { BundledRelation } from '../../../lib/media/editor/pr-editor-types';
+import { getT } from '../../../i18n/runtime';
 import {
   charactersChanged, editedFields as computeEditedFields, getPrEditorDiff,
   originalBundleChildIds, originalBundledIds, originalContainedIds, toRecommendationRelation,
@@ -491,7 +492,7 @@ export async function submitPrEditorChanges(params: SubmitPrEditorParams): Promi
 
   if (mode === 'local') {
     // Already wrote straight to the local DB — nothing to propose upstream.
-    p.setStatusMsg('Guardado en la base de datos local.');
+    p.setStatusMsg(getT().pr_editor.saved_locally);
     setTimeout(() => p.onClose(), 1000);
     return null;
   }
@@ -515,7 +516,7 @@ export async function submitPrEditorChanges(params: SubmitPrEditorParams): Promi
   let proposalCatalogEntry = entry;
   const imageFieldsChanged = p.editedFields.includes('cover_url') || p.editedFields.includes('banners_csv');
   if (imageFieldsChanged) {
-    p.setStatusMsg('Preparando imágenes de la obra para el catálogo compartido…');
+    p.setStatusMsg(getT().pr_editor.preparing_images);
     if (p.editedFields.includes('cover_url') && entry.cover_url) {
       proposalCatalogEntry = {
         ...proposalCatalogEntry,

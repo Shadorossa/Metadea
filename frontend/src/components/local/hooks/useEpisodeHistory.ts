@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry } from '../../../lib/tauri';
+import { deleteEpisodeHistoryEntry, type EpisodeHistoryEntry } from '../../../lib/tauri';
+import { readLocalEpisodeHistory as getEpisodeHistory, invalidateLocalEpisodeHistory } from '../../../lib/local/local-read-cache';
 import { resolveSeasonExternalIds, resolveOwnSeasonNumber } from '../../../lib/local/season-resolve';
 import type { LocalMediaItem } from './useLocalMediaEntries';
 
@@ -84,7 +85,7 @@ export function useEpisodeHistory(
       }
     });
     return () => { cancelled = true; };
-  }, [fetchChainHistory]);
+  }, [fetchChainHistory, item.externalId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +116,8 @@ export function useEpisodeHistory(
     setHistoryMenu(null);
     try {
       await deleteEpisodeHistoryEntry(entry.id);
+      // The visit memo still holds the pre-delete list for this id.
+      invalidateLocalEpisodeHistory(entry.external_id);
       setHistory(prev => prev.filter(h => h.id !== entry.id));
     } catch (err) {
       console.error('Failed to delete episode history entry', err);

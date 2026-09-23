@@ -2,6 +2,13 @@ import { useState, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { debugScanInfo, type LocalGame } from '../../../lib/tauri';
 import { scanGamesWithSteam } from '../../../lib/local/steam-merge';
+import { romDisplayTitle } from '../../../lib/local/rom-name-parser';
+
+// A scanned ROM's `name` is the raw file stem (see emulator_roms.rs) — the
+// clean title shows from the very first render, before any IGDB match.
+function withRomDisplayNames(games: LocalGame[]): LocalGame[] {
+  return games.map(g => (g.rom_platform && g.install_path ? { ...g, name: romDisplayTitle(g.name) } : g));
+}
 
 export type GamesState = 'idle' | 'loading' | 'done' | 'empty';
 
@@ -11,13 +18,16 @@ export function useLocalGames() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
-  const loadGames = useCallback(() => {
+  // A plain load lets every launcher whose registry/manifests/folders are
+  // unchanged answer from the Rust-side memo (scan_cache.rs); rescanGames
+  // (the "Escanear de nuevo" button) always re-walks everything.
+  const scanWith = useCallback((force: boolean) => {
     setGamesState('loading');
     setScanError(null);
     setDebugInfo(null);
-    scanGamesWithSteam()
+    scanGamesWithSteam(force)
       .then(g => {
-        const list: LocalGame[] = Array.isArray(g) ? g : [];
+        const list: LocalGame[] = withRomDisplayNames(Array.isArray(g) ? g : []);
         setGames(list);
         setGamesState(list.length === 0 ? 'empty' : 'done');
       })
@@ -26,6 +36,8 @@ export function useLocalGames() {
         setGamesState('empty');
       });
   }, []);
+  const loadGames = useCallback(() => scanWith(false), [scanWith]);
+  const rescanGames = useCallback(() => scanWith(true), [scanWith]);
 
   // The scan-failed placeholder's diagnostics button — owned here instead of
   // the component calling debugScanInfo() and formatting its own error,
@@ -77,5 +89,5 @@ export function useLocalGames() {
         : g));
   }, []);
 
-  return { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame, relinkGame };
+  return { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, rescanGames, removeGame, relinkGame };
 }

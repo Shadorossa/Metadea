@@ -1,19 +1,23 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useHydrated } from '../shared/hooks/useHydrated';
 import type { Translations } from '../../i18n/index';
 import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'motion/react';
-import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, deleteLibraryEntry, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
+import { listenGameSessionEnded, addPlaytimeHours, deleteLibraryEntry, type LocalGame, type CatalogEntryLike } from '../../lib/tauri';
+import { beginLocalVisit, endLocalVisit } from '../../lib/local/local-read-cache';
+import { runMetadataFetch, cancelMetadataFetch } from '../../lib/local/metadata-fetch';
 import { getT } from '../../i18n/runtime';
 import { IconGame, IconVNovel, IconAnime, IconManga, IconNovel, IconBook, IconComic, IconSeries, IconMovie } from '../local/ui/icons';
 
 import { CATEGORIES, LAUNCHER_ORDER, LOCAL_CATEGORY_TO_SEARCH_TYPE, type CategoryId, type PlatformId } from '../../lib/local/platforms';
 import { useLocalGames }        from './hooks/useLocalGames';
+import { useRomAutoRename }     from './hooks/useRomAutoRename';
 import { useMetadataCache }     from './hooks/useMetadataCache';
 import { useCoverCacheBatch }   from './hooks/useCoverCacheBatch';
 import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
 import { usePendingLaunchers }  from './hooks/usePendingLaunchers';
-import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
+import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/media/media-types';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, matchGameStatusByName, type StatusEntry } from '../../lib/local/catalog-game-linking';
 import { normalizeForMatch } from '../../lib/local/folder-match';
@@ -24,6 +28,7 @@ import {
 } from './hooks/useLocalPanelSelection';
 import { useEvenPanelWidth } from './hooks/useEvenPanelWidth';
 import { useNavSlot } from '../shared/hooks/useNavSlot';
+import { useShortcuts } from '../shared/hooks/useShortcuts';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameDetailPanel }  from './details/GameDetailPanel';
@@ -37,7 +42,7 @@ import { GamesGrid } from './GamesGrid';
 // ssrLocal: the page's own server-side `t.local` (local.astro has the request
 // language via useTranslations) — used for the strings rendered before mount
 // so SSR markup and the first client render agree without a Spanish literal.
-export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['local'] } = {}) {
+export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: Translations['local']; ssrSearchTypes?: Translations['search']['types'] } = {}) {
   const t = getT();
   // Starts at the hardcoded default (matching what the server renders — see
   // the navSlot hydration-mismatch comment just below for why this can't
@@ -51,8 +56,16 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
   // anything else itself.
   const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
   const navSlot = useNavSlot();
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => { setIsMounted(true); }, []);
+  const isMounted = useHydrated();
+
+  // One Local "visit" for lib/local/local-read-cache.ts — a layout effect so
+  // it's active before any passive effect in this tree (a child's or this
+  // component's own) issues its first read, and closed when the page
+  // unmounts so nothing memoised here leaks into other pages.
+  useLayoutEffect(() => {
+    beginLocalVisit();
+    return () => endLocalVisit();
+  }, []);
 
   // Same hydration-mismatch reasoning as navSlot above — corrects the tab
   // from ?type= right after hydration instead of in the initial useState,
@@ -75,18 +88,39 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const cancelRef = useRef(false);
 
-  const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame, relinkGame } = useLocalGames();
+  // mod+F goes to this grid's own name search (preventDefault in the
+  // dispatcher keeps the WebView's find bar closed). Escape inside the field
+  // clears and blurs it — only when there is text, so an empty field leaves
+  // Escape to whatever else listens (ModalShell etc.). Same pattern as the
+  // profile's LibrarySection.
+  useShortcuts('page', [{
+    id: 'local.focus_search',
+    keys: 'mod+f',
+    description: 'shortcuts.local_focus_search',
+    handler: () => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    },
+  }]);
+  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Escape' || filterName.length === 0) return;
+    e.preventDefault();
+    setFilterName('');
+    e.currentTarget.blur();
+  };
+
+  const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, rescanGames, removeGame, relinkGame } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
   const { routes, folderFiles, folderLoading, setRoute, clearRoute, refetchFolder } = useCategoryRoutes(activeCategory);
   const { activePlatform, sectionRefs, scrollTo }                             = useActivePlatform(games, activeCategory, gamesState);
   const { raw: mediaRaw, loading: mediaLoading, refetch: refetchMedia }       = useLocalMediaData();
 
-  // Auto-scan on first visit
-  useEffect(() => {
-    if (activeCategory === 'videojuegos' && gamesState === 'idle') loadGames();
-  }, [activeCategory, gamesState, loadGames]);
+  // Auto-scan on first visit; the ROM file clean-up runs once it lands.
+  useEffect(() => { if (activeCategory === 'videojuegos' && gamesState === 'idle') loadGames(); }, [activeCategory, gamesState, loadGames]);
+  useRomAutoRename(gamesState, loadGames);
 
   // Keeps the hours-played log up to date on its own — a game launched from
   // GameDetailPanel's "Jugar" button (see startPlaytimeSession there) fires
@@ -144,7 +178,7 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
     // param, which just skips the Steam-App-ID-specific shortcuts for
     // anything that isn't actually a Steam app_id.
     const pending = games
-      .filter(g => (g.launcher === 'steam' || g.launcher === 'gog') && g.app_id)
+      .filter(g => (g.launcher === 'steam' || g.launcher === 'gog' || !!g.rom_platform) && g.app_id)
       .filter(g => {
         const cached    = pathCache[g.app_id!];
         const basicDone = !doBasic || !!(cached?.cover_path && cached?.banner_path);
@@ -156,38 +190,17 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
     setMetaSelector(false);
     cancelRef.current = false;
 
-    let done = 0;
     setMetaProgress({ total: pending.length, current: 0, currentName: 'Iniciando…', cancelled: false });
 
-    const queue = [...pending];
-
-    async function processOne(game: typeof pending[0]) {
-      setMetaProgress({ total: pending.length, current: done + 1, currentName: game.name, cancelled: false });
-      try {
-        if (doBasic) await igdbGetCoverBySteamId(game.app_id!, game.name, game.launcher);
-        if (doAchievements && game.launcher === 'steam') await steamAchievementsDownload(game.app_id!).catch(() => {});
-      } catch (err) {
-        console.error('[META]', game.name, err);
-      }
-      done++;
-    }
-
-    // A small pool instead of one strictly-sequential worker — igdb_query's
-    // own 429 backoff (igdb.rs) already tolerates bursts past IGDB's ~4
-    // req/s comfortably (same reasoning igdb_upcoming_releases' 8-way
-    // concurrency relies on), so the old single-worker design was just a
-    // conservative leftover, not something correctness actually required.
-    // Each game still makes 3-5 IGDB requests with backoff handled in Rust;
-    // running a few games at once cuts real wall-clock time without
-    // meaningfully raising 429 risk.
-    const WORKER_COUNT = 3;
-    async function worker() {
-      while (queue.length > 0 && !cancelRef.current) {
-        await processOne(queue.shift()!);
-      }
-    }
-
-    await Promise.all(Array.from({ length: Math.min(WORKER_COUNT, pending.length) }, () => worker()));
+    // One batched command for the whole list (see lib/local/metadata-fetch.ts
+    // and igdb/batch.rs) instead of a worker pool of per-game commands —
+    // the modal keeps counting games and showing the one just finished.
+    await runMetadataFetch(
+      pending.map(g => ({ app_id: g.app_id!, name: g.name, launcher: g.launcher, rom_platform: g.rom_platform })),
+      { doBasic, doAchievements },
+      progress => { if (!cancelRef.current) setMetaProgress({ ...progress, cancelled: false }); },
+      () => cancelRef.current,
+    );
     await refreshMeta();
     setMetaProgress(null);
   }, [games, pathCache, refreshMeta]);
@@ -252,10 +265,10 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
   }, [relinkGame]);
 
   const catalogMapById = React.useMemo(() => {
-    const map = new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c]));
+    const map = new Map<string, CatalogEntryLike>((mediaRaw?.catalog ?? []).map(c => [c.external_id, c]));
     for (const [externalId, name] of pickedNames) {
       if (!map.has(externalId)) {
-        map.set(externalId, { id: externalId, external_id: externalId, type: 'game', created_at: '', updated_at: '', title_main: name } as MediaCatalogEntry);
+        map.set(externalId, { id: externalId, external_id: externalId, type: 'game', created_at: '', updated_at: '', title_main: name });
       }
     }
     return map;
@@ -311,12 +324,17 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
   // which read as arbitrary in the grid. groupedGames below derives from
   // this via .filter(), which preserves order, so sorting once here is
   // enough to alphabetize every platform's own section too.
-  const safeGames     = (Array.isArray(games) ? games : [])
+  // Memoised (as is everything derived from it below): these lists used to
+  // be rebuilt — sorted, grouped, name-matched — on every render of this
+  // component, i.e. on every keystroke in the search box and every
+  // selection change, for a grid of hundreds of cards.
+  const safeGames = React.useMemo(() => (Array.isArray(games) ? games : [])
     .filter(g => !isSteamVN(g))
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const filterGames = <G extends { name: string }>(list: G[]): G[] =>
-    filterName.trim() ? list.filter(g => g.name.toLowerCase().includes(filterName.toLowerCase())) : list;
+    .sort((a, b) => a.name.localeCompare(b.name)), [games, isSteamVN]);
+  const filterQuery = filterName.trim().toLowerCase();
+  const filterGames = React.useCallback(<G extends { name: string }>(list: G[]): G[] =>
+    filterQuery ? list.filter(g => g.name.toLowerCase().includes(filterQuery)) : list, [filterQuery]);
 
   // The flip side of the exclusion above — every Steam-scanned VN, shown in
   // the Visual Novel tab instead (see LocalMediaSection's steamGames prop)
@@ -355,12 +373,12 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
     return { currently, rest };
   }, [safeGames, gameStatusMatch]);
 
-  const groupedGames = LAUNCHER_ORDER.reduce<Map<PlatformId, typeof safeGames>>((acc, id) => {
+  const groupedGames = React.useMemo(() => LAUNCHER_ORDER.reduce<Map<PlatformId, typeof safeGames>>((acc, id) => {
     const list = filterGames(statusBuckets.rest.filter(g => g.launcher === id));
     if (list.length > 0) acc.set(id, list);
     return acc;
-  }, new Map());
-  const installedPlatforms = new Set(safeGames.map(g => g.launcher));
+  }, new Map()), [statusBuckets.rest, filterGames]);
+  const installedPlatforms = React.useMemo(() => new Set(safeGames.map(g => g.launcher)), [safeGames]);
 
   // Videojuegos' own status sections mix in catalog-tracked 'game' entries
   // too — an entry the scanner never found installed anywhere (candidate
@@ -415,27 +433,28 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
       if (vnovelExternalIds.has(i.externalId)) return false;
       return !ownedExternalIds.has(i.externalId);
     });
-    const q = filterName.trim().toLowerCase();
-    const filtered = q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
+    const filtered = filterQuery ? list.filter(i => i.title.toLowerCase().includes(filterQuery)) : list;
     return buildLibraryStatusEntries(filtered, Array.isArray(games) ? games : [], catalogMapById, pathCache, mediaRaw?.relations ?? []);
-  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, games, catalogMapById, pathCache, mediaRaw]);
+  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterQuery, games, catalogMapById, pathCache, mediaRaw]);
   // Both halves can independently resolve to the SAME installed game — an
   // ID-matched one already sits in statusBuckets.currently, and a catalog
   // Pendiente row with no external_id of its own can separately NAME-match
   // to that exact game too (buildLibraryStatusEntries) — so this dedupes by
   // game reference (both come from the same underlying `games` array, so
   // it's the identical object either way) instead of showing it twice.
-  const currentlyRaw: StatusEntry[] = [
-    ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
-    ...buildCatalogStatusEntries(isInProgressStatus),
-  ];
-  const seenCurrentlyGames = new Set<(typeof games)[number]>();
-  const currentlyEntries: StatusEntry[] = currentlyRaw.filter(e => {
-    if (e.kind !== 'game') return true;
-    if (seenCurrentlyGames.has(e.game)) return false;
-    seenCurrentlyGames.add(e.game);
-    return true;
-  });
+  const currentlyEntries: StatusEntry[] = React.useMemo(() => {
+    const currentlyRaw: StatusEntry[] = [
+      ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
+      ...buildCatalogStatusEntries(isInProgressStatus),
+    ];
+    const seenCurrentlyGames = new Set<LocalGame>();
+    return currentlyRaw.filter(e => {
+      if (e.kind !== 'game') return true;
+      if (seenCurrentlyGames.has(e.game)) return false;
+      seenCurrentlyGames.add(e.game);
+      return true;
+    });
+  }, [filterGames, statusBuckets.currently, buildCatalogStatusEntries]);
   // No installed-game half here (unlike currentlyEntries above) — an
   // installed game matched to "planning" now stays in its own platform
   // section instead (see statusBuckets). buildCatalogStatusEntries can still
@@ -443,7 +462,10 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
   // gameStatusMatch now already recognizes by name too — so any kind:'game'
   // result here is filtered out rather than shown a second time on top of
   // that install's own platform-section card.
-  const planningEntries: StatusEntry[] = buildCatalogStatusEntries(s => s === 'planning').filter(e => e.kind === 'catalog');
+  const planningEntries: StatusEntry[] = React.useMemo(
+    () => buildCatalogStatusEntries(s => s === 'planning').filter(e => e.kind === 'catalog'),
+    [buildCatalogStatusEntries],
+  );
   // mediaRaw (SQLite read) resolves well before games (a real Steam/GOG/etc.
   // disk-and-registry scan) does — without this gate, currentlyEntries/
   // planningEntries above would render their catalog-sourced ("pendiente")
@@ -501,7 +523,10 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
   const { pendingByLauncher } = usePendingLaunchers(
     sectionsReady ? planningEntries : [],
   );
-  const availablePlatforms = new Set([...installedPlatforms, ...pendingByLauncher.keys()]);
+  const availablePlatforms = React.useMemo(
+    () => new Set([...installedPlatforms, ...pendingByLauncher.keys()]),
+    [installedPlatforms, pendingByLauncher],
+  );
   // One bulk exists-check for every pending-item cover these two sections
   // are about to render, instead of each LocalMediaCard racing its own
   // get_cached_cover call at mount (see useCoverCacheBatch).
@@ -537,7 +562,7 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
             onClick={() => setActiveCategory(cat.id)}
           >
             <span className="local-tab-icon">{CATEGORY_ICONS[cat.id]}</span>
-            <span className="local-tab-label">{isMounted ? (t.search?.types?.[LOCAL_CATEGORY_TO_SEARCH_TYPE[cat.id]] || cat.label) : cat.label}</span>
+            <span className="local-tab-label">{(isMounted ? t.search.types : (ssrSearchTypes ?? t.search.types))[LOCAL_CATEGORY_TO_SEARCH_TYPE[cat.id]]}</span>
           </button>
         ))}
       </div>
@@ -549,11 +574,13 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
           total width and recenter everything, shifting every tab button
           sideways. */}
       <input
+        ref={searchInputRef}
         type="text"
         className="local-tab-search"
         placeholder={t.local.search_ph}
         value={filterName}
         onChange={e => setFilterName(e.target.value)}
+        onKeyDown={onSearchKeyDown}
       />
     </div>
   );
@@ -574,13 +601,14 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
       {metaProgress && (
         <MetadataModal
           progress={metaProgress}
-          onCancel={() => { cancelRef.current = true; setMetaProgress(null); }}
+          onCancel={() => { cancelRef.current = true; setMetaProgress(null); void cancelMetadataFetch(); }}
         />
       )}
 
       <div className="local-library">
         {(activeCategory === 'videojuegos' || activeCategory === 'visual-novel') && (
           <PlatformSidebar
+            localT={isMounted ? t.local : (ssrLocal ?? t.local)}
             activePlatform={activePlatform}
             availablePlatforms={activeCategory === 'videojuegos' ? availablePlatforms : new Set(vnSteamGames.map(game => game.launcher))}
             onSelect={scrollTo}
@@ -625,7 +653,7 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
                 catalogMapById={catalogMapById}
                 onRemoveGame={removeGame}
                 onDeleteLibraryItem={handleDeleteLibraryItem}
-                onRefreshScan={activeCategory === 'visual-novel' ? loadGames : undefined}
+                onRefreshScan={activeCategory === 'visual-novel' ? rescanGames : undefined}
                 sectionRefs={activeCategory === 'visual-novel' ? sectionRefs : undefined}
                 ssrLocal={ssrLocal}
               />
@@ -638,7 +666,7 @@ export default function LocalLibrary({ ssrLocal }: { ssrLocal?: Translations['lo
                 rootFolder={routes['videojuegos']}
                 onSetRoute={() => setRoute('videojuegos')}
                 onClearRoute={() => clearRoute('videojuegos')}
-                onRefreshScan={loadGames}
+                onRefreshScan={rescanGames}
                 isMounted={isMounted}
                 ssrLocal={ssrLocal}
                 currentlyEntries={sectionsReady ? currentlyEntries : []}

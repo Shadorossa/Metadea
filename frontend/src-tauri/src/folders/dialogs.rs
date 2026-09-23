@@ -52,7 +52,13 @@ pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String>
         .app_data_dir()
         .str_err()?;
     std::fs::create_dir_all(&app_data_dir).str_err()?;
-    let path_str = app_data_dir.to_string_lossy().to_string();
+    open_directory_in_file_manager(&app_data_dir)
+}
+
+/// Reveals `dir` in the OS file manager (Explorer / Finder / xdg-open).
+/// Shared by open_env_folder and ui_themes::open_ui_themes_folder.
+pub(crate) fn open_directory_in_file_manager(dir: &std::path::Path) -> Result<(), String> {
+    let path_str = dir.to_string_lossy().to_string();
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;

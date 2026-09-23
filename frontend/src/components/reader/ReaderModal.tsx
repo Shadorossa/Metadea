@@ -1,6 +1,5 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ModalShell } from '../shared/ModalShell';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import * as pdfjsLib from 'pdfjs-dist';
 import {
   extractComicArchive,
@@ -11,9 +10,12 @@ import {
   toggleComicBookmark,
   saveComicPageAsPng,
   wrapAssetUrl,
-  type LibraryEntry,
 } from '../../lib/tauri';
 import { markChapterRead } from '../../lib/reader/reading-service';
+import { PdfCanvasPage, getOrQueuePdfRender, type PdfRenderItem } from './PdfCanvasPage';
+import { EpubReaderView } from './EpubReaderView';
+import { isEpubPath, type ReaderProps } from './reader-props';
+import { useReaderFullscreen, useReaderActiveClass } from './hooks/useReaderFullscreen';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -23,29 +25,9 @@ import { toMediumCover } from '../../lib/media/small-cover';
 import { setReadingPresence, clearReadingPresence } from '../../lib/local/discord-presence';
 import { IconX } from '../local/ui/icons';
 import { getT } from '../../i18n/runtime';
-
-interface Props {
-  externalId:    string;
-  title:         string;
-  filePath:      string;
-  episodeNumber: number;
-  totalCount:    number | null;
-  libraryEntry:  LibraryEntry;
-  cover:         string | null;
-  isSingleTomo:  boolean;
-  onClose:       () => void;
-  onStandBy?:    (spreadIndex: number, totalSpreads: number, pageCount: number) => void;
-  onProgressSaved: () => void;
-}
+import { formatAppError } from '../../lib/errors/format-error';
 
 type LoadState = 'loading' | 'ready' | 'error';
-
-interface PdfRenderItem {
-  canvas: HTMLCanvasElement;
-  width: number;
-  height: number;
-  aspectRatio: string;
-}
 
 function buildSpreads(pageCount: number): number[][] {
   if (pageCount === 0) return [];
@@ -70,108 +52,13 @@ function getPreloadTargetSpreads(spreads: number[][], spreadIndex: number): numb
   ].filter((spread): spread is number[] => !!spread);
 }
 
-async function renderPdfPage(pdfDoc: any, pageNumber: number): Promise<PdfRenderItem> {
-  const page = await pdfDoc.getPage(pageNumber);
-  const viewport = page.getViewport({ scale: 2.0 });
-  const offscreen = document.createElement('canvas');
-  offscreen.width = viewport.width;
-  offscreen.height = viewport.height;
-  const ctx = offscreen.getContext('2d');
-  if (ctx) {
-    await page.render({ canvasContext: ctx, viewport }).promise;
-  }
-  return {
-    canvas: offscreen,
-    width: viewport.width,
-    height: viewport.height,
-    aspectRatio: `${viewport.width} / ${viewport.height}`,
-  };
+// One entry point for every readable file: EPUB gets its own surface,
+// everything else (images, CBZ/CBR, PDF) the spread-based reader below.
+export function ReaderModal(props: ReaderProps) {
+  return isEpubPath(props.filePath) ? <EpubReaderView {...props} /> : <ComicReaderModal {...props} />;
 }
 
-function getOrQueuePdfRender(
-  pdfDoc: any,
-  pageNumber: number,
-  inFlightMap: Map<number, Promise<PdfRenderItem>>,
-  resolvedMap: Map<number, PdfRenderItem>,
-): Promise<PdfRenderItem> {
-  const existing = resolvedMap.get(pageNumber);
-  if (existing) return Promise.resolve(existing);
-
-  const pending = inFlightMap.get(pageNumber);
-  if (pending) return pending;
-
-  const promise = renderPdfPage(pdfDoc, pageNumber).then(item => {
-    resolvedMap.set(pageNumber, item);
-    inFlightMap.delete(pageNumber);
-    return item;
-  }).catch(err => {
-    inFlightMap.delete(pageNumber);
-    throw err;
-  });
-
-  inFlightMap.set(pageNumber, promise);
-  return promise;
-}
-
-function PdfCanvasPage({
-  pdfDoc,
-  pageNumber,
-  inFlightMap,
-  resolvedMap,
-  onContextMenu,
-}: {
-  pdfDoc: any;
-  pageNumber: number;
-  inFlightMap: Map<number, Promise<PdfRenderItem>>;
-  resolvedMap: Map<number, PdfRenderItem>;
-  onContextMenu: (e: React.MouseEvent, canvas: HTMLCanvasElement) => void;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useLayoutEffect(() => {
-    if (!pdfDoc || !canvasRef.current) return;
-    let cancelled = false;
-    const canvas = canvasRef.current;
-
-    const cached = resolvedMap.get(pageNumber);
-    if (cached) {
-      canvas.width = cached.width;
-      canvas.height = cached.height;
-      canvas.style.aspectRatio = cached.aspectRatio;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(cached.canvas, 0, 0);
-      return;
-    }
-
-    getOrQueuePdfRender(pdfDoc, pageNumber, inFlightMap, resolvedMap).then(item => {
-      if (cancelled || !canvasRef.current) return;
-      const c = canvasRef.current;
-      c.width = item.width;
-      c.height = item.height;
-      c.style.aspectRatio = item.aspectRatio;
-      const ctx = c.getContext('2d');
-      ctx?.drawImage(item.canvas, 0, 0);
-    }).catch(err => {
-      if (err?.name !== 'RenderingCancelledException') {
-        console.error('Error rendering PDF page', err);
-      }
-    });
-
-    return () => { cancelled = true; };
-  }, [pdfDoc, pageNumber, inFlightMap, resolvedMap]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="comic-reader-page"
-      onContextMenu={e => {
-        if (canvasRef.current) onContextMenu(e, canvasRef.current);
-      }}
-    />
-  );
-}
-
-export function ReaderModal({
+function ComicReaderModal({
   externalId,
   title,
   filePath,
@@ -183,7 +70,7 @@ export function ReaderModal({
   onClose,
   onStandBy,
   onProgressSaved,
-}: Props) {
+}: ReaderProps) {
   const t = getT().reader;
   const { isClosing, close: handleClose } = useClosingTransition(onClose);
 
@@ -191,7 +78,8 @@ export function ReaderModal({
   const [errorMsg, setErrorMsg] = useState('');
   const [pages, setPages] = useState<string[]>([]);
   const [spreadIndex, setSpreadIndex] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const { isFullscreen, toggleFullscreen, exitFullscreen } = useReaderFullscreen();
+  useReaderActiveClass();
   const [bookmarks, setBookmarks] = useState<number[]>([]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -208,33 +96,6 @@ export function ReaderModal({
     setToastMsg(msg);
     toastTimeoutRef.current = window.setTimeout(() => setToastMsg(null), 2500);
   };
-
-  const toggleFullscreen = async () => {
-    try {
-      const appWindow = getCurrentWindow();
-      const current = await appWindow.isFullscreen();
-      await appWindow.setFullscreen(!current);
-      setIsFullscreen(!current);
-    } catch {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
-      } else {
-        document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
-      }
-    }
-  };
-
-  useEffect(() => {
-    const appWindow = getCurrentWindow();
-    appWindow.isFullscreen().then(setIsFullscreen).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.add('comic-reader-active');
-    return () => {
-      document.documentElement.classList.remove('comic-reader-active');
-    };
-  }, []);
 
   const markedRef = useRef(false);
   const resumedRef = useRef(false);
@@ -288,7 +149,7 @@ export function ReaderModal({
             return;
           }
           if (!doc.numPages) {
-            setErrorMsg('El archivo PDF no contiene páginas.');
+            setErrorMsg(getT().reader.pdf_no_pages);
             setLoadState('error');
             return;
           }
@@ -311,7 +172,7 @@ export function ReaderModal({
             .catch(() => {});
         } catch (err) {
           if (cancelled) return;
-          setErrorMsg(err instanceof Error ? err.message : String(err));
+          setErrorMsg(formatAppError(err, getT()));
           setLoadState('error');
         }
       })();
@@ -328,7 +189,7 @@ export function ReaderModal({
       .then(async res => {
         if (cancelled) return;
         if (!res.pages.length) {
-          setErrorMsg('No se encontraron páginas en el archivo.');
+          setErrorMsg(getT().reader.archive_no_pages);
           setLoadState('error');
           return;
         }
@@ -349,7 +210,7 @@ export function ReaderModal({
       })
       .catch(err => {
         if (cancelled) return;
-        setErrorMsg(err instanceof Error ? err.message : String(err));
+        setErrorMsg(formatAppError(err, getT()));
         setLoadState('error');
       });
 
@@ -476,18 +337,7 @@ export function ReaderModal({
           setContextMenu(null);
           return;
         }
-        try {
-          const appWindow = getCurrentWindow();
-          if (await appWindow.isFullscreen()) {
-            await appWindow.setFullscreen(false);
-            setIsFullscreen(false);
-            return;
-          }
-        } catch {}
-        if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
-          return;
-        }
+        if (await exitFullscreen()) return;
         handleClose();
         return;
       }
@@ -497,7 +347,7 @@ export function ReaderModal({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [goNext, goPrev, handleClose, contextMenu, toggleFullscreen]);
+  }, [goNext, goPrev, handleClose, contextMenu, toggleFullscreen, exitFullscreen]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -549,8 +399,8 @@ export function ReaderModal({
           type="button"
           className="comic-reader-header-btn"
           onClick={toggleFullscreen}
-          title={isFullscreen ? t.fullscreen_exit_title : 'Pantalla completa'}
-          aria-label={isFullscreen ? t.fullscreen_exit_aria : 'Pantalla completa'}
+          title={isFullscreen ? t.fullscreen_exit_title : t.fullscreen_title}
+          aria-label={isFullscreen ? t.fullscreen_exit_aria : t.fullscreen_aria}
         >
           {isFullscreen ? (
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -585,7 +435,7 @@ export function ReaderModal({
         {loadState === 'loading' && (
           <div className="comic-reader-state">
             <div className="spinner" />
-            <p>{isPdf ? 'Cargando documento…' : 'Extrayendo páginas…'}</p>
+            <p>{isPdf ? t.loading_document : t.extracting_pages}</p>
           </div>
         )}
 
@@ -680,7 +530,7 @@ export function ReaderModal({
           style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
           onClick={e => e.stopPropagation()}
         >
-          <div className="comic-context-menu-title">Página {contextMenu.pageNumber}</div>
+          <div className="comic-context-menu-title">{t.page_alt.replace('{page}', String(contextMenu.pageNumber))}</div>
           <button
             type="button"
             className="comic-context-menu-item"
@@ -692,7 +542,7 @@ export function ReaderModal({
             <svg width={14} height={14} viewBox="0 0 24 24" fill={bookmarks.includes(contextMenu.pageNumber) ? 'var(--accent)' : 'none'} stroke="currentColor" strokeWidth={2}>
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
             </svg>
-            {bookmarks.includes(contextMenu.pageNumber) ? 'Quitar marcador' : 'Añadir marcador'}
+            {bookmarks.includes(contextMenu.pageNumber) ? t.bookmark_remove : t.bookmark_add}
           </button>
           <button
             type="button"
@@ -707,13 +557,13 @@ export function ReaderModal({
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Guardar página (PNG)
+            {t.save_page_png}
           </button>
 
           {bookmarks.length > 0 && (
             <>
               <div className="comic-context-menu-divider" />
-              <div className="comic-context-menu-title">Marcadores ({bookmarks.length})</div>
+              <div className="comic-context-menu-title">{t.bookmarks_count.replace('{count}', String(bookmarks.length))}</div>
               <div className="comic-context-bookmarks-list">
                 {bookmarks.map(p => (
                   <button
@@ -728,7 +578,7 @@ export function ReaderModal({
                     <svg width={12} height={12} viewBox="0 0 24 24" fill="currentColor">
                       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                     </svg>
-                    Página {p}
+                    {t.page_alt.replace('{page}', String(p))}
                   </button>
                 ))}
               </div>

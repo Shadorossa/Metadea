@@ -12,7 +12,7 @@ export function getLocaleCode(): string {
     ca: 'ca-ES',
     ru: 'ru-RU',
   };
-  return localeMap[code] || 'es-ES';
+  return localeMap[code] || 'en-US';
 }
 
 export function formatDateShort(date: Date): string {

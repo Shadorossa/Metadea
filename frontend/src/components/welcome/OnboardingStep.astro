@@ -1,0 +1,51 @@
+---
+// One screen of the first-run flow: icon, title, what the step is, why it
+// matters, then the step's own controls (the slot). Text carries `data-i18n`
+// so the mount script can swap it to the user's language at runtime — the
+// page itself is statically rendered in the reference locale.
+import type { Translations } from '../../i18n/index';
+import type { OnboardingStepDef } from '../../lib/welcome/onboarding-steps';
+import OnboardingStepIcon from './OnboardingStepIcon.astro';
+
+interface Props {
+  t: Translations;
+  step: OnboardingStepDef;
+  index: number;
+}
+
+const { t, step, index } = Astro.props;
+const copy = t.onboarding.steps[step.id];
+const key = `onboarding.steps.${step.id}`;
+const titleId = `onboarding-${step.id}-title`;
+---
+
+<section
+  class="onboarding-step"
+  data-step={index}
+  data-step-id={step.id}
+  aria-labelledby={titleId}
+  hidden={index !== 0}
+>
+  <header class="onboarding-step-head">
+    <span class="onboarding-step-icon" aria-hidden="true"><OnboardingStepIcon icon={step.icon} size={22} /></span>
+    <div class="onboarding-step-heading">
+      <h2 id={titleId}>
+        <span data-i18n={`${key}.title`}>{copy.title}</span>
+        {step.optional && (
+          <span class="onboarding-optional-badge" data-i18n="onboarding.optional_badge">{t.onboarding.optional_badge}</span>
+        )}
+      </h2>
+      <p class="onboarding-step-body" data-i18n={`${key}.body`}>{copy.body}</p>
+      <p class="onboarding-why">
+        <strong data-i18n="onboarding.why_label">{t.onboarding.why_label}</strong>
+        <span data-i18n={`${key}.why`}>{copy.why}</span>
+      </p>
+    </div>
+  </header>
+  <div class="onboarding-step-content">
+    <slot />
+  </div>
+  {step.settingsTab && (
+    <p class="onboarding-later" data-i18n="onboarding.change_later">{t.onboarding.change_later}</p>
+  )}
+</section>

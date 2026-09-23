@@ -61,7 +61,7 @@ pub fn stop_game_process(
     use sysinfo::System;
 
     if install_path.trim().is_empty() {
-        return Err("No se conoce la ruta de instalación del juego".into());
+        return Err(crate::error_codes::GAME_INSTALL_PATH_UNKNOWN.into());
     }
 
     let is_direct_exe = install_path.to_lowercase().ends_with(".exe");

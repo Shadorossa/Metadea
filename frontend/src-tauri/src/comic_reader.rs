@@ -22,7 +22,7 @@ pub struct ComicPages {
     pub cache_dir: String,
 }
 
-fn cache_root(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn cache_root(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(app_handle.path().app_data_dir().str_err()?.join("metadata").join("comic_cache"))
 }
 
@@ -32,7 +32,7 @@ fn cache_root(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
 // std's DefaultHasher is not stable across Rust releases: a toolchain bump
 // would silently re-key every cache dir. Switching to it re-keyed existing
 // caches exactly once (they are just re-extracted on the next open).
-fn archive_cache_key(path: &str) -> String {
+pub(crate) fn archive_cache_key(path: &str) -> String {
     const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
     let hash = path.bytes().fold(FNV_OFFSET_BASIS, |hash, byte| {
@@ -176,11 +176,11 @@ mod natural_cmp_tests {
 fn extract_rar(src: &Path, dest: &Path) -> Result<(), String> {
     let mut archive = unrar::Archive::new(src)
         .open_for_processing()
-        .map_err(|e| format!("No se pudo abrir el CBR: {e}"))?;
+        .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_OPEN_CBR, e))?;
 
     while let Some(header) = archive
         .read_header()
-        .map_err(|e| format!("Error leyendo el CBR: {e}"))?
+        .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_READ_CBR, e))?
     {
         let entry = header.entry();
         // `extract_with_base` joins the entry's stored name onto `dest`, so a
@@ -190,9 +190,9 @@ fn extract_rar(src: &Path, dest: &Path) -> Result<(), String> {
         archive = if entry.is_file() && is_image(&entry.filename) && safe_name.is_some() {
             header
                 .extract_with_base(dest)
-                .map_err(|e| format!("Error extrayendo página: {e}"))?
+                .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_EXTRACT_PAGE, e))?
         } else {
-            header.skip().map_err(|e| format!("Error leyendo el CBR: {e}"))?
+            header.skip().map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_READ_CBR, e))?
         };
     }
     Ok(())
@@ -200,12 +200,12 @@ fn extract_rar(src: &Path, dest: &Path) -> Result<(), String> {
 
 fn extract_zip(src: &Path, dest: &Path) -> Result<(), String> {
     let file = std::fs::File::open(src)
-        .map_err(|e| format!("No se pudo abrir el archivo ZIP/CBZ: {e}"))?;
+        .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_OPEN_CBZ, e))?;
     let mut archive = zip::ZipArchive::new(file)
-        .map_err(|e| format!("Error leyendo ZIP/CBZ: {e}"))?;
+        .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_READ_CBZ, e))?;
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)
-            .map_err(|e| format!("Error leyendo entrada ZIP: {e}"))?;
+            .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_READ_CBZ, e))?;
         let outpath = match file.enclosed_name() {
             Some(path) => dest.join(path),
             None => continue,
@@ -217,9 +217,9 @@ fn extract_zip(src: &Path, dest: &Path) -> Result<(), String> {
                 let _ = std::fs::create_dir_all(p);
             }
             let mut outfile = std::fs::File::create(&outpath)
-                .map_err(|e| format!("Error creando archivo: {e}"))?;
+                .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_CREATE_FILE, e))?;
             std::io::copy(&mut file, &mut outfile)
-                .map_err(|e| format!("Error extrayendo imagen: {e}"))?;
+                .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_EXTRACT_PAGE, e))?;
         }
     }
     Ok(())
@@ -229,13 +229,13 @@ fn extract_by_format(ext: &str, src: &Path, dest: &Path) -> Result<(), String> {
     match ext {
         "cbr" | "rar" => extract_rar(src, dest),
         "cbz" | "zip" => extract_zip(src, dest),
-        other => Err(format!("Formato no soportado todavía: .{other}")),
+        other => Err(crate::error_codes::with_detail(crate::error_codes::COMIC_FORMAT_UNSUPPORTED, format!(".{other}"))),
     }
 }
 
 #[tauri::command]
 pub async fn read_comic_binary_file(path: String) -> Result<tauri::ipc::Response, String> {
-    let bytes = std::fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
+    let bytes = std::fs::read(&path).map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_READ_FILE, e))?;
     Ok(tauri::ipc::Response::new(bytes))
 }
 
@@ -260,7 +260,7 @@ pub async fn extract_comic_archive(app_handle: tauri::AppHandle, path: String) -
     let mut paths = Vec::new();
     collect_images(&dest, &mut paths).str_err()?;
     if paths.is_empty() {
-        return Err("No se encontraron páginas (imágenes) en el archivo.".to_string());
+        return Err(crate::error_codes::COMIC_NO_PAGES.to_string());
     }
 
     let mut pages: Vec<String> = paths.into_iter().map(|p| p.to_string_lossy().to_string()).collect();
@@ -279,7 +279,7 @@ pub async fn save_comic_page_as_png(
     let pic_dir = app_handle
         .path()
         .picture_dir()
-        .map_err(|e| format!("No se pudo obtener la carpeta de imágenes: {e}"))?;
+        .map_err(|e| crate::error_codes::with_detail(crate::error_codes::PICTURES_DIR_LOCATE, e))?;
 
     let metadea_pics = pic_dir.join("Metadea");
     if !metadea_pics.exists() {
@@ -310,14 +310,14 @@ pub async fn save_comic_page_as_png(
             .unwrap_or(&source_page_path);
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(b64)
-            .map_err(|e| format!("Error decodificando imagen base64: {e}"))?;
+            .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_DECODE_BASE64, e))?;
         std::fs::write(&dest_path, &bytes)
-            .map_err(|e| format!("Error guardando archivo PNG: {e}"))?;
+            .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_SAVE_PNG, e))?;
     } else {
         let img = image::open(&source_page_path)
-            .map_err(|e| format!("Error abriendo la imagen de página: {e}"))?;
+            .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_OPEN_PAGE_IMAGE, e))?;
         img.save_with_format(&dest_path, image::ImageFormat::Png)
-            .map_err(|e| format!("Error guardando la página como PNG: {e}"))?;
+            .map_err(|e| crate::error_codes::with_detail(crate::error_codes::COMIC_SAVE_PNG, e))?;
     }
 
     Ok(dest_path.to_string_lossy().to_string())

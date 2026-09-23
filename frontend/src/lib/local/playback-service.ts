@@ -13,13 +13,17 @@
 // (`internal`, default — progress arrives as `player://*` events, no
 // polling) and VLC (`vlc`, the original HTTP-polling path, kept verbatim as
 // the fallback when libmpv is not installed or the user prefers VLC).
-import { saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, type LibraryEntry } from '../tauri';
+import {
+  saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, getEpisodeHistory, deleteEpisodeHistoryEntry, deleteLibraryEntry,
+  type LibraryEntry,
+} from '../tauri';
 import { getResumePosition, saveResumePosition, clearResumePosition } from '../tauri/resume-position';
 import { playFileWithVlc, getVlcPlaybackStatus, sendVlcCommand, type VlcPlaybackStatus } from '../tauri/anime-local';
 import {
   playerEngineAvailable, playerOpen, playerSetPause, playerNext, playerStopClose, playerGetStatus,
-  listenPlayerStatus, listenPlayerTrackChanged, listenPlayerEnded,
+  listenPlayerStatus, listenPlayerTrackChanged, listenPlayerEnded, showEpisodeWatchedToast, listenToastAction,
 } from '../tauri/player';
+import { undoEpisodeMark, type EpisodeMarkSnapshot } from './episode-undo';
 import type { PlayerEnded, PlayerStatus } from '../player/player-status';
 import { buildPresenceSnapshot, shouldResendPresence, type PresenceSnapshot } from '../player/presence-sync';
 import { getControlsMode, getPlaybackEngine, type PlaybackEngine } from '../player/player-settings';
@@ -165,6 +169,16 @@ let sessionEpisodeLabels: string[] = [];
 // every fresh startQueuePlayback so the very first episode's own real
 // runtime counts against the cap too, not just episodes after the first.
 let lastMarkedAt = 0;
+// The one auto-mark the native toast's Undo button can still revert (the
+// toast shows a single notice at a time, so only the latest is kept). The
+// token travels through the toast window and back in `toast://action`.
+let pendingUndo: { token: number; snapshot: EpisodeMarkSnapshot } | null = null;
+let nextUndoToken = 1;
+let toastListening: Promise<void> | null = null;
+// Resolved by handleInternalEnded so stopPlayback can wait for mpv's exact
+// position instead of racing it with the last tick's stale one.
+let endedSignal: (() => void) | null = null;
+const ENDED_WAIT_MS = 1500;
 
 function notify() {
   playbackStore.set(state);
@@ -199,12 +213,71 @@ function setState(next: PlaybackState | null) {
 // initial SSR pass on the server, reporting "nothing playing" (the store's
 // own initial value) until the client takes over and subscribes.
 
-async function markEpisodeWatched(episodeNumber: number): Promise<void> {
+// Screenshot-style label (S01E02 / M01) of a queue entry for the toast and
+// Discord; falls back to a bare `E02` for an episode outside the session.
+function episodeLabelFor(episodeNumber: number): string {
+  const index = state ? state.queue.findIndex(item => item.episodeNumber === episodeNumber) : -1;
+  return (index >= 0 && sessionEpisodeLabels[index]) || `E${String(episodeNumber).padStart(2, '0')}`;
+}
+
+// Everything the mark touched, reverted in one go — see episode-undo.ts.
+async function undoPendingMark(token: number): Promise<void> {
+  if (!pendingUndo || pendingUndo.token !== token) return;
+  const { snapshot } = pendingUndo;
+  pendingUndo = null;
+  try {
+    const restored = await undoEpisodeMark(snapshot, {
+      saveLibraryEntry,
+      getEpisodeHistory,
+      deleteEpisodeHistoryEntry,
+      saveResumePosition,
+      deleteLibraryEntry,
+      syncToAniList,
+      dispatchEpisodeMarked: (externalId, episodeNumber) =>
+        window.dispatchEvent(new CustomEvent('metadea:episode-marked', { detail: { externalId, episodeNumber } })),
+    });
+    // The next mark in this session builds on the restored entry again.
+    if (state && state.externalId === snapshot.externalId) {
+      state = { ...state, libraryEntry: restored };
+      notify();
+    }
+  } catch (err) {
+    console.error('Failed to undo the watched mark', err);
+  }
+}
+
+// One app-wide subscription to the toast window's button, for both engines.
+function ensureToastListener(): Promise<void> {
+  if (!toastListening) {
+    toastListening = listenToastAction(action => {
+      if (action.action === 'undo') undoPendingMark(action.token).catch(() => {});
+    }).then(() => undefined).catch(err => {
+      toastListening = null;
+      console.error('Failed to subscribe to toast actions', err);
+    });
+  }
+  return toastListening;
+}
+
+// `positionSecs` is where playback was when the mark fired — what Undo puts
+// back as the resume point (the mark itself clears it).
+async function markEpisodeWatched(episodeNumber: number, positionSecs = lastKnownTime): Promise<void> {
   if (!state || markedEpisode === episodeNumber) return;
   markedEpisode = episodeNumber;
   lastMarkedAt = Date.now();
 
-  const { externalId, libraryEntry, totalCount } = state;
+  const { externalId, libraryEntry, totalCount, title } = state;
+  // Read before the first await: a mark fired from the session's own end
+  // (player://ended) outlives `state`, which finishSession clears at once.
+  const episodeLabel = episodeLabelFor(episodeNumber);
+  const snapshot: EpisodeMarkSnapshot = {
+    externalId,
+    episodeNumber,
+    previousEntry: { ...libraryEntry },
+    resumeSeconds: Math.max(0, positionSecs),
+    addedSequelExternalId: null,
+    anilistSynced: false,
+  };
   // Reaching the last episode/chapter BY ACTUALLY PLAYING IT through the app
   // is what completes a work here — not just "progress caught up to
   // total_count" in the abstract, since that could also come from a manual
@@ -247,13 +320,16 @@ async function markEpisodeWatched(episodeNumber: number): Promise<void> {
     // Only from actually finishing it here — see addSequelToPlanning's own
     // comment for why this doesn't live inside saveLibraryEntry itself.
     if (finishing) {
-      addSequelToPlanning(externalId).catch(err => console.error('Failed to auto-add sequel to planning:', err));
+      addSequelToPlanning(externalId)
+        .then(sequelId => { snapshot.addedSequelExternalId = sequelId ?? null; })
+        .catch(err => console.error('Failed to auto-add sequel to planning:', err));
     }
     // MediaEditorModal's own save does this too — the auto-mark-on-watch
     // flow here saves straight to saveLibraryEntry (bypassing that modal
     // entirely), so without this an episode watched through the local
     // player updated progress in-app but never reached AniList at all.
     if (isAniListType(libraryEntry.type)) {
+      snapshot.anilistSynced = true;
       syncToAniList({
         externalId, type: libraryEntry.type, status: nextStatus ?? '',
         rating: libraryEntry.rating ?? 0, progress: episodeNumber,
@@ -267,6 +343,14 @@ async function markEpisodeWatched(episodeNumber: number): Promise<void> {
     // a plain window event instead of a callback prop, since this module has
     // no reference to whichever component(s) happen to be mounted right now.
     window.dispatchEvent(new CustomEvent('metadea:episode-marked', { detail: { externalId, episodeNumber } }));
+    // The native "marked as watched · Undo" toast (toast_window.rs) — the
+    // same always-on-top window as the F12 capture notice, so it is seen
+    // over the video whichever engine is playing.
+    const token = nextUndoToken++;
+    pendingUndo = { token, snapshot };
+    await ensureToastListener();
+    showEpisodeWatchedToast(title, episodeLabel, token)
+      .catch(err => console.error('Failed to show the watched toast', err));
   } catch (err) {
     // Don't block the next poll tick from retrying on a transient save error.
     markedEpisode = null;
@@ -295,6 +379,7 @@ function updateDiscordForTick(episodeNumber: number, statusState: PlaybackStatus
   const item = queueIndex >= 0 ? state.queue[queueIndex] : undefined;
   setPlaybackPresence({
     title: state.title,
+    externalId: state.externalId,
     episodeNumber,
     episodeLabel: queueIndex >= 0 ? sessionEpisodeLabels[queueIndex] : undefined,
     episodeTitle: item?.episodeTitle,
@@ -311,7 +396,7 @@ function updateDiscordForTick(episodeNumber: number, statusState: PlaybackStatus
 function persistStopPosition(episodeNumber: number, time: number, length: number) {
   if (!state) return;
   if (hasReachedWatchedThreshold(time, length)) {
-    markEpisodeWatched(episodeNumber).catch(() => {});
+    markEpisodeWatched(episodeNumber, time).catch(() => {});
   } else if (time > 0) {
     saveResumePosition(state.externalId, episodeNumber, time).catch(() => {});
   }
@@ -319,6 +404,7 @@ function persistStopPosition(episodeNumber: number, time: number, length: number
 
 function finishSession() {
   stopPolling();
+  endedSignal = null;
   lastPresence = null;
   clearPlaybackPresence();
   setState(null);
@@ -434,7 +520,7 @@ function handleInternalStatus(status: PlayerStatus) {
   if (status.state === 'ended') {
     // keep-open=yes: only the LAST queued file reports "ended" (earlier
     // ones auto-advance), so this is the queue finishing.
-    if (hasReachedWatchedThreshold(time, length)) markEpisodeWatched(current.episodeNumber).catch(() => {});
+    if (hasReachedWatchedThreshold(time, length)) markEpisodeWatched(current.episodeNumber, time).catch(() => {});
     finishSession();
     return;
   }
@@ -446,12 +532,14 @@ function handleInternalStatus(status: PlayerStatus) {
   updateDiscordForTick(current.episodeNumber, uiStatus, time, length, status.speed);
   setState({ ...state, status: uiStatus, position: positionFraction(time, length), time, length });
   if (hasReachedWatchedThreshold(time, length)) {
-    markEpisodeWatched(current.episodeNumber);
+    markEpisodeWatched(current.episodeNumber, time);
   }
 }
 
 function handleInternalEnded(ended: PlayerEnded) {
   closePlayerModal();
+  endedSignal?.();
+  endedSignal = null;
   if (!state || state.engine !== 'internal') return;
   // The payload carries mpv's own final position (the throttled ticks may
   // be a quarter second stale) and which queue entry it belonged to.
@@ -537,6 +625,8 @@ export async function startQueuePlayback(target: StartPlaybackTarget): Promise<v
       workName: target.title,
       episodeLabels: screenshotEpisodeLabels,
       titles: target.queue.map(q => q.episodeTitle ?? ''),
+      externalId: target.externalId,
+      episodeNumbers: target.queue.map(q => q.episodeNumber),
       overlay: getControlsMode() === 'overlay',
     });
     setState({ ...baseState, engine: 'internal' });
@@ -592,11 +682,16 @@ export function stopPlayback(): void {
   if (!state) return;
   if (state.engine === 'internal') {
     // Teardown answers with `player://ended` carrying mpv's exact position;
-    // handleInternalEnded persists it and finishes the session. Should the
-    // engine already be gone, fall back to what the last tick knew.
+    // handleInternalEnded persists it and finishes the session. The event
+    // and the invoke's own resolution arrive over separate IPC paths, so
+    // the fallback (what the last tick knew) only runs once the event has
+    // had a fair chance to land — i.e. the engine was already gone.
     closePlayerModal();
+    const ended = new Promise<void>(resolve => { endedSignal = resolve; });
+    const timeout = new Promise<void>(resolve => { setTimeout(resolve, ENDED_WAIT_MS); });
     playerStopClose('stopped')
       .catch(() => {})
+      .then(() => Promise.race([ended, timeout]))
       .then(() => {
         if (!state) return;
         const current = state.queue[state.queueIndex];

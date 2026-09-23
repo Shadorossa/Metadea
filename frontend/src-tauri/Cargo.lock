@@ -98,12 +98,15 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "cc",
  "chrono",
  "discord-rich-presence",
  "futures",
+ "getrandom 0.2.17",
  "image",
  "libloading 0.8.9",
  "log",
+ "quick-xml",
  "reqwest 0.12.28",
  "rusqlite",
  "serde",

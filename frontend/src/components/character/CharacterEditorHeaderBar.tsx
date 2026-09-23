@@ -38,7 +38,7 @@ export function CharacterEditorHeaderBar({ title, currentId, statusMsg, submitti
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          <span>Importar datos</span>
+          <span>{t.import_data_button}</span>
         </button>
         <button
           type="button"

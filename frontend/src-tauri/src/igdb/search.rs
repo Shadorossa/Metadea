@@ -395,6 +395,9 @@ pub async fn igdb_search_unfiltered(
 pub async fn igdb_search_candidates(
     app_handle: tauri::AppHandle,
     game_name: String,
+    // The emulator platform of a scanned ROM, pre-filled by the picker so
+    // the candidates are the console's own releases (see igdb_platform_ids).
+    rom_platform: Option<String>,
 ) -> Result<Vec<serde_json::Value>, String> {
     let cfg = load_env_config(&app_handle)?;
     let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
@@ -428,6 +431,7 @@ pub async fn igdb_search_candidates(
         tokens.join(" ")
     };
     let escaped_query = search_query.replace('\\', "\\\\").replace('"', "\\\"");
+    let platform_clause = crate::igdb_matching::igdb_platform_clause(rom_platform.as_deref());
 
     let results = igdb_query(
         client,
@@ -436,8 +440,8 @@ pub async fn igdb_search_candidates(
         IGDB_API_GAMES,
         &format!(
             "fields id,name,cover.image_id,first_release_date,category,game_type; \
-             search \"{}\"; where cover != null; limit 20;",
-            escaped_query
+             search \"{}\"; where cover != null{}; limit 20;",
+            escaped_query, platform_clause
         ),
     )
     .await?;

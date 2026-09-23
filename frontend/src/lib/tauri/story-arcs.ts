@@ -25,7 +25,7 @@ export async function getStoryArcsForMedia(mediaExternalId: string): Promise<Sto
 
 /** Same result shape as calling getStoryArcsForMedia once per id and
  *  merging by arc.id, but one IPC call/one DB-lock acquisition instead of N
- *  — see the Rust-side comment on get_story_arcs_for_media_batch for why
+ *  — see the Rust-side comment on get_story_arcs_for_media_batch_light for why
  *  that matters for a saga with many members (e.g. SagaViewerModal). Unlike
  *  getStoryArcsForMedia, image_base64 holds the arc image's absolute file
  *  path (field name kept so StoryArc's shape is identical) — callers MUST

@@ -37,8 +37,8 @@ export function PrEditorSidebar({ pe, activeTab, relationsSubtab, relationsSubta
         type="button"
         className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`}
         onClick={() => onSelectTab('general')}
-        title="General"
-        aria-label="General"
+        title={pe.tab_general}
+        aria-label={pe.tab_general}
         aria-current={activeTab === 'general' ? 'page' : undefined}
       >
         <Settings size={18} aria-hidden="true" />
@@ -47,8 +47,8 @@ export function PrEditorSidebar({ pe, activeTab, relationsSubtab, relationsSubta
         type="button"
         className={`pr-editor-tab-btn${activeTab === 'cast' ? ' active' : ''}`}
         onClick={() => onSelectTab('cast')}
-        title="Personajes"
-        aria-label="Personajes"
+        title={pe.tab_cast}
+        aria-label={pe.tab_cast}
         aria-current={activeTab === 'cast' ? 'page' : undefined}
       >
         <Users size={18} aria-hidden="true" />

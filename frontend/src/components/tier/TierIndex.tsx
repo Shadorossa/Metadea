@@ -6,9 +6,6 @@ import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { IconTrash } from '../local/ui/icons';
 
 export default function TierIndex() {
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => { setIsMounted(true); }, []);
-
   const t = getT().tier;
 
   const [search, setSearch]     = useState('');
@@ -41,7 +38,7 @@ export default function TierIndex() {
   const handleDelete = async (list: TierListInfo, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`¿Eliminar la tier list "${list.name}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(t.delete_confirm)) return;
     setDeletingId(list.id);
     try {
       await deleteTierList(list.id);

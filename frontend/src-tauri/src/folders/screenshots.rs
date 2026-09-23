@@ -411,7 +411,7 @@ pub async fn get_local_screenshots(
     let screenshots_dir = app_handle
         .path()
         .picture_dir()
-        .map_err(|e| format!("No se pudo localizar Imágenes: {e}"))?
+        .map_err(|e| crate::error_codes::with_detail(crate::error_codes::PICTURES_DIR_LOCATE, e))?
         .join("Metadea")
         .join(sanitize_capture_folder_name(&work_name));
     let entries = match std::fs::read_dir(screenshots_dir) {
@@ -438,4 +438,216 @@ pub async fn get_local_screenshots(
         .collect();
     screenshots.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
     Ok(screenshots.into_iter().map(|(_, screenshot)| screenshot).collect())
+}
+
+// ── Emulator screenshots ──────────────────────────────────────────────────
+// The emulator's own capture folder (emulator_configs.screenshots_dir, or
+// the layout emulators::default_screenshots_dirs detects), narrowed to one
+// game when the emulator names captures after it.
+
+const MAX_EMULATOR_SCREENSHOTS: usize = 200;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EmulatorScreenshots {
+    pub screenshots: Vec<LocalScreenshot>,
+    // false when nothing in the folder could be tied to this game, so the
+    // list is the emulator's most recent captures for the platform instead.
+    pub filtered: bool,
+}
+
+fn is_image_file(path: &std::path::Path) -> bool {
+    path.is_file()
+        && path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| matches!(extension.to_ascii_lowercase().as_str(), "png" | "jpg" | "jpeg" | "webp" | "bmp"))
+}
+
+// Lowercase alphanumerics only, so "Zelda - Twilight Princess" matches
+// "zelda_twilight_princess_20240101.png" whatever separators either uses.
+fn normalized_key(text: &str) -> String {
+    text.chars()
+        .filter(char::is_ascii_alphanumeric)
+        .map(|character| character.to_ascii_lowercase())
+        .collect()
+}
+
+// Keys a capture's file name must start with to count as this game's:
+// the ROM's own file stem, the display title and the header id/title.
+// Shorter than 3 characters would match nearly everything, so those are
+// dropped.
+pub(crate) fn game_match_keys(rom_path: &str, title: Option<&str>, header_id: Option<&str>, header_title: Option<&str>) -> Vec<String> {
+    let rom_stem = std::path::Path::new(rom_path)
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .map(|stem| stem.split(['(', '[']).next().unwrap_or(stem));
+    let mut keys: Vec<String> = [rom_stem, title, header_id, header_title]
+        .into_iter()
+        .flatten()
+        .map(normalized_key)
+        .filter(|key| key.chars().count() >= 3)
+        .collect();
+    keys.sort();
+    keys.dedup();
+    keys
+}
+
+pub(crate) fn screenshot_matches_game(file_name: &str, keys: &[String]) -> bool {
+    let stem = file_name.rsplit_once('.').map_or(file_name, |(stem, _)| stem);
+    let normalized = normalized_key(stem);
+    !normalized.is_empty() && keys.iter().any(|key| normalized.starts_with(key.as_str()))
+}
+
+fn images_in_dir(dir: &std::path::Path) -> Vec<(std::time::SystemTime, PathBuf)> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if !is_image_file(&path) {
+                return None;
+            }
+            let modified = entry.metadata().ok()?.modified().unwrap_or(std::time::UNIX_EPOCH);
+            Some((modified, path))
+        })
+        .collect()
+}
+
+// Newest first, at most MAX_EMULATOR_SCREENSHOTS. Dolphin keeps one
+// subfolder per GameID: when it exists that folder is the whole answer.
+// Otherwise the flat folder is narrowed by file name, and when nothing in
+// it names this game the emulator's recent captures are returned unfiltered
+// so the user still sees something (flagged, so the UI can say so).
+pub(crate) fn list_emulator_screenshots(dir: &std::path::Path, keys: &[String], header_id: Option<&str>) -> (Vec<PathBuf>, bool) {
+    let (mut images, filtered) = match header_id.map(|id| dir.join(id)).filter(|sub| sub.is_dir()) {
+        Some(game_dir) => (images_in_dir(&game_dir), true),
+        None => {
+            let all = images_in_dir(dir);
+            let own: Vec<_> = all
+                .iter()
+                .filter(|(_, path)| path.file_name().and_then(|name| name.to_str()).is_some_and(|name| screenshot_matches_game(name, keys)))
+                .cloned()
+                .collect();
+            if own.is_empty() { (all, false) } else { (own, true) }
+        }
+    };
+    images.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
+    images.truncate(MAX_EMULATOR_SCREENSHOTS);
+    (images.into_iter().map(|(_, path)| path).collect(), filtered)
+}
+
+#[tauri::command]
+pub async fn get_emulator_screenshots(
+    app_handle: tauri::AppHandle,
+    platform_id: String,
+    rom_path: String,
+    header_id: Option<String>,
+    title: Option<String>,
+) -> Result<EmulatorScreenshots, String> {
+    use tauri::Manager;
+
+    let config = {
+        let db = app_handle.state::<crate::db::MetadeaDb>();
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        crate::emulators::emulator_config_for_platform(&conn, &platform_id)?
+    };
+    let Some(config) = config else {
+        return Ok(EmulatorScreenshots { screenshots: Vec::new(), filtered: true });
+    };
+    let user_dirs = crate::emulators::UserDirs {
+        documents: app_handle.path().document_dir().ok(),
+        data: app_handle.path().data_dir().ok(),
+    };
+    let Some(dir) = crate::emulators::resolve_screenshots_dir(&config, &user_dirs) else {
+        return Ok(EmulatorScreenshots { screenshots: Vec::new(), filtered: true });
+    };
+
+    // The header id/title come from the ROM itself when the caller has none
+    // (Dolphin's per-game folder is named after the disc's game id).
+    let header = if header_id.is_none() {
+        crate::platform_scanning::rom_header::read_rom_header(std::path::Path::new(&rom_path))
+    } else {
+        None
+    };
+    let header_id = header_id.or_else(|| header.as_ref().map(|h| h.game_id.clone()));
+    let header_title = header.as_ref().and_then(|h| h.title.clone());
+    let keys = game_match_keys(&rom_path, title.as_deref(), header_id.as_deref(), header_title.as_deref());
+
+    let (paths, filtered) = list_emulator_screenshots(&dir, &keys, header_id.as_deref());
+    // Same runtime widening steam_get_screenshots does: the folder is
+    // wherever the emulator lives, so it cannot be in the static scope.
+    let scope = app_handle.asset_protocol_scope();
+    let _ = scope.allow_directory(&dir, false);
+    if let Some(id) = header_id.as_deref() {
+        let _ = scope.allow_directory(dir.join(id), false);
+    }
+    let screenshots = paths
+        .into_iter()
+        .map(|path| {
+            let path = path.to_string_lossy().into_owned();
+            LocalScreenshot { path: path.clone(), thumbnail_path: path }
+        })
+        .collect();
+    Ok(EmulatorScreenshots { screenshots, filtered })
+}
+
+#[cfg(test)]
+mod emulator_screenshot_tests {
+    use super::*;
+
+    #[test]
+    fn match_keys_come_from_rom_stem_title_and_header_without_short_ones() {
+        let keys = game_match_keys(r"C:\roms\Zelda - Twilight Princess (USA).rvz", Some("The Legend of Zelda"), Some("GZ2E01"), Some("ZELDA"));
+        assert_eq!(keys, vec!["gz2e01", "thelegendofzelda", "zelda", "zeldatwilightprincess"]);
+        assert!(game_match_keys("/roms/ab.nds", Some("ab"), None, None).is_empty());
+    }
+
+    #[test]
+    fn file_names_match_by_normalized_prefix() {
+        let keys = game_match_keys("/roms/Zelda - Twilight Princess.rvz", None, None, None);
+        assert!(screenshot_matches_game("zelda_twilight_princess_2024-01-01.png", &keys));
+        assert!(screenshot_matches_game("Zelda - Twilight Princess-1.PNG", &keys));
+        assert!(!screenshot_matches_game("Metroid Prime-1.png", &keys));
+        assert!(!screenshot_matches_game(".png", &keys));
+    }
+
+    fn touch(path: &std::path::Path, modified_secs_ago: u64) {
+        std::fs::write(path, b"x").unwrap();
+        let time = std::time::SystemTime::now() - std::time::Duration::from_secs(modified_secs_ago);
+        let file = std::fs::File::options().write(true).open(path).unwrap();
+        file.set_modified(time).unwrap();
+    }
+
+    #[test]
+    fn listing_is_filtered_newest_first_and_bounded() {
+        let dir = std::env::temp_dir().join(format!("metadea-emu-list-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for i in 0..(MAX_EMULATOR_SCREENSHOTS + 5) {
+            touch(&dir.join(format!("Game A_{i:04}.png")), (i as u64) * 10 + 1000);
+        }
+        touch(&dir.join("Game B_0001.png"), 1);
+        touch(&dir.join("Game A_notes.txt"), 1);
+
+        let keys = game_match_keys("/roms/Game A.iso", None, None, None);
+        let (own, filtered) = list_emulator_screenshots(&dir, &keys, None);
+        assert!(filtered);
+        assert_eq!(own.len(), MAX_EMULATOR_SCREENSHOTS);
+        assert!(own[0].ends_with("Game A_0000.png"), "{:?}", own[0]);
+        assert!(own.iter().all(|p| p.to_string_lossy().contains("Game A_")));
+
+        // Nothing named after this game: the recent captures, flagged.
+        let keys = game_match_keys("/roms/Game C.iso", None, None, None);
+        let (recent, filtered) = list_emulator_screenshots(&dir, &keys, None);
+        assert!(!filtered);
+        assert!(recent[0].ends_with("Game B_0001.png"));
+
+        // Dolphin-style per-game folder wins over name matching.
+        std::fs::create_dir_all(dir.join("GZ2E01")).unwrap();
+        touch(&dir.join("GZ2E01").join("shot.png"), 5);
+        let (game_dir, filtered) = list_emulator_screenshots(&dir, &keys, Some("GZ2E01"));
+        assert!(filtered);
+        assert_eq!(game_dir.len(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

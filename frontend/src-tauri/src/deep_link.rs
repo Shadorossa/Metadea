@@ -32,6 +32,11 @@ pub enum DeepLinkTarget {
     Profile { user: String },
     /// `metadea://home`
     Home,
+    /// `metadea://auth/mal?code=…&state=…` — MyAnimeList's OAuth redirect
+    /// (src/mal/oauth.rs). Handled in Rust: the code is exchanged in the
+    /// background and the frontend only learns the outcome; the navigate
+    /// event still fires so the app lands on Settings.
+    AuthMal { code: String, state: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,6 +46,8 @@ pub enum DeepLinkError {
     MissingId,
     UnexpectedId,
     InvalidId(String),
+    /// An `auth` link without the `code`/`state` query it needs.
+    MissingQuery,
 }
 
 impl std::fmt::Display for DeepLinkError {
@@ -51,6 +58,7 @@ impl std::fmt::Display for DeepLinkError {
             Self::MissingId => write!(f, "deep link is missing its id"),
             Self::UnexpectedId => write!(f, "deep link kind takes no id"),
             Self::InvalidId(id) => write!(f, "deep link id '{id}' is not valid"),
+            Self::MissingQuery => write!(f, "deep link is missing its code/state query"),
         }
     }
 }
@@ -65,6 +73,50 @@ fn is_prefixed_id(value: &str) -> bool {
     !prefix.is_empty()
         && prefix.bytes().all(|b| b.is_ascii_lowercase())
         && is_plain_id(id)
+}
+
+/// An OAuth authorization code once percent-decoded: RFC 3986 unreserved
+/// characters only, bounded so a pathological URL cannot balloon.
+const MAX_AUTH_CODE_LEN: usize = 4096;
+
+fn is_auth_code(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_AUTH_CODE_LEN
+        && value.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~'))
+}
+
+/// `%XX` → byte, for the query values; anything malformed yields `None`.
+fn percent_decode(value: &str) -> Option<String> {
+    let bytes = value.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = bytes.get(i + 1..i + 3)?;
+            let text = std::str::from_utf8(hex).ok()?;
+            out.push(u8::from_str_radix(text, 16).ok()?);
+            i += 3;
+        } else {
+            out.push(if bytes[i] == b'+' { b' ' } else { bytes[i] });
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
+/// The `code` and `state` values of the OAuth return's query, decoded.
+fn auth_query(query: &str) -> Option<(String, String)> {
+    let mut code = None;
+    let mut state = None;
+    for pair in query.split('&') {
+        let (key, value) = pair.split_once('=')?;
+        match key {
+            "code" => code = Some(percent_decode(value)?),
+            "state" => state = Some(percent_decode(value)?),
+            _ => {}
+        }
+    }
+    Some((code?, state?))
 }
 
 // `^[A-Za-z0-9_-]+$`
@@ -91,7 +143,11 @@ pub fn parse_deep_link(raw: &str) -> Result<DeepLinkTarget, DeepLinkError> {
         return Err(DeepLinkError::WrongScheme);
     }
     let rest = &raw[prefix_len..];
-    let rest = rest.split(['?', '#']).next().unwrap_or("");
+    let rest = rest.split('#').next().unwrap_or("");
+    let (rest, query) = match rest.split_once('?') {
+        Some((path, query)) => (path, Some(query)),
+        None => (rest, None),
+    };
     let rest = rest.strip_suffix('/').unwrap_or(rest);
 
     let (kind, id) = match rest.split_once('/') {
@@ -128,6 +184,19 @@ pub fn parse_deep_link(raw: &str) -> Result<DeepLinkTarget, DeepLinkError> {
                 Err(DeepLinkError::InvalidId(id.to_string()))
             }
         }
+        "auth" => match id.ok_or(DeepLinkError::MissingId)? {
+            "mal" => {
+                let (code, state) = query.and_then(auth_query).ok_or(DeepLinkError::MissingQuery)?;
+                if !is_auth_code(&code) {
+                    return Err(DeepLinkError::InvalidId("code".to_string()));
+                }
+                if !is_plain_id(&state) {
+                    return Err(DeepLinkError::InvalidId("state".to_string()));
+                }
+                Ok(DeepLinkTarget::AuthMal { code, state })
+            }
+            other => Err(DeepLinkError::InvalidId(other.to_string())),
+        },
         other => Err(DeepLinkError::UnknownKind(other.to_string())),
     }
 }
@@ -158,7 +227,14 @@ fn dispatch(app: &AppHandle, raw: &str) {
             return;
         }
     };
-    log::info!("Deep link: {target:?}");
+    match &target {
+        // The code is a one-shot secret: keep it out of the log.
+        DeepLinkTarget::AuthMal { code, state } => {
+            log::info!("Deep link: MyAnimeList auth return");
+            crate::mal::complete_login_in_background(app.clone(), code.clone(), state.clone());
+        }
+        other => log::info!("Deep link: {other:?}"),
+    }
     // Park it for the frontend as well as emitting: if the webview is not
     // listening yet (cold start through the link) the event is lost, and the
     // listener drains the slot as soon as it registers. A listener that is
@@ -281,9 +357,38 @@ mod tests {
     }
 
     #[test]
+    fn parses_the_mal_oauth_return_with_its_query() {
+        assert_eq!(
+            parse_deep_link("metadea://auth/mal?code=def50200abc-_.~&state=st4te_1"),
+            Ok(DeepLinkTarget::AuthMal { code: "def50200abc-_.~".into(), state: "st4te_1".into() })
+        );
+        // Order does not matter, unknown keys are ignored, values are decoded.
+        assert_eq!(
+            parse_deep_link("metadea://auth/mal?foo=bar&state=s1&code=a%2Db#frag"),
+            Ok(DeepLinkTarget::AuthMal { code: "a-b".into(), state: "s1".into() })
+        );
+        assert_eq!(parse_deep_link("metadea://auth/mal"), Err(DeepLinkError::MissingQuery));
+        assert_eq!(parse_deep_link("metadea://auth/mal?code=abc"), Err(DeepLinkError::MissingQuery));
+        assert_eq!(parse_deep_link("metadea://auth/mal?state=abc"), Err(DeepLinkError::MissingQuery));
+        assert_eq!(parse_deep_link("metadea://auth/mal?code=&state=s"), Err(DeepLinkError::InvalidId("code".into())));
+        assert_eq!(parse_deep_link("metadea://auth/mal?code=a%20b&state=s"), Err(DeepLinkError::InvalidId("code".into())));
+        assert_eq!(parse_deep_link("metadea://auth/mal?code=a<b&state=s"), Err(DeepLinkError::InvalidId("code".into())));
+        assert_eq!(parse_deep_link("metadea://auth/mal?code=a&state=s:1"), Err(DeepLinkError::InvalidId("state".into())));
+        assert_eq!(parse_deep_link("metadea://auth/mal?code=%zz&state=s"), Err(DeepLinkError::MissingQuery));
+        let too_long = format!("metadea://auth/mal?code={}&state=s", "a".repeat(MAX_AUTH_CODE_LEN + 1));
+        assert_eq!(parse_deep_link(&too_long), Err(DeepLinkError::InvalidId("code".into())));
+        assert_eq!(parse_deep_link("metadea://auth/other?code=a&state=s"), Err(DeepLinkError::InvalidId("other".into())));
+        assert_eq!(parse_deep_link("metadea://auth"), Err(DeepLinkError::MissingId));
+    }
+
+    #[test]
     fn serializes_with_a_kind_tag_for_the_frontend() {
         let json = serde_json::to_value(media("anime:21610")).unwrap();
         assert_eq!(json, serde_json::json!({ "kind": "media", "external_id": "anime:21610" }));
         assert_eq!(serde_json::to_value(DeepLinkTarget::Home).unwrap(), serde_json::json!({ "kind": "home" }));
+        assert_eq!(
+            serde_json::to_value(DeepLinkTarget::AuthMal { code: "c".into(), state: "s".into() }).unwrap(),
+            serde_json::json!({ "kind": "auth_mal", "code": "c", "state": "s" })
+        );
     }
 }

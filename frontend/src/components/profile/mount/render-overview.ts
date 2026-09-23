@@ -164,9 +164,11 @@ export async function renderOverview(el: HTMLElement, items: Items, catalog?: Ca
       const local = items.find(item => item.external_id === id);
       if (local) return local;
       const meta = catalogMap.get(id);
-      if (meta) return { external_id: id, type: meta.type } as any;
+      // Synthetic partial entry — the Hall of Fame only reads external_id/type
+      // off it (the rest comes from catalogMap).
+      if (meta) return { external_id: id, type: meta.type } as Partial<Items[number]> as Items[number];
       return null;
-    }).filter(Boolean) as Items;
+    }).filter((item): item is Items[number] => item !== null);
 
     // Covers this tab paints from plain props / string HTML (Hall of Fame
     // works + each month card's headline work) — one exists-only check so

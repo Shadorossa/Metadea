@@ -153,8 +153,8 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
   }
 
   const reviewsCountText = filtered.length === 1
-    ? (p.reviews_count_singular || '{count} reseña').replace('{count}', String(filtered.length))
-    : (p.reviews_count_plural || '{count} reseñas').replace('{count}', String(filtered.length));
+    ? p.reviews_count_singular.replace('{count}', String(filtered.length))
+    : p.reviews_count_plural.replace('{count}', String(filtered.length));
 
   return (
     <div className="reviews-layout">

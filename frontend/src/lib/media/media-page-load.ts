@@ -4,7 +4,7 @@
 // background resync, or a first-ever live fetch (fetchMediaDataWithFallback).
 // Split out of media-page-data.ts (still re-exported from there); this is
 // the one module that genuinely reads from every other media-page-* module.
-import { getCatalogEntry, getBlockedExternalIds, getSyncState, markSyncFailed } from '../tauri';
+import { markSyncFailed } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
@@ -14,12 +14,20 @@ import { needsResync } from './media-status';
 import { getCachedMediaData, setCachedMediaData, invalidateCachedMediaData } from './media-cache';
 import { mapCatalogEntryToPartialData } from './mappers/catalog-mapper';
 import {
-  sortRelationsForDisplay, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter, loadDbRelationsAndAuthors, mergeAndPersistRelations,
+  sortRelationsForDisplay, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter, mergeAndPersistRelations,
 } from './saga/media-relations';
 import { fetchMediaDataInternal } from './media-page-fetch';
 import { normalizeCachedApiSportsCompetition } from './media-page-cache';
 import { persistToCatalog, filterBlockedRelations, applyStickyLocalFields } from './media-page-persist';
-import { loadBaseEditionCharacters, getBaseEditionId, enrichLocalData } from './media-page-local-data';
+import { loadBaseEditionCharacters, getBaseEditionId, enrichLocalData, loadDbRelationsAndAuthorsCached } from './media-page-local-data';
+import { readBlockedExternalIdsCached, readCatalogEntryCached, readSyncStateCached } from './media-page-read-cache';
+
+// Where the data handed to onFull came from — 'local' is the catalog-only
+// render (rows just read from the DB), 'live' a fresh provider fetch that
+// was reconciled and persisted, 'cache' the session cache of a previous
+// live fetch. Lets the caller skip write-backs that would only re-save the
+// exact rows it just read.
+export type MediaPageDataSource = 'local' | 'live' | 'cache';
 
 // Live fetch, blocked-relation filtering, and full DB persistence.
 export async function fetchMediaData(
@@ -44,7 +52,7 @@ export async function fetchMediaData(
   // corrects it if it disagrees.
   opts?: { refreshAniListTotalCount?: boolean; refreshSourceAdaptation?: boolean },
 ): Promise<MediaPageData | null> {
-  const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+  const blockedIds = await readBlockedExternalIdsCached().catch(() => [] as string[]);
   if (blockedIds.includes(rawId)) {
     invalidateCachedMediaData(rawId);
     return null;
@@ -68,8 +76,8 @@ export async function fetchMediaData(
     // running them one after another was pure added latency for no reason.
     const [filteredRelations, { relations: dbRelations, authors: dbAuthors }, existing] = await Promise.all([
       data.relations ? filterBlockedRelations(data.relations, blockedIds) : Promise.resolve(data.relations),
-      loadDbRelationsAndAuthors(rawId),
-      getCatalogEntry(rawId).catch(() => null),
+      loadDbRelationsAndAuthorsCached(rawId),
+      readCatalogEntryCached(rawId).catch(() => null),
     ]);
     data.relations = filteredRelations;
     applyStickyLocalFields(data, existing);
@@ -102,7 +110,7 @@ export async function fetchMediaData(
 
     // Reload so the result reflects curated relations/authors/characters.
     const [{ relations: finalRels, authors: finalAuthors }, dbChars] = await Promise.all([
-      loadDbRelationsAndAuthors(rawId),
+      loadDbRelationsAndAuthorsCached(rawId),
       getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
     ]);
 
@@ -138,13 +146,18 @@ export function fetchMediaDataWithFallback(
   // about to be followed by a background resync. Callers that show a
   // "still loading" indicator should key it off this instead of onFull
   // firing at all, since onFull already fires early for that stub data.
-  onFull:    (data: MediaPageData, isFinal: boolean) => void,
+  onFull:    (data: MediaPageData, isFinal: boolean, source: MediaPageDataSource) => void,
   onError:   () => void,
   // Lets the caller skip the background refresh once the user has navigated away.
   isCancelled: () => boolean = () => false,
 ): void {
-  const loadVisibleEntry = () => fetchMediaDataWithFallbackVisible(rawId, onPartial, onFull, onError, isCancelled);
-  getBlockedExternalIds().then(blockedIds => {
+  // The catalog row is needed right after the blocked check on every path
+  // that survives it, and reading it has no side effects, so it's started
+  // now instead of waiting one IPC round-trip for the blocked list first.
+  const catalogPromise = readCatalogEntryCached(rawId);
+  catalogPromise.catch(() => {});
+  const loadVisibleEntry = () => fetchMediaDataWithFallbackVisible(rawId, catalogPromise, onPartial, onFull, onError, isCancelled);
+  readBlockedExternalIdsCached().then(blockedIds => {
     if (blockedIds.includes(rawId)) {
       invalidateCachedMediaData(rawId);
       if (!isCancelled()) onError();
@@ -156,15 +169,16 @@ export function fetchMediaDataWithFallback(
 
 function fetchMediaDataWithFallbackVisible(
   rawId: string,
+  catalogPromise: Promise<MediaCatalogEntry | null>,
   onPartial: (data: MediaPageData) => void,
-  onFull: (data: MediaPageData, isFinal: boolean) => void,
+  onFull: (data: MediaPageData, isFinal: boolean, source: MediaPageDataSource) => void,
   onError: () => void,
   isCancelled: () => boolean,
 ): void {
   const isApiSportsCompetition = /^event:apisports:(?:football|basketball):\d+$/.test(rawId);
   const cached = getCachedMediaData(rawId);
   if (cached && (!isApiSportsCompetition || (Array.isArray(cached.seasons) && cached.seasons.length > 0))) {
-    onFull(normalizeCachedApiSportsCompetition(rawId, cached), true);
+    onFull(normalizeCachedApiSportsCompetition(rawId, cached), true, 'cache');
     return;
   }
   if (cached && isApiSportsCompetition) invalidateCachedMediaData(rawId);
@@ -173,9 +187,9 @@ function fetchMediaDataWithFallbackVisible(
   let hasLocalData = false;
   let localData: MediaPageData | null = null;
   let catalogEntry: MediaCatalogEntry | null = null;
-  const syncStatePromise = getSyncState(rawId).catch(() => null);
+  const syncStatePromise = readSyncStateCached(rawId).catch(() => null);
 
-  getCatalogEntry(rawId)
+  catalogPromise
     .then(async catalog => {
       if (catalog && catalog.title_main) {
         catalogEntry = catalog;
@@ -201,11 +215,11 @@ function fetchMediaDataWithFallbackVisible(
       // above still avoids duplicate calls during its cache lifetime).
       if (isApiSportsCompetition) {
         fetchMediaData(rawId).then(fresh => {
-          if (!isCancelled() && fresh) onFull(fresh, true);
-          else if (!isCancelled() && localData) onFull(localData, true);
+          if (!isCancelled() && fresh) onFull(fresh, true, 'live');
+          else if (!isCancelled() && localData) onFull(localData, true, 'local');
           else if (!isCancelled()) onError();
         }).catch(() => {
-          if (!isCancelled() && localData) onFull(localData, true);
+          if (!isCancelled() && localData) onFull(localData, true, 'local');
           else if (!isCancelled()) onError();
         });
         return;
@@ -220,7 +234,7 @@ function fetchMediaDataWithFallbackVisible(
           last_synced_at: syncState.last_synced_at,
           sync_failed_count: syncState.sync_failed_count,
         } : null);
-        onFull(localData, !(catalogEntry && dueForResync));
+        onFull(localData, !(catalogEntry && dueForResync), 'local');
         // The background resync's own result used to just be discarded here
         // — persistToCatalog (inside fetchMediaData) only ever writes
         // media_catalog's own scalar columns, never characters/staff, so
@@ -236,7 +250,7 @@ function fetchMediaDataWithFallbackVisible(
         // needsResync() already gates how often this happens at all.
         if (catalogEntry && dueForResync && !isCancelled()) {
           fetchMediaData(rawId).then(fresh => {
-            if (fresh && !isCancelled()) onFull(fresh, true);
+            if (fresh && !isCancelled()) onFull(fresh, true, 'live');
           }).catch(() => {});
         }
         return;
@@ -247,7 +261,7 @@ function fetchMediaDataWithFallbackVisible(
         .then(data => {
           fullArrived = true;
           if (data) {
-            onFull(data, true);
+            onFull(data, true, 'live');
           } else {
             onError();
           }

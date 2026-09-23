@@ -13,6 +13,7 @@ export function useDiscordPresence(data: MediaPageData | null, _discordT: Transl
       title: data.titleMain,
       typeLabel: data.titleMain,
       coverUrl,
+      externalId: data.externalId,
     });
 
     return () => {

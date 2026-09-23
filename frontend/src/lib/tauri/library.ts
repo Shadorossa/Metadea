@@ -25,6 +25,15 @@ export interface LibraryEntry {
   selected_version: string | null;
   started_at: string | null;
   finished_at: string | null;
+  // Reconsumption ("rewatch / reread / replay"): how many times the work was
+  // finished again after its first completion, and whether such a re-run is
+  // in progress right now. Optional so callers spreading an older row keep
+  // compiling; Rust reads a missing field as 0. The transition rules
+  // (count bump, progress snap, frozen first-run dates) live in
+  // save_library_entry (user_library.rs), the one path every save goes
+  // through — see lib/media/editor/reconsumption-run.ts for the editor side.
+  reconsumption_count?: number;
+  reconsuming?: number;
 }
 
 // Fired after any write below, from wherever it happens (Profile's own

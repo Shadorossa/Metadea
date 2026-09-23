@@ -375,8 +375,6 @@ const VIA_TO_RELATION_TYPE: Record<string, string> = {
 export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode[], gameType?: number): MediaPageData {
   if (!nodes.length) return data;
 
-  const tm = getT().media;
-
   const seen = new Set<string>([data.externalId]);
   if (data.parentGame) seen.add(data.parentGame.externalId);
   for (const r of data.relations) {

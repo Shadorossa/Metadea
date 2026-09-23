@@ -1,5 +1,6 @@
 mod acl_coverage;
 mod actors;
+mod aniskip;
 mod auth;
 mod backup;
 mod characters;
@@ -7,10 +8,12 @@ mod companies;
 mod staff;
 mod comicvine;
 mod comic_reader;
+mod epub_reader;
 mod db;
 mod deep_link;
 mod emulators;
 mod episode_history;
+mod error_codes;
 mod favorite_images;
 mod folders;
 mod game_links;
@@ -20,12 +23,16 @@ mod anilist;
 mod igdb;
 mod image_storage;
 mod igdb_env;
+mod mal;
 mod igdb_matching;
 mod community_sync;
 mod media_authors;
 mod media_catalog;
 mod media_episodes;
 mod media_events;
+mod home_bundle;
+mod local_bundle;
+mod media_page_bundle;
 mod media_relations;
 mod media_themes;
 mod migrations;
@@ -34,6 +41,9 @@ mod player;
 mod proposal_bundle;
 mod reading_progress;
 mod resume_position;
+mod continue_watching;
+mod retro_achievements;
+mod rom_rename;
 mod sagas;
 mod share_image;
 mod story_arcs;
@@ -46,6 +56,7 @@ mod user_lists;
 mod user_metadata;
 mod utils;
 mod discord;
+mod ui_themes;
 mod vestigial_cleanup;
 #[cfg(test)]
 mod ipc_size_probe;
@@ -143,6 +154,7 @@ pub fn run() {
             folders::scan_folder_contents,
             folders::rename_path,
             folders::read_routes,
+            folders::find_tagged_path,
             folders::write_routes,
             folders::open_env_folder,
             game_links::save_game_link,
@@ -157,6 +169,7 @@ pub fn run() {
             folders::show_episode_watched_toast,
             folders::episode_toast_action,
             folders::get_local_screenshots,
+            folders::get_emulator_screenshots,
             backup::export_backup,
             backup::prepare_restore,
             folders::get_vlc_playback_status,
@@ -177,6 +190,8 @@ pub fn run() {
             igdb::igdb_force_by_igdb_id,
             igdb::read_metadata_index,
             igdb::read_game_info,
+            igdb::igdb_fetch_metadata_batch,
+            igdb::igdb_cancel_metadata_batch,
             comicvine::comicvine_search,
             comicvine::comicvine_search_characters,
             comicvine::comicvine_get_volume,
@@ -189,6 +204,7 @@ pub fn run() {
             resume_position::get_resume_position,
             resume_position::save_resume_position,
             resume_position::clear_resume_position,
+            continue_watching::get_continue_watching_sources,
             reading_progress::get_reading_progress,
             reading_progress::save_reading_progress,
             reading_progress::clear_reading_progress,
@@ -197,6 +213,11 @@ pub fn run() {
             comic_reader::extract_comic_archive,
             comic_reader::read_comic_binary_file,
             comic_reader::save_comic_page_as_png,
+            epub_reader::epub_open,
+            epub_reader::epub_chapter,
+            reading_progress::get_epub_bookmarks,
+            reading_progress::add_epub_bookmark,
+            reading_progress::delete_epub_bookmark,
             user_library::save_library_entry,
             user_library::get_library_entry,
             user_library::delete_library_entry,
@@ -214,7 +235,6 @@ pub fn run() {
             user_lists::write_user_favorites,
             user_lists::get_all_user_lists,
             user_lists::get_list_items,
-            user_lists::get_list_items_full,
             user_lists::create_user_list,
             user_lists::update_user_list,
             user_lists::delete_user_list,
@@ -237,6 +257,10 @@ pub fn run() {
             media_themes::cache_theme_video,
             media_themes::get_cached_theme_video,
             media_themes::delete_cached_theme_video,
+            media_themes::cancel_theme_video_downloads,
+            media_themes::get_favorite_themes,
+            media_themes::set_theme_favorite,
+            media_themes::reorder_favorite_themes,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
             media_catalog::get_catalog_entry_for_editor,
@@ -252,6 +276,11 @@ pub fn run() {
             media_catalog::search_catalog,
             media_catalog::get_cached_cover,
             media_catalog::get_cached_covers_batch,
+            media_page_bundle::get_media_page_bundle,
+            media_page_bundle::get_anime_chain,
+            home_bundle::get_home_bundle,
+            local_bundle::get_local_library_bundle,
+            local_bundle::get_catalog_entries_full_by_ids,
             sagas::get_cached_saga,
             sagas::save_cached_saga,
             sagas::remove_saga_member,
@@ -262,7 +291,6 @@ pub fn run() {
             sagas::get_community_sagas,
             sagas::delete_saga,
             story_arcs::get_story_arcs_for_media,
-            story_arcs::get_story_arcs_for_media_batch,
             story_arcs::get_story_arcs_for_media_light,
             story_arcs::get_story_arcs_for_media_batch_light,
             story_arcs::save_story_arc,
@@ -274,7 +302,6 @@ pub fn run() {
             media_relations::get_media_relations_for_editor,
             media_relations::get_base_edition_candidates_for_redirect,
             media_relations::get_deleted_relations,
-            media_relations::get_all_media_relations,
             media_relations::get_media_relations_for_ids,
             media_relations::get_anilist_pre_sequel_checked,
             media_relations::mark_anilist_pre_sequel_checked,
@@ -288,7 +315,6 @@ pub fn run() {
             vestigial_cleanup::fix_character_ids_command,
             characters::save_character,
             characters::get_character,
-            characters::get_all_characters,
             characters::get_all_characters_light,
             characters::search_characters_db,
             characters::delete_character,
@@ -320,20 +346,28 @@ pub fn run() {
             user_metadata::save_user_info,
             user_metadata::get_user_info,
             social_profile::hydrate_social_profile,
-            social_profile::get_social_library,
-            social_profile::get_social_activity,
-            social_profile::get_social_monthly_history,
             social_profile::get_social_lists,
-            social_profile::get_social_list_items,
             social_profile::get_social_library_light,
             social_profile::get_social_activity_light,
             social_profile::get_social_monthly_history_light,
             social_profile::get_social_list_items_light,
             steam::steam_achievements_download,
-            steam::steam_achievement_icon,
+            steam::steam_get_cached_achievements,
             steam::steam_get_owned_games,
             steam::steam_get_player_achievements,
             steam::steam_get_screenshots,
+            retro_achievements::ra_status,
+            retro_achievements::ra_console_for_platform,
+            retro_achievements::ra_get_link,
+            retro_achievements::ra_set_link,
+            retro_achievements::ra_remove_link,
+            retro_achievements::ra_lookup_by_hash,
+            retro_achievements::ra_match_by_name,
+            retro_achievements::ra_search_games,
+            retro_achievements::ra_get_game_progress,
+            retro_achievements::ra_get_profile_progress,
+            retro_achievements::ra_get_recent_unlocks,
+            retro_achievements::ra_get_consoles,
             github::request_github_device_code,
             github::request_github_device_token,
             github::get_github_user_profile,
@@ -362,6 +396,9 @@ pub fn run() {
             sync_state::set_sync_state,
             emulators::read_emulators_config,
             emulators::write_emulators_config,
+            platform_scanning::scan_rom_library,
+            rom_rename::rename_rom_files,
+            rom_rename::undo_rom_renames,
             player::player_engine_available,
             player::player_open,
             player::player_toggle_pause,
@@ -375,6 +412,8 @@ pub fn run() {
             player::player_set_mute,
             player::player_set_speed,
             player::player_set_sub_delay,
+            player::player_frame_step,
+            player::player_cycle_track,
             player::player_screenshot,
             player::player_get_status,
             player::player_get_session,
@@ -383,6 +422,26 @@ pub fn run() {
             player::player_set_fullscreen,
             player::player_is_fullscreen,
             player::player_focus_overlay,
+            aniskip::aniskip_get_segments,
+            aniskip::get_catalog_mal_id,
+            aniskip::set_catalog_mal_id,
+            mal::mal_status,
+            mal::mal_begin_login,
+            mal::mal_complete_login,
+            mal::mal_get_profile,
+            mal::mal_logout,
+            mal::mal_update_anime,
+            mal::mal_update_manga,
+            mal::mal_delete_entry,
+            mal::mal_fetch_list,
+            mal::mal_catalog_links_by_mal_ids,
+            mal::mal_remember_catalog_links,
+            ui_themes::list_ui_themes,
+            ui_themes::read_ui_theme_css,
+            ui_themes::get_active_ui_theme,
+            ui_themes::set_active_ui_theme,
+            ui_themes::open_ui_themes_folder,
+            ui_themes::export_ui_theme_starter,
         ])
         .run(tauri::generate_context!());
     if let Err(e) = result {

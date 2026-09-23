@@ -1,4 +1,6 @@
 import { byId } from '../../../lib/dom/dom';
+import { getT } from '../../../i18n/runtime';
+import { formatAppError } from '../../../lib/errors/format-error';
 
 // Tauri's own init scripts inject one of these globals; __TAURI_INTERNALS__
 // is the v2 name, kept alongside the v1 ones so a bridge that only exposes
@@ -48,7 +50,7 @@ export function initStatusActionButton(options: StatusActionOptions): void {
     try {
       showStatus(await options.run());
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error) || options.errorFallback;
+      const message = formatAppError(error, getT()) || options.errorFallback;
       showStatus(options.errorMessage(message));
     } finally {
       btn.disabled = false;

@@ -70,7 +70,9 @@ export function formatPrEditorChangeSummary(p: BuildChangeSummaryParams): string
   const { entry, originalEntry, isFieldChanged, diff: d, resolveMeta, originalEditableRelationTypes, sagaOrder, sagaRelationTypes, sagaName, originalSagaName } = p;
   const lines: string[] = [];
 
-  if (entry.blocked_at !== originalEntry?.blocked_at) {
+  // null and undefined both mean "not blocked": a new entry (no original)
+  // carrying an explicit `blocked_at: null` must not read as "Unblocked".
+  if ((entry.blocked_at ?? null) !== (originalEntry?.blocked_at ?? null)) {
     lines.push(entry.blocked_at ? '- Blocked (hidden from Metadea)' : '- Unblocked (restored to Metadea)');
   }
 

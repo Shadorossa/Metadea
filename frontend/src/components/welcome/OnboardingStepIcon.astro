@@ -1,0 +1,31 @@
+---
+// Static (server-rendered, no hydration) lucide icon for an onboarding step.
+import {
+  Flag, FolderOpen, Gamepad2, KeyRound, Languages, Library, Link2, Palette, Play, Sparkles, User,
+} from 'lucide-react';
+import type { OnboardingIcon } from '../../lib/welcome/onboarding-steps';
+
+interface Props {
+  icon: OnboardingIcon;
+  size?: number;
+}
+
+const ICONS = {
+  sparkles: Sparkles,
+  languages: Languages,
+  palette: Palette,
+  user: User,
+  library: Library,
+  play: Play,
+  folder: FolderOpen,
+  key: KeyRound,
+  gamepad: Gamepad2,
+  link: Link2,
+  flag: Flag,
+} satisfies Record<OnboardingIcon, unknown>;
+
+const { icon, size = 20 } = Astro.props;
+const Icon = ICONS[icon];
+---
+
+<Icon size={size} strokeWidth={1.8} aria-hidden="true" />

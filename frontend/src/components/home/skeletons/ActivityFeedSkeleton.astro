@@ -1,0 +1,41 @@
+---
+// First-paint placeholder for ActivityFeedSection (client:only): the real
+// header (title + tabs) and as many empty cards as the layout hint says the
+// friends feed showed last time (home.astro's pre-paint script sets
+// data-home-feed; without it, the empty state) plus the page picker's row
+// when it paginated (data-home-feed-paged), in the real classes so heights
+// match exactly.
+import type { Translations } from "../../../i18n/index";
+import { typeIconMap } from "../../../lib/dom/icon-strings";
+
+interface Props { title: string; p: Translations["profile"] }
+const { title, p } = Astro.props;
+const MAX_CARDS = 10;
+const ICON = typeIconMap(12).anime;
+---
+<div class="home-activity-skeleton" aria-hidden="true" inert>
+  <div class="home-activity-header">
+    <h2 class="home-activity-title" data-i18n="profile.recent_activity">{title}</h2>
+    <div class="home-activity-tabs">
+      <button type="button" class="home-activity-tab active" data-i18n="profile.activity_tab_friends">{p.activity_tab_friends}</button>
+      <span class="home-activity-tab-divider">|</span>
+      <button type="button" class="home-activity-tab" data-i18n="profile.activity_tab_general">{p.activity_tab_general}</button>
+    </div>
+  </div>
+  <div class="act-empty home-activity-skeleton-empty"><span>&nbsp;</span></div>
+  <div class="activity-feed home-activity-skeleton-feed">
+    {Array.from({ length: MAX_CARDS }, () => (
+      <div class="act-card">
+        <div class="act-card-cover-fallback"><span>&nbsp;</span></div>
+        <div class="act-card-user-avatar act-card-user-avatar--placeholder"></div>
+        <div class="act-card-content">
+          <span class="act-card-text">&nbsp;</span>
+          <div class="act-card-meta"><span class="act-card-type-icon" set:html={ICON} /><span class="act-card-type-label">&nbsp;</span></div>
+        </div>
+      </div>
+    ))}
+  </div>
+  <div class="home-activity-pagination home-activity-skeleton-pagination">
+    <div class="media-pagination"><span class="media-pagination-page">1</span></div>
+  </div>
+</div>

@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { dedupeByKey } from '../../../lib/shared/collections/dedupe';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useKeyedState } from './useKeyedState';
+
+const NO_RESULTS: never[] = [];
 
 // Shared "type into a box, wait, fire an abortable search" pattern that used
 // to be reimplemented near-identically in every search popup (character/
@@ -11,20 +13,20 @@ export function useDebouncedSearch<T>(
   deps: React.DependencyList = [],
   delay = 400,
 ): { results: T[]; isLoading: boolean } {
-  const [results, setResults] = useState<T[]>([]);
+  // Empty again the moment the query is cleared.
+  const [results, setResults] = useKeyedState<T[]>(!!query.trim(), NO_RESULTS);
   const [isLoading, setIsLoading] = useState(false);
   // fetchFn is a fresh closure every render (it captures caller state like
   // typeFilter/provider) — read the latest one from a ref instead of
   // putting it in the effect's own deps, or every render would restart the
   // debounce timer regardless of whether query/deps actually changed.
   const fetchFnRef = useRef(fetchFn);
-  fetchFnRef.current = fetchFn;
+  useLayoutEffect(() => {
+    fetchFnRef.current = fetchFn;
+  });
 
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
+    if (!query.trim()) return;
 
     const controller = new AbortController();
     const timer = setTimeout(() => {

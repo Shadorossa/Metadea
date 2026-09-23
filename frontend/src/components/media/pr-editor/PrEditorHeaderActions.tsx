@@ -44,8 +44,8 @@ export function PrEditorHeaderActions({ pe, blocked, isResyncing, submitting, su
         className="pr-editor-btn pr-editor-btn--cancel pr-editor-header-action pr-editor-header-action--icon pr-editor-header-cancel"
         onClick={onCancel}
         disabled={submitting}
-        title="Cancelar"
-        aria-label="Cancelar"
+        title={pe.cancel}
+        aria-label={pe.cancel}
       >
         <X size={17} aria-hidden="true" />
       </button>
@@ -55,7 +55,7 @@ export function PrEditorHeaderActions({ pe, blocked, isResyncing, submitting, su
         onClick={onSubmit}
         disabled={submitDisabled}
       >
-        {submitting ? 'Submitting...' : 'Submit Proposal'}
+        {submitting ? pe.sending : pe.submit_proposal}
       </button>
     </>
   );

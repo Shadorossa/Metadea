@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef, useReducer, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useReducer, useCallback } from 'react';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
 import { ModalShell } from '../shared/ModalShell';
 import { invoke } from '../../lib/tauri';
 import { getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
@@ -11,10 +12,11 @@ import { submitPrEditorChanges } from './pr-editor/pr-editor-submit';
 import { loadComicVineIssuePreview, loadPrEditorRelationsAndSaga, resolveCatalogEntryForEditor } from './pr-editor/pr-editor-load';
 import { buildPrEditorChangeSummary } from './pr-editor/pr-editor-change-summary';
 import {
-  affectedExternalIds as computeAffectedExternalIds, charactersChanged as computeCharactersChanged,
+  affectedExternalIds as computeAffectedExternalIds, canRedo, canUndo, charactersChanged as computeCharactersChanged,
   createInitialPrEditorState, hasChanges as computeHasChanges, isFieldChanged as computeIsFieldChanged,
   prEditorReducer, type PrEditorDraft, type PrEditorDraftPatch,
 } from './pr-editor/pr-editor-state';
+import { useShortcuts } from '../shared/hooks/useShortcuts';
 import { MediaSourceMappingSearchPopup, type MediaSourceMappingKind } from '../search-popups/MediaSourceMappingSearchPopup';
 import { generateCustomCharacterId } from '../../lib/character/custom-character';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/saga/saga-relation-types';
@@ -84,12 +86,11 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   // remaster is still a VN (see MediaSearchPopup's own comment).
   const igdbRelationMediaType = isVnovelExternalId(externalId) ? 'vnovel' as const : 'game' as const;
 
-  const [activeTab, setActiveTab] = useState<PrEditorTab>(initialTab);
-  const [relationsSubtab, setRelationsSubtab] = useState<RelationsSubtab>(initialRelationsSubtab ?? 'saga');
-  useEffect(() => {
-    setActiveTab(initialTab);
-    setRelationsSubtab(initialRelationsSubtab ?? 'saga');
-  }, [externalId, initialTab, initialRelationsSubtab]);
+  // Both tabs snap back to their requested initial values whenever the
+  // editor is pointed at a different entry (or asked to open elsewhere).
+  const tabResetKey = `${externalId}\n${initialTab}\n${initialRelationsSubtab ?? ''}`;
+  const [activeTab, setActiveTab] = useKeyedState<PrEditorTab>(tabResetKey, initialTab);
+  const [relationsSubtab, setRelationsSubtab] = useKeyedState<RelationsSubtab>(tabResetKey, initialRelationsSubtab ?? 'saga');
   const [loading, setLoading] = useState(true);
   // Every 'proposal'-mode edit ends in a GitHub submission — checked up
   // front instead of only at the very end of handleSubmit, so a signed-out
@@ -111,7 +112,10 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   const { draft } = state;
   const { entry, bundledRelations, issueRelations, sagaOrder, characters } = draft;
   const load = (patch: Partial<PrEditorDraft>) => dispatch({ type: 'load', patch });
-  const edit = (patch: PrEditorDraftPatch) => dispatch({ type: 'edit', patch });
+  // `coalesceKey` names the text field being typed into so mod+z undoes a
+  // burst of keystrokes as one step (see pr-editor-state.ts).
+  const edit = (patch: PrEditorDraftPatch, coalesceKey?: string) =>
+    dispatch(coalesceKey ? { type: 'edit', patch, coalesceKey, at: Date.now() } : { type: 'edit', patch });
 
   const stateCtx = { externalId, recommendationLabel: tm.relations.RECOMMENDATION };
   const hasChanges = () => computeHasChanges(state, stateCtx);
@@ -142,6 +146,8 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   const [searchPopupMode, setSearchPopupMode] = useState<PrEditorSearchPopupMode | null>(null);
   const [sourceMappingSearch, setSourceMappingSearch] = useState<MediaSourceMappingKind | null>(null);
 
+  const entryType = entry?.type;
+  const entryFormat = entry?.format;
   const relationsSubtabs = useMemo(() => {
     const tabs: Array<{ id: RelationsSubtab; label: string; visible: boolean }> = [
       { id: 'saga', label: 'Saga', visible: true },
@@ -149,20 +155,20 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
       { id: 'recommendations', label: pe.subtab_recommendations, visible: true },
       { id: 'bundled', label: pe.subtab_bundled, visible: true },
       { id: 'arcs', label: pe.subtab_arcs, visible: true },
-      { id: 'issues', label: pe.subtab_issues, visible: !!entry && (issueRelations.length > 0 || ['comic', 'manga', 'lnovel'].includes(entry.type)) },
-      { id: 'episodes', label: pe.subtab_episodes, visible: !!entry && ['anime', 'series'].includes(entry.type) },
-      { id: 'themes', label: tm.section_themes, visible: entry?.type === 'anime' },
+      { id: 'issues', label: pe.subtab_issues, visible: !!entryType && (issueRelations.length > 0 || ['comic', 'manga', 'lnovel'].includes(entryType)) },
+      { id: 'episodes', label: pe.subtab_episodes, visible: !!entryType && ['anime', 'series'].includes(entryType) },
+      { id: 'themes', label: tm.section_themes, visible: entryType === 'anime' },
       { id: 'bundle-children', label: pe.subtab_bundle_children, visible: bundledRelations.length > 0 },
-      { id: 'contains', label: pe.subtab_contains, visible: entry?.format === 'BUNDLE' },
+      { id: 'contains', label: pe.subtab_contains, visible: entryFormat === 'BUNDLE' },
     ];
     return tabs.filter(tab => tab.visible);
-  }, [entry?.type, entry?.format, issueRelations.length, bundledRelations.length, tm.section_themes, pe]);
+  }, [entryType, entryFormat, issueRelations.length, bundledRelations.length, tm.section_themes, pe]);
 
   useEffect(() => {
     if (relationsSubtabs.some(tab => tab.id === relationsSubtab)) return;
     if (!entry && initialRelationsSubtab === relationsSubtab) return;
     setRelationsSubtab(relationsSubtabs[0]?.id ?? 'saga');
-  }, [entry, initialRelationsSubtab, relationsSubtabs, relationsSubtab]);
+  }, [entry, initialRelationsSubtab, relationsSubtabs, relationsSubtab, setRelationsSubtab]);
 
   useEffect(() => {
     if (mode === 'local') return;
@@ -195,7 +201,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     loadAll();
     getMediaCharacters(externalId).then(chars => load({ characters: chars })).catch(() => load({ characters: [] }));
     getMediaAuthors(externalId).then(a => load({ mediaAuthors: a })).catch(() => load({ mediaAuthors: [] }));
-  }, [externalId]);
+  }, [externalId, pe.local_read_error]);
 
   // Loads the referenced bundle's existing Contains list once, the first
   // time bundledRelations picks one up — re-fires only if the bundle itself
@@ -247,7 +253,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
 
   const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
-    edit({ entry: { ...entry, [field]: value === '' ? null : value } });
+    edit({ entry: { ...entry, [field]: value === '' ? null : value } }, typeof value === 'string' ? field : undefined);
   };
 
   const setProviderSource = async (kind: MediaSourceMappingKind, result: ApiSearchResult) => {
@@ -292,7 +298,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
   const handleResync = async () => {
     if (!externalId || isResyncing) return;
     setIsResyncing(true);
-    setStatusMsg('Descargando datos oficiales...');
+    setStatusMsg(pe.downloading_official_data);
 
     try {
       invalidateCachedMediaData(externalId);
@@ -356,9 +362,10 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     onSessionDirtyChange?.(externalId, hasChanges());
   });
 
+  const entryTitle = entry ? entry.title_main || externalId : null;
   useEffect(() => {
-    if (entry) onSessionTitleChange?.(externalId, entry.title_main || externalId);
-  }, [entry?.title_main, externalId, onSessionTitleChange]);
+    if (entryTitle !== null) onSessionTitleChange?.(externalId, entryTitle);
+  }, [entryTitle, externalId, onSessionTitleChange]);
 
   useEffect(() => {
     onSessionSagaOrderChange?.(externalId, sagaOrder);
@@ -398,12 +405,16 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     else onClose();
   };
 
+  // Refreshed on every commit so the handle registered below always reaches
+  // this render's closures (only ever called from event handlers/effects).
   const sessionHandleRef = useRef<PrEditorSessionHandle | null>(null);
-  sessionHandleRef.current = {
-    hasChanges,
-    affectedExternalIds: () => computeAffectedExternalIds(state, stateCtx),
-    prepareProposal: () => handleSubmit(true),
-  };
+  useLayoutEffect(() => {
+    sessionHandleRef.current = {
+      hasChanges,
+      affectedExternalIds: () => computeAffectedExternalIds(state, stateCtx),
+      prepareProposal: () => handleSubmit(true),
+    };
+  });
   useEffect(() => {
     if (!onRegisterSessionEditor) return;
     const handle: PrEditorSessionHandle = {
@@ -414,6 +425,28 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
     onRegisterSessionEditor(externalId, handle);
     return () => onRegisterSessionEditor(externalId, null);
   }, [externalId, onRegisterSessionEditor]);
+
+  // ── Keyboard shortcuts (modal context) ───────────────────────────────────
+  // Registered only while this editor is the visible session tab. Save and
+  // tab switching fire from inside fields too; undo/redo stay out of text
+  // fields so the native text undo keeps working there (registry default).
+  const submitDisabled = submitting || isLoadingIssuePreview || !!issuePreviewError || !(sessionMode ? sessionHasChanges : hasChanges());
+  const submit = () => { if (sessionMode) onSubmitProposalSession?.(); else void handleSubmit(); };
+  const confirmUnsavedPrompt = () => { setShowUnsavedPrompt(false); setUnsavedPromptShake(0); void handleSubmit(); };
+  const cycleTab = (delta: 1 | -1) => {
+    const tabs: PrEditorTab[] = ['general', 'cast', 'relations'];
+    const index = tabs.indexOf(activeTab);
+    setActiveTab(tabs[(index + delta + tabs.length) % tabs.length]);
+  };
+  const editorReady = !loading && githubGate === 'ok' && !!entry;
+  useShortcuts('modal', [
+    { id: 'pr_editor.submit', keys: 'mod+s', description: 'shortcuts.editor_save', allowInInputs: true, when: () => editorReady && !submitDisabled, handler: submit },
+    { id: 'pr_editor.confirm', keys: 'mod+enter', description: 'shortcuts.editor_confirm', allowInInputs: true, when: () => editorReady && showUnsavedPrompt && !sessionMode, handler: confirmUnsavedPrompt },
+    { id: 'pr_editor.undo', keys: 'mod+z', description: 'shortcuts.editor_undo', when: () => editorReady && canUndo(state), handler: () => dispatch({ type: 'undo' }) },
+    { id: 'pr_editor.redo', keys: ['mod+y', 'mod+shift+z'], description: 'shortcuts.editor_redo', when: () => editorReady && canRedo(state), handler: () => dispatch({ type: 'redo' }) },
+    { id: 'pr_editor.next_tab', keys: 'mod+tab', description: 'shortcuts.editor_next_tab', allowInInputs: true, when: () => editorReady, handler: () => cycleTab(1) },
+    { id: 'pr_editor.prev_tab', keys: 'mod+shift+tab', description: 'shortcuts.editor_prev_tab', allowInInputs: true, when: () => editorReady, handler: () => cycleTab(-1) },
+  ], { enabled: sessionActive });
 
   // One shell for every render branch below: the overlay keeps the session
   // layout (tab strip + arrows) around the dialog panel and everything else
@@ -455,13 +488,12 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
           <div className="pr-editor-body pr-editor-login-required">
             <p className="pr-editor-title">{pe.login_required_title}</p>
             <p className="pr-editor-subtitle">
-              Cualquier edición aquí se propone como una Pull Request al catálogo comunitario —
-              inicia sesión con GitHub en Settings antes de continuar.
+              {pe.login_required_body}
             </p>
             <div className="pr-editor-login-actions">
               <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={requestClose}>{pe.close}</button>
               <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { window.location.href = '/settings'; }}>
-                Ir a Settings
+                {pe.go_to_settings}
               </button>
             </div>
           </div>
@@ -504,11 +536,11 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
               blocked={!!entry.blocked_at}
               isResyncing={isResyncing}
               submitting={submitting}
-              submitDisabled={submitting || isLoadingIssuePreview || !!issuePreviewError || !(sessionMode ? sessionHasChanges : hasChanges())}
+              submitDisabled={submitDisabled}
               onResync={handleResync}
               onToggleBlocked={() => handleChange('blocked_at', entry.blocked_at ? null : new Date().toISOString())}
               onCancel={requestClose}
-              onSubmit={() => sessionMode ? onSubmitProposalSession?.() : void handleSubmit()}
+              onSubmit={submit}
             />
           }
         />
@@ -597,7 +629,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
       {showUnsavedPrompt && !sessionMode && (
         <div key={unsavedPromptShake} className={`pr-unsaved-changes-toast${unsavedPromptShake ? ' pr-unsaved-changes-toast--shake' : ''}`} role="alertdialog" aria-live="assertive" onClick={event => event.stopPropagation()}>
           <span>{pe.unsaved_changes_title}</span>
-          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { setShowUnsavedPrompt(false); setUnsavedPromptShake(0); void handleSubmit(); }}>{pe.submit_proposal}</button>
+          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={confirmUnsavedPrompt}>{pe.submit_proposal}</button>
           <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={discardAndClose}>{pe.discard}</button>
         </div>
       )}

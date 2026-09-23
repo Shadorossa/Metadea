@@ -1,4 +1,5 @@
 import { tauriCmd, tauriRun } from './bridge';
+import { notifyMediaPartChanged } from './change-events';
 // ── Companies (developer/publisher) ─────────────────────────────────────────
 
 export interface DbMediaCompany {
@@ -15,5 +16,6 @@ export async function getMediaCompanies(mediaExternalId: string): Promise<DbMedi
 }
 
 export async function saveMediaCompanies(mediaExternalId: string, companies: DbMediaCompany[]): Promise<void> {
-  return tauriRun('save_media_companies', { mediaExternalId, companies });
+  await tauriRun('save_media_companies', { mediaExternalId, companies });
+  notifyMediaPartChanged('companies');
 }

@@ -5,6 +5,7 @@ import { getCachedCover, wrapAssetUrl, type LocalGame } from '../../../lib/tauri
 import { toMediumCover } from '../../../lib/media/small-cover';
 import { isReadingType } from '../../../lib/media/media-types';
 import { MediaCardShell } from './MediaCardShell';
+import { getT } from '../../../i18n/runtime';
 
 interface LocalMediaCardProps {
   item:    LocalMediaItem;
@@ -45,10 +46,11 @@ export function LocalMediaCard({ item, onClick, cachedPath, onRequestDelete, lau
   // library-only "Pendiente"/"En progreso" entries (see LocalLibrary), not
   // just the Visual Novel tab.
   const isHourBased = item.libraryEntry.type === 'vnovel' || item.libraryEntry.type === 'game';
-  const unitLabel = isReadingType(item.libraryEntry.type) ? 'Cap.' : 'Ep.';
+  const t = getT();
+  const unitLabel = isReadingType(item.libraryEntry.type) ? t.local.chapter_abbr : t.local.episode_abbr;
   const effectiveHours = launchGame?.playtime_minutes ? Math.round(launchGame.playtime_minutes / 6) / 10 : item.progress;
   const badgeLabel = item.status === 'planning'
-    ? 'Pendiente'
+    ? t.profile.status_planning
     : isHourBased ? `${effectiveHours}h` : `${unitLabel} ${item.progress}`;
 
   // Most catalog covers are cached to disk as webp on first load. Anime,

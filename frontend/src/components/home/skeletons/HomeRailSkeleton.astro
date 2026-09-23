@@ -1,0 +1,26 @@
+---
+// First-paint placeholder for HomeRail (client:only), in the real cards'
+// classes and order: "Airing today" (a fixed-height box, left empty so no
+// "nothing today" line flashes before the rows arrive); then the Continue
+// card only when the layout hint says the last visit had one
+// (data-home-continue).
+interface Props { continueHeading: string; airingHeading: string }
+const { continueHeading, airingHeading } = Astro.props;
+---
+<div class="home-rail-skeleton" aria-hidden="true" inert>
+  <section class="home-rail-card home-airing">
+    <div class="home-activity-header"><h2 class="home-activity-title" data-i18n="home.airing_heading">{airingHeading}</h2></div>
+    <div class="home-airing-box"></div>
+  </section>
+  <section class="home-rail-card home-continue home-continue-skeleton">
+    <div class="home-activity-header"><h2 class="home-activity-title" data-i18n="home.continue_heading">{continueHeading}</h2></div>
+    <span class="home-continue-link">
+      <span class="home-continue-thumb"><span class="home-continue-thumb-empty"></span></span>
+      <span class="home-continue-text">
+        <span class="home-continue-title">&nbsp;</span>
+        <span class="home-continue-episode">&nbsp;</span>
+        <span class="home-continue-remaining">&nbsp;</span>
+      </span>
+    </span>
+  </section>
+</div>

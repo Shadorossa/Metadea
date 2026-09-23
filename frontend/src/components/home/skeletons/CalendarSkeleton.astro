@@ -1,0 +1,38 @@
+---
+// First-paint placeholder for CalendarSection (client:only): the card's
+// real header, controls and a 6-week grid of empty day cells, trimmed to
+// this month's week count by home.astro's pre-paint script
+// (data-home-cal-rows), so the calendar mounts into exactly this box.
+import type { Translations } from "../../../i18n/index";
+
+interface Props { p: Translations["profile"] }
+const { p } = Astro.props;
+const dayHeaders = p.calendar_days || ["L", "M", "X", "J", "V", "S", "D"];
+---
+<div class="home-card home-calendar-skeleton" aria-hidden="true" inert>
+  <div class="stats-calendar-header">
+    <h3 class="home-card-title" data-i18n="profile.stats_calendar">{p.stats_calendar}</h3>
+    <div class="stats-calendar-month-nav">
+      <button type="button" class="stats-calendar-month-arrow">‹</button>
+      <span class="stats-calendar-month">
+        <span class="stats-calendar-month-name">&nbsp;</span>
+        <span class="stats-calendar-month-sep">|</span>
+        <span class="stats-calendar-month-year">&nbsp;</span>
+      </span>
+      <button type="button" class="stats-calendar-month-arrow">›</button>
+    </div>
+  </div>
+  <div class="home-calendar-controls">
+    <div class="home-calendar-toggle">
+      <button type="button" class="home-calendar-toggle-btn active" data-i18n="profile.calendar_for_you">{p.calendar_for_you}</button>
+      <button type="button" class="home-calendar-toggle-btn" data-i18n="profile.calendar_general">{p.calendar_general}</button>
+    </div>
+    <div class="home-calendar-type-tabs"></div>
+  </div>
+  <div class="home-calendar-grid-mount">
+    <div class="calendar-grid">
+      {dayHeaders.map((h, i) => <div class="calendar-day-header" data-i18n={`profile.calendar_days.${i}`}>{h}</div>)}
+      {Array.from({ length: 42 }, () => <div class="calendar-day"></div>)}
+    </div>
+  </div>
+</div>

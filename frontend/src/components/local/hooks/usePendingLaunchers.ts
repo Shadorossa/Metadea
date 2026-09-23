@@ -1,83 +1,22 @@
 import { useEffect, useState, useMemo } from 'react';
-import { igdbGetGameDetail } from '../../../lib/tauri';
 import type { StatusEntry } from '../../../lib/local/catalog-game-linking';
-
-// Map IGDB platform names (from a catalog entry's shop_links_csv, e.g.
-// "steam|url,epic|url", or a live IGDB detail's store_links) to our own
-// launcher keys.
-const SHOP_LINK_PLATFORM_MAP: Record<string, string> = {
-  steam:                 'steam',
-  'epic games store':    'epic',
-  epic:                  'epic',
-  gog:                   'gog',
-  xbox:                  'xbox',
-  'xbox game pass':      'xbox',
-  ea:                    'ea',
-  'ea app':              'ea',
-  origin:                'ea',
-  nintendo:              'nintendo',
-  'nintendo eshop':      'nintendo',
-  playstation:           'playstation',
-  'playstation store':   'playstation',
-};
-
-function launcherFromPlatformName(name?: string | null): string | undefined {
-  if (!name) return undefined;
-  return SHOP_LINK_PLATFORM_MAP[name.trim().toLowerCase()];
-}
-
-function getLauncherFromShopLinks(shopLinksCsv?: string | null): string | undefined {
-  if (!shopLinksCsv) return undefined;
-  const platforms = shopLinksCsv.split(',').map(p => p.split('|')[0]);
-  if (platforms.some(p => p?.trim().toLowerCase() === 'steam')) return 'steam';
-  for (const p of platforms) {
-    const mapped = launcherFromPlatformName(p);
-    if (mapped) return mapped;
-  }
-  return undefined;
-}
-
-// Same signal GameDetailPanel's "Ver en Steam"/"Ver en Nintendo" already
-// uses (IGDB's own store_links + involved_companies) — a LIVE fetch, not a
-// local-DB read, since shop_links_csv/companies only ever get persisted
-// locally once the user has actually opened this entry's own /media page at
-// least once (see mediaService.ts's persistToCatalog). Most "Pendiente"
-function launcherFromIgdbDetail(detail: Record<string, unknown> | null): string | undefined {
-  if (!detail) return undefined;
-  const links = detail.store_links as { platform?: string }[] | undefined;
-  if (links?.some(l => l.platform?.trim().toLowerCase() === 'steam')) return 'steam';
-  for (const l of links ?? []) {
-    const mapped = launcherFromPlatformName(l.platform);
-    if (mapped) return mapped;
-  }
-  const companies = detail.involved_companies as { company?: { name?: string }; developer?: boolean; publisher?: boolean }[] | undefined;
-  for (const c of companies ?? []) {
-    if (!(c.developer || c.publisher)) continue;
-    const name = c.company?.name?.toLowerCase() ?? '';
-    if (name.includes('nintendo')) return 'nintendo';
-    if (name.includes('playstation') || name.includes('sony')) return 'playstation';
-  }
-  const platforms = detail.platforms as { name?: string }[] | undefined;
-  if (platforms?.some(p => {
-    const n = p.name?.toLowerCase() ?? '';
-    return n.includes('pc') || n.includes('windows') || n.includes('steam');
-  })) {
-    return 'steam';
-  }
-  return undefined;
-}
+import { getLauncherFromShopLinks, resolvePendingLauncher } from '../../../lib/local/pending-launcher-memo';
+import { readLocalIgdbGameDetail } from '../../../lib/local/local-read-cache';
 
 // Which pending ("Planeando", catalog-only, no matched local install) games
 // belong to which launcher section — matched first via any already-resolved
 // launchGame, then the catalog's own (locally cached) shop_links_csv, and
-// finally a live IGDB lookup for whatever's left unresolved. Shared by
-// GamesGrid (to render these into their launcher section) and
-// LocalLibrary (to light up that platform's sidebar icon even when it has
-// zero actually-installed games). "En progreso" entries are deliberately
-// NOT considered here — that section stays one general list regardless of
-// platform (same reasoning statusBuckets applies to installed games: only
-// an in-progress status is a deliberate enough signal to surface in one
-// place instead of splitting it per platform).
+// finally IGDB's verdict for whatever's left unresolved: remembered for a
+// week per game (lib/local/pending-launcher-memo.ts) and, within a visit,
+// asked at most once (local-read-cache.ts) — this used to be one live
+// igdb_get_game_detail request per such game on EVERY grid rebuild and
+// rescan. Shared by GamesGrid (to render these into their launcher section)
+// and LocalLibrary (to light up that platform's sidebar icon even when it
+// has zero actually-installed games). "En progreso" entries are
+// deliberately NOT considered here — that section stays one general list
+// regardless of platform (same reasoning statusBuckets applies to installed
+// games: only an in-progress status is a deliberate enough signal to
+// surface in one place instead of splitting it per platform).
 export function usePendingLaunchers(planningEntries: StatusEntry[]) {
   const [remoteByExternalId, setRemoteByExternalId] = useState<Record<string, string | undefined>>({});
   // Ids whose live IGDB check has actually finished (found a launcher or
@@ -112,13 +51,11 @@ export function usePendingLaunchers(planningEntries: StatusEntry[]) {
     // exists to prevent.
     setCheckedIds(new Set());
     let cancelled = false;
-    Promise.all(ids.map(id => {
-      const igdbId = Number(id.split(':')[1]);
-      if (!igdbId) return Promise.resolve({ id, launcher: undefined as string | undefined });
-      return igdbGetGameDetail(igdbId)
-        .then(detail => ({ id, launcher: launcherFromIgdbDetail(detail) }))
-        .catch(() => ({ id, launcher: undefined as string | undefined }));
-    })).then(results => {
+    Promise.all(ids.map(id =>
+      resolvePendingLauncher(id, readLocalIgdbGameDetail)
+        .then(launcher => ({ id, launcher }))
+        .catch(() => ({ id, launcher: undefined as string | undefined })),
+    )).then(results => {
       if (cancelled) return;
       const map: Record<string, string | undefined> = {};
       for (const { id, launcher } of results) {

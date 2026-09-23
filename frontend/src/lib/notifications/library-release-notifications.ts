@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '../api/endpoints';
 import { getT } from '../../i18n/runtime';
 import { computeUpcomingPlanningReleases } from '../profile/stats-calculators';
 import { getAllLibraryEntries, isTauri, type CatalogSummary } from '../tauri';
-import { getCachedLibraryAndCatalog } from '../profile/library-data-cache';
+import { loadHomeData } from '../home/home-data';
 import { notifySystem } from './notifications';
 import { STORAGE_KEYS } from '../storage/storage-keys';
 
@@ -12,14 +12,28 @@ const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 // A window focus used to re-run the whole check — and with it a fresh
 // library/catalog fetch — every single time the user alt-tabbed back. Nothing
 // about "today's releases" changes minute to minute, so a focus only
-// re-checks once this long has passed since the previous check started.
+// re-checks once this long has passed since the previous check started,
+// and only the local part (see checkNotifications): the weekly AniList
+// airing query is never fired by a focus alone, the hourly interval
+// carries it.
 const FOCUS_RECHECK_MIN_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_TITLES_IN_BODY = 4;
+
+/** One library anime's next episode as of the last weekly check. */
+export interface LibraryAiringEntry {
+  externalId: string;
+  /** Unix seconds. */
+  airingAt: number;
+  episode: number;
+}
 
 interface NotificationState {
   releaseDate?: string;
   releaseIds?: string[];
   airingCheckedAt?: number;
+  /** What the weekly check learnt, kept for Home's "Airing today" card
+   *  (lib/home/airing-today.ts projects it week by week). */
+  airingSchedule?: LibraryAiringEntry[];
 }
 
 interface AiringAnime {
@@ -44,6 +58,12 @@ function readState(): NotificationState {
   } catch {
     return {};
   }
+}
+
+/** The weekly check's airing schedule (empty until it has run once). */
+export function readLibraryAiringSchedule(): LibraryAiringEntry[] {
+  const schedule = readState().airingSchedule;
+  return Array.isArray(schedule) ? schedule : [];
 }
 
 function writeState(state: NotificationState): void {
@@ -138,6 +158,13 @@ async function checkWeeklyAiring(entries: Awaited<ReturnType<typeof getAllLibrar
   if (airing === null) return;
 
   const incomplete = airing.filter(item => item.status === 'RELEASING' && item.nextAiringEpisode);
+  // Kept whether or not the notification below goes out: Home reads it.
+  writeState({
+    ...readState(),
+    airingSchedule: incomplete.flatMap(item => item.nextAiringEpisode
+      ? [{ externalId: `anime:${item.id}`, airingAt: item.nextAiringEpisode.airingAt, episode: item.nextAiringEpisode.episode }]
+      : []),
+  });
   const catalogMap = new Map(catalog.map(entry => [entry.external_id, entry]));
   const names = incomplete.map(item =>
     catalogMap.get(`anime:${item.id}`)?.title_main || item.title.romaji || item.title.english || `#${item.id}`
@@ -157,7 +184,7 @@ async function checkWeeklyAiring(entries: Awaited<ReturnType<typeof getAllLibrar
   writeState({ ...readState(), airingCheckedAt: nowMs });
 }
 
-async function checkNotifications(): Promise<void> {
+async function checkNotifications(allowNetwork = true): Promise<void> {
   if (checking || !isTauri() || !navigator.onLine) return;
   checking = true;
   lastCheckStartedAt = Date.now();
@@ -165,11 +192,13 @@ async function checkNotifications(): Promise<void> {
     // The same library/catalog bundle the Profile and Home pages read (and
     // that every library write invalidates) — de-duplicates this checker's
     // own copy against whatever page is loading at the same moment instead
-    // of a second full catalog query.
-    const { items: entries, catalog } = await getCachedLibraryAndCatalog();
+    // of a second full catalog query. This runs on every page load before
+    // the Home islands' effects, so it is what primes that cache through
+    // get_home_bundle (one round trip) on a cold start.
+    const { items: entries, catalog } = await loadHomeData();
     const now = new Date();
     await checkTodayReleases(entries, catalog, now);
-    await checkWeeklyAiring(entries, catalog);
+    if (allowNetwork) await checkWeeklyAiring(entries, catalog);
   } catch (error) {
     console.warn('[notifications] Could not check library reminders', error);
   } finally {
@@ -185,6 +214,6 @@ export function startLibraryReleaseNotifications(): void {
   window.setInterval(() => { void checkNotifications(); }, CHECK_INTERVAL_MS);
   window.addEventListener('focus', () => {
     if (Date.now() - lastCheckStartedAt < FOCUS_RECHECK_MIN_INTERVAL_MS) return;
-    void checkNotifications();
+    void checkNotifications(false);
   });
 }

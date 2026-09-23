@@ -100,6 +100,10 @@ pub struct PlayerOpenArgs {
     pub episode_labels: Vec<String>,
     #[serde(default)]
     pub titles: Option<Vec<String>>,
+    #[serde(default)]
+    pub external_id: Option<String>,
+    #[serde(default)]
+    pub episode_numbers: Option<Vec<i64>>,
     /// `true` (default): controls in the transparent overlay window;
     /// `false`: docked controls in the main WebView, no overlay.
     #[serde(default)]
@@ -112,7 +116,8 @@ pub async fn player_open(
     state: State<'_, PlayerEngineState>,
     request: PlayerOpenArgs,
 ) -> Result<PlayerSessionInfo, PlayerError> {
-    let PlayerOpenArgs { queue, start_index, start_seconds, work_name, episode_labels, titles, overlay } = request;
+    let PlayerOpenArgs { queue, start_index, start_seconds, work_name, episode_labels, titles, external_id, episode_numbers, overlay } =
+        request;
     if queue.is_empty() {
         return Err(PlayerError::invalid_argument("empty queue"));
     }
@@ -157,6 +162,8 @@ pub async fn player_open(
             work_name,
             episode_labels,
             titles: titles.unwrap_or_default(),
+            external_id,
+            episode_numbers: episode_numbers.unwrap_or_default(),
             queue,
             capture_dir,
         })?
@@ -231,6 +238,16 @@ pub fn player_set_sub_delay(state: State<'_, PlayerEngineState>, seconds: f64) -
 }
 
 #[tauri::command]
+pub fn player_frame_step(state: State<'_, PlayerEngineState>, direction: String) -> Result<(), PlayerError> {
+    with_engine(&state, |engine| engine.frame_step(&direction))
+}
+
+#[tauri::command]
+pub fn player_cycle_track(state: State<'_, PlayerEngineState>, kind: String) -> Result<(), PlayerError> {
+    with_engine(&state, |engine| engine.cycle_track(&kind))
+}
+
+#[tauri::command]
 pub fn player_screenshot(app: AppHandle, state: State<'_, PlayerEngineState>) -> Result<ScreenshotSaved, PlayerError> {
     let saved = with_engine(&state, |engine| engine.screenshot())?;
     let _ = app.emit(EVENT_SCREENSHOT, &saved);
@@ -254,9 +271,10 @@ pub async fn player_stop_close(app: AppHandle, reason: Option<String>) -> Result
     Ok(())
 }
 
-/// The `/player` route reports where its video area sits inside the main
-/// window's client area, in CSS pixels; the native surface and the overlay
-/// follow. A zero size hides both (route unmounting, layout collapsed).
+/// The player modal (components/player/PlayerStage) reports where its video
+/// area sits inside the main window's client area, in CSS pixels; the native
+/// surface and the overlay follow. A zero size hides both (modal closed,
+/// layout collapsed).
 #[tauri::command]
 pub async fn player_set_video_bounds(
     app: AppHandle,

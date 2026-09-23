@@ -136,7 +136,7 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
             onClick={handleConfirm}
             disabled={selectedIds.length === 0}
           >
-            Añadir seleccionados
+            {getT().search.add_selected}
           </button>
         </div>
     </ModalShell>

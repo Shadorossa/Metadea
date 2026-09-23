@@ -3,13 +3,13 @@ import '../styles/pages/media.css';
 import '../styles/pages/character.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getLang, useTranslations } from '../i18n/index';
-import AuthorPage from '../components/character/page/AuthorPage';
+import AuthorPage from '../components/author/AuthorPage';
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
 ---
 
-<BaseLayout title={`${t.author_page.page_title} — Metadea`} lang={lang} activePage="search">
+<BaseLayout title={`${t.author_page.page_title} — Metadea`} titleKey="author_page.page_title" lang={lang} activePage="search">
   <div class="media-page">
     <AuthorPage client:load i18n={{ author_page: t.author_page, character: t.character }} />
   </div>

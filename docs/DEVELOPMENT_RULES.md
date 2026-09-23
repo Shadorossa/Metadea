@@ -160,15 +160,44 @@ prefijo; la expectativa inicial era incorrecta.
 
 ### 1.2 Trinquete, no amnistía
 
-ESLint entró con 0 errores y 455 warnings (382 al escribir esto). Los warnings **no** se silencian con
+ESLint entró con 0 errores y 455 warnings (258 al escribir esto). Los warnings **no** se silencian con
 `eslint-disable`; se van eliminando por categorías y la regla sube a `error` cuando su
 contador llega a cero.
 
-Orden acordado: `no-explicit-any` (101) → `react-hooks/exhaustive-deps` (22) →
-`no-non-null-assertion` (162) → reglas del React Compiler (~120).
+Orden acordado: `no-explicit-any` (9, eran 101) → `react-hooks/exhaustive-deps` (11, eran 22) →
+`no-non-null-assertion` (128, eran 162) → reglas del React Compiler (`set-state-in-effect` 78,
+`refs` 24, `purity` 2).
 
 Regla dura: **un `eslint-disable` nuevo necesita un comentario con el motivo**. Los 18
-que existían se escribieron cuando no había linter instalado y no significan nada.
+que existían (15 hoy) se escribieron cuando no había linter instalado y no significan nada.
+
+### 1.3 Cada `#[tauri::command]` nuevo va en `permissions/*.toml`
+
+Un comando registrado en `generate_handler!` (`src-tauri/src/lib.rs`) pero ausente de
+`permissions/default.toml` (o `player.toml`) no falla al compilar: la ACL de Tauri rechaza
+la llamada en tiempo de ejecución con un error genérico que los `.catch(() => [])` del
+frontend se tragan — el perfil llegó a renderizar una biblioteca vacía por esto.
+`src-tauri/src/acl_coverage.rs` comprueba en `cargo test` que ambas listas son idénticas
+en los dos sentidos (registrado ⇔ permitido), así que un comando nuevo se añade en los
+dos sitios en el mismo commit, y un comando borrado se quita de los dos.
+
+Antes de borrar un comando por "sin uso": `grep` del nombre en `frontend/src` — los
+comandos se invocan por cadena (`invoke('nombre')`, `tauriCmd('nombre', …)`), no por
+símbolo, así que `knip` no los ve.
+
+### 1.4 Rust devuelve códigos de error estables, nunca texto
+
+Un comando mantiene `Result<T, String>` por compatibilidad IPC, pero esa `String` es un
+código `E_*` de `src-tauri/src/error_codes.rs` — a secas o como `"E_CODE: detalle técnico"`
+vía `error_codes::with_detail`. Nada de prosa en ningún idioma. El frontend lo traduce con
+`formatAppError(err, getT())` (`lib/errors/format-error.ts`), que busca `t.errors.<CODE>` y
+añade el detalle; una cadena sin código conocido se muestra tal cual.
+
+Al añadir un código: constante en `error_codes.rs` (+ `ALL`), clave `errors.<CODE>` en las 8
+locales, entrada en `lib/errors/error-codes.ts`. Tres tests lo vigilan: en Rust, que cada
+literal `"E_…"` del crate esté en `ALL`; en vitest, que `error-codes.ts` coincida con el
+`.rs` y que `es.errors` tenga exactamente esas claves. Un código sin traducción es error
+de compilación (`t.errors[code]`), así que el usuario nunca ve un `E_…` desnudo.
 
 ---
 
@@ -244,9 +273,9 @@ de Fandom o AniList (`fandomImporter.ts`, `sagaTypes.ts`). Eso es *dato*, no int
 Se marca con un comentario que lo diga.
 
 Esto incluye `aria-label`, `title` y `placeholder` — hoy hay ~32 sin traducir — y
-**también los mensajes de error de Rust**, de los que 40 devuelven español literal a una
-UI que se distribuye en 8 idiomas. Rust devuelve un código de error estable; el frontend
-lo traduce.
+**también los mensajes de error de Rust**: 40 devolvían español literal a una UI que se
+distribuye en 8 idiomas. Hoy Rust devuelve un código estable (`error_codes.rs`) y el
+frontend lo traduce (`lib/errors/format-error.ts`, namespace `errors.*`); ver 1.4.
 
 Nunca se borra una clave i18n "no usada" sin comprobar antes si lo que pasa es que el
 componente la ignora y tiene el texto incrustado. En ese caso el arreglo es adoptar la
@@ -341,16 +370,17 @@ resultado posible.
 
 | | |
 |---|---|
-| Tests | 494 JS en 23 archivos + 88 Rust |
-| ESLint | 0 errores, 382 warnings (en trinquete) |
-| `as any` | 13 (eran 51); `(window as any)` 0 (eran 38) |
+| Tests | 704 JS en 56 archivos + 136 Rust (3 `#[ignore]` de medición) |
+| ESLint | 0 errores, 258 warnings (en trinquete; eran 455) |
+| `as any` | 8 (eran 51); `(window as any)` 1 (eran 38) |
 | Typecheck | limpio |
 | Build | correcto |
-| Archivos > 200 líneas | 139 de 515 (27,0%) — el conteo sube porque los archivos grandes se partieron en muchos pequeños |
-| Archivos > 1000 líneas | 14 (eran 19); los mayores ahora son Rust (`igdb.rs`, `folders.rs`, `migrations/mod.rs`) y `character.astro` |
+| Archivos > 200 líneas | 118 de 572 (20,6%) |
+| Archivos > 1000 líneas | 7, ninguno TS/Astro (eran 19): 5 CSS (`settings.css` 1.779, `media/base.css` 1.438, `newspaper-dark.css` 1.379, `profile/base/navigation.css` 1.248, `media/relations.css` 1.033) y 2 Rust (`migrations/mod.rs` 1.363, `db.rs` 1.002); `character.astro` tiene 16 líneas; `providers/anilist.ts` (1.002) se partió en `providers/anilist/` |
 | `lib/` → `components/` | 0 importaciones (eran 13); `lib/` sin React |
-| Claves i18n | paridad y placeholders verificados por test en las 8 locales; tipo `Translations` aplicado a cada locale |
-| Clippy | 0 errores, 49 warnings; `cargo fmt` pendiente en un commit propio |
+| Claves i18n | paridad y placeholders verificados por test en las 8 locales; tipo `Translations` aplicado a cada locale; `errors.*` cubre los 36 códigos de Rust |
+| Comandos Tauri | `generate_handler!` ⇔ `permissions/*.toml` verificado por `acl_coverage.rs`; 8 comandos sin llamadas borrados |
+| Clippy | 0 errores, 0 warnings (`-D warnings`); `cargo fmt` pendiente en un commit propio |
 
 Esta tabla se actualiza cuando cambie. Si lleva meses sin tocarse, o nadie está
 trabajando en el proyecto o las reglas han vuelto a ser decorativas.

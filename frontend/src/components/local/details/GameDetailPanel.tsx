@@ -1,10 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useKeyedState } from '../../shared/hooks/useKeyedState';
 import {
-  readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
+  launchGame, openExternalUrl, startPlaytimeSession,
   type LocalGame, type GameInfo, type SteamAchievement, type LibraryEntry,
-  getLibraryEntry,
-  igdbGetGameDetail, getMediaCompanies, readEmulatorsConfig, type MediaCatalogEntry,
+  readEmulatorsConfig, type MediaCatalogEntry,
 } from '../../../lib/tauri';
+// Visit-scoped reads (lib/local/local-read-cache.ts): reopening a game's
+// panel must not repeat its info.json read, its two Steam Web API requests
+// or the PORT/blocked-edition walk it already resolved this visit.
+import {
+  readLocalGameInfo as readGameInfo, loadLocalSteamAchievements,
+  readLocalLibraryEntry as getLibraryEntry, readLocalIgdbGameDetail as igdbGetGameDetail,
+  readLocalMediaCompanies as getMediaCompanies, readLocalPortRedirect as resolvePortRedirect,
+  readLocalCatalogEntryPastRedirect as getLocalCatalogEntry, invalidateLocalGameReads,
+} from '../../../lib/local/local-read-cache';
 import { getT } from '../../../i18n/runtime';
 import { MediaScreenshotsSection } from './MediaScreenshotsSection';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
@@ -19,7 +28,9 @@ import { parseCSV } from '../../../lib/shared/text/string-utils';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
 import { openMediaEditor } from '../../../lib/media/editor/open-media-editor';
-import { getLocalCatalogEntry, resolvePortRedirect } from '../../../lib/media/port-redirect';
+import { RetroAchievementsControls, RetroAchievementsEmpty } from '../../retro-achievements/RetroAchievementsControls';
+import { useRetroAchievements } from '../../retro-achievements/hooks/useRetroAchievements';
+import { toSteamAchievementsModel } from '../../../lib/retro-achievements/achievement-cell-adapter';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
@@ -66,11 +77,16 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // as each async fetch resolves (a flicker, since the panel itself no
   // longer unmounts/remounts on selection changes).
   const contentKey = knownExternalId ?? game.app_id ?? game.name;
-  const [gameInfo,      setGameInfo]      = useState<GameInfo | null>(null);
-  const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
-  const [achievementsLoading, setAchievementsLoading] = useState(false);
+  // Keyed on the launch target so switching from a game whose source DOES
+  // have cached info to one with none never leaves the previous game's
+  // info on screen — it's null again from the first render of the new one.
+  const [gameInfo,      setGameInfo]      = useKeyedState<GameInfo | null>(launchTarget.app_id, null);
+  const isSteamGame = launchTarget.launcher === 'steam' && !!launchTarget.app_id;
+  const achievementsKey = `${launchTarget.launcher}\n${launchTarget.app_id}`;
+  const [achievements,  setAchievements]  = useKeyedState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(achievementsKey, null);
+  const [achievementsLoading, setAchievementsLoading] = useKeyedState(achievementsKey, isSteamGame);
   const [showPicker,    setShowPicker]    = useState(false);
-  const [hasLaunched,   setHasLaunched]   = useState(false);
+  const [, setHasLaunched] = useState(false);
   const autoResumeButtonRef = useRef<HTMLButtonElement>(null);
   const autoResumeStartedRef = useRef(false);
   // Whether the ROM's own platform (see rom_platform) has an emulator
@@ -79,44 +95,39 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // it regardless, and clicking "Jugar" used to just silently fail deep in
   // launch_game (no emulator configured for X) with nothing shown for it.
   // null until checked (or when this isn't a ROM at all, the common case).
-  const [emulatorConfigured, setEmulatorConfigured] = useState<boolean | null>(null);
+  // Declared below isExe, which is part of its key.
 
   useEffect(() => {
-    // Reset unconditionally first — without this, switching from a season
-    // whose source game DOES have cached info (summary/genres/developers)
-    // to one with none left the previous game's info on screen instead of
-    // clearing, since the early return below never touched gameInfo at all.
-    setGameInfo(null);
     if (!launchTarget.app_id) return;
     let cancelled = false;
     readGameInfo(launchTarget.app_id).then(info => { if (!cancelled) setGameInfo(info); }).catch(() => { if (!cancelled) setGameInfo(null); });
     return () => { cancelled = true; };
-  }, [launchTarget.app_id]);
+  }, [launchTarget.app_id, setGameInfo]);
 
   useEffect(() => {
-    setAchievements(null);
-    const isSteamGame = launchTarget.launcher === 'steam' && !!launchTarget.app_id;
-    setAchievementsLoading(isSteamGame);
     if (!isSteamGame) return;
     let cancelled = false;
-    steamGetPlayerAchievements(Number(launchTarget.app_id))
-      .then(res => { if (!cancelled) setAchievements(res || null); })
-      .catch(() => { if (!cancelled) setAchievements(null); })
+    // Persisted copy first, live Steam refresh behind it (only when due).
+    loadLocalSteamAchievements(Number(launchTarget.app_id), res => {
+      if (!cancelled) { setAchievements(res); setAchievementsLoading(false); }
+    }, { lastPlayedSec: launchTarget.last_played })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setAchievementsLoading(false); });
     return () => { cancelled = true; };
-  }, [launchTarget.app_id, launchTarget.launcher]);
+  }, [isSteamGame, launchTarget.app_id, launchTarget.last_played, setAchievements, setAchievementsLoading]);
 
   const isExe = !!launchTarget.install_path?.toLowerCase().endsWith('.exe');
+  const isRom = !isExe && !!launchTarget.rom_platform && !!launchTarget.install_path;
+  const [emulatorConfigured, setEmulatorConfigured] = useKeyedState<boolean | null>(`${launchTarget.rom_platform}\n${isExe}`, null);
 
   useEffect(() => {
-    setEmulatorConfigured(null);
     if (!launchTarget.rom_platform || isExe) return;
     let cancelled = false;
     readEmulatorsConfig()
       .then(configs => { if (!cancelled) setEmulatorConfigured(!!configs[launchTarget.rom_platform!]?.executable_path); })
       .catch(() => { if (!cancelled) setEmulatorConfigured(false); });
     return () => { cancelled = true; };
-  }, [launchTarget.rom_platform, isExe]);
+  }, [launchTarget.rom_platform, isExe, setEmulatorConfigured]);
 
   // A "Pendiente" entry with no scanned install anywhere might still be
   // buyable/viewable on some storefront — IGDB's own external_games links
@@ -125,22 +136,19 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // knownExternalId entries: an actually-scanned game already IS its own
   // listing. Prefers Steam when both exist (steam:// opens inside the
   // client itself, a nicer experience than a plain web storefront link).
-  const [storeLink, setStoreLink] = useState<{ platform: string; url: string } | null>(null);
+  const [storeLink, setStoreLink] = useKeyedState<{ platform: string; url: string } | null>(knownExternalId, null);
   // "by X" for a catalog-only entry with no matched Steam install at all —
   // gameInfo (below) only ever comes from a real app_id's cached
   // info.json, which doesn't exist here, so the developer name has nowhere
   // else to come from but a live IGDB lookup (same call already made for
   // storeLink, just also reading its involved_companies this time).
-  const [catalogDevelopers, setCatalogDevelopers] = useState<string[] | null>(null);
+  const [catalogDevelopers, setCatalogDevelopers] = useKeyedState<string[] | null>(knownExternalId, null);
   // Gates the Nintendo eShop search fallback below — a game merely running
   // ON a Nintendo platform (any third-party Switch release) isn't what
   // "Ver en Nintendo" should mean; only when Nintendo itself is the
   // publisher or developer.
-  const [isNintendoCompany, setIsNintendoCompany] = useState(false);
+  const [isNintendoCompany, setIsNintendoCompany] = useKeyedState(knownExternalId, false);
   useEffect(() => {
-    setStoreLink(null);
-    setCatalogDevelopers(null);
-    setIsNintendoCompany(false);
     if (!knownExternalId) return;
     let cancelled = false;
 
@@ -183,13 +191,13 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
       setIsNintendoCompany(!!companies?.some(c => (c.developer || c.publisher) && c.company?.name?.toLowerCase().includes('nintendo')));
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [knownExternalId]);
+  }, [knownExternalId, setStoreLink, setCatalogDevelopers, setIsNintendoCompany]);
   const STORE_LABELS: Record<string, string> = {
     steam: t.local.view_on_steam,
     nintendo: t.local.view_on_nintendo,
   };
 
-  const [catalogEntry,  setCatalogEntry]  = useState<MediaCatalogEntry | null>(null);
+  const [catalogEntry,  setCatalogEntry]  = useKeyedState<MediaCatalogEntry | null>(`${knownExternalId}\n${gameInfo?.igdb_id}`, null);
 
   // Tries both id prefixes — an IGDB game logged as a visual novel is
   // catalogued as "vnovel:<id>", not "game:<id>" (see detect_vn/is_vn), and
@@ -198,21 +206,20 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // own PREQUEL/SEQUEL lookup below come up empty for e.g. Higurashi.
   useEffect(() => {
     let cancelled = false;
-    setCatalogEntry(null);
     if (knownExternalId) {
       getLocalCatalogEntry(knownExternalId)
         .then(entry => { if (!cancelled) setCatalogEntry(entry); })
         .catch(() => { if (!cancelled) setCatalogEntry(null); });
       return () => { cancelled = true; };
     }
-    if (!gameInfo?.igdb_id) { setCatalogEntry(null); return; }
+    if (!gameInfo?.igdb_id) return;
     const igdbId = gameInfo.igdb_id;
     Promise.all([
       getLocalCatalogEntry(gameExternalId(igdbId, false)).catch(() => null),
       getLocalCatalogEntry(gameExternalId(igdbId, true)).catch(() => null),
     ]).then(([g, v]) => { if (!cancelled) setCatalogEntry(g ?? v ?? null); });
     return () => { cancelled = true; };
-  }, [gameInfo?.igdb_id, knownExternalId]);
+  }, [gameInfo?.igdb_id, knownExternalId, setCatalogEntry]);
 
   // Same prequel/sequel neighbor row LocalMediaDetailPanel shows for
   // anime/manga/etc. — a Steam game's real catalog identity is whatever
@@ -228,11 +235,10 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // relationsExternalId itself stays untouched — the neighbor row above
   // still reflects the port's own (already base-aware, single-hop)
   // prequel/sequel resolution, a separate concern from this one.
-  const [editTargetId, setEditTargetId] = useState<string | undefined>();
+  const [editTargetId, setEditTargetId] = useKeyedState<string | undefined>(relationsExternalId, undefined);
   useEffect(() => {
-    if (!relationsExternalId) { setEditTargetId(undefined); return; }
+    if (!relationsExternalId) return;
     let cancelled = false;
-    setEditTargetId(undefined);
     resolvePortRedirect(relationsExternalId)
       .then(id => { if (!cancelled) setEditTargetId(id ?? undefined); })
       .catch(err => {
@@ -240,7 +246,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         if (!cancelled) setEditTargetId(undefined);
       });
     return () => { cancelled = true; };
-  }, [relationsExternalId]);
+  }, [relationsExternalId, setEditTargetId]);
 
   // A ROM has no independently-tracked "OS-reported" playtime the way a
   // Steam/Epic/GOG install does — launchTarget.playtime_minutes stays
@@ -256,17 +262,16 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // addPlaytimeHours (auto-tracking) only ever touches progress too, so
   // minutes_spent can go stale between saves — progress is what's actually
   // authoritative.
-  const [romLibraryEntry, setRomLibraryEntry] = useState<LibraryEntry | null>(null);
   const romTrackingId = editTargetId ?? relationsExternalId;
+  const [romLibraryEntry, setRomLibraryEntry] = useKeyedState<LibraryEntry | null>(romTrackingId, null);
   useEffect(() => {
-    setRomLibraryEntry(null);
     if (!romTrackingId) return;
     let cancelled = false;
     const load = () => { getLibraryEntry(romTrackingId).then(e => { if (!cancelled) setRomLibraryEntry(e); }).catch(() => {}); };
     load();
     window.addEventListener('refresh-profile-library', load);
     return () => { cancelled = true; window.removeEventListener('refresh-profile-library', load); };
-  }, [romTrackingId]);
+  }, [romTrackingId, setRomLibraryEntry]);
 
   // Identity (banner/cover, metadata) always stays `game`'s own — a season
   // shows ITS OWN art/summary/genres ("estás jugando la season de X"), not
@@ -353,6 +358,28 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     : gameInfo?.genres?.join(', ');
   const metaDots   = [formatUnixDateLong(catalogReleaseTimestamp ?? gameInfo?.release_date ?? undefined), displayGenres].filter(Boolean).join('  ·  ');
   const displaySummary = catalogEntry?.synopsis || gameInfo?.summary;
+
+  // Emulated ROMs: RetroAchievements progress, mapped onto the exact shape
+  // the Steam achievements tab renders so both go through the same section,
+  // grid and cells. The hook stays idle (null target) for anything else and
+  // the tab only appears for consoles RA covers.
+  const retro = useRetroAchievements(isRom ? {
+    externalId: romTrackingId ?? knownExternalId ?? launchTarget.external_id ?? launchTarget.name,
+    romPath: launchTarget.install_path,
+    romPlatform: launchTarget.rom_platform,
+    title: displayTitle,
+  } : null);
+  const retroVisible = isRom && retro.consoleId !== undefined && retro.consoleId !== null;
+  const retroProgress = retro.progress?.data ?? null;
+  const retroPointsLabel = t.retro_achievements.points;
+  const retroHardcoreLabel = t.retro_achievements.hardcore;
+  const retroAchievements = useMemo(
+    () => retroProgress ? toSteamAchievementsModel(retroProgress, { points: retroPointsLabel, hardcore: retroHardcoreLabel }) : null,
+    [retroProgress, retroPointsLabel, retroHardcoreLabel],
+  );
+  // What the stats row, the platinum seed and the section all see.
+  const shownAchievements = isSteamGame ? achievements : retroVisible ? retroAchievements : null;
+  const shownAchievementsLoading = isSteamGame ? achievementsLoading : retroVisible && retro.loading && !retroProgress;
   // catalogDevelopers (this identity's own IGDB lookup) wins over
   // gameInfo.developers (launchTarget's cached info) — same "own identity"
   // reasoning as the banner/metaDots above. Only ever both populated at
@@ -388,7 +415,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         // Guardar inside the editor (MediaEditorModal's own handleSave) —
         // this only seeds the form fields.
         const hours = launchTarget.playtime_minutes ? Math.round(launchTarget.playtime_minutes / 6) / 10 : 0;
-        const isPlatinum = !!achievements && achievements.total > 0 && achievements.unlocked === achievements.total;
+        const isPlatinum = !!shownAchievements && shownAchievements.total > 0 && shownAchievements.unlocked === shownAchievements.total;
         let seededEntry = libraryEntry ?? undefined;
         if (!libraryEntry) {
           seededEntry = {
@@ -472,6 +499,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           game={launchTarget}
           onClose={() => setShowPicker(false)}
           onPicked={result => {
+            invalidateLocalGameReads();
             onMetaRefresh?.();
             onGameRelinked?.(launchTarget, result.externalId, result.name);
           }}
@@ -558,7 +586,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-              {emulatorMissing ? t.local.no_emulator_configured : (canLaunch ? 'Jugar' : effectiveStoreLinkLabel ?? t.local.not_installed)}
+              {emulatorMissing ? t.local.no_emulator_configured : (canLaunch ? t.local.play_game : effectiveStoreLinkLabel ?? t.local.not_installed)}
             </button>
 
             <div className="local-media-divider-line" />
@@ -590,7 +618,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                     <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
                     <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
                   </svg>
-                  <span>{achievements ? `${achievements.unlocked}/${achievements.total}` : '—'}</span>
+                  <span>{shownAchievements ? `${shownAchievements.unlocked}/${shownAchievements.total}` : '—'}</span>
                   <span className="local-game-detail-stat-label">{t.local.stat_achievements}</span>
                 </div>
               </div>
@@ -622,8 +650,14 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           key={`${contentKey}:${displayTitle}`}
           appId={launchTarget.launcher === 'steam' ? launchTarget.app_id : undefined}
           workName={displayTitle}
-          achievements={achievements}
-          achievementsLoading={achievementsLoading}
+          achievements={shownAchievements}
+          achievementsLoading={shownAchievementsLoading}
+          achievementsTab={retroVisible ? {
+            iconAppId: `ra:${retroProgress?.gameId ?? retro.link?.raGameId ?? 0}`,
+            controls: <RetroAchievementsControls state={retro} title={displayTitle} />,
+            empty: <RetroAchievementsEmpty state={retro} />,
+          } : undefined}
+          emulator={isRom ? { platformId: launchTarget.rom_platform!, romPath: launchTarget.install_path!, title: displayTitle } : undefined}
         />
       </div>
     </>

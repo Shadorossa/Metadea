@@ -1,0 +1,38 @@
+[
+  {
+    "Date": "2026-09-21 10:00:00",
+    "HardcoreMode": 1,
+    "AchievementID": 9001,
+    "Title": "First",
+    "Description": "Unlocked in hardcore",
+    "BadgeName": "12345",
+    "Points": 5,
+    "TrueRatio": 6,
+    "Type": "progression",
+    "Author": "tester",
+    "GameTitle": "Metadea Test Quest",
+    "GameIcon": "/Images/000001.png",
+    "GameID": 1446,
+    "ConsoleName": "Nintendo DS",
+    "BadgeURL": "/Badge/12345.png",
+    "GameURL": "/game/1446"
+  },
+  {
+    "Date": "2026-09-21 09:00:00",
+    "HardcoreMode": 0,
+    "AchievementID": 9002,
+    "Title": "Second",
+    "Description": "Unlocked in softcore only",
+    "BadgeName": "12346",
+    "Points": 10,
+    "TrueRatio": 20,
+    "Type": null,
+    "Author": "tester",
+    "GameTitle": "Metadea Test Quest",
+    "GameIcon": "/Images/000001.png",
+    "GameID": 1446,
+    "ConsoleName": "Nintendo DS",
+    "BadgeURL": "/Badge/12346.png",
+    "GameURL": "/game/1446"
+  }
+]

@@ -1,4 +1,5 @@
 import { tauriCmd, tauriRun } from './bridge';
+import { notifyMediaPartChanged } from './change-events';
 // ── Anime openings/endings, animethemes.moe (media page's "Temas" tab) ──────
 
 export interface MediaTheme {
@@ -19,11 +20,14 @@ export async function getMediaThemes(externalId: string): Promise<MediaTheme[]> 
 }
 
 export async function saveMediaThemes(externalId: string, themes: MediaTheme[]): Promise<void> {
-  return tauriRun('save_media_themes', { externalId, themes });
+  await tauriRun('save_media_themes', { externalId, themes });
+  notifyMediaPartChanged('themes');
 }
 
 export async function saveThemePreviewFrame(externalId: string, slug: string, dataBase64: string): Promise<string> {
-  return tauriCmd<string>('save_theme_preview_frame', '', { externalId, slug, dataBase64 });
+  const path = await tauriCmd<string>('save_theme_preview_frame', '', { externalId, slug, dataBase64 });
+  notifyMediaPartChanged('themes');
+  return path;
 }
 
 export async function getThemePreviewFrame(externalId: string, slug: string): Promise<string | null> {
@@ -40,4 +44,11 @@ export async function getThemeVideoPath(externalId: string, slug: string): Promi
 
 export async function deleteCachedThemeVideo(externalId: string, slug: string): Promise<void> {
   return tauriRun('delete_cached_theme_video', { externalId, slug });
+}
+
+// Stops every theme video download Rust has running or queued (the preview
+// capture queue's, the hover warm-up's); later cacheThemeVideo calls are
+// unaffected. See lib/media/themes/theme-traffic.ts.
+export async function cancelThemeVideoDownloads(): Promise<void> {
+  return tauriRun('cancel_theme_video_downloads');
 }

@@ -3,24 +3,39 @@
 // cast inheritance a remaster displays. Split out of media-page-data.ts
 // (still re-exported from there) so the "before first paint" reads are
 // readable apart from the live fetch and its catalog write-back.
-import { getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
+import type { DbMediaAuthor, DbMediaRelation } from '../tauri/catalog';
 import type { MediaPageData, MediaCompany, MediaCharacter } from './types';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
-import { getMediaStaff } from '../tauri/staff';
-import { getMediaCompanies } from '../tauri/companies';
+import type { DbMediaStaffMember } from '../tauri/staff';
+import type { DbMediaCompany } from '../tauri/companies';
 import { getPublisherNames } from '../shared/text/string-utils';
 import { getCachedMediaData } from './media-cache';
 import { mapCatalogEntryToPartialData } from './mappers/catalog-mapper';
 import {
   sortRelationsForDisplay, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
-  dbStaffToMediaStaff, dbCompanyToMediaCompany, loadDbRelationsAndAuthors,
+  dbStaffToMediaStaff, dbCompanyToMediaCompany,
 } from './saga/media-relations';
 import { fetchMediaDataInternal } from './media-page-fetch';
-import { getBlockedExternalIds } from '../tauri';
+import {
+  readBlockedExternalIdsCached, readCatalogEntryCached, readMediaRelationsCached, readMediaAuthorsCached,
+  readMediaCharactersCached, readMediaStaffCached, readMediaCompaniesCached,
+} from './media-page-read-cache';
+
+// Same pair of reads as saga/media-relations' loadDbRelationsAndAuthors,
+// with both row sets going through the visit-scoped memo (the relation
+// rows are read again by the anime chain walk and the live-fetch merge; on
+// the page's own id both come out of the mount bundle).
+export async function loadDbRelationsAndAuthorsCached(rawId: string): Promise<{ relations: DbMediaRelation[]; authors: DbMediaAuthor[] }> {
+  const [relations, authors] = await Promise.all([
+    readMediaRelationsCached(rawId).catch(() => [] as DbMediaRelation[]),
+    readMediaAuthorsCached(rawId).catch(() => [] as DbMediaAuthor[]),
+  ]);
+  return { relations, authors };
+}
 
 export async function loadBaseEditionCharacters(baseId: string, fetchIfMissing: boolean): Promise<MediaCharacter[]> {
-  if ((await getBlockedExternalIds().catch(() => [] as string[])).includes(baseId)) return [];
+  if ((await readBlockedExternalIdsCached().catch(() => [] as string[])).includes(baseId)) return [];
   const saved = await getMediaCharacters(baseId).catch(() => [] as DbMediaCharacter[]);
   if (saved.length > 0) return saved.map(dbCharacterToMediaCharacter);
   if (!fetchIfMissing) return [];
@@ -53,7 +68,7 @@ export function getBaseEditionId(data: MediaPageData): string | null {
 // stale data.
 export function prefetchMediaData(rawId: string): void {
   if (getCachedMediaData(rawId)) return;
-  getCatalogEntry(rawId)
+  readCatalogEntryCached(rawId)
     .then(async catalog => {
       if (!catalog || !catalog.title_main) return;
       const localData = mapCatalogEntryToPartialData(catalog);
@@ -74,15 +89,18 @@ export function companyMetaLine(companies: MediaCompany[]): string | undefined {
 }
 
 // Fills in relations/authors/characters/staff/parent from local IPC reads
-// only (no network) — fast enough to run before first paint.
+// only (no network) — fast enough to run before first paint. During a page
+// visit every row set here comes out of the one mount bundle (see
+// media-page-read-cache.ts); the characters are the display-only flavour,
+// which is fine since a 'local' render is never written back.
 export async function enrichLocalData(rawId: string, catalog: MediaCatalogEntry, localData: MediaPageData): Promise<void> {
   const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff, dbCompanies, parentEntry] = await Promise.all([
-    loadDbRelationsAndAuthors(rawId),
-    getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
-    getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>),
-    getMediaCompanies(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaCompanies>>),
+    loadDbRelationsAndAuthorsCached(rawId),
+    readMediaCharactersCached(rawId).catch(() => [] as DbMediaCharacter[]),
+    readMediaStaffCached(rawId).catch(() => [] as DbMediaStaffMember[]),
+    readMediaCompaniesCached(rawId).catch(() => [] as DbMediaCompany[]),
     // Resolved to a full {externalId, title, cover} so isBlockedEdition (MediaPage.tsx) sees it here too.
-    catalog.parent_id ? getCatalogEntry(catalog.parent_id).catch(() => null) : Promise.resolve(null),
+    catalog.parent_id ? readCatalogEntryCached(catalog.parent_id).catch(() => null) : Promise.resolve(null),
   ]);
 
   if (dbRels.length > 0) {

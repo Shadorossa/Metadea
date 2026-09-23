@@ -1,9 +1,13 @@
+import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
+import { parseThemeVersions } from '../../../lib/media/themes/theme-source-chain';
+import type { ThemeVideoSource } from './useThemePlayer';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import type { Translations } from '../../../i18n/index';
 import { formatThemeEpisodes, splitTitleAfterColon } from './media-page-format';
 import { useThemePresence } from './useThemePresence';
+import { ThemeFavoriteButton } from './ThemeFavoriteButton';
 
 interface Props {
   theme: MediaTheme;
@@ -11,9 +15,8 @@ interface Props {
   // For the Discord "Listening" presence: the page's own title and cover.
   mediaTitle: string;
   mediaCover?: string | null;
-  videoSrc: string | null;
+  videoSource: ThemeVideoSource | null;
   playerError: boolean;
-  retryKey: number;
   selectedVersion: number;
   animeSeasonChain: SagaEntry[];
   episodes: MediaEpisode[];
@@ -23,8 +26,9 @@ interface Props {
   t: Translations['media'];
   onClose: () => void;
   onSelectTheme: (theme: MediaTheme) => void;
-  onSelectVersion: (version: number, videoUrl: string | null) => void;
-  onVideoError: () => void;
+  onSelectVersion: (version: number) => void;
+  /** `position` is where playback was, so a retry of the same video resumes there. */
+  onVideoError: (loadKey: number, position: number) => void;
   onRetry: () => void;
   onNavigateToEpisodes: (formattedEpisodes: string) => void;
 }
@@ -34,9 +38,8 @@ export function ThemePlayerOverlay({
   themes,
   mediaTitle,
   mediaCover,
-  videoSrc,
+  videoSource,
   playerError,
-  retryKey,
   selectedVersion,
   animeSeasonChain,
   episodes,
@@ -52,21 +55,19 @@ export function ThemePlayerOverlay({
   onNavigateToEpisodes,
 }: Props) {
   const presenceHandlers = useThemePresence({ theme: playingTheme, mediaTitle, cover: mediaCover });
+  // Playback starts on the first canplay of each load, not on later ones
+  // (after a seek, say), so a video the user paused stays paused.
+  const startedLoadKeyRef = useRef(-1);
   const currentThemeIdx = themes.findIndex(item => item.slug === playingTheme.slug);
   const prevTheme = currentThemeIdx > 0 ? themes[currentThemeIdx - 1] : null;
   const nextTheme = currentThemeIdx !== -1 && currentThemeIdx < themes.length - 1 ? themes[currentThemeIdx + 1] : null;
 
-  const themeVersions: Array<{ version: number; episodes: string | null; videoUrl: string | null }> = (() => {
-    if (playingTheme.versions) {
-      try {
-        const parsed = JSON.parse(playingTheme.versions);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch {}
-    }
-    return [{ version: 1, episodes: playingTheme.episodes, videoUrl: playingTheme.video_url }];
-  })();
+  const themeVersions = parseThemeVersions(playingTheme);
 
-  const currentVersionObj = themeVersions.find(v => v.version === selectedVersion) || themeVersions[0];
+  // The version playing, which a fallback (see useThemePlayer) may have
+  // moved off the selected one.
+  const shownVersion = videoSource?.version ?? selectedVersion;
+  const currentVersionObj = themeVersions.find(v => v.version === shownVersion) || themeVersions[0];
   const targetId = playingTheme.external_id || currentId;
 
   const themeSeason = (() => {
@@ -130,16 +131,24 @@ export function ThemePlayerOverlay({
         <div className="theme-player-modal">
           <button type="button" className="theme-player-close" onClick={onClose} aria-label={t.theme_player_close}>×</button>
           <div className="theme-player-video-wrap">
-            {videoSrc && (
+            {videoSource && (
               <video
-                key={`${playingTheme.slug}-${retryKey}`}
+                key={videoSource.loadKey}
                 className="theme-player-video"
-                src={videoSrc}
+                src={videoSource.url}
                 controls
-                autoPlay
                 preload="auto"
-                onError={onVideoError}
+                onError={e => onVideoError(videoSource.loadKey, e.currentTarget.currentTime)}
                 {...presenceHandlers}
+                onLoadedMetadata={e => {
+                  presenceHandlers.onLoadedMetadata(e);
+                  if (videoSource.startAt > 0) e.currentTarget.currentTime = videoSource.startAt;
+                }}
+                onCanPlay={e => {
+                  if (startedLoadKeyRef.current === videoSource.loadKey) return;
+                  startedLoadKeyRef.current = videoSource.loadKey;
+                  e.currentTarget.play().catch(() => {});
+                }}
               />
             )}
             {playerError && (
@@ -170,7 +179,7 @@ export function ThemePlayerOverlay({
                     key={v.version}
                     type="button"
                     className={`theme-player-version-tab${currentVersionObj.version === v.version ? ' active' : ''}`}
-                    onClick={() => onSelectVersion(v.version, v.videoUrl)}
+                    onClick={() => onSelectVersion(v.version)}
                   >
                     {`v${v.version}`}
                   </button>
@@ -204,6 +213,7 @@ export function ThemePlayerOverlay({
                 {formattedEps}
               </button>
             )}
+            <ThemeFavoriteButton theme={playingTheme} mediaTitle={mediaTitle} coverUrl={mediaCover} />
           </div>
         </div>
 

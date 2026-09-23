@@ -1,5 +1,3 @@
-import { isInProgressStatus } from './media-types';
-
 // Canonical release-status vocabulary every provider mapper (AniList, TMDB,
 // IGDB) normalizes into before it reaches MediaPageData.status / gets
 // persisted to media_catalog.status. AniList's own enum is used as the base

@@ -120,7 +120,7 @@ export function useRetrySync({ currentId, unifySeasonsEnabled, animeSeasonChain,
         }
       }
     }).finally(() => setRetryingSync(false));
-  }, [currentId, retryingSync, unifySeasonsEnabled]);
+  }, [currentId, retryingSync, unifySeasonsEnabled, animeSeasonChain, tm.relations.ISSUE, setData, setEpisodes, setThemes]);
 
   return { retryingSync, handleRetrySync };
 }

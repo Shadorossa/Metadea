@@ -4,6 +4,12 @@
 use std::path::PathBuf;
 use super::common::{synthetic_app_id, LocalGame};
 
+// Cheap change signature for scan_local_folder/scan_vn_folder (see
+// scan_cache.rs): the folder's own listing plus each game folder's mtime.
+pub(super) fn local_folder_signature(folder: &str) -> Option<String> {
+    Some(super::scan_cache::join_signatures([folder.to_string(), super::scan_cache::dir_tree_signature(std::path::Path::new(folder))]))
+}
+
 pub(super) fn scan_local_folder(folder: &str) -> Vec<LocalGame> {
     let path = std::path::Path::new(folder);
     if !path.is_dir() {

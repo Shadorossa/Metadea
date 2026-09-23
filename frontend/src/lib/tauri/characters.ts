@@ -1,4 +1,5 @@
 import { isTauri, invoke, tauriCmd, tauriRun } from './bridge';
+import { notifyMediaPartChanged } from './change-events';
 
 export interface CharacterEntry {
   id:           string;
@@ -147,7 +148,8 @@ export interface SkeletonCharacter {
 }
 
 export async function saveCharactersSkeleton(mediaExternalId: string, characters: SkeletonCharacter[]): Promise<void> {
-  return tauriRun('save_characters_skeleton', { mediaExternalId, characters });
+  await tauriRun('save_characters_skeleton', { mediaExternalId, characters });
+  notifyMediaPartChanged('characters');
 }
 
 export interface DbMediaCharacter {

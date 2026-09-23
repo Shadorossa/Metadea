@@ -8,7 +8,7 @@ const lang = getLang(Astro.url);
 const t = useTranslations(lang);
 ---
 
-<BaseLayout title={`${t.tier.title} — Metadea`} lang={lang} activePage="tier">
+<BaseLayout title={`${t.tier.title} — Metadea`} titleKey="tier.title" lang={lang} activePage="tier">
   <main class="tier-page">
     <TierIndex client:load />
   </main>

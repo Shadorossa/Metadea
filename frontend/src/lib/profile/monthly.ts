@@ -1,14 +1,17 @@
 import { HOF_GRADIENTS } from './hof';
 import { formatMonthLabel } from './media-type-label';
 import { wrapAssetUrl } from '../tauri';
+import { getT } from '../../i18n/runtime';
+import { escapeHtml } from '../shared/text/sanitize-html';
 import type { getAllLibraryEntries } from '../tauri';
+import type { CatalogSummary } from '../tauri';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
 export function buildMonthlyHistoryHtml(
   history: Record<string, string[]>,
   libraryEntries: Items,
-  catalogMap: Map<string, any>,
+  catalogMap: Map<string, CatalogSummary>,
   // Disk-cached cover paths (see lib/profile/cover-cache.ts) — preferred
   // over the remote cover_url when present; wrapAssetUrl turns them into a
   // loadable asset:// src.
@@ -17,7 +20,7 @@ export function buildMonthlyHistoryHtml(
   const sortedKeys = Object.keys(history).sort((a, b) => b.localeCompare(a));
 
   if (sortedKeys.length === 0) {
-    return `<div class="act-empty"><span>No hay historial mensual disponible</span></div>`;
+    return `<div class="act-empty"><span>${escapeHtml(getT().profile.monthly_history_empty)}</span></div>`;
   }
 
   const libMap = new Map(libraryEntries.map(item => [item.external_id, item]));
@@ -58,7 +61,7 @@ export function buildMonthlyHistoryHtml(
   });
 
   return `<div class="monthly-history">
-    <button type="button" class="mh-arrow mh-arrow-left" aria-label="Anterior" disabled>‹</button>
+    <button type="button" class="mh-arrow mh-arrow-left" aria-label="${escapeHtml(getT().profile.monthly_history_prev)}" disabled>‹</button>
     <div class="mh-scroll">
       <div class="mh-zigzag">
         <div class="mh-row-top">
@@ -69,7 +72,7 @@ export function buildMonthlyHistoryHtml(
         </div>
       </div>
     </div>
-    <button type="button" class="mh-arrow mh-arrow-right" aria-label="Siguiente">›</button>
+    <button type="button" class="mh-arrow mh-arrow-right" aria-label="${escapeHtml(getT().profile.monthly_history_next)}">›</button>
   </div>`;
 }
 

@@ -1,0 +1,31 @@
+/* Midnight — example Metadea UI theme.
+ *
+ * Everything in theme.json → "variables" is applied as a `:root { … }` block
+ * before this file, so most themes never need any CSS at all. This file shows
+ * the "full CSS" tier: any selector is allowed, but keep to the stable hooks
+ * listed in docs/THEMING.md (html[data-ui-theme], body[data-page], .navbar,
+ * .btn, .card-media-base, …) so the theme survives app updates.
+ *
+ * Rules the loader enforces (see docs/THEMING.md → Sanitisation):
+ *  - @import is removed.
+ *  - url(...) may only point to files inside this theme folder
+ *    (e.g. url("bg.png")); http(s):, data:, javascript: … are stripped.
+ *  - expression(), -moz-binding, behavior: and javascript: are neutralised.
+ *  - All CSS files together must stay under 2 MB.
+ */
+
+/* Scope everything to this theme's id so nothing leaks if the file is ever
+   concatenated with another theme. */
+html[data-ui-theme="example-midnight"] #app-bg {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% -10%, rgba(110, 168, 255, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 35% 30% at 90% 95%, rgba(60, 90, 200, 0.14) 0%, transparent 60%);
+}
+
+html[data-ui-theme="example-midnight"] .navbar {
+  border-bottom: 1px solid var(--accent-border);
+}
+
+html[data-ui-theme="example-midnight"] .btn--primary {
+  box-shadow: 0 0 0 1px var(--accent-border), 0 6px 18px -8px var(--accent-glow);
+}

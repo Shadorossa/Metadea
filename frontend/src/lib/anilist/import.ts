@@ -67,7 +67,24 @@ interface AniListFuzzyDate {
   day?: number;
 }
 
-interface AniListImportMediaItem {
+// The media fields the import needs to create a catalog row — also what
+// the MyAnimeList import asks AniList for when matching MAL ids
+// (providers/anilist/detail.ts fetchAniListMediaByMalIds).
+export interface AniListImportMedia {
+  id: number;
+  type: string;
+  format?: string;
+  title: { romaji: string | null; english: string | null; native: string | null };
+  coverImage: { large: string | null } | null;
+  genres: string[];
+  status: string | null;
+  studios: { edges: { isMain: boolean; node: { id: number; name: string } }[] } | null;
+}
+
+// One list entry to merge into the library. AniList's own pages always
+// carry `notes`; an importer without notes (MyAnimeList, lib/mal/import.ts)
+// leaves the field undefined and the merge keeps whatever is local.
+export interface AniListImportMediaItem {
   mediaId: number;
   status: string;
   score: number | null;
@@ -75,17 +92,8 @@ interface AniListImportMediaItem {
   progressVolumes: number | null;
   startedAt: AniListFuzzyDate | null;
   completedAt: AniListFuzzyDate | null;
-  notes: string | null;
-  media: {
-    id: number;
-    type: string;
-    format?: string;
-    title: { romaji: string | null; english: string | null; native: string | null };
-    coverImage: { large: string | null } | null;
-    genres: string[];
-    status: string | null;
-    studios: { edges: { isMain: boolean; node: { id: number; name: string } }[] } | null;
-  };
+  notes?: string | null;
+  media: AniListImportMedia;
 }
 
 interface AniListImportPage {
@@ -212,7 +220,7 @@ async function fetchAniListItems(
   const token = getAniListToken();
   if (!token) return { ok: false, error: 'No AniList token found' };
 
-  onProg({ current: 0, total: 0, status: 'loading', message: 'Obteniendo usuario...' });
+  onProg({ current: 0, total: 0, status: 'loading', message: getT().settings.anilist_fetching_user });
   const userResult = await fetchCurrentUserId(token);
   if (!userResult.id) {
     const error = userResult.error?.message || 'Could not get user ID';
@@ -338,7 +346,6 @@ export async function syncFromAniList(
   onProgress?: (progress: ImportProgress) => void
 ): Promise<{ ok: boolean; error?: string; updated?: number; added?: number; failed?: number }> {
   const onProg = onProgress || (() => {});
-  let failed = 0;
   if (!selectedFormats.some(f => ANIME_FORMAT_SET.has(f)) && !selectedFormats.some(f => MANGA_FORMAT_SET.has(f))) {
     return { ok: true, updated: 0, added: 0 };
   }
@@ -349,105 +356,7 @@ export async function syncFromAniList(
     const { filteredList } = fetched;
 
     onProg({ current: 0, total: filteredList.length, status: 'importing', message: getT().settings.anilist_syncing_items.replace('{count}', String(filteredList.length)) });
-
-    const existingLibrary = await getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
-    const existingMap = new Map(existingLibrary.map(e => [e.external_id, e]));
-    const catalogIds = await loadCatalogedIds(
-      filteredList.map(mediaItem => formatMediaId(mediaItem.media?.type ?? 'ANIME', mediaItem.media?.format, mediaItem.mediaId)),
-    );
-
-    let updated = 0;
-    let added = 0;
-    let done = 0;
-
-    for (const mediaItem of filteredList) {
-      const mediaType = mediaItem.media?.type ?? 'ANIME';
-      const format = mediaItem.media?.format;
-      const anilistId = mediaItem.mediaId;
-
-      const importId = formatMediaId(mediaType, format, anilistId);
-      const existing = existingMap.get(importId);
-
-      const newStatus = ANILIST_TO_APP_STATUS[mediaItem.status] ?? 'planning';
-      const newType = mapMediaType(mediaType, format);
-      const newRating = mediaItem.score && mediaItem.score > 0 ? (mediaItem.score as number) : null;
-      const newProgress = mediaItem.progress ?? 0;
-      const newProgress2 = mediaItem.progressVolumes ?? 0;
-      const newStartedAt = formatFuzzyDate(mediaItem.startedAt) || null;
-      const newFinishedAt = formatFuzzyDate(mediaItem.completedAt) || null;
-      const newNotes = mediaItem.notes ?? null;
-
-      if (existing) {
-        const changed =
-          existing.type !== newType ||
-          existing.status !== newStatus ||
-          (existing.rating ?? null) !== newRating ||
-          existing.progress !== newProgress ||
-          existing.progress_2 !== newProgress2 ||
-          (existing.started_at ?? null) !== newStartedAt ||
-          (existing.finished_at ?? null) !== newFinishedAt ||
-          (existing.notes ?? null) !== newNotes;
-
-        if (changed) {
-          try {
-            await saveLibraryEntry({
-              ...existing,
-              type: newType,
-              status: newStatus,
-              rating: newRating,
-              progress: newProgress,
-              progress_2: newProgress2,
-              started_at: newStartedAt,
-              finished_at: newFinishedAt,
-              notes: newNotes,
-            });
-            updated++;
-          } catch (err) {
-            failed++;
-            console.error(`Failed to update ${importId}:`, err);
-          }
-        }
-      } else {
-        const entryType = newType;
-        const entry: LibraryEntry = {
-          id: '',
-          user_id: 'local',
-          external_id: importId,
-          type: entryType,
-          status: newStatus,
-          rating: newRating,
-          rating_2: null,
-          progress: newProgress,
-          progress_2: newProgress2,
-          started_at: newStartedAt,
-          finished_at: newFinishedAt,
-          notes: newNotes,
-          added_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          is_favorite: 0,
-          is_platinum: 0,
-          tags: [],
-          minutes_spent: 0,
-          selected_platform: null,
-          selected_version: null,
-        };
-        try {
-          await saveLibraryEntry(entry);
-          if (!catalogIds.has(importId)) {
-            await saveCatalogEntry(buildCatalogEntry(importId, entryType, mediaItem));
-            await saveAniListStudios(importId, entryType, mediaItem);
-          }
-          added++;
-        } catch (err) {
-          failed++;
-          console.error(`Failed to add ${importId}:`, err);
-        }
-      }
-
-      done++;
-      onProg({ current: done, total: filteredList.length, status: 'importing', message: `${done}/${filteredList.length}...` });
-    }
-
+    const { updated, added, failed } = await mergeAniListItemsIntoLibrary(filteredList, onProg);
     onProg({ current: filteredList.length, total: filteredList.length, status: 'done', failed });
     return { ok: true, updated, added, failed };
   } catch (e) {
@@ -455,6 +364,122 @@ export async function syncFromAniList(
     onProg({ current: 0, total: 0, status: 'error', message });
     return { ok: false, error: message };
   }
+}
+
+export interface LibraryMergeResult {
+  updated: number;
+  added: number;
+  failed: number;
+}
+
+// The write half of syncFromAniList, shared with the MyAnimeList import
+// (lib/mal/import.ts): an existing library entry is updated when any
+// tracked field differs, a missing one is added (with its catalog row when
+// the catalog has never seen it). A failed write counts, never throws.
+export async function mergeAniListItemsIntoLibrary(
+  items: AniListImportMediaItem[],
+  onProg: (p: ImportProgress) => void = () => {},
+): Promise<LibraryMergeResult> {
+  const existingLibrary = await getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
+  const existingMap = new Map(existingLibrary.map(e => [e.external_id, e]));
+  const catalogIds = await loadCatalogedIds(
+    items.map(mediaItem => formatMediaId(mediaItem.media?.type ?? 'ANIME', mediaItem.media?.format, mediaItem.mediaId)),
+  );
+
+  let updated = 0;
+  let added = 0;
+  let failed = 0;
+  let done = 0;
+
+  for (const mediaItem of items) {
+    const mediaType = mediaItem.media?.type ?? 'ANIME';
+    const format = mediaItem.media?.format;
+    const anilistId = mediaItem.mediaId;
+
+    const importId = formatMediaId(mediaType, format, anilistId);
+    const existing = existingMap.get(importId);
+
+    const newStatus = ANILIST_TO_APP_STATUS[mediaItem.status] ?? 'planning';
+    const newType = mapMediaType(mediaType, format);
+    const newRating = mediaItem.score && mediaItem.score > 0 ? (mediaItem.score as number) : null;
+    const newProgress = mediaItem.progress ?? 0;
+    const newProgress2 = mediaItem.progressVolumes ?? 0;
+    const newStartedAt = formatFuzzyDate(mediaItem.startedAt) || null;
+    const newFinishedAt = formatFuzzyDate(mediaItem.completedAt) || null;
+    const newNotes = mediaItem.notes === undefined ? (existing?.notes ?? null) : mediaItem.notes;
+
+    if (existing) {
+      const changed =
+        existing.type !== newType ||
+        existing.status !== newStatus ||
+        (existing.rating ?? null) !== newRating ||
+        existing.progress !== newProgress ||
+        existing.progress_2 !== newProgress2 ||
+        (existing.started_at ?? null) !== newStartedAt ||
+        (existing.finished_at ?? null) !== newFinishedAt ||
+        (existing.notes ?? null) !== newNotes;
+
+      if (changed) {
+        try {
+          await saveLibraryEntry({
+            ...existing,
+            type: newType,
+            status: newStatus,
+            rating: newRating,
+            progress: newProgress,
+            progress_2: newProgress2,
+            started_at: newStartedAt,
+            finished_at: newFinishedAt,
+            notes: newNotes,
+          });
+          updated++;
+        } catch (err) {
+          failed++;
+          console.error(`Failed to update ${importId}:`, err);
+        }
+      }
+    } else {
+      const entryType = newType;
+      const entry: LibraryEntry = {
+        id: '',
+        user_id: 'local',
+        external_id: importId,
+        type: entryType,
+        status: newStatus,
+        rating: newRating,
+        rating_2: null,
+        progress: newProgress,
+        progress_2: newProgress2,
+        started_at: newStartedAt,
+        finished_at: newFinishedAt,
+        notes: newNotes,
+        added_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_favorite: 0,
+        is_platinum: 0,
+        tags: [],
+        minutes_spent: 0,
+        selected_platform: null,
+        selected_version: null,
+      };
+      try {
+        await saveLibraryEntry(entry);
+        if (!catalogIds.has(importId)) {
+          await saveCatalogEntry(buildCatalogEntry(importId, entryType, mediaItem));
+          await saveAniListStudios(importId, entryType, mediaItem);
+        }
+        added++;
+      } catch (err) {
+        failed++;
+        console.error(`Failed to add ${importId}:`, err);
+      }
+    }
+
+    done++;
+    onProg({ current: done, total: items.length, status: 'importing', message: `${done}/${items.length}...` });
+  }
+
+  return { updated, added, failed };
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────

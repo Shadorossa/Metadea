@@ -30,10 +30,17 @@ pub async fn get_sync_state(
     external_id: String,
 ) -> Result<Option<SyncStateEntry>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_sync_state(&conn, &external_id)
+}
+
+pub(crate) fn load_sync_state(
+    conn: &rusqlite::Connection,
+    external_id: &str,
+) -> Result<Option<SyncStateEntry>, String> {
     conn.query_row(
         "SELECT external_id, last_synced_at, sync_failed_count, last_sync_error
          FROM sync_state WHERE external_id = ?1",
-        [&external_id],
+        [external_id],
         row_to_entry,
     )
     .optional()

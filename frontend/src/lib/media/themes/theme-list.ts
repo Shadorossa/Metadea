@@ -1,7 +1,10 @@
 import { fetchAnimeThemes } from '../../search/providers/animethemes';
 import { parseExternalId } from '../mappers/mapper-utils';
 import { buildAnimeChain } from '../episodes/anime-tmdb-match';
-import { getMediaThemes, saveMediaThemes, type MediaTheme } from '../../tauri';
+import { saveMediaThemes, type MediaTheme } from '../../tauri';
+// Visit-scoped memo (plain read outside a media page visit): the page's own
+// cached theme list comes out of its mount bundle.
+import { readMediaThemesCached as getMediaThemes } from '../media-page-read-cache';
 
 export async function getAnimePrequelThemeOffsets(rawId: string): Promise<{ opOffset: number; edOffset: number }> {
   const { type } = parseExternalId(rawId);

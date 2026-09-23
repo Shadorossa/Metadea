@@ -49,7 +49,7 @@ export function BackfillTab({ active, paging, onCompleted }: Props) {
         onClick={runBackfill}
         disabled={backfillRunning}
       >
-        {backfillRunning ? 'Revisando catálogo…' : 'Revisar cambios de catálogo'}
+        {backfillRunning ? getT().admin.backfill_running : getT().admin.backfill_run}
       </button>
       {backfillRunning && backfillProgress && (
         <p className="catalog-admin-status">

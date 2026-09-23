@@ -44,7 +44,7 @@ const apis = [
 
 <footer class="app-footer">
   <div class="footer-content">
-    <div class="footer-text">{t.footer.powered_by}</div>
+    <div class="footer-text" data-i18n="footer.powered_by">{t.footer.powered_by}</div>
     <div class="footer-logos">
       {
         apis.map((api) => (
@@ -54,7 +54,9 @@ const apis = [
             rel="noopener noreferrer"
             class="footer-logo-link"
             title={api.name}
-            aria-label={`${api.name} - External link`}
+            aria-label={t.footer.external_link.replace("{name}", api.name)}
+            data-i18n-aria-label="footer.external_link"
+            data-i18n-vars={JSON.stringify({ name: api.name })}
           >
             <img src={api.logo} alt={api.name} class="footer-logo" />
           </a>
@@ -63,7 +65,7 @@ const apis = [
     </div>
     <div class="footer-bottom-row">
       <div class="footer-version">v{version}</div>
-      <a href="#" id="footer-tos-link" class="footer-tos-link"
+      <a href="#" id="footer-tos-link" class="footer-tos-link" data-i18n="footer.terms_link"
         >{t.footer.terms_link}</a
       >
     </div>
@@ -71,6 +73,8 @@ const apis = [
 </footer>
 
 <script>
+  import { getT } from "../i18n/runtime";
+
   function initTosLink() {
     const link = document.getElementById("footer-tos-link");
     if (!link) return;
@@ -82,9 +86,9 @@ const apis = [
         try {
           const { WebviewWindow } =
             await import("@tauri-apps/api/webviewWindow");
-          const webview = new WebviewWindow("tos", {
+          new WebviewWindow("tos", {
             url: "/tos",
-            title: "Términos y Condiciones — Metadea",
+            title: `${getT().tos.title} — Metadea`,
             width: 650,
             height: 750,
             resizable: true,

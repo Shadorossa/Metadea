@@ -92,14 +92,20 @@ const EDITION_KEYWORDS = new Set([
   'hd', 'collection', 'ultimate', 'gold',
 ]);
 
+// Apostrophes/quotes are dropped BEFORE normalizeForMatch (which would turn
+// "Director's" into "director s", splitting the edition keyword) — kept
+// local to this matcher so folder scoring elsewhere is unaffected.
+const APOSTROPHES = /['’‘`]/g;
+const normalizeEditionText = (s: string): string => normalizeForMatch(s.replace(APOSTROPHES, ''));
+
 export function findEditionPrefixMatch(title: string, games: LocalGame[]): LocalGame | undefined {
-  const normTitle = normalizeForMatch(title);
+  const normTitle = normalizeEditionText(title);
   const titleTokens = normTitle.split(' ').filter(Boolean);
   // Below this, a single short/degenerate token (numbers especially) is too
   // likely to prefix-match something by pure coincidence.
   if (titleTokens.length < 2) return undefined;
   for (const g of games) {
-    const normName = normalizeForMatch(g.name);
+    const normName = normalizeEditionText(g.name);
     if (!normName.startsWith(normTitle + ' ')) continue;
     const extra = normName.slice(normTitle.length).trim().split(' ').filter(Boolean);
     if (extra.every(tok => EDITION_KEYWORDS.has(tok) || tok === 'the' || tok === 'of')) return g;

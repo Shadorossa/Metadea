@@ -15,11 +15,7 @@ use super::common::{synthetic_app_id, LocalGame};
 fn gog_playtimes() -> std::collections::HashMap<String, u64> {
     use rusqlite::{Connection, OpenFlags};
 
-    let database = std::env::var_os("PROGRAMDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-        .join(r"GOG.com\Galaxy\storage\galaxy-2.0.db");
-    let Ok(conn) = Connection::open_with_flags(database, OpenFlags::SQLITE_OPEN_READ_ONLY) else {
+    let Ok(conn) = Connection::open_with_flags(gog_galaxy_database(), OpenFlags::SQLITE_OPEN_READ_ONLY) else {
         return Default::default();
     };
 
@@ -66,6 +62,64 @@ fn gog_playtimes() -> std::collections::HashMap<String, u64> {
     Default::default()
 }
 
+fn gog_folder_candidates() -> Vec<PathBuf> {
+    ["C", "D", "E"]
+        .iter()
+        .flat_map(|drive| {
+            vec![
+                PathBuf::from(format!("{}:\\GOG Games", drive)),
+                PathBuf::from(format!(
+                    "{}:\\Program Files (x86)\\GOG Galaxy\\Games",
+                    drive
+                )),
+                PathBuf::from(format!("{}:\\Games\\GOG", drive)),
+            ]
+        })
+        .collect()
+}
+
+#[cfg(windows)]
+fn gog_galaxy_database() -> PathBuf {
+    std::env::var_os("PROGRAMDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
+        .join(r"GOG.com\Galaxy\storage\galaxy-2.0.db")
+}
+
+// Registry last-write times: the parent key changes when a game's subkey is
+// added or removed, each subkey when its own values (path, name) change.
+#[cfg(windows)]
+fn gog_registry_signature() -> String {
+    use winreg::enums::*;
+    use winreg::RegKey;
+    let Ok(parent) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey("SOFTWARE\\WOW6432Node\\GOG.com\\Games") else {
+        return "no-registry".into();
+    };
+    // FileTime derefs to the raw FILETIME; its Debug output carries both
+    // halves, which is all a change signature needs.
+    let write_time = |key: &RegKey| key.query_info().map(|info| format!("{:?}", info.last_write_time)).ok();
+    let mut parts: Vec<String> = vec![format!("{:?}", write_time(&parent))];
+    for game_id in parent.enum_keys().flatten() {
+        let stamp = parent.open_subkey(&game_id).ok().and_then(|key| write_time(&key));
+        parts.push(format!("{game_id}:{stamp:?}"));
+    }
+    super::scan_cache::join_signatures(parts)
+}
+
+#[cfg(not(windows))]
+fn gog_registry_signature() -> String {
+    "no-registry".into()
+}
+
+// Cheap change signature for scan_gog_games (see scan_cache.rs).
+pub(super) fn gog_scan_signature() -> Option<String> {
+    let mut parts = vec![gog_registry_signature()];
+    #[cfg(windows)]
+    parts.push(super::scan_cache::path_signature(&gog_galaxy_database()));
+    parts.extend(gog_folder_candidates().iter().map(|dir| super::scan_cache::dir_tree_signature(dir)));
+    Some(super::scan_cache::join_signatures(parts))
+}
+
 fn scan_gog_games_registry() -> Vec<LocalGame> {
     use winreg::enums::*;
     use winreg::RegKey;
@@ -107,19 +161,7 @@ pub(super) fn scan_gog_games() -> Vec<LocalGame> {
     let registry_names: std::collections::HashSet<String> =
         games.iter().map(|g| g.name.clone()).collect();
 
-    let gog_dirs: Vec<PathBuf> = ["C", "D", "E"]
-        .iter()
-        .flat_map(|drive| {
-            vec![
-                PathBuf::from(format!("{}:\\GOG Games", drive)),
-                PathBuf::from(format!(
-                    "{}:\\Program Files (x86)\\GOG Galaxy\\Games",
-                    drive
-                )),
-                PathBuf::from(format!("{}:\\Games\\GOG", drive)),
-            ]
-        })
-        .collect();
+    let gog_dirs = gog_folder_candidates();
 
     for base_dir in &gog_dirs {
         if !base_dir.exists() {

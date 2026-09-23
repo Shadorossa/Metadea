@@ -26,7 +26,9 @@ export function NowReadingBar() {
     : 0;
 
   const pageLabel = session && session.pageCount > 0
-    ? `Pag. ${Math.min(session.spreadIndex * 2 + 1, session.pageCount)} / ${session.pageCount}`
+    ? t.page_of
+      .replace('{page}', String(Math.min(session.spreadIndex * 2 + 1, session.pageCount)))
+      .replace('{total}', String(session.pageCount))
     : '';
 
   return (

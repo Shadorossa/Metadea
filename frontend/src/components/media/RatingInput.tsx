@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
 import { STAR_PATH } from '../../lib/media/constants';
 import { getActiveRatingSystem, ratingToEmoji, type RatingSystem } from '../../lib/media/rating-utils';
 import { getT } from '../../i18n/runtime';
@@ -71,13 +72,10 @@ function NumberRatingInput({ rating, onChange, min, max, decimals }: {
   rating: number; onChange: (v: number) => void; min: number; max: number; decimals: boolean;
 }) {
   const format = (v: number) => decimals ? v.toFixed(2) : String(Math.round(v));
-  const [text, setText] = useState(() => format(rating));
   const [focused, setFocused] = useState(false);
-
-  useEffect(() => {
-    if (!focused) setText(format(rating));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rating, focused]);
+  // Resynced from `rating` only while unfocused — with focus the key stays
+  // put, so the user's own buffer isn't overwritten mid-edit.
+  const [text, setText] = useKeyedState(focused ? 'focused' : `rating:${rating}`, format(rating));
 
   return (
     <input type="number" className="me-header-field-input" min={min} max={max} step={decimals ? 0.01 : 1}

@@ -283,6 +283,14 @@
     align-items: stretch;
   }
 
+  /* "ROM extensions" — one label, one input, one hint, stacked. */
+  .emulator-config-row.rom-extensions-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
   .emulator-section,
   .launch-section {
     display: flex;

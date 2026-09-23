@@ -19,6 +19,7 @@
 // (data-help="x" opens #x-help-modal) and needed no changes for this.
 
 import type { Translations } from '../../i18n/index';
+import { MAL_REDIRECT_URI } from '../../lib/tauri/mal';
 
 interface Props {
   t: Translations;
@@ -32,16 +33,16 @@ const { t } = Astro.props;
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>{t.help.github_title}</h3>
+      <h3 data-i18n="help.github_title">{t.help.github_title}</h3>
       <button class="settings-help-modal-close" data-modal="github-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p set:html={t.help.github_body1} />
-      <p>{t.help.github_body2}</p>
+      <p set:html={t.help.github_body1} data-i18n-html="help.github_body1" />
+      <p data-i18n="help.github_body2">{t.help.github_body2}</p>
       <ul class="settings-help-list">
-        <li set:html={t.help.github_item1} />
-        <li set:html={t.help.github_item2} />
-        <li set:html={t.help.github_item3} />
+        <li set:html={t.help.github_item1} data-i18n-html="help.github_item1" />
+        <li set:html={t.help.github_item2} data-i18n-html="help.github_item2" />
+        <li set:html={t.help.github_item3} data-i18n-html="help.github_item3" />
       </ul>
     </div>
   </div>
@@ -54,26 +55,50 @@ const { t } = Astro.props;
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>{t.help.anilist_title}</h3>
+      <h3 data-i18n="help.anilist_title">{t.help.anilist_title}</h3>
       <button class="settings-help-modal-close" data-modal="anilist-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p set:html={t.help.anilist_body1} />
+      <p set:html={t.help.anilist_body1} data-i18n-html="help.anilist_body1" />
       <ul class="settings-help-list">
-        <li set:html={t.help.anilist_item1} />
-        <li set:html={t.help.anilist_item2} />
-        <li set:html={t.help.anilist_item3} />
+        <li set:html={t.help.anilist_item1} data-i18n-html="help.anilist_item1" />
+        <li set:html={t.help.anilist_item2} data-i18n-html="help.anilist_item2" />
+        <li set:html={t.help.anilist_item3} data-i18n-html="help.anilist_item3" />
       </ul>
-      <p class="settings-help-content-spaced" set:html={t.help.anilist_body2} />
+      <p class="settings-help-content-spaced" set:html={t.help.anilist_body2} data-i18n-html="help.anilist_body2" />
       <ol class="settings-help-steps">
-        <li set:html={t.help.anilist_step1} />
-        <li set:html={t.help.anilist_step2} />
-        <li set:html={t.help.anilist_step3} />
-        <li set:html={t.help.anilist_step4} />
-        <li set:html={t.help.anilist_step5} />
-        <li set:html={t.help.anilist_step6} />
+        <li set:html={t.help.anilist_step1} data-i18n-html="help.anilist_step1" />
+        <li set:html={t.help.anilist_step2} data-i18n-html="help.anilist_step2" />
+        <li set:html={t.help.anilist_step3} data-i18n-html="help.anilist_step3" />
+        <li set:html={t.help.anilist_step4} data-i18n-html="help.anilist_step4" />
+        <li set:html={t.help.anilist_step5} data-i18n-html="help.anilist_step5" />
+        <li set:html={t.help.anilist_step6} data-i18n-html="help.anilist_step6" />
       </ol>
-      <p class="settings-help-muted" set:html={t.help.anilist_body3} />
+      <p class="settings-help-muted" set:html={t.help.anilist_body3} data-i18n-html="help.anilist_body3" />
+    </div>
+  </div>
+</div>
+
+<!-- MyAnimeList — one modal for both entry points (Conexiones' "i" and
+     Entorno's), like AniList's. The redirect URI comes from lib/tauri/mal
+     so the help text can never drift from what src-tauri/src/mal expects. -->
+<div id="mal-help-modal" class="settings-help-modal hidden">
+  <div class="settings-help-modal-overlay"></div>
+  <div class="settings-help-modal-content">
+    <div class="settings-help-modal-header">
+      <h3 data-i18n="mal.help_title">{t.mal.help_title}</h3>
+      <button class="settings-help-modal-close" data-modal="mal-help-modal">&times;</button>
+    </div>
+    <div class="settings-help-modal-body">
+      <p set:html={t.mal.help_body1} data-i18n-html="mal.help_body1" />
+      <p class="settings-help-content-spaced" data-i18n="mal.help_body2">{t.mal.help_body2}</p>
+      <ol class="settings-help-list">
+        <li set:html={t.mal.help_step1} data-i18n-html="mal.help_step1" />
+        <li set:html={t.mal.help_step2} data-i18n-html="mal.help_step2" />
+        <li set:html={t.mal.help_step3.replace('{redirect_uri}', MAL_REDIRECT_URI)} data-i18n-html="mal.help_step3" data-i18n-vars={JSON.stringify({ redirect_uri: MAL_REDIRECT_URI })} />
+        <li set:html={t.mal.help_step4} data-i18n-html="mal.help_step4" />
+      </ol>
+      <p class="settings-help-muted" data-i18n="mal.help_body3">{t.mal.help_body3}</p>
     </div>
   </div>
 </div>
@@ -83,30 +108,30 @@ const { t } = Astro.props;
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>{t.help.igdb_title}</h3>
+      <h3 data-i18n="help.igdb_title">{t.help.igdb_title}</h3>
       <button class="settings-help-modal-close" data-modal="igdb-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p set:html={t.help.igdb_body1} />
-      <p class="settings-help-igdb-warning" set:html={t.help.igdb_warning} />
+      <p set:html={t.help.igdb_body1} data-i18n-html="help.igdb_body1" />
+      <p class="settings-help-igdb-warning" set:html={t.help.igdb_warning} data-i18n-html="help.igdb_warning" />
       <ol class="settings-help-steps">
-        <li set:html={t.help.igdb_step1} />
-        <li set:html={t.help.igdb_step2} />
-        <li set:html={t.help.igdb_step3} />
+        <li set:html={t.help.igdb_step1} data-i18n-html="help.igdb_step1" />
+        <li set:html={t.help.igdb_step2} data-i18n-html="help.igdb_step2" />
+        <li set:html={t.help.igdb_step3} data-i18n-html="help.igdb_step3" />
         <li>
-          {t.help.igdb_step4}
+          <span data-i18n="help.igdb_step4">{t.help.igdb_step4}</span>
           <ul class="settings-help-list settings-help-list--nested">
-            <li set:html={t.help.igdb_step4_item1} />
-            <li set:html={t.help.igdb_step4_item2} />
-            <li set:html={t.help.igdb_step4_item3} />
+            <li set:html={t.help.igdb_step4_item1} data-i18n-html="help.igdb_step4_item1" />
+            <li set:html={t.help.igdb_step4_item2} data-i18n-html="help.igdb_step4_item2" />
+            <li set:html={t.help.igdb_step4_item3} data-i18n-html="help.igdb_step4_item3" />
           </ul>
         </li>
-        <li set:html={t.help.igdb_step5} />
-        <li set:html={t.help.igdb_step6} />
-        <li set:html={t.help.igdb_step7} />
+        <li set:html={t.help.igdb_step5} data-i18n-html="help.igdb_step5" />
+        <li set:html={t.help.igdb_step6} data-i18n-html="help.igdb_step6" />
+        <li set:html={t.help.igdb_step7} data-i18n-html="help.igdb_step7" />
       </ol>
-      <p class="settings-help-muted" set:html={t.help.igdb_body2} />
-      <p class="settings-help-muted settings-help-muted--compact" set:html={t.help.igdb_body3} />
+      <p class="settings-help-muted" set:html={t.help.igdb_body2} data-i18n-html="help.igdb_body2" />
+      <p class="settings-help-muted settings-help-muted--compact" set:html={t.help.igdb_body3} data-i18n-html="help.igdb_body3" />
     </div>
   </div>
 </div>
@@ -116,19 +141,19 @@ const { t } = Astro.props;
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>{t.help.tmdb_title}</h3>
+      <h3 data-i18n="help.tmdb_title">{t.help.tmdb_title}</h3>
       <button class="settings-help-modal-close" data-modal="tmdb-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p set:html={t.help.tmdb_body1} />
+      <p set:html={t.help.tmdb_body1} data-i18n-html="help.tmdb_body1" />
       <ol class="settings-help-steps">
-        <li set:html={t.help.tmdb_step1} />
-        <li set:html={t.help.tmdb_step2} />
-        <li set:html={t.help.tmdb_step3} />
-        <li set:html={t.help.tmdb_step4} />
-        <li set:html={t.help.tmdb_step5} />
+        <li set:html={t.help.tmdb_step1} data-i18n-html="help.tmdb_step1" />
+        <li set:html={t.help.tmdb_step2} data-i18n-html="help.tmdb_step2" />
+        <li set:html={t.help.tmdb_step3} data-i18n-html="help.tmdb_step3" />
+        <li set:html={t.help.tmdb_step4} data-i18n-html="help.tmdb_step4" />
+        <li set:html={t.help.tmdb_step5} data-i18n-html="help.tmdb_step5" />
       </ol>
-      <p class="settings-help-muted">{t.help.tmdb_body2}</p>
+      <p class="settings-help-muted" data-i18n="help.tmdb_body2">{t.help.tmdb_body2}</p>
     </div>
   </div>
 </div>
@@ -138,17 +163,17 @@ const { t } = Astro.props;
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>{t.help.comicvine_title}</h3>
+      <h3 data-i18n="help.comicvine_title">{t.help.comicvine_title}</h3>
       <button class="settings-help-modal-close" data-modal="comicvine-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p set:html={t.help.comicvine_body1} />
+      <p set:html={t.help.comicvine_body1} data-i18n-html="help.comicvine_body1" />
       <ol class="settings-help-steps">
-        <li set:html={t.help.comicvine_step1} />
-        <li set:html={t.help.comicvine_step2} />
-        <li set:html={t.help.comicvine_step3} />
+        <li set:html={t.help.comicvine_step1} data-i18n-html="help.comicvine_step1" />
+        <li set:html={t.help.comicvine_step2} data-i18n-html="help.comicvine_step2" />
+        <li set:html={t.help.comicvine_step3} data-i18n-html="help.comicvine_step3" />
       </ol>
-      <p class="settings-help-muted settings-help-muted--compact">{t.help.comicvine_body2}</p>
+      <p class="settings-help-muted settings-help-muted--compact" data-i18n="help.comicvine_body2">{t.help.comicvine_body2}</p>
     </div>
   </div>
 </div>
@@ -158,17 +183,17 @@ const { t } = Astro.props;
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>{t.help.apisports_title}</h3>
+      <h3 data-i18n="help.apisports_title">{t.help.apisports_title}</h3>
       <button class="settings-help-modal-close" data-modal="apisports-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p set:html={t.help.apisports_body1} />
+      <p set:html={t.help.apisports_body1} data-i18n-html="help.apisports_body1" />
       <ol class="settings-help-steps">
-        <li set:html={t.help.apisports_step1} />
-        <li set:html={t.help.apisports_step2} />
-        <li set:html={t.help.apisports_step3} />
+        <li set:html={t.help.apisports_step1} data-i18n-html="help.apisports_step1" />
+        <li set:html={t.help.apisports_step2} data-i18n-html="help.apisports_step2" />
+        <li set:html={t.help.apisports_step3} data-i18n-html="help.apisports_step3" />
       </ol>
-      <p class="settings-help-muted" set:html={t.help.apisports_body2} />
+      <p class="settings-help-muted" set:html={t.help.apisports_body2} data-i18n-html="help.apisports_body2" />
     </div>
   </div>
 </div>
@@ -178,21 +203,21 @@ const { t } = Astro.props;
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>{t.help.steam_title}</h3>
+      <h3 data-i18n="help.steam_title">{t.help.steam_title}</h3>
       <button class="settings-help-modal-close" data-modal="steam-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p set:html={t.help.steam_body1} />
+      <p set:html={t.help.steam_body1} data-i18n-html="help.steam_body1" />
       <ol class="settings-help-steps">
-        <li set:html={t.help.steam_step1} />
-        <li set:html={t.help.steam_step2} />
-        <li set:html={t.help.steam_step3} />
-        <li set:html={t.help.steam_step4} />
-        <li set:html={t.help.steam_step5} />
-        <li set:html={t.help.steam_step6} />
-        <li set:html={t.help.steam_step7} />
+        <li set:html={t.help.steam_step1} data-i18n-html="help.steam_step1" />
+        <li set:html={t.help.steam_step2} data-i18n-html="help.steam_step2" />
+        <li set:html={t.help.steam_step3} data-i18n-html="help.steam_step3" />
+        <li set:html={t.help.steam_step4} data-i18n-html="help.steam_step4" />
+        <li set:html={t.help.steam_step5} data-i18n-html="help.steam_step5" />
+        <li set:html={t.help.steam_step6} data-i18n-html="help.steam_step6" />
+        <li set:html={t.help.steam_step7} data-i18n-html="help.steam_step7" />
       </ol>
-      <p class="settings-help-muted">{t.help.steam_body2}</p>
+      <p class="settings-help-muted" data-i18n="help.steam_body2">{t.help.steam_body2}</p>
     </div>
   </div>
 </div>

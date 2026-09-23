@@ -109,7 +109,7 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
   }
 
   function handleLink() {
-    const url = window.prompt('URL del enlace:');
+    const url = window.prompt(rt.link_prompt);
     setContextMenuPos(null);
     if (!url) return;
     applyCommand('createLink', url);

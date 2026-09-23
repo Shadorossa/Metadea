@@ -1,10 +1,26 @@
 import React from 'react';
+import { Repeat } from 'lucide-react';
 import { type LogState, type EntryAction } from '../../../lib/media/editor/library-log-state';
+import {
+  canStartReconsumptionRun, startReconsumptionRun, cancelReconsumptionRun, clampReconsumptionCount,
+} from '../../../lib/media/editor/reconsumption-run';
 import type { SeasonMeta } from './media-editor-load';
+
+// The "re-watching / re-reading / re-playing" toggle + "×N" stepper that sit
+// next to the status buttons. Absent on the general tab (the aggregate has
+// no row of its own to count on).
+export interface ReconsumptionControls {
+  count: number;
+  reconsuming: boolean;
+  /** Status the toggle switches to: watching / reading / playing. */
+  inProgressStatus: string;
+  toggleLabel: string;
+  countLabel: string;
+}
 
 export function MediaEditorStatusRow({
   statusButtons, status, isGeneralTab, generalStatus, isUpcoming, unifiedSeasonIds,
-  seasonMetaMap, activeTotalCount, totalCount2, dispatchEntry,
+  seasonMetaMap, activeTotalCount, totalCount2, dispatchEntry, reconsumption,
 }: {
   statusButtons: { value: string; label: string; Icon: React.ComponentType }[];
   status: string;
@@ -16,7 +32,12 @@ export function MediaEditorStatusRow({
   activeTotalCount: number | null | undefined;
   totalCount2: number | null | undefined;
   dispatchEntry: (action: EntryAction) => void;
+  reconsumption?: ReconsumptionControls;
 }) {
+  const showReconsumption = !!reconsumption && !isGeneralTab && !isUpcoming;
+  const canToggleReconsumption = !!reconsumption
+    && (reconsumption.reconsuming || canStartReconsumptionRun({ status, reconsuming: reconsumption.reconsuming }));
+
   return (
     <div className="me-header-status-row">
       {statusButtons.map(({ value, label, Icon }) => (
@@ -62,6 +83,45 @@ export function MediaEditorStatusRow({
           <Icon />
         </button>
       ))}
+      {showReconsumption && reconsumption && (
+        <span className="me-header-reconsumption">
+          <button
+            type="button"
+            className={`me-header-status-icon me-header-reconsumption-toggle${reconsumption.reconsuming ? ' active' : ''}`}
+            // Only a finished work can be started over; while a re-run is
+            // on, the same button cancels it (back to completed, uncounted).
+            // Completing the re-run again is what actually counts it — see
+            // save_library_entry in user_library.rs.
+            disabled={!canToggleReconsumption}
+            aria-pressed={reconsumption.reconsuming}
+            aria-label={reconsumption.toggleLabel}
+            title={reconsumption.toggleLabel}
+            onClick={() => {
+              const updates = reconsumption.reconsuming
+                ? cancelReconsumptionRun({ totalCount: activeTotalCount, totalCount2 })
+                : startReconsumptionRun(reconsumption.inProgressStatus);
+              dispatchEntry({ type: 'UPDATE_LOG', updates });
+            }}
+          >
+            <Repeat size={14} aria-hidden="true" />
+          </button>
+          <label className="me-header-reconsumption-count" title={reconsumption.countLabel}>
+            <span aria-hidden="true">×</span>
+            <input
+              type="number"
+              className="me-header-field-input me-header-field-input--number"
+              min={0}
+              step={1}
+              aria-label={reconsumption.countLabel}
+              value={reconsumption.count}
+              onChange={e => dispatchEntry({
+                type: 'UPDATE_LOG',
+                updates: { reconsumptionCount: clampReconsumptionCount(parseInt(e.target.value, 10)) },
+              })}
+            />
+          </label>
+        </span>
+      )}
     </div>
   );
 }

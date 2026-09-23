@@ -93,6 +93,27 @@
   align-items: center;
 }
 
+/* Rewatch / reread / replay toggle + "×N" counter, right after the status
+   buttons (MediaEditorStatusRow.tsx). */
+.me-header-reconsumption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+}
+
+.me-header-reconsumption-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.me-header-reconsumption-count .me-header-field-input--number {
+  width: 2.6rem;
+}
+
 /* Generic field container (for progress, rating, dates) */
 .me-header-field {
   display: flex;

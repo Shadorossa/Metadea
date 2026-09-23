@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { errorMessage } from '../../lib/errors/format-error';
 import { ModalShell } from '../shared/ModalShell';
 import { Check, ImagePlus, Mic2, Tags, X } from 'lucide-react';
 import { fetchFandomCharacter, type FandomCharacterData } from '../../lib/character/fandom-importer';
 import { correlateVoiceActors } from '../../lib/character/voice-actor-resolver';
 import { getT } from '../../i18n/runtime';
+import { interpolateTranslation } from '../../lib/i18n-dom/apply-translations';
 
 export type { SelectedImportFields } from '../../lib/character/fandom-import-apply';
 import type { SelectedImportFields } from '../../lib/character/fandom-import-apply';
@@ -37,7 +39,7 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
 
   const handleFetch = async () => {
     if (!url.trim()) {
-      setError('Por favor, introduce una URL de Fandom');
+      setError(t.import_fandom_url_required);
       return;
     }
 
@@ -58,9 +60,9 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
         }));
       }
       setData(result);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error al importar de Fandom:', err);
-      setError(err?.message || t.import_fandom_fetching);
+      setError(errorMessage(err) || t.import_fandom_fetching);
     } finally {
       setLoading(false);
     }
@@ -105,7 +107,7 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
             <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main, #eae6df)' }}>
-              Importar desde Fandom
+              {t.import_fandom_heading}
             </span>
           </div>
           <div style={{ display: 'flex', flex: 1, minWidth: '260px', gap: '0.5rem', marginLeft: '1rem' }}>
@@ -240,12 +242,12 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
             {/* Selector de campos a transferir */}
             <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.65rem' }}>
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', flexShrink: 0, fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
-                Importar
+                {t.import_fandom_fields_label}
               </span>
               <div style={{ display: 'grid', flex: 1, minWidth: 0, gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.75rem' }}>
                 <section style={{ minWidth: 0, padding: '0.7rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)', background: 'rgba(255,255,255,0.015)' }}>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.65rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                    Identidad<span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
+                    {t.import_fandom_group_identity}<span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                     {renderFieldOption('name', `${t.import_fandom_preview_name} (${data.name})`)}
@@ -256,18 +258,18 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
 
                 <section style={{ minWidth: 0, padding: '0.7rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)', background: 'rgba(255,255,255,0.015)' }}>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.65rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                    Contenido<span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
+                    {t.import_fandom_group_content}<span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                     {renderFieldOption('aliases', `${t.import_fandom_preview_aliases} (${data.aliases.length})`, data.aliases.length === 0)}
                     {renderFieldOption('characteristics', `${t.import_fandom_preview_characteristics} (${data.characteristics.length})`, data.characteristics.length === 0)}
-                    {renderFieldOption('biography', `${t.import_fandom_preview_bio} (${data.cleanBiography ? 'Sí' : 'No'})`, !data.cleanBiography)}
+                    {renderFieldOption('biography', `${t.import_fandom_preview_bio} (${data.cleanBiography ? t.import_fandom_yes : t.import_fandom_no})`, !data.cleanBiography)}
                   </div>
                 </section>
 
                 <section style={{ minWidth: 0, padding: '0.7rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm, 4px)', background: 'rgba(255,255,255,0.015)' }}>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.65rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-                    <><Mic2 size={13} />Voces ({data.voiceActors.length}{linkedVoiceActorCount > 0 ? ` · ${linkedVoiceActorCount} enlazados` : ''})</><span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
+                    <><Mic2 size={13} />{interpolateTranslation(t.import_fandom_group_voices, { count: data.voiceActors.length })}{linkedVoiceActorCount > 0 ? ` · ${interpolateTranslation(t.import_fandom_voices_linked, { count: linkedVoiceActorCount })}` : ''}</><span aria-hidden="true" style={{ flex: 1, borderTop: '1px solid rgba(255,255,255,0.5)' }} />
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                     {renderFieldOption('voiceActors', t.import_fandom_preview_voices, data.voiceActors.length === 0)}

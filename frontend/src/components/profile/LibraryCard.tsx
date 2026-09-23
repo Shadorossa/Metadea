@@ -355,6 +355,11 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
             <span dangerouslySetInnerHTML={{ __html: ratingHtml }} />
             <div className="library-card-footer">
               {dateStr && <span className="library-card-date" dangerouslySetInnerHTML={{ __html: CALENDAR_ICON + dateStr }} />}
+              {(item.reconsumption_count ?? 0) > 0 && (
+                <span className="library-card-reconsumption" title={p.reconsumed_times.replace('{count}', String(item.reconsumption_count))}>
+                  ×{(item.reconsumption_count ?? 0) + 1}
+                </span>
+              )}
               <span className="library-card-type"><LibraryTypeIcon type={item.type} size={20} /></span>
             </div>
           </div>

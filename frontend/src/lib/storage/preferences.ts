@@ -27,6 +27,18 @@ export function setLibraryGroupByBundleEnabled(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.libraryGroupByBundle, enabled.toString());
 }
 
+// ── ROM clean-up (Settings > Emuladores) ───────────────────────────────────
+// `local.roms.auto_rename`: after each ROM scan, dump-style file names are
+// renamed to their clean title (see lib/local/rom-rename-plan.ts). Defaults
+// to ON (owner's call); only an explicit 'false' turns it off.
+export function isRomAutoRenameEnabled(): boolean {
+  return localStorage.getItem(STORAGE_KEYS.romAutoRename) !== 'false';
+}
+
+export function setRomAutoRenameEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.romAutoRename, enabled.toString());
+}
+
 // ── Doble calificación (Settings > Preferencias) ────────────────────────────
 // A personal, device-level opt-in — not synced anywhere (see
 // social-library-mapping.ts). rating (the "default"/primary one) always uses

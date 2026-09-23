@@ -273,7 +273,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
                   onClick={castPicker.onConfirm}
                   disabled={!castPicker.selectedIds?.length}
                 >
-                  {castPicker.confirmLabel || 'Añadir seleccionados'}
+                  {castPicker.confirmLabel || s.add_selected}
                 </button>
               </div>
             )}
@@ -352,7 +352,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
               onClick={confirmMediaSelection}
               disabled={Object.keys(selectedMedia).length === 0}
             >
-              Añadir seleccionados
+              {s.add_selected}
             </button>
           </div>
         )}

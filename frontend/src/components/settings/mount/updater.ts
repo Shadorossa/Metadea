@@ -1,4 +1,5 @@
 import { getT } from '../../../i18n/runtime';
+import { interpolateTranslation } from '../../../lib/i18n-dom/apply-translations';
 import { byId } from '../../../lib/dom/dom';
 import { isTauriRuntime } from './status-action';
 
@@ -26,7 +27,7 @@ export function initUpdater(defaultVersionFallback: string) {
   checkBtn.addEventListener('click', async () => {
     if (!isTauri) {
       if (statusText) {
-        statusText.textContent = 'Las actualizaciones solo están disponibles en la aplicación instalada.';
+        statusText.textContent = getT().settings.updates_desktop_only;
         statusText.style.display = 'block';
       }
       return;
@@ -34,7 +35,7 @@ export function initUpdater(defaultVersionFallback: string) {
 
     const clientT = getT();
     checkBtn.disabled = true;
-    checkBtn.textContent = clientT.settings.app_checking_update || 'Buscando...';
+    checkBtn.textContent = clientT.settings.app_checking_update;
     if (statusText) statusText.style.display = 'none';
 
     try {
@@ -43,31 +44,28 @@ export function initUpdater(defaultVersionFallback: string) {
       const update = await check();
       if (update && update.available) {
         if (statusText) {
-          statusText.textContent = 'Nueva actualización encontrada.';
+          statusText.textContent = clientT.settings.update_found_status;
           statusText.style.display = 'block';
         }
-        const confirmMsg = (
-          clientT.settings.app_update_found ||
-          'Nueva versión {version} disponible. ¿Quieres instalarla?'
-        ).replace('{version}', update.version);
+        const confirmMsg = interpolateTranslation(clientT.settings.app_update_found, { version: update.version });
         if (confirm(confirmMsg)) {
           await update.downloadAndInstall();
           await relaunch();
         }
       } else if (statusText) {
-        statusText.textContent = clientT.settings.app_up_to_date || '¡Estás en la última versión!';
+        statusText.textContent = clientT.settings.app_up_to_date;
         statusText.style.display = 'block';
       }
     } catch (error) {
       console.error(error);
       if (statusText) {
-        const message = error instanceof Error ? error.message : String(error) || 'Conexión fallida';
-        statusText.textContent = `Error al buscar actualizaciones: ${message}`;
+        const message = error instanceof Error ? error.message : String(error) || clientT.settings.update_connection_failed;
+        statusText.textContent = interpolateTranslation(clientT.settings.update_check_error, { message });
         statusText.style.display = 'block';
       }
     } finally {
       checkBtn.disabled = false;
-      checkBtn.textContent = clientT.settings.app_check_update || 'Buscar actualizaciones';
+      checkBtn.textContent = clientT.settings.app_check_update;
     }
   });
 }

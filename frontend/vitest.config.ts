@@ -10,7 +10,7 @@ export default defineConfig({
       // Only the pure modules under test are measured; pulling untested UI
       // into the denominator would make the number meaningless.
       include: [
-        'src/components/media/hooks/useListReorder.ts',
+        'src/lib/shared/collections/move-item.ts',
         'src/components/media/media-page/media-page-format.tsx',
         'src/components/media/media-page/proposal-session-merge.ts',
         'src/components/media/media-editor/media-editor-helpers.ts',
@@ -21,12 +21,20 @@ export default defineConfig({
         'src/lib/local/folder-match.ts',
         'src/lib/local/season-resolve.ts',
         'src/lib/local/catalog-game-linking.ts',
+        'src/lib/local/rom-name-parser.ts',
+        'src/lib/local/rom-rename-plan.ts',
         'src/lib/local/formatters.ts',
         'src/lib/local/status-badge.ts',
         'src/lib/player/queue.ts',
         'src/lib/player/progress-rules.ts',
         'src/lib/player/keymap.ts',
         'src/lib/player/format-time.ts',
+        'src/lib/ui-themes/variables-block.ts',
+        'src/lib/ui-themes/ui-theme-loader.ts',
+        'src/lib/welcome/onboarding-steps.ts',
+        'src/lib/welcome/guide-content.ts',
+        'src/lib/welcome/guide-search.ts',
+        'src/lib/welcome/settings-tabs.ts',
       ],
       thresholds: {
         lines: 80,

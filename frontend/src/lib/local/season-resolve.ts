@@ -4,11 +4,18 @@
 // catalog entry, like Ghost in the Shell: Stand Alone Complex season 1 and
 // its "2nd GIG" season 2) tags each file with the season it ACTUALLY
 // belongs to, not always the one being localized right now.
-import { getMediaRelationsForEditor, getAnilistPreSequelChecked, markAnilistPreSequelChecked } from '../tauri';
+import { markAnilistPreSequelChecked } from '../tauri';
 import { graphqlPost } from '../api/client';
 import { API_ENDPOINTS } from '../api/endpoints';
-import { getCatalogEntry } from '../tauri/catalog';
 import { extractTitleSeason } from './folder-match';
+// Visit-scoped memo (plain reads outside a Local visit): the panel, the
+// episode history hook and resolveSeasonExternalIds all walk the same
+// PREQUEL chain, so each relation/catalog row is read once per visit.
+import {
+  readLocalRelationsForEditor as getMediaRelationsForEditor,
+  readLocalAnilistPreSequelChecked as getAnilistPreSequelChecked,
+  readLocalCatalogEntry as getCatalogEntry,
+} from './local-read-cache';
 
 export interface SeasonInfo {
   externalId: string;

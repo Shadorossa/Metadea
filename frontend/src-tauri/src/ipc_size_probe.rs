@@ -161,14 +161,14 @@ fn print_ipc_byte_sizes_old_vs_new() {
     rows.push(("get_all_catalog_entries -> get_catalog_entries_for_library", json_len(&old_catalog), json_len(&new_catalog)));
     rows.push(("get_all_catalog_entries -> get_catalog_entries_by_ids(library ids)", json_len(&old_catalog), json_len(&by_ids)));
 
-    // 2. Relations
-    let old_relations = crate::media_relations::load_all_media_relations(&conn).unwrap();
+    // 2. Relations (the catalog-wide get_all_media_relations this was
+    //    measured against has since been deleted; the scoped query is the
+    //    baseline now).
     let scoped = crate::media_relations::load_media_relations_for_ids(&conn, &library_ids, None).unwrap();
     let scoped_no_rec = crate::media_relations::load_media_relations_for_ids(
         &conn, &library_ids, Some(&["RECOMMENDATION".to_string()]),
     ).unwrap();
-    rows.push(("get_all_media_relations -> get_media_relations_for_ids", json_len(&old_relations), json_len(&scoped)));
-    rows.push(("get_all_media_relations -> ...for_ids(exclude RECOMMENDATION)", json_len(&old_relations), json_len(&scoped_no_rec)));
+    rows.push(("get_media_relations_for_ids -> ...for_ids(exclude RECOMMENDATION)", json_len(&scoped), json_len(&scoped_no_rec)));
 
     // 3. Characters
     let mut old_chars = crate::characters::load_all_characters(&conn).unwrap();
@@ -177,7 +177,7 @@ fn print_ipc_byte_sizes_old_vs_new() {
     }
     let mut new_chars = crate::characters::load_all_characters(&conn).unwrap();
     crate::characters::resolve_character_images_light(&data_dir, &mut new_chars).unwrap();
-    rows.push(("get_all_characters -> get_all_characters_light", json_len(&old_chars), json_len(&new_chars)));
+    rows.push(("get_all_characters (deleted) -> get_all_characters_light", json_len(&old_chars), json_len(&new_chars)));
 
     // 4. User avatar
     let stored: String = conn.query_row("SELECT avatar_data FROM user_profile WHERE id = 1", [], |r| r.get(0)).unwrap();

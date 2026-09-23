@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
+import { getT } from '../../i18n/runtime';
 
 interface Props {
   currentPage: number;
@@ -24,14 +26,12 @@ function buildPageList(current: number, total: number): (number | 'gap')[] {
 }
 
 export function Pagination({ currentPage, totalPages, onChange, formatPage }: Props) {
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
   // Editing is always tied to whatever the current page is right now — if it
   // changes from elsewhere while mid-edit (shouldn't normally happen, but is
   // exactly the state that would go stale otherwise), drop back to display mode.
-  useEffect(() => { setEditing(false); }, [currentPage]);
+  const [editing, setEditing] = useKeyedState(currentPage, false);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editing) { inputRef.current?.focus(); inputRef.current?.select(); }
@@ -89,7 +89,7 @@ export function Pagination({ currentPage, totalPages, onChange, formatPage }: Pr
             type="button"
             className={`media-pagination-page${isCurrent ? ' active' : ''}`}
             onClick={() => (isCurrent ? startEditing() : onChange(p))}
-            title={isCurrent ? 'Haz clic para escribir una página' : undefined}
+            title={isCurrent ? getT().media.pagination_edit_hint : undefined}
           >
             {formatPage ? formatPage(p) : p}
           </button>

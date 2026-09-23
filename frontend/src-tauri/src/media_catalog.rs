@@ -477,11 +477,20 @@ pub async fn get_catalog_entry(
     external_id: String,
 ) -> Result<Option<MediaCatalogEntry>, String> {
     let conn = state.conn.lock().str_err()?;
+    load_catalog_entry(&conn, &external_id)
+}
+
+// The visible-row lookup behind get_catalog_entry, shared with the media
+// page bundle (media_page_bundle.rs) so both read the exact same row.
+pub(crate) fn load_catalog_entry(
+    conn: &rusqlite::Connection,
+    external_id: &str,
+) -> Result<Option<MediaCatalogEntry>, String> {
     if let Some((_, num_id)) = external_id.split_once(':') {
         let (vnovel_id, game_id) = game_vnovel_siblings(num_id);
         conn.query_row(
             &format!("{} WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3", SELECT_VISIBLE),
-            [&external_id, &vnovel_id, &game_id],
+            [external_id, vnovel_id.as_str(), game_id.as_str()],
             row_to_entry,
         )
         .optional()
@@ -489,7 +498,7 @@ pub async fn get_catalog_entry(
     } else {
         conn.query_row(
             &format!("{} WHERE external_id = ?1", SELECT_VISIBLE),
-            [&external_id],
+            [external_id],
             row_to_entry,
         )
         .optional()
@@ -579,14 +588,14 @@ pub struct CatalogSummary {
     pub updated_at: String,
 }
 
-const SELECT_SUMMARY: &str = "
+pub(crate) const SELECT_SUMMARY: &str = "
     SELECT id, external_id, type, format, status,
            title_main, title_english, title_romaji, title_native, cover_url,
            release_day, release_month, release_year,
            total_count, total_count_2, time_length, genres_csv, parent_id, updated_at
     FROM visible_media_catalog";
 
-fn row_to_summary(row: &rusqlite::Row<'_>) -> rusqlite::Result<CatalogSummary> {
+pub(crate) fn row_to_summary(row: &rusqlite::Row<'_>) -> rusqlite::Result<CatalogSummary> {
     Ok(CatalogSummary {
         id:            row.get::<_, Option<String>>(0)?.unwrap_or_default(),
         external_id:   row.get::<_, Option<String>>(1)?.unwrap_or_default(),

@@ -1,24 +1,52 @@
 // The commands that run every scanner and reconcile the result with the
 // saved links/seen/hidden tables.
 
+use tauri::Manager;
 use crate::db::ToStringErr;
 use super::common::{apply_game_link, game_link_key, LocalGame};
-use super::ea::scan_ea_games;
+use super::ea::{ea_scan_signature, scan_ea_games};
 use super::emulator_roms::{emulator_rom_folders, scan_emulator_roms, scan_rom_folders};
-use super::epic::scan_epic_games;
-use super::gog::scan_gog_games;
-use super::local_folders::{scan_local_folder, scan_vn_folder};
-use super::steam_library::scan_steam_games;
-use super::xbox::scan_xbox_games;
+use super::epic::{epic_scan_signature, scan_epic_games};
+use super::gog::{gog_scan_signature, scan_gog_games};
+use super::local_folders::{local_folder_signature, scan_local_folder, scan_vn_folder};
+use super::rom_library::{rom_scan_signature, set_rom_header_cache_path};
+use super::scan_cache;
+use super::steam_library::{scan_steam_games, steam_scan_signature};
+use super::xbox::{scan_xbox_games, xbox_scan_signature};
 
 fn read_local_route(conn: &rusqlite::Connection, key: &str) -> Option<String> {
     conn.query_row("SELECT path FROM local_routes WHERE key = ?1", [key], |r| r.get(0))
         .ok()
 }
 
+// Every launcher's scan, each behind scan_cache (see that module): a Local
+// revisit only re-walks the launchers whose inputs actually changed.
+// `force` (the "Escanear de nuevo" button) drops every memo first.
+fn scan_all_launchers(rom_folders: &[super::rom_library::RomFolderConfig], videojuegos_path: Option<String>, vn_path: Option<String>, force: bool) -> Vec<LocalGame> {
+    if force {
+        scan_cache::clear();
+    }
+    let mut all: Vec<LocalGame> = Vec::new();
+    all.extend(scan_cache::cached("steam", steam_scan_signature(), scan_steam_games));
+    all.extend(scan_cache::cached("epic", epic_scan_signature(), scan_epic_games));
+    all.extend(scan_cache::cached("gog", gog_scan_signature(), scan_gog_games));
+    all.extend(scan_cache::cached("xbox", xbox_scan_signature(), scan_xbox_games));
+    all.extend(scan_cache::cached("ea", ea_scan_signature(), scan_ea_games));
+    all.extend(scan_cache::cached("roms", rom_scan_signature(rom_folders), || scan_rom_folders(rom_folders)));
+    if let Some(folder) = videojuegos_path.filter(|f| !f.is_empty()) {
+        all.extend(scan_cache::cached("videojuegos-folder", local_folder_signature(&folder), || scan_local_folder(&folder)));
+    }
+    if let Some(folder) = vn_path.filter(|f| !f.is_empty()) {
+        all.extend(scan_cache::cached("vn-folder", local_folder_signature(&folder), || scan_vn_folder(&folder)));
+    }
+    all
+}
+
 #[tauri::command]
 pub async fn scan_all_games(
+    app_handle: tauri::AppHandle,
     local_db: tauri::State<'_, crate::db::MetadeaDb>,
+    force: Option<bool>,
 ) -> Result<Vec<LocalGame>, String> {
     // Only the folder config comes from the DB; the launcher registry reads
     // and directory walks are synchronous disk work, so they run on the
@@ -32,26 +60,13 @@ pub async fn scan_all_games(
             read_local_route(&conn, "visual-novel"),
         )
     };
+    if let Ok(data_dir) = app_handle.path().app_data_dir() {
+        set_rom_header_cache_path(data_dir.join("metadata").join("rom_headers.json"));
+    }
 
+    let force = force.unwrap_or(false);
     let mut all: Vec<LocalGame> = tokio::task::spawn_blocking(move || {
-        let mut all: Vec<LocalGame> = Vec::new();
-        all.extend(scan_steam_games());
-        all.extend(scan_epic_games());
-        all.extend(scan_gog_games());
-        all.extend(scan_xbox_games());
-        all.extend(scan_ea_games());
-        all.extend(scan_rom_folders(&rom_folders));
-        if let Some(folder) = videojuegos_path {
-            if !folder.is_empty() {
-                all.extend(scan_local_folder(&folder));
-            }
-        }
-        if let Some(folder) = vn_path {
-            if !folder.is_empty() {
-                all.extend(scan_vn_folder(&folder));
-            }
-        }
-        all
+        scan_all_launchers(&rom_folders, videojuegos_path, vn_path, force)
     })
     .await
     .str_err()?;

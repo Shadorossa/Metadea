@@ -81,6 +81,10 @@ struct ActivityPayload<'a> {
     /// "playing" (default) | "watching" | "listening" - Discord's activity
     /// type, which decides the "Playing X" / "Watching X" header.
     activity_type: Option<activity::ActivityType>,
+    /// Optional second button after "Try Metadea" (a share link into the
+    /// app). Discord only accepts https URLs; anything else is dropped.
+    button_label: &'a str,
+    button_url: &'a str,
 }
 
 fn parse_activity_type(raw: Option<&str>) -> Option<activity::ActivityType> {
@@ -92,8 +96,20 @@ fn parse_activity_type(raw: Option<&str>) -> Option<activity::ActivityType> {
     }
 }
 
+/// The optional second button: only with a label and an https URL, the two
+/// things Discord validates before showing it.
+fn share_button<'a>(label: &'a str, url: &'a str) -> Option<activity::Button<'a>> {
+    let label = label.trim();
+    if label.is_empty() || !url.starts_with("https://") {
+        return None;
+    }
+    Some(activity::Button::new(label, url))
+}
+
 fn apply_activity(client: &mut DiscordIpcClient, payload: &ActivityPayload<'_>) -> bool {
-    let ActivityPayload { details, state, large_img, large_txt, small_img, small_txt, start_time, end_time, ref activity_type } = *payload;
+    let ActivityPayload {
+        details, state, large_img, large_txt, small_img, small_txt, start_time, end_time, ref activity_type, button_label, button_url,
+    } = *payload;
     let mut assets = activity::Assets::new();
 
     if !large_img.is_empty() {
@@ -108,9 +124,14 @@ fn apply_activity(client: &mut DiscordIpcClient, payload: &ActivityPayload<'_>) 
         "https://github.com/Shadorossa/Metadea"
     );
 
+    let mut buttons = vec![download_button];
+    if let Some(link) = share_button(button_label, button_url) {
+        buttons.push(link);
+    }
+
     let mut payload = activity::Activity::new()
         .assets(assets)
-        .buttons(vec![download_button]);
+        .buttons(buttons);
     if let Some(kind) = activity_type {
         payload = payload.activity_type(kind.clone());
     }
@@ -171,12 +192,16 @@ pub fn update_presence(
     start_time: Option<u64>,
     end_time: Option<u64>,
     activity_type: Option<String>,
+    button_label: Option<String>,
+    button_url: Option<String>,
 ) -> Result<(), String> {
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
     let large_img = large_image.unwrap_or_else(|| "metadea".to_string());
     let large_txt = large_text.unwrap_or_else(|| "Metadea".to_string());
     let small_img = small_image.unwrap_or_default();
     let small_txt = small_text.unwrap_or_default();
+    let button_label = button_label.unwrap_or_default();
+    let button_url = button_url.unwrap_or_default();
     send_activity(
         &mut guard,
         &ActivityPayload {
@@ -189,8 +214,23 @@ pub fn update_presence(
             start_time,
             end_time,
             activity_type: parse_activity_type(activity_type.as_deref()),
+            button_label: &button_label,
+            button_url: &button_url,
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::share_button;
+
+    #[test]
+    fn share_button_needs_a_label_and_an_https_url() {
+        assert!(share_button("Open in Metadea", "https://shadorossa.github.io/Metadea/open/?to=media/anime:1").is_some());
+        assert!(share_button("", "https://example.com").is_none());
+        assert!(share_button("Open", "http://example.com").is_none());
+        assert!(share_button("Open", "metadea://media/anime:1").is_none());
+    }
 }
 
 #[tauri::command]
@@ -208,6 +248,8 @@ pub fn reset_presence(discord: tauri::State<'_, DiscordState>) -> Result<(), Str
             start_time: None,
             end_time: None,
             activity_type: None,
+            button_label: "",
+            button_url: "",
         },
     )
 }

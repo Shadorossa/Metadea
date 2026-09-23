@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useKeyedState } from '../../shared/hooks/useKeyedState';
 import { formatHoursColon, parseHoursColonInput } from './media-editor-helpers';
 
 export function HeaderField({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
@@ -19,8 +20,7 @@ export function HoursField({ label, value, max, onChange }: {
   // type would reformat (and jump the cursor) mid-entry, e.g. typing "10:3"
   // toward "10:30" briefly parses as "10:03" and rewrites itself. Only
   // resynced from outside changes (switching log/version) and on blur.
-  const [text, setText] = useState(formatted);
-  useEffect(() => { setText(formatted); }, [formatted]);
+  const [text, setText] = useKeyedState(formatted, formatted);
 
   function commit() {
     const parsed = parseHoursColonInput(text);

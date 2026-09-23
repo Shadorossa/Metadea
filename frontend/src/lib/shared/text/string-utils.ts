@@ -16,14 +16,14 @@ export function parseCSV(str: string | null | undefined): string[] {
 }
 
 // Extract publishers (developer/publisher role) and join to a string if needed.
-export function getPublisherNames<T extends Record<string, any> & { name: string; role: string }>(
+export function getPublisherNames<T extends { name: string; role: string }>(
   items: T[]
 ): string[] {
   return items.filter((item) => item.role === 'publisher').map((item) => item.name);
 }
 
 // Convenience: get publishers as a joined string (most common in mappers).
-export function getPublisherNamesString<T extends Record<string, any> & { name: string; role: string }>(
+export function getPublisherNamesString<T extends { name: string; role: string }>(
   items: T[],
   separator: string = ', '
 ): string {

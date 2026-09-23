@@ -5,15 +5,18 @@
 // AniList-style section, all merged into one grid instead of behind a
 // category filter.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useKeyedState } from '../shared/hooks/useKeyedState';
 import { motion, AnimatePresence } from 'motion/react';
 import { search as searchMedia, type SearchResult } from '../../lib/search';
-import { searchAniListStaff, fetchAniListStaffDetail, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
+import { searchAniListStaff, fetchAniListStaffDetail, type AniListStaffSearchResult, type AniListStaffDetail } from '../../lib/search/providers/anilist';
+import { SearchMemo, SEARCH_MEMO_TTL_MS } from '../../lib/search/search-memo';
 import { searchUsers, type UserSearchResult } from '../../lib/social/users';
 import { ALL_MEDIA_TYPES } from '../../lib/media/media-types';
 import { getT } from '../../i18n/runtime';
 import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
 import { toSmallCover } from '../../lib/media/small-cover';
 import { useEscapeKey } from '../shared/hooks/useEscapeKey';
+import { useShortcuts } from '../shared/hooks/useShortcuts';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
@@ -57,8 +60,16 @@ function staffMediaType(node: { type: string; format: string | null }): string |
   return null;
 }
 
+// The same top staff hits come back for every prefix of a name being typed
+// ("sora", "sorac", "sorach"...), each of which used to re-fetch the same
+// two work lists — kept for the same TTL as the media pages; a person's
+// filmography changes even less often than a search page does.
+const staffBackfillMemo = new SearchMemo<AniListStaffDetail | null>({ ttlMs: SEARCH_MEMO_TTL_MS, maxEntries: 50 });
+
 async function fetchStaffBackfill(staffId: number, signal: AbortSignal): Promise<Array<{ type: string; row: Row }>> {
-  const detail = await fetchAniListStaffDetail(staffId).catch(() => null);
+  const detail = await staffBackfillMemo
+    .fetch(String(staffId), () => fetchAniListStaffDetail(staffId).catch(() => null), signal)
+    .catch(() => null);
   if (!detail || signal.aborted) return [];
   const out: Array<{ type: string; row: Row }> = [];
   for (const edge of detail.staffMedia.edges) {
@@ -100,9 +111,13 @@ export function QuickSearchOverlay() {
   const s = getT().social;
   const typeLabels = getT().search.types;
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [sections, setSections] = useState<Section[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Cleared on close.
+  const [query, setQuery] = useKeyedState(open, '');
+  // Results only exist while the overlay is open on a long-enough query —
+  // both reset the moment that stops being true (closing, clearing the box).
+  const searchActive = open && query.trim().length >= MIN_CHARS;
+  const [sections, setSections] = useKeyedState<Section[] | null>(searchActive, null);
+  const [loading, setLoading] = useKeyedState(searchActive, false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Full (unsliced, un-Row-transformed) results behind each media/character
@@ -124,22 +139,13 @@ export function QuickSearchOverlay() {
   }, []);
 
   useEffect(() => {
-    if (open) {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    } else {
-      setQuery('');
-      setSections(null);
-    }
+    if (open) requestAnimationFrame(() => inputRef.current?.focus());
   }, [open]);
 
   useEscapeKey(open, () => setOpen(false));
 
   useEffect(() => {
-    if (!open || query.trim().length < MIN_CHARS) {
-      setSections(null);
-      setLoading(false);
-      return;
-    }
+    if (!searchActive) return;
     const controller = new AbortController();
     setLoading(true);
     const timer = setTimeout(async () => {
@@ -250,7 +256,7 @@ export function QuickSearchOverlay() {
       }
     }, DEBOUNCE_MS);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [open, query, s, typeLabels]);
+  }, [open, query, searchActive, s, typeLabels, setSections, setLoading]);
 
   const totalRows = useMemo(() => sections?.reduce((sum, sec) => sum + sec.rows.length, 0) ?? 0, [sections]);
 
@@ -259,6 +265,45 @@ export function QuickSearchOverlay() {
     const { navigate } = await import('astro:transitions/client');
     navigate(href);
   }
+
+  // Keyboard selection across every section's rows, in render order. -1 is
+  // "nothing selected" (Enter then opens the first result). Reset whenever a
+  // new results set arrives, so the highlight never points at a stale row.
+  const flatRows = useMemo(() => sections?.flatMap(section => section.rows) ?? [], [sections]);
+  const [selectedIndex, setSelectedIndex] = useKeyedState(sections, -1);
+  const selectedKey = selectedIndex >= 0 ? flatRows[selectedIndex]?.key : undefined;
+
+  useEffect(() => {
+    if (!selectedKey) return;
+    document.querySelector('.quick-search-result--selected')?.scrollIntoView({ block: 'nearest' });
+  }, [selectedKey]);
+
+  useShortcuts('modal', [
+    {
+      id: 'quick_search.next',
+      keys: 'arrowdown',
+      description: 'shortcuts.quick_search_next',
+      allowInInputs: true,
+      handler: () => setSelectedIndex(index => Math.min(index + 1, flatRows.length - 1)),
+    },
+    {
+      id: 'quick_search.prev',
+      keys: 'arrowup',
+      description: 'shortcuts.quick_search_prev',
+      allowInInputs: true,
+      handler: () => setSelectedIndex(index => Math.max(index - 1, -1)),
+    },
+    {
+      id: 'quick_search.open',
+      keys: 'enter',
+      description: 'shortcuts.quick_search_open',
+      allowInInputs: true,
+      handler: () => {
+        const row = flatRows[selectedIndex] ?? flatRows[0];
+        if (row) goTo(row.href);
+      },
+    },
+  ], { enabled: open && flatRows.length > 0 });
 
   function goToViewAll(section: Section) {
     if (!section.viewAllHref) return;
@@ -333,13 +378,20 @@ export function QuickSearchOverlay() {
                 </div>
                 <div className="quick-search-section-grid">
                   {section.rows.map(row => (
-                    <button key={row.key} type="button" className="quick-search-result" onClick={() => goTo(row.href)}>
+                    <button
+                      key={row.key}
+                      type="button"
+                      className={`quick-search-result${row.key === selectedKey ? ' quick-search-result--selected' : ''}`}
+                      onClick={() => goTo(row.href)}
+                      onMouseEnter={() => setSelectedIndex(flatRows.indexOf(row))}
+                    >
                       {row.cover
                         ? <img
                             className={row.isAvatar ? 'quick-search-result-avatar' : 'quick-search-result-cover'}
                             src={row.cover}
                             alt=""
                             loading="lazy"
+                            decoding="async"
                             referrerPolicy="no-referrer"
                           />
                         : <div className="quick-search-result-cover quick-search-result-cover--empty" />}

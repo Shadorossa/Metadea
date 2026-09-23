@@ -85,7 +85,7 @@ pub async fn request_github_device_code(client_id: String) -> Result<DeviceCodeR
         .await
         .str_err()?;
     if !res.status().is_success() {
-        return Err(format!("GitHub API error: {}", res.status()));
+        return Err(crate::error_codes::with_detail(crate::error_codes::GITHUB_API, res.status()));
     }
     res.json().await.str_err()
 }
@@ -108,7 +108,7 @@ pub async fn request_github_device_token(
         .await
         .str_err()?;
     if !res.status().is_success() {
-        return Err(format!("GitHub API error: {}", res.status()));
+        return Err(crate::error_codes::with_detail(crate::error_codes::GITHUB_API, res.status()));
     }
     res.json().await.str_err()
 }
@@ -134,13 +134,13 @@ pub async fn get_github_user_profile(token: String) -> Result<Value, String> {
                 if res.status().is_success() {
                     return res.json().await.str_err();
                 } else if res.status().as_u16() == 401 {
-                    return Err("Sesión de GitHub expirada o inválida. Vuelve a iniciar sesión.".to_string());
+                    return Err(crate::error_codes::GITHUB_SESSION_EXPIRED.to_string());
                 } else {
-                    return Err(format!("Error en la API de GitHub: HTTP {}", res.status()));
+                    return Err(crate::error_codes::with_detail(crate::error_codes::GITHUB_API, res.status()));
                 }
             }
             Err(e) => {
-                last_err = format!("No se pudo conectar con GitHub. Comprueba tu conexión a internet. ({e})");
+                last_err = crate::error_codes::with_detail(crate::error_codes::GITHUB_NETWORK, e);
             }
         }
     }

@@ -27,6 +27,14 @@ pub struct TrackInfo {
     pub external: bool,
 }
 
+/// One entry of mpv's `chapter-list` (an MKV chapter): the frontend derives
+/// opening/ending skip segments from the titles (lib/player/skip-segments.ts).
+#[derive(Debug, Clone, PartialEq, Serialize, Default)]
+pub struct ChapterInfo {
+    pub title: Option<String>,
+    pub time_secs: f64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct PlayerStatus {
     pub state: PlaybackState,
@@ -36,6 +44,7 @@ pub struct PlayerStatus {
     pub playlist_index: i64,
     pub playlist_len: i64,
     pub tracks: Vec<TrackInfo>,
+    pub chapters: Vec<ChapterInfo>,
     pub volume: f64,
     pub muted: bool,
     pub speed: f64,
@@ -52,6 +61,7 @@ impl Default for PlayerStatus {
             playlist_index: -1,
             playlist_len: 0,
             tracks: Vec::new(),
+            chapters: Vec::new(),
             volume: 100.0,
             muted: false,
             speed: 1.0,
@@ -61,7 +71,8 @@ impl Default for PlayerStatus {
 }
 
 /// Every property the engine observes, with the format it asks mpv for.
-/// `track-list` is a node property; asking for it as a string yields JSON.
+/// `track-list` and `chapter-list` are node properties; asking for them as
+/// a string yields JSON.
 pub const OBSERVED_PROPERTIES: &[(&str, PropertyFormat)] = &[
     ("time-pos", PropertyFormat::Double),
     ("duration", PropertyFormat::Double),
@@ -70,6 +81,7 @@ pub const OBSERVED_PROPERTIES: &[(&str, PropertyFormat)] = &[
     ("playlist-pos", PropertyFormat::Int64),
     ("playlist-count", PropertyFormat::Int64),
     ("track-list", PropertyFormat::String),
+    ("chapter-list", PropertyFormat::String),
     ("eof-reached", PropertyFormat::Flag),
     ("core-idle", PropertyFormat::Flag),
     ("volume", PropertyFormat::Double),
@@ -98,6 +110,26 @@ pub fn parse_track_list(json: &str) -> Vec<TrackInfo> {
             })
         })
         .collect()
+}
+
+/// `chapter-list` JSON (`[{"title": "...", "time": 12.5}]`) → chapters in
+/// time order. Entries without a numeric `time` are dropped; an empty or
+/// invalid list yields no chapters.
+pub fn parse_chapter_list(json: &str) -> Vec<ChapterInfo> {
+    let Ok(serde_json::Value::Array(items)) = serde_json::from_str::<serde_json::Value>(json) else {
+        return Vec::new();
+    };
+    let mut chapters: Vec<ChapterInfo> = items
+        .iter()
+        .filter_map(|item| {
+            Some(ChapterInfo {
+                title: item.get("title").and_then(|v| v.as_str()).map(str::to_string),
+                time_secs: item.get("time")?.as_f64()?.max(0.0),
+            })
+        })
+        .collect();
+    chapters.sort_by(|a, b| a.time_secs.total_cmp(&b.time_secs));
+    chapters
 }
 
 /// Which kind of change a property update represents — position ticks are
@@ -137,6 +169,8 @@ impl StatusTracker {
             ("playlist-pos", PropertyValue::Int(index)) => self.status.playlist_index = *index,
             ("playlist-count", PropertyValue::Int(len)) => self.status.playlist_len = *len,
             ("track-list", PropertyValue::Str(json)) => self.status.tracks = parse_track_list(json),
+            ("chapter-list", PropertyValue::Str(json)) => self.status.chapters = parse_chapter_list(json),
+            ("chapter-list", PropertyValue::None) => self.status.chapters.clear(),
             ("eof-reached", PropertyValue::Flag(eof)) => self.eof_reached = *eof,
             ("eof-reached", PropertyValue::None) => self.eof_reached = false,
             ("volume", PropertyValue::Double(volume)) => self.status.volume = *volume,
@@ -235,6 +269,28 @@ mod tests {
         assert_eq!(tracks[2].kind, "sub");
         assert!(tracks[2].external);
         assert!(parse_track_list("not json").is_empty());
+    }
+
+    #[test]
+    fn chapter_list_json_maps_to_chapters_in_time_order() {
+        let json = r#"[
+          {"title":"Ending","time":1320.5},
+          {"title":"Opening","time":90.0},
+          {"time":0},
+          {"title":"broken"}
+        ]"#;
+        let chapters = parse_chapter_list(json);
+        assert_eq!(chapters.len(), 3);
+        assert_eq!(chapters[0].time_secs, 0.0);
+        assert_eq!(chapters[1].title.as_deref(), Some("Opening"));
+        assert_eq!(chapters[2].title.as_deref(), Some("Ending"));
+        assert!(parse_chapter_list("{}").is_empty());
+
+        let mut tracker = tracker_with_file();
+        assert_eq!(tracker.apply("chapter-list", &PropertyValue::Str(json.into())), StatusChange::Urgent);
+        assert_eq!(tracker.status.chapters.len(), 3);
+        tracker.apply("chapter-list", &PropertyValue::None);
+        assert!(tracker.status.chapters.is_empty());
     }
 
     #[test]

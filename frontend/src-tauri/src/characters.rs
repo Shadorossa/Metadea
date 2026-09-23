@@ -171,25 +171,6 @@ pub async fn get_character(
     Ok(character)
 }
 
-// Bulk fetch for local-only UI that needs every cached character's name/cover
-// without a per-id round trip — e.g. the profile Favorites tab, which used to
-// resolve character title/cover via a media_catalog row that shouldn't have
-// existed for a character in the first place (see save_character in
-// character.astro instead of a duplicate media_catalog entry).
-#[tauri::command]
-pub async fn get_all_characters(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-) -> Result<Vec<CharacterEntry>, String> {
-    let mut rows: Vec<CharacterEntry> = {
-        let conn = state.conn.lock().str_err()?;
-        load_all_characters(&conn)?
-    };
-    let data_dir = image_data_dir(&app_handle)?;
-    for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
-    Ok(rows)
-}
-
 pub(crate) fn load_all_characters(conn: &rusqlite::Connection) -> Result<Vec<CharacterEntry>, String> {
     let mut stmt = conn.prepare(SELECT_CHARACTER).str_err()?;
     let collected = stmt.query_map([], row_to_character)
@@ -199,9 +180,10 @@ pub(crate) fn load_all_characters(conn: &rusqlite::Connection) -> Result<Vec<Cha
     Ok(collected)
 }
 
-// Same rows as get_all_characters, but image_url is the portrait's file
-// path (or its remote URL, untouched) instead of an inlined base64 data
-// URL — see image_storage::resolve_reference_path. Callers wrap it with
+// Bulk fetch for local-only UI that needs every cached character's name/
+// cover without a per-id round trip (the profile Favorites tab). image_url
+// is the portrait's file path (or its remote URL, untouched) — never an
+// inlined base64 data URL — see image_storage::resolve_reference_path. Callers wrap it with
 // wrapAssetUrl before using it as an <img src>.
 pub(crate) fn resolve_character_images_light(
     data_dir: &std::path::Path,
@@ -439,8 +421,22 @@ pub async fn get_media_characters(
     media_external_id: String,
 ) -> Result<Vec<MediaCharacter>, String> {
     let mut rows: Vec<MediaCharacter> = {
-    let conn = state.conn.lock().str_err()?;
+        let conn = state.conn.lock().str_err()?;
+        load_media_characters(&conn, &media_external_id)?
+    };
+    let data_dir = image_data_dir(&app_handle)?;
+    for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
+    Ok(rows)
+}
 
+// The cast rows behind get_media_characters, with image_url still holding
+// the stored reference (no file read) — the command above inlines each
+// portrait as base64, the media page bundle (media_page_bundle.rs) resolves
+// the same rows to file paths instead.
+pub(crate) fn load_media_characters(
+    conn: &rusqlite::Connection,
+    media_external_id: &str,
+) -> Result<Vec<MediaCharacter>, String> {
     // Editions inherit the base game's cast for display only. Walk the
     // BASE_EDITION chain to its root (with a cycle/depth guard), and use it
     // only when that edition actually has a cached cast. No appearance rows
@@ -466,7 +462,7 @@ pub async fn get_media_characters(
                AND instr(b.path, '|' || r.related_media_external_id || '|') = 0
          )
          SELECT external_id FROM base_chain ORDER BY depth DESC LIMIT 1",
-        [&media_external_id],
+        [media_external_id],
         |row| row.get(0),
     ).optional().str_err()?;
     let cast_media_id = if let Some(base_id) = base_id {
@@ -475,9 +471,9 @@ pub async fn get_media_characters(
             [&base_id],
             |row| row.get(0),
         ).str_err()?;
-        if has_base_cast { base_id } else { media_external_id.clone() }
+        if has_base_cast { base_id } else { media_external_id.to_string() }
     } else {
-        media_external_id.clone()
+        media_external_id.to_string()
     };
     let mut stmt = conn
         .prepare(
@@ -518,11 +514,6 @@ pub async fn get_media_characters(
         .str_err()?
         .filter_map(|r| r.ok())
         .collect();
-    drop(stmt);
-    rows
-    };
-    let data_dir = image_data_dir(&app_handle)?;
-    for row in &mut rows { resolve_character_image(&data_dir, &mut row.image_url)?; }
     Ok(rows)
 }
 

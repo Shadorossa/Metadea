@@ -1,0 +1,5 @@
+[
+  { "ID": 18, "Name": "Nintendo DS", "IconURL": "https://static.retroachievements.org/assets/images/system/ds.png", "Active": true, "IsGameSystem": true },
+  { "ID": 16, "Name": "GameCube", "IconURL": "https://static.retroachievements.org/assets/images/system/gc.png", "Active": true, "IsGameSystem": true },
+  { "ID": 100, "Name": "Hubs", "IconURL": "https://static.retroachievements.org/assets/images/system/hubs.png", "Active": true, "IsGameSystem": false }
+]

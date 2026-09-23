@@ -46,6 +46,12 @@
   min-height: 2rem;
 }
 
+/* Achievements still loading: hold the grid's first page (3 rows of 52px
+   cells) so the panel doesn't jump when the list lands. */
+.local-steam-media-panel--reserved {
+  min-height: calc(3 * 52px + 2 * 0.5rem);
+}
+
 .local-steam-media-pagination {
   display: flex;
   align-items: center;

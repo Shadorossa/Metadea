@@ -1,4 +1,4 @@
-import { readEnvConfig } from '../../tauri/env';
+import { readSearchEnvConfig } from '../env-config-read';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
 import { MissingApiKeyError } from '../errors';
@@ -70,7 +70,7 @@ const SEARCH_CACHE_TTL_MS = 60 * 60 * 1000;
 const EVENT_BANNER_COLOR = API_SPORTS_EVENT_BANNER_COLOR;
 
 async function apiKey(): Promise<string> {
-  const key = (await readEnvConfig()).apisports_api_key?.trim();
+  const key = (await readSearchEnvConfig()).apisports_api_key?.trim();
   if (!key) throw new MissingApiKeyError(['apisports']);
   return key;
 }

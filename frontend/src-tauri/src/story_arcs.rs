@@ -136,29 +136,6 @@ pub async fn get_story_arcs_for_media(
     Ok(arcs)
 }
 
-// Batched counterpart of get_story_arcs_for_media — one query (one DB-mutex
-// acquisition) covering every id in the saga at once, instead of the
-// frontend firing one IPC call per saga member. SagaViewerModal used to do
-// exactly that via Promise.all: "parallel" from JS's side, but MetadeaDb's
-// single Mutex<Connection> means those N calls actually queued up one after
-// another on the Rust side anyway, so a long saga (Bleach's TV + several
-// movies/OVAs) paid N round trips' worth of IPC + lock-acquisition overhead
-// for no real concurrency gained.
-#[tauri::command]
-pub async fn get_story_arcs_for_media_batch(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    media_external_ids: Vec<String>,
-) -> Result<Vec<StoryArc>, String> {
-    let mut arcs = {
-        let conn = state.conn.lock().str_err()?;
-        story_arcs_for_media_ids(&conn, &media_external_ids)?
-    };
-    let data_dir = app_handle.path().app_data_dir().str_err()?;
-    resolve_story_arc_images(&data_dir, &mut arcs)?;
-    Ok(arcs)
-}
-
 // Path flavour of resolve_story_arc_images: image_base64 carries the arc
 // image's absolute file path (wrap with wrapAssetUrl) instead of its bytes
 // — see image_storage::resolve_reference_path. The field keeps its name so
@@ -188,6 +165,14 @@ pub async fn get_story_arcs_for_media_light(
     Ok(arcs)
 }
 
+// Batched counterpart of get_story_arcs_for_media_light — one query (one DB-mutex
+// acquisition) covering every id in the saga at once, instead of the
+// frontend firing one IPC call per saga member. SagaViewerModal used to do
+// exactly that via Promise.all: "parallel" from JS's side, but MetadeaDb's
+// single Mutex<Connection> means those N calls actually queued up one after
+// another on the Rust side anyway, so a long saga (Bleach's TV + several
+// movies/OVAs) paid N round trips' worth of IPC + lock-acquisition overhead
+// for no real concurrency gained.
 #[tauri::command]
 pub async fn get_story_arcs_for_media_batch_light(
     app_handle: tauri::AppHandle,

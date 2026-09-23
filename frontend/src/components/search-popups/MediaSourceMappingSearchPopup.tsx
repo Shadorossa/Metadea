@@ -60,7 +60,7 @@ export function MediaSourceMappingSearchPopup({ kind, preferredIssueCount, onSel
     }));
   }, [kind, preferredIssueCount]);
 
-  const placeholder = kind === 'episodes' ? 'Buscar serie en TMDB…' : 'Buscar volumen en ComicVine…';
+  const placeholder = kind === 'episodes' ? s.mapping_search_tmdb_series : s.mapping_search_comicvine_volume;
 
   return (
     <ModalShell

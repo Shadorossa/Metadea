@@ -154,11 +154,11 @@ pub async fn play_file_with_vlc(
     let capture_dir = app_handle
         .path()
         .picture_dir()
-        .map_err(|e| format!("No se pudo localizar Imágenes: {e}"))?
+        .map_err(|e| crate::error_codes::with_detail(crate::error_codes::PICTURES_DIR_LOCATE, e))?
         .join("Metadea")
         .join(sanitize_capture_folder_name(&work_name));
     std::fs::create_dir_all(&capture_dir)
-        .map_err(|e| format!("No se pudo crear la carpeta de capturas: {e}"))?;
+        .map_err(|e| crate::error_codes::with_detail(crate::error_codes::CAPTURE_DIR_CREATE, e))?;
 
     kill_existing_vlc();
     // `--extraintf http` runs VLC's web status API *alongside* its normal

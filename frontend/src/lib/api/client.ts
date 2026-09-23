@@ -5,12 +5,16 @@
  */
 
 import { API_ENDPOINTS } from './endpoints';
-import { anilistRateLimiter } from './rate-limiter';
+import { anilistRateLimiter, acquireForUrl, reportRateLimited, type RequestPriority } from './rate-limiter';
 import { logSearchRequest } from './request-log';
 
 export interface FetchJsonOptions extends RequestInit {
   /** Aborts the request after this many ms if no signal was already provided. */
   timeoutMs?: number;
+  /** Queue position on the host's budget — a user-typed search outranks a
+   *  background enrichment. Defaults to 'user'. (Named apart from
+   *  RequestInit's own `priority`, the browser's fetch priority hint.) */
+  budgetPriority?: RequestPriority;
 }
 
 // Without this, a hanging provider (e.g. OpenLibrary) blocked until the OS's
@@ -20,7 +24,17 @@ const DEFAULT_TIMEOUT_MS = 8000;
 /** Returns null on any failure (network error, non-OK status, invalid JSON)
  *  instead of throwing — matches most search providers' silent-fail behavior. */
 export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promise<T | null> {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, signal: externalSignal, ...init } = options;
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, signal: externalSignal, budgetPriority = 'user', ...init } = options;
+
+  // Every budgeted host (see HOST_BUDGETS) queues here BEFORE the request's
+  // own timeout timer starts — a queued wait can outlast DEFAULT_TIMEOUT_MS
+  // on its own. A caller that cancels while still queued never takes a
+  // slot; that rejection is reported as null like any other failure.
+  try {
+    await acquireForUrl(url, budgetPriority, externalSignal ?? undefined);
+  } catch {
+    return null;
+  }
 
   // Always run our own timeout, merged with any external (e.g. cancel-on-
   // new-query) signal — previously an external signal being present
@@ -37,6 +51,7 @@ export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}):
   try {
     logSearchRequest(url);
     const response = await fetch(url, { ...init, signal: controller.signal });
+    if (response.status === 429) reportRateLimited(url, response.headers.get('Retry-After'));
     if (!response.ok) return null;
     return await response.json() as T;
   } catch {
@@ -60,7 +75,7 @@ export async function graphqlPost<T>(
   endpoint: string,
   query: string,
   variables?: Record<string, unknown>,
-  opts: { token?: string; signal?: AbortSignal; timeoutMs?: number } = {},
+  opts: { token?: string; signal?: AbortSignal; timeoutMs?: number; priority?: RequestPriority } = {},
 ): Promise<{ ok: boolean; status: number; result: GraphQLResult<T> | null }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
@@ -72,9 +87,11 @@ export async function graphqlPost<T>(
   // timer starts below — a queued wait here can take longer than
   // DEFAULT_TIMEOUT_MS on its own, which would otherwise abort the request
   // before it even had a chance to fire.
+  // A cancellation while still queued rejects with AbortError here, exactly
+  // like a cancellation mid-flight would below — and without ever having
+  // taken a slot from the budget.
   if (endpoint === API_ENDPOINTS.ANILIST) {
-    if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    await anilistRateLimiter.acquire();
+    await anilistRateLimiter.acquire(opts.priority ?? 'user', opts.signal);
   }
 
   // Same merged timeout+cancellation as fetchJson — an unreachable AniList
@@ -96,6 +113,8 @@ export async function graphqlPost<T>(
       body: JSON.stringify(variables !== undefined ? { query, variables } : { query }),
       signal: controller.signal,
     });
+
+    if (response.status === 429) reportRateLimited(endpoint, response.headers.get('Retry-After'));
 
     let result: GraphQLResult<T> | null = null;
     try {

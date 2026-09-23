@@ -11,6 +11,7 @@ import { submitCollaborativeProposal, type CharacterProposalBundle, type Proposa
 import { buildBiographyHtml, type ParsedCharacteristic } from './biography-parser';
 import { uploadImageToSharedCatalog } from './shared-image-storage';
 import { normField } from '../shared/text/string-utils';
+import { getT } from '../../i18n/runtime';
 import {
   appearancesChanged, isFieldChanged, mergedCharactersChanged, sortedMergedCharacterIds, voiceActorsChanged,
 } from './character-editor-diff';
@@ -127,7 +128,7 @@ export async function submitCharacterProposal(p: SubmitCharacterEditorParams): P
   const imageWasChanged = isFieldChanged(draft.imageUrl, p.originalCharacter.image_url);
   let proposalImageUrl = updatedCharacter.image_url;
   if (imageWasChanged && draft.imageUrl) {
-    p.setStatusMsg('Subiendo imagen al catálogo compartido…');
+    p.setStatusMsg(getT().character_editor.uploading_shared_image);
     proposalImageUrl = await uploadImageToSharedCatalog(draft.imageUrl, 'character', updatedCharacter.external_id);
   }
 

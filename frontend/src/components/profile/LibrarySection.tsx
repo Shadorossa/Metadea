@@ -29,6 +29,7 @@ import { VirtualLibraryGrid } from './VirtualLibraryGrid';
 import { buildLibraryStatusEntries } from '../../lib/local/catalog-game-linking';
 import { LOCAL_CATEGORY_BY_MEDIA_TYPE } from '../../lib/local/platforms';
 import { isLocalMediaItemPlayable, toLocalMediaItem } from './library-playability';
+import { useShortcuts } from '../shared/hooks/useShortcuts';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
@@ -128,6 +129,27 @@ export function LibrarySection({
 
   const [nameFilter, setNameFilter] = useState('');
   const deferredNameFilter = useDeferredValue(nameFilter);
+  const nameFilterInputRef = useRef<HTMLInputElement>(null);
+
+  // mod+F goes to this grid's own name filter (preventDefault in the
+  // dispatcher keeps the WebView's find bar closed). Escape inside the field
+  // clears and blurs it — only when there is text, so an empty field leaves
+  // Escape to whatever else listens (ModalShell etc.).
+  useShortcuts('page', [{
+    id: 'library.focus_search',
+    keys: 'mod+f',
+    description: 'shortcuts.library_focus_search',
+    handler: () => {
+      nameFilterInputRef.current?.focus();
+      nameFilterInputRef.current?.select();
+    },
+  }]);
+  const onNameFilterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Escape' || nameFilter.length === 0) return;
+    e.preventDefault();
+    setNameFilter('');
+    e.currentTarget.blur();
+  };
   const [activeTypeTab, setActiveTypeTab] = useState('');
   const [selectedEditionFormats, setSelectedEditionFormats] = useState<string[]>(DEFAULT_EDITION_FILTERS);
   const [statusIndex, setStatusIndex] = useState(0);
@@ -558,10 +580,12 @@ export function LibrarySection({
           <input
             type="text"
             id="filter-name"
+            ref={nameFilterInputRef}
             className="library-filter-input"
             placeholder={p.library_filter_name_ph}
             value={nameFilter}
             onChange={e => setNameFilter(e.target.value)}
+            onKeyDown={onNameFilterKeyDown}
           />
         </div>
 

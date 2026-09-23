@@ -235,7 +235,7 @@ export function MediaRelationsSection({
               const specialPages = Math.ceil(specialEps.length / EPISODE_PAGE_SIZE);
               const totalEpPages = regularPages + specialPages;
 
-              let pageEpisodes: MediaEpisode[] = [];
+              let pageEpisodes: MediaEpisode[];
               if (relationPage <= regularPages) {
                 const start = (relationPage - 1) * EPISODE_PAGE_SIZE;
                 pageEpisodes = regularEps.slice(start, start + EPISODE_PAGE_SIZE);

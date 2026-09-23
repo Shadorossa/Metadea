@@ -82,7 +82,7 @@ fn write_directory_to_zip(
 
 fn create_backup(data_dir: &Path, destination: &Path) -> Result<(), String> {
     if destination.exists() && destination.is_dir() {
-        return Err("El destino de la copia es una carpeta, no un archivo ZIP".into());
+        return Err(crate::error_codes::BACKUP_DEST_IS_DIR.into());
     }
     if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -111,12 +111,12 @@ fn is_inside(path: &Path, directory: &Path) -> bool {
 
 fn safe_zip_path(name: &str) -> Result<PathBuf, String> {
     crate::utils::safe_archive_path(Path::new(name))
-        .ok_or_else(|| "El ZIP contiene una ruta fuera de su carpeta".to_string())
+        .ok_or_else(|| crate::error_codes::BACKUP_ZIP_UNSAFE_PATH.to_string())
 }
 
 fn extract_and_validate(archive_path: &Path, stage_dir: &Path) -> Result<(), String> {
-    let file = File::open(archive_path).map_err(|e| format!("No se pudo abrir el ZIP: {}", e))?;
-    let mut archive = ZipArchive::new(file).map_err(|e| format!("ZIP no válido: {}", e))?;
+    let file = File::open(archive_path).map_err(|e| crate::error_codes::with_detail(crate::error_codes::BACKUP_ZIP_OPEN, e))?;
+    let mut archive = ZipArchive::new(file).map_err(|e| crate::error_codes::with_detail(crate::error_codes::BACKUP_ZIP_INVALID, e))?;
     let mut manifest: Option<BackupManifest> = None;
     let mut has_database = false;
 
@@ -127,14 +127,14 @@ fn extract_and_validate(archive_path: &Path, stage_dir: &Path) -> Result<(), Str
         if entry_name == MANIFEST_NAME {
             let mut contents = String::new();
             entry.read_to_string(&mut contents).map_err(|e| e.to_string())?;
-            manifest = Some(serde_json::from_str(&contents).map_err(|_| "Manifiesto de backup no válido".to_string())?);
+            manifest = Some(serde_json::from_str(&contents).map_err(|_| crate::error_codes::BACKUP_MANIFEST_INVALID.to_string())?);
             continue;
         }
         let relative = safe_zip_path(&entry_name)?;
         if relative.components().next().is_some_and(|component| {
             matches!(component, Component::Normal(name) if name == MARKER_NAME)
         }) {
-            return Err("El ZIP contiene un archivo interno reservado".into());
+            return Err(crate::error_codes::BACKUP_ZIP_RESERVED_ENTRY.into());
         }
         if relative == Path::new("metadea.db") {
             has_database = true;
@@ -151,12 +151,12 @@ fn extract_and_validate(archive_path: &Path, stage_dir: &Path) -> Result<(), Str
         }
     }
 
-    let manifest = manifest.ok_or("El ZIP no contiene un backup de Metadea válido")?;
+    let manifest = manifest.ok_or(crate::error_codes::BACKUP_NOT_METADEA)?;
     if manifest.format_version != BACKUP_FORMAT_VERSION {
-        return Err(format!("Formato de backup no compatible: {}", manifest.format_version));
+        return Err(crate::error_codes::with_detail(crate::error_codes::BACKUP_FORMAT_UNSUPPORTED, manifest.format_version));
     }
     if !has_database {
-        return Err("El ZIP no contiene la base de datos de Metadea".into());
+        return Err(crate::error_codes::BACKUP_NO_DATABASE.into());
     }
     Ok(())
 }
@@ -170,17 +170,17 @@ pub fn apply_pending_restore(data_dir: &Path) -> Result<(), String> {
     let marker: PendingRestore = serde_json::from_str(
         &fs::read_to_string(&marker_path).map_err(|e| e.to_string())?,
     )
-    .map_err(|e| format!("Marcador de restauración no válido: {}", e))?;
+    .map_err(|e| crate::error_codes::with_detail(crate::error_codes::RESTORE_MARKER_INVALID, e))?;
     let stage_dir = PathBuf::from(marker.stage_dir);
     if !stage_dir.exists() || !stage_dir.is_dir() {
-        return Err("No se encuentra la restauración preparada".into());
+        return Err(crate::error_codes::RESTORE_STAGE_MISSING.into());
     }
 
     let old_dir = sibling_path(data_dir, "metadea-pre-restore-data");
-    fs::rename(data_dir, &old_dir).map_err(|e| format!("No se pudo apartar la carpeta actual: {}", e))?;
+    fs::rename(data_dir, &old_dir).map_err(|e| crate::error_codes::with_detail(crate::error_codes::RESTORE_MOVE_CURRENT, e))?;
     if let Err(error) = fs::rename(&stage_dir, data_dir) {
         let _ = fs::rename(&old_dir, data_dir);
-        return Err(format!("No se pudo activar la restauración: {}", error));
+        return Err(crate::error_codes::with_detail(crate::error_codes::RESTORE_ACTIVATE, error));
     }
     let _ = fs::remove_dir_all(old_dir);
     Ok(())
@@ -199,7 +199,7 @@ pub async fn export_backup(app_handle: tauri::AppHandle, destination_path: Strin
     fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
     let destination = PathBuf::from(destination_path);
     if is_inside(&destination, &data_dir) {
-        return Err("La copia de seguridad debe guardarse fuera de la carpeta de datos de Metadea".into());
+        return Err(crate::error_codes::BACKUP_INSIDE_DATA_DIR.into());
     }
     let destination = if destination.extension().is_none() {
         destination.with_extension("zip")
@@ -216,7 +216,7 @@ pub async fn prepare_restore(app_handle: tauri::AppHandle, backup_path: String) 
     fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
     let archive_path = PathBuf::from(backup_path);
     if !archive_path.is_file() {
-        return Err("El archivo de backup no existe".into());
+        return Err(crate::error_codes::BACKUP_FILE_NOT_FOUND.into());
     }
 
     let automatic_backup = sibling_path(&data_dir, "metadea-pre-restore").with_extension("zip");

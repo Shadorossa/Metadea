@@ -3,7 +3,6 @@ import { getT } from '../../../i18n/runtime';
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaCompany, MediaStaffMember } from '../types';
 import { unifyGenres } from '../genre-unifier';
 import { formatDateParts, parseFlexibleDate } from './mapper-utils';
-import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from '../saga/canonical-relations';
 import { canonicalizeAlwaysFinished } from '../media-status';
 import { stripHtml } from '../../shared/text/description-utils';
 

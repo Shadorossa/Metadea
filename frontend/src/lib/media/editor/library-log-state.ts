@@ -3,6 +3,10 @@
 // closures over the component, extracted so the modal's own file is just
 // UI/orchestration.
 import type { LibraryEntry } from '../../tauri';
+import {
+  canRedo as historyCanRedo, canUndo as historyCanUndo, createUndoHistory, recordUndoSnapshot, redoSnapshot, undoSnapshot,
+  type UndoHistory,
+} from '../../shared/state/undo-history';
 
 type AniListStatus = 'idle' | 'syncing' | 'ok' | 'error';
 
@@ -26,6 +30,10 @@ export interface LogState {
   tags:            string[];
   platform:        string;
   selectedVersion: string;
+  // Mirrors LibraryEntry.reconsumption_count / reconsuming — see
+  // reconsumption-run.ts for the toggle's transitions.
+  reconsumptionCount: number;
+  reconsuming:     boolean;
 }
 
 // Entry state holds every log keyed by external_id (one per version/edition)
@@ -37,12 +45,23 @@ export interface EntryState {
   selectedYear:     number;
   activeLogId:      string;
   logs:             Record<string, LogState>;
+  // Undo/redo (mod+z / mod+y in the modal) over what the user edits — the
+  // logs and the month grid. Loads start a fresh history; tab switches and
+  // the year picker are navigation, not edits, so they are not recorded.
+  history:          UndoHistory<EntrySnapshot>;
+}
+
+export interface EntrySnapshot {
+  logs: Record<string, LogState>;
+  monthlyHistory: Record<string, string[]>;
 }
 
 export type EntryAction =
   | { type: 'LOAD_LOG';     id: string; entry: LibraryEntry }
   | { type: 'SWITCH_LOG';   id: string }
-  | { type: 'UPDATE_LOG';   updates: Partial<LogState> }
+  // `coalesceKey` + `at` (ms) mark a text-field keystroke (notes) so a
+  // typing burst is one undo step — see lib/shared/state/undo-history.ts.
+  | { type: 'UPDATE_LOG';   updates: Partial<LogState>; coalesceKey?: string; at?: number }
   // Applies its own updates per id, not one shared patch — a "mark whole
   // unified anime as completed" cascade (MediaEditorModal's general tab)
   // needs each season's progress set to ITS OWN episode total, not a single
@@ -52,7 +71,9 @@ export type EntryAction =
   | { type: 'LOAD_HISTORY'; history: Record<string, string[]>; foundKey: string | null }
   | { type: 'SET_MONTH';    ids: string[]; primaryId: string; key: string | null; year: number }
   | { type: 'SET_SELECTED_YEAR'; year: number }
-  | { type: 'SET_YEAR';     delta: 1 | -1 };
+  | { type: 'SET_YEAR';     delta: 1 | -1 }
+  | { type: 'UNDO' }
+  | { type: 'REDO' };
 
 // UI state: loading flags, tag input, anilist feedback
 export interface UiState {
@@ -83,6 +104,7 @@ export function createDefaultLog(status = ''): LogState {
     existing: null, status, rating: 0, rating2: 0, progress: 0, progressCount2: 0,
     notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
     tags: [], platform: '', selectedVersion: '',
+    reconsumptionCount: 0, reconsuming: false,
   };
 }
 
@@ -91,7 +113,18 @@ export const entryInit: EntryState = {
   selectedYear: new Date().getFullYear(),
   activeLogId: '',
   logs: {},
+  history: createUndoHistory(),
 };
+
+export function canUndoEntry(state: EntryState): boolean { return historyCanUndo(state.history); }
+export function canRedoEntry(state: EntryState): boolean { return historyCanRedo(state.history); }
+
+const snapshotOf = (state: EntryState): EntrySnapshot => ({ logs: state.logs, monthlyHistory: state.monthlyHistory });
+
+// Records the pre-edit snapshot alongside an edited state.
+function withHistory(state: EntryState, next: EntryState, options?: { coalesceKey?: string; at?: number }): EntryState {
+  return { ...next, history: recordUndoSnapshot(state.history, snapshotOf(state), options) };
+}
 
 // A fixed date string this literally-shaped, rather than any malformed
 // value, is specifically the fallout of a since-fixed bug (see
@@ -122,19 +155,21 @@ export function libraryEntryToLog(e: LibraryEntry): LogState {
     tags:          e.tags          ?? [],
     platform:      e.selected_platform ?? '',
     selectedVersion: e.selected_version ?? '',
+    reconsumptionCount: e.reconsumption_count ?? 0,
+    reconsuming:   e.reconsuming === 1,
   };
 }
 
 export function entryReducer(state: EntryState, action: EntryAction): EntryState {
   switch (action.type) {
     case 'LOAD_LOG':
-      return { ...state, logs: { ...state.logs, [action.id]: libraryEntryToLog(action.entry) } };
+      return { ...state, logs: { ...state.logs, [action.id]: libraryEntryToLog(action.entry) }, history: createUndoHistory() };
     case 'SWITCH_LOG':
       return { ...state, activeLogId: action.id };
     case 'UPDATE_LOG': {
       const id = state.activeLogId;
       const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, ...action.updates } } };
+      return withHistory(state, { ...state, logs: { ...state.logs, [id]: { ...current, ...action.updates } } }, { coalesceKey: action.coalesceKey, at: action.at });
     }
     case 'UPDATE_LOGS_BULK': {
       const nextLogs = { ...state.logs };
@@ -142,17 +177,25 @@ export function entryReducer(state: EntryState, action: EntryAction): EntryState
         const current = nextLogs[id] || createDefaultLog();
         nextLogs[id] = { ...current, ...updates };
       }
-      return { ...state, logs: nextLogs };
+      return withHistory(state, { ...state, logs: nextLogs });
     }
     case 'SET_VERSION': {
       // Only updates the base's own link list — SWITCH_LOG (always dispatched
       // right after this by the caller) handles which tab becomes active.
       const baseLog = state.logs[action.baseId] || createDefaultLog('');
-      return { ...state, logs: { ...state.logs, [action.baseId]: { ...baseLog, selectedVersion: action.value } } };
+      return withHistory(state, { ...state, logs: { ...state.logs, [action.baseId]: { ...baseLog, selectedVersion: action.value } } });
     }
     case 'LOAD_HISTORY': {
       const year = action.foundKey ? Number(action.foundKey.split('-')[0]) : state.selectedYear;
-      return { ...state, monthlyHistory: action.history, selectedYear: year };
+      return { ...state, monthlyHistory: action.history, selectedYear: year, history: createUndoHistory() };
+    }
+    case 'UNDO': {
+      const step = undoSnapshot(state.history, snapshotOf(state));
+      return step ? { ...state, ...step.snapshot, history: step.history } : state;
+    }
+    case 'REDO': {
+      const step = redoSnapshot(state.history, snapshotOf(state));
+      return step ? { ...state, ...step.snapshot, history: step.history } : state;
     }
     case 'SET_YEAR':
       return { ...state, selectedYear: state.selectedYear + action.delta };
@@ -177,7 +220,7 @@ export function entryReducer(state: EntryState, action: EntryAction): EntryState
         if (!next[newKey]) next[newKey] = [];
         if (!next[newKey].includes(primaryId)) next[newKey].push(primaryId);
       }
-      return { ...state, monthlyHistory: next, selectedYear: year };
+      return withHistory(state, { ...state, monthlyHistory: next, selectedYear: year });
     }
     default: return state;
   }
@@ -205,5 +248,6 @@ export function createEmptyVersionEntry(versionId: string, type = 'game'): Libra
     status: '', rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
     is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
     selected_platform: null, selected_version: null, started_at: null, finished_at: null,
+    reconsumption_count: 0, reconsuming: 0,
   };
 }

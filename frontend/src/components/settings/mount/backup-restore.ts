@@ -1,4 +1,5 @@
 import { getT } from '../../../i18n/runtime';
+import { formatAppError } from '../../../lib/errors/format-error';
 import { exportBackup, pickBackupFile, pickSaveFile, prepareRestore } from '../../../lib/tauri/backup';
 
 export function initBackupRestore() {
@@ -22,7 +23,7 @@ export function initBackupRestore() {
       await exportBackup(destination);
       setStatus(t.settings.backup_export_success);
     } catch (error) {
-      setStatus(`${t.settings.backup_error}: ${error instanceof Error ? error.message : String(error)}`, true);
+      setStatus(`${t.settings.backup_error}: ${formatAppError(error, t)}`, true);
     } finally {
       exportButton.disabled = false;
     }
@@ -43,7 +44,7 @@ export function initBackupRestore() {
         await relaunch();
       }, 900);
     } catch (error) {
-      setStatus(`${t.settings.backup_error}: ${error instanceof Error ? error.message : String(error)}`, true);
+      setStatus(`${t.settings.backup_error}: ${formatAppError(error, t)}`, true);
       importButton.disabled = false;
     }
   });

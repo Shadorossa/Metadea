@@ -1,4 +1,4 @@
-import { invoke, tauriTry, tauriCmd } from './bridge';
+import { invoke, tauriTry, tauriCmd, tauriRun, isTauri, waitForTauriBridge } from './bridge';
 
 export interface IgdbNamed { id: number; name: string }
 export interface IgdbImage { id: number; image_id: string }
@@ -100,8 +100,54 @@ export async function igdbGetRelationGraph(rootId: number): Promise<unknown[]> {
   return tauriTry<unknown[]>('igdb_get_relation_graph', [], { rootId });
 }
 
-export async function igdbGetCoverBySteamId(appId: string, gameName: string, launcher: string): Promise<string | null> {
-  return tauriCmd<string | null>('igdb_get_cover_by_steam_id', null, { appId, gameName, launcher });
+// romPlatform (LocalGame.rom_platform) restricts the IGDB name search to
+// that console and records the automatic match in local_game_links.
+export async function igdbGetCoverBySteamId(appId: string, gameName: string, launcher: string, romPlatform?: string | null): Promise<string | null> {
+  return tauriCmd<string | null>('igdb_get_cover_by_steam_id', null, { appId, gameName, launcher, romPlatform: romPlatform ?? null });
+}
+
+// ── Batched metadata fetch ("Obtener metadatos") ───────────────────────────
+// One command for the whole pending list instead of one
+// igdbGetCoverBySteamId per game — see igdb/batch.rs for how the Steam-id,
+// by-id and name-search stages are grouped ten games per request, and the
+// not-found memo that keeps unmatched games from hitting IGDB every scan.
+
+export interface IgdbBatchGameRequest {
+  app_id: string;
+  game_name: string;
+  launcher: string;
+  rom_platform?: string | null;
+}
+
+export interface IgdbBatchGameResult {
+  app_id: string;
+  status: 'cached' | 'done' | 'not_found' | 'skipped' | 'error' | 'cancelled';
+  cover_path: string | null;
+  error: string | null;
+}
+
+export interface MetadataBatchProgress {
+  total: number;
+  current: number;
+  current_name: string;
+}
+
+export async function igdbFetchMetadataBatch(games: IgdbBatchGameRequest[]): Promise<IgdbBatchGameResult[]> {
+  if (games.length === 0) return [];
+  return tauriCmd<IgdbBatchGameResult[]>('igdb_fetch_metadata_batch', [], { games });
+}
+
+export async function igdbCancelMetadataBatch(): Promise<void> {
+  return tauriRun('igdb_cancel_metadata_batch');
+}
+
+// Progress events the batch emits as each game finishes. Returns an
+// unlisten function (no-op outside Tauri), same shape as
+// listenGameSessionEnded.
+export async function listenMetadataProgress(callback: (progress: MetadataBatchProgress) => void): Promise<() => void> {
+  if (!isTauri() && !(await waitForTauriBridge())) return () => {};
+  const { listen } = await import(/* @vite-ignore */ '@tauri-apps/api/event');
+  return listen<MetadataBatchProgress>('local-metadata-progress', event => callback(event.payload));
 }
 
 export interface IgdbCandidate {
@@ -116,8 +162,9 @@ export interface IgdbCandidate {
   source?:     'database' | 'igdb';
 }
 
-export async function igdbSearchCandidates(gameName: string): Promise<IgdbCandidate[]> {
-  return tauriCmd<IgdbCandidate[]>('igdb_search_candidates', [], { gameName });
+// romPlatform pre-filters the candidates to a scanned ROM's own console.
+export async function igdbSearchCandidates(gameName: string, romPlatform?: string | null): Promise<IgdbCandidate[]> {
+  return tauriCmd<IgdbCandidate[]>('igdb_search_candidates', [], { gameName, romPlatform: romPlatform ?? null });
 }
 
 export async function igdbForceByIgdbId(appId: string, gameName: string, igdbId: number): Promise<string> {

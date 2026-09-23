@@ -17,6 +17,7 @@ import {
   computeActivityHeatmap,
 } from '../../lib/profile/stats-calculators';
 import { formatDateShort } from '../../lib/shared/text/format-date';
+import { BacklogEstimate } from './BacklogEstimate';
 
 // Not in icon-strings.ts (a "seasons"/folder-stack glyph specific to this
 // one KPI card, not reused anywhere else) — kept local instead.
@@ -139,7 +140,7 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
     {
       icon: ICON_CLOCK, label: p.stat_hours, value: totalHours.toFixed(0),
       sub: totalHours > 0
-        ? (p.stats_hours_sub || '{days} d · {avg} h/obra').replace('{days}', String(totalDays)).replace('{avg}', String(avgPerWork))
+        ? p.stats_hours_sub.replace('{days}', String(totalDays)).replace('{avg}', String(avgPerWork))
         : undefined,
     },
     { icon: ICON_STAR, label: p.stat_avg, value: avgScoreStr },
@@ -258,7 +259,10 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
         </div>
       )}
 
-      {/* 4. Activity Heatmap (full width) */}
+      {/* 4. Backlog estimate (full width) */}
+      <BacklogEstimate items={items} catalogMap={catalogMap} journey={journey} />
+
+      {/* 5. Activity Heatmap (full width) */}
       <div className="stats-block-custom">
         <h3 className="stats-block-title">{p.stats_heatmap}</h3>
         <div className="stats-heatmap-grid">

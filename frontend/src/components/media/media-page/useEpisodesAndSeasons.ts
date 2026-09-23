@@ -1,10 +1,13 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useKeyedState } from '../../shared/hooks/useKeyedState';
 import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
 import type { SagaEntry } from '../../../lib/anilist/saga';
 import { fetchMediaEpisodes, fetchMediaThemes } from '../../../lib/media/media-page-data';
 import { prefetchSagaData, loadSagaChain } from '../../../lib/media/saga/saga-loader';
 import { getAnimePrequelEpisodeOffset } from '../../../lib/media/episodes/anime-tmdb-match';
-import { fetchUnifiedAnimeEpisodes } from './media-page-format';
+import { fetchUnifiedAnimeEpisodes, mergeSeasonThemes } from './media-page-format';
+
+const EMPTY_SEASON_CHAIN: SagaEntry[] = [];
 
 interface Params {
   currentId: string;
@@ -35,9 +38,15 @@ export function useEpisodesAndSeasons({
   // sagaData.ts, same source SagaViewerModal already uses. TMDB series don't
   // need this state at all: their season list is already sitting on
   // data.seasons (tmdb-mapper.ts), no extra fetch involved.
-  const [animeSeasonChain,   setAnimeSeasonChain]   = useState<SagaEntry[]>([]);
-  const [animeSeasonChainResolvedFor, setAnimeSeasonChainResolvedFor] = useState<string | null>(null);
-  const [episodeOffset,      setEpisodeOffset]      = useState(0);
+  const seasonChainApplies = !previewMode && !!currentId && dataType === 'anime' && unifySeasonsEnabled;
+  // Both start over (empty chain, nothing resolved) whenever the work or the
+  // applicability of the chain changes; the effect below fills them in.
+  const seasonChainKey = `${seasonChainApplies}\n${currentId}`;
+  const [animeSeasonChain,   setAnimeSeasonChain]   = useKeyedState<SagaEntry[]>(seasonChainKey, EMPTY_SEASON_CHAIN);
+  const [animeSeasonChainResolvedFor, setAnimeSeasonChainResolvedFor] = useKeyedState<string | null>(seasonChainKey, seasonChainApplies ? null : (currentId || null));
+  // Reset on navigation — same trigger as the main load effect this reset
+  // used to be part of.
+  const [episodeOffset,      setEpisodeOffset]      = useKeyedState(currentId, 0);
 
   // Warms SagaViewerModal's saga-chain + story-arcs caches (lib/media/sagaData.ts)
   // as soon as the page is known to have a saga, instead of only starting
@@ -63,11 +72,7 @@ export function useEpisodesAndSeasons({
   // loadSagaChain the effect above already warmed, so this is normally an
   // instant cache hit, not a second fetch.
   useEffect(() => {
-    if (previewMode || !currentId || dataType !== 'anime' || !unifySeasonsEnabled) {
-      setAnimeSeasonChain([]);
-      setAnimeSeasonChainResolvedFor(currentId || null);
-      return;
-    }
+    if (!seasonChainApplies) return;
     let cancelled = false;
     loadSagaChain(currentId).then(chain => {
       if (cancelled) return;
@@ -79,7 +84,7 @@ export function useEpisodesAndSeasons({
       setAnimeSeasonChainResolvedFor(currentId);
     });
     return () => { cancelled = true; };
-  }, [previewMode, currentId, dataType, unifySeasonsEnabled]);
+  }, [seasonChainApplies, currentId, setAnimeSeasonChain, setAnimeSeasonChainResolvedFor]);
 
   // When "Unificar temporadas" is on, combine the chain's own episodes in
   // watch order. A movie/single-episode special contributes one display-only
@@ -120,32 +125,12 @@ export function useEpisodesAndSeasons({
       fetchMediaThemes(seasonEntry.externalId).catch(() => [] as MediaTheme[]),
     )).then(themeLists => {
       if (cancelled) return;
-      const allThemes = themeLists.flat();
-      if (allThemes.length > 0) {
-        const themeMap = new Map<string, MediaTheme>();
-        for (const th of allThemes) {
-          const key = `${th.theme_type}_${th.sequence}_${(th.song_title || th.slug).toLowerCase().trim()}`;
-          if (!themeMap.has(key)) {
-            themeMap.set(key, th);
-          }
-        }
-        const mergedThemes = Array.from(themeMap.values()).sort((a, b) =>
-          a.theme_type !== b.theme_type ? (a.theme_type === 'OP' ? -1 : 1) : a.sequence - b.sequence
-        );
-        setThemes(mergedThemes);
-      }
+      const mergedThemes = mergeSeasonThemes(themeLists);
+      if (mergedThemes.length > 0) setThemes(mergedThemes);
     }).catch(() => {});
 
     return () => { cancelled = true; };
-  }, [previewMode, currentId, dataType, animeSeasonChain, animeSeasonChainResolvedFor, unifySeasonsEnabled]);
-
-  // Reset the offset on navigation — same trigger and guards as the main
-  // load effect this reset used to be part of.
-  useEffect(() => {
-    if (previewMode) return;
-    if (!currentId) return;
-    setEpisodeOffset(0);
-  }, [currentId, previewMode]);
+  }, [previewMode, currentId, dataType, animeSeasonChain, animeSeasonChainResolvedFor, unifySeasonsEnabled, setEpisodes, setThemes]);
 
   useEffect(() => {
     if (!currentId) return;
@@ -154,13 +139,13 @@ export function useEpisodesAndSeasons({
       if (!cancelled && off > 0) setEpisodeOffset(off);
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [currentId]);
+  }, [currentId, setEpisodeOffset]);
 
   useEffect(() => {
     if (episodes.length > 0 && episodes[0].episode_number > 1) {
       setEpisodeOffset(episodes[0].episode_number - 1);
     }
-  }, [episodes]);
+  }, [episodes, setEpisodeOffset]);
 
   return { animeSeasonChain, animeSeasonChainResolvedFor, episodeOffset };
 }

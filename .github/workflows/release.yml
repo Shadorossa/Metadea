@@ -33,6 +33,12 @@ jobs:
           cd frontend
           npm install
 
+      # libmpv-2.dll is a bundle resource (tauri.conf.json) but git-ignored;
+      # the build script refuses to run without it.
+      - name: Fetch libmpv (LGPL)
+        run: powershell -File scripts/fetch-libmpv.ps1
+        working-directory: frontend/src-tauri
+
       - name: Build Frontend & Tauri App
         uses: tauri-apps/tauri-action@v0
         env:

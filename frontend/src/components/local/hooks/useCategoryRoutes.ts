@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { readRoutes, writeRoutes, pickFolder, scanFolderContents, type LocalFolderEntry } from '../../../lib/tauri';
+import { readRoutes, writeRoutes, pickFolder, type LocalFolderEntry } from '../../../lib/tauri';
+import { readLocalFolderContents, invalidateLocalFolderReads } from '../../../lib/local/local-read-cache';
 import type { CategoryId } from '../../../lib/local/platforms';
 
 export function useCategoryRoutes(activeCategory: CategoryId) {
@@ -11,9 +12,13 @@ export function useCategoryRoutes(activeCategory: CategoryId) {
     readRoutes().then(setRoutes).catch(() => {});
   }, []);
 
+  // The root listing is memoised for the visit (see local-read-cache.ts):
+  // switching to a category and back re-shows the same listing instead of
+  // re-reading the folder each time. refetchFolder below drops that memo
+  // first, so a listing taken after a rename is a real one.
   const rescan = useCallback((path: string, silent = false) => {
     if (!silent) { setFolderLoading(true); setFolderFiles([]); }
-    return scanFolderContents(path)
+    return readLocalFolderContents(path)
       .then(setFolderFiles)
       .catch(() => setFolderFiles([]))
       .finally(() => { if (!silent) setFolderLoading(false); });
@@ -32,6 +37,7 @@ export function useCategoryRoutes(activeCategory: CategoryId) {
   const refetchFolder = useCallback(() => {
     const path = routes[activeCategory];
     if (!path) return Promise.resolve();
+    invalidateLocalFolderReads();
     return rescan(path, true);
   }, [routes, activeCategory, rescan]);
 

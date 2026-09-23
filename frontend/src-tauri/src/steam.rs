@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
@@ -27,9 +28,298 @@ fn is_hidden_achievement(schema: Option<&serde_json::Value>) -> bool {
     }
 }
 
+// ── Achievements cache ───────────────────────────────────────────────────
+//
+// Everything lives under `$APPDATA/metadata/<appId>/` (already in the asset
+// protocol scope, so the webview loads the icon files directly):
+//
+//   achievements_player_<lang>.json  the merged `{unlocked,total,list}` of the
+//                                     last live fetch, plus `fetched_at` —
+//                                     what the detail panel paints first;
+//   achievements_schema_<lang>.json  GetSchemaForGame's achievement list, kept
+//                                     for SCHEMA_TTL_SECS so a live refresh is
+//                                     one Steam request instead of two;
+//   achievements.json + achievements/ the "Obtener metadatos" download (legacy
+//                                     format, icon files `<apiname>_{un,}locked.jpg`).
+
+/// Schemas (names, descriptions, icon URLs) almost never change for a
+/// released game; a week keeps a later refresh down to the progress request.
+const SCHEMA_TTL_SECS: u64 = 7 * 24 * 60 * 60;
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// Steam Web API language names are plain lowercase words ("english",
+/// "spanish", "schinese"...). Anything else falls back to English — the
+/// value also names cache files, so it never carries path characters.
+fn normalize_steam_lang(lang: Option<&str>) -> String {
+    match lang {
+        Some(l) if !l.is_empty() && l.len() <= 20 && l.bytes().all(|b| b.is_ascii_lowercase()) => l.to_string(),
+        _ => "english".to_string(),
+    }
+}
+
+fn game_metadata_dir(app_handle: &tauri::AppHandle, app_id: &str) -> Option<PathBuf> {
+    Some(app_handle.path().app_data_dir().ok()?.join("metadata").join(app_id))
+}
+
+fn player_cache_path(game_dir: &Path, lang: &str) -> PathBuf {
+    game_dir.join(format!("achievements_player_{lang}.json"))
+}
+
+fn schema_cache_path(game_dir: &Path, lang: &str) -> PathBuf {
+    game_dir.join(format!("achievements_schema_{lang}.json"))
+}
+
+fn schema_is_fresh(fetched_at: u64, now: u64) -> bool {
+    fetched_at <= now && now - fetched_at < SCHEMA_TTL_SECS
+}
+
+/// Writes through a sibling temp file so a reader never sees half a JSON.
+fn write_json_atomic(path: &Path, value: &serde_json::Value) {
+    let Ok(text) = serde_json::to_string(value) else { return };
+    let tmp = path.with_extension("json.tmp");
+    if std::fs::write(&tmp, text).is_ok() && std::fs::rename(&tmp, path).is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+}
+
+fn read_json(path: &Path) -> Option<serde_json::Value> {
+    serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()
+}
+
+/// The cached schema list and when it was fetched, fresh or not (a stale one
+/// is still the fallback when the refetch fails).
+fn read_schema_cache(game_dir: &Path, lang: &str) -> Option<(u64, Vec<serde_json::Value>)> {
+    let json = read_json(&schema_cache_path(game_dir, lang))?;
+    Some((json["fetched_at"].as_u64()?, json["achievements"].as_array()?.clone()))
+}
+
+fn write_schema_cache(game_dir: &Path, lang: &str, achievements: &[serde_json::Value], now: u64) {
+    write_json_atomic(
+        &schema_cache_path(game_dir, lang),
+        &serde_json::json!({ "fetched_at": now, "achievements": achievements }),
+    );
+}
+
+fn schema_map(list: &[serde_json::Value]) -> HashMap<String, serde_json::Value> {
+    list.iter()
+        .filter_map(|a| Some((a["name"].as_str()?.to_string(), a.clone())))
+        .collect()
+}
+
+/// An apiname only ever names an icon file when it can't escape the folder.
+fn safe_icon_stem(apiname: &str) -> bool {
+    !apiname.is_empty() && !apiname.contains(['/', '\\', ':']) && !apiname.contains("..")
+}
+
+fn icon_file_name(apiname: &str, achieved: bool) -> String {
+    format!("{apiname}_{}.jpg", if achieved { "unlocked" } else { "locked" })
+}
+
+/// Progress + schema → the list the panel renders, unlocked first.
+/// `icon` is the Steam CDN URL of the variant matching the unlock state.
+fn merge_achievements(
+    progress: &[serde_json::Value],
+    schema: &HashMap<String, serde_json::Value>,
+) -> serde_json::Value {
+    let mut list: Vec<serde_json::Value> = progress
+        .iter()
+        .map(|p| {
+            let apiname = p["apiname"].as_str().unwrap_or("");
+            let s = schema.get(apiname);
+            let achieved = p["achieved"].as_u64().unwrap_or(0);
+            let name = s
+                .and_then(|s| s["displayName"].as_str())
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| p["name"].as_str().unwrap_or(apiname));
+            let description = s
+                .and_then(|s| s["description"].as_str())
+                .filter(|v| !v.is_empty())
+                .or_else(|| p["description"].as_str().filter(|v| !v.is_empty()))
+                .unwrap_or("");
+            let icon = s
+                .and_then(|s| {
+                    if achieved == 1 {
+                        s["icon"].as_str()
+                    } else {
+                        s["icongray"].as_str().or_else(|| s["icon"].as_str())
+                    }
+                })
+                .unwrap_or("");
+            serde_json::json!({
+                "apiname":     apiname,
+                "achieved":    achieved,
+                "hidden":      is_hidden_achievement(s),
+                "unlocktime":  p["unlocktime"].as_u64().unwrap_or(0),
+                "name":        name,
+                "description": description,
+                "icon":        icon,
+            })
+        })
+        .collect();
+    summarize(&mut list)
+}
+
+fn summarize(list: &mut Vec<serde_json::Value>) -> serde_json::Value {
+    // Stable: unlocked first, Steam's own order within each group.
+    list.sort_by_key(|a| u8::from(a["achieved"].as_u64() != Some(1)));
+    let unlocked = list.iter().filter(|a| a["achieved"].as_u64() == Some(1)).count();
+    serde_json::json!({ "unlocked": unlocked, "total": list.len(), "list": list })
+}
+
+/// The legacy download (`achievements.json`) in the panel's shape — no
+/// remote icon URL there, the local icon files cover it.
+fn from_downloaded_achievements(game_dir: &Path) -> Option<serde_json::Value> {
+    let path = game_dir.join("achievements.json");
+    let items: Vec<serde_json::Value> = serde_json::from_str(&std::fs::read_to_string(&path).ok()?).ok()?;
+    let fetched_at = std::fs::metadata(&path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let mut list: Vec<serde_json::Value> = items
+        .iter()
+        .map(|a| serde_json::json!({
+            "apiname":     a["apiname"].as_str().unwrap_or(""),
+            "achieved":    a["achieved"].as_u64().unwrap_or(0),
+            "hidden":      a["hidden"].as_bool().unwrap_or(false),
+            "unlocktime":  a["unlocktime"].as_u64().unwrap_or(0),
+            "name":        a["name"].as_str().unwrap_or(""),
+            "description": a["description"].as_str().unwrap_or(""),
+            "icon":        "",
+        }))
+        .collect();
+    let mut merged = summarize(&mut list);
+    merged["fetched_at"] = fetched_at.into();
+    Some(merged)
+}
+
+/// Adds `icon_local` (absolute path) to every entry whose icon file for its
+/// current state is on disk; the panel serves it through the asset protocol
+/// and falls back to `icon` (the CDN) otherwise.
+fn attach_local_icons(merged: &mut serde_json::Value, game_dir: &Path) {
+    let icons_dir = game_dir.join("achievements");
+    if !icons_dir.is_dir() {
+        return;
+    }
+    let Some(list) = merged["list"].as_array_mut() else { return };
+    for a in list {
+        let apiname = a["apiname"].as_str().unwrap_or("").to_string();
+        if !safe_icon_stem(&apiname) {
+            continue;
+        }
+        let path = icons_dir.join(icon_file_name(&apiname, a["achieved"].as_u64() == Some(1)));
+        if path.is_file() {
+            a["icon_local"] = path.to_string_lossy().into_owned().into();
+        }
+    }
+}
+
+/// The persisted merged result for (game, language): the last live fetch,
+/// else the downloaded achievements.json. Disk only — never the network.
+fn read_cached_achievements(game_dir: &Path, lang: &str) -> Option<serde_json::Value> {
+    let mut merged = read_json(&player_cache_path(game_dir, lang))
+        .filter(|j| j["list"].is_array() && j["fetched_at"].is_u64())
+        .or_else(|| from_downloaded_achievements(game_dir))?;
+    attach_local_icons(&mut merged, game_dir);
+    Some(merged)
+}
+
+fn write_player_cache(game_dir: &Path, lang: &str, merged: &serde_json::Value, now: u64) {
+    let mut stored = merged.clone();
+    stored["fetched_at"] = now.into();
+    if std::fs::create_dir_all(game_dir).is_ok() {
+        write_json_atomic(&player_cache_path(game_dir, lang), &stored);
+    }
+}
+
+async fn fetch_progress(
+    client: &reqwest::Client,
+    api_key: &str,
+    steam_id: &str,
+    app_id: &str,
+    lang: &str,
+) -> Result<Vec<serde_json::Value>, String> {
+    let url = format!(
+        "https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/\
+         ?key={api_key}&steamid={steam_id}&appid={app_id}&l={lang}"
+    );
+    let resp = client.get(&url).send().await.str_err()?;
+    if !resp.status().is_success() {
+        return Err(format!("Steam API error (HTTP {})", resp.status()));
+    }
+    let json: serde_json::Value = resp.json().await.str_err()?;
+    Ok(json["playerstats"]["achievements"].as_array().cloned().unwrap_or_default())
+}
+
+async fn fetch_schema(
+    client: &reqwest::Client,
+    api_key: &str,
+    app_id: &str,
+    lang: &str,
+) -> Option<Vec<serde_json::Value>> {
+    let url = format!(
+        "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/\
+         ?key={api_key}&appid={app_id}&l={lang}"
+    );
+    let resp = client.get(&url).send().await.ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let json: serde_json::Value = resp.json().await.ok()?;
+    Some(
+        json["game"]["availableGameStats"]["achievements"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default(),
+    )
+}
+
+/// Progress and (when the cached one is stale or missing) the schema, both
+/// requests in flight at once. A failed schema refetch falls back to the
+/// stale cache; a fresh fetch is persisted for SCHEMA_TTL_SECS.
+async fn fetch_progress_and_schema(
+    client: &reqwest::Client,
+    api_key: &str,
+    steam_id: &str,
+    app_id: &str,
+    lang: &str,
+    game_dir: &Path,
+) -> Result<(Vec<serde_json::Value>, HashMap<String, serde_json::Value>), String> {
+    let now = now_secs();
+    let cached = read_schema_cache(game_dir, lang);
+    let fresh = cached.as_ref().filter(|(at, _)| schema_is_fresh(*at, now)).map(|(_, list)| list.clone());
+    let need_schema = fresh.is_none();
+    let (progress, fetched) = futures::join!(
+        fetch_progress(client, api_key, steam_id, app_id, lang),
+        async {
+            if need_schema { fetch_schema(client, api_key, app_id, lang).await } else { None }
+        },
+    );
+    let progress = progress?;
+    let schema = match (fresh, fetched) {
+        (Some(list), _) => list,
+        (None, Some(list)) => {
+            if std::fs::create_dir_all(game_dir).is_ok() {
+                write_schema_cache(game_dir, lang, &list, now);
+            }
+            list
+        }
+        (None, None) => cached.map(|(_, list)| list).unwrap_or_default(),
+    };
+    Ok((progress, schema_map(&schema)))
+}
+
 /// Downloads achievement icons (both locked and unlocked) and saves achievements.json.
 /// Always refreshes progress from Steam; only skips icon files that already exist on disk.
-/// Re-saves achievements.json whenever the unlock state has changed.
+/// Re-saves achievements.json whenever the unlock state has changed, and
+/// refreshes the panel's merged cache on the way.
 pub async fn download_achievements(
     app_handle: &tauri::AppHandle,
     app_id: &str,
@@ -47,35 +337,22 @@ pub async fn download_achievements(
     };
     let client = crate::http::http_client();
 
-    // Always fetch current player progress
-    let progress_url = format!(
-        "https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/\
-         ?key={}&steamid={}&appid={}&l={}",
-        api_key, steam_id, app_id, lang
-    );
-    let progress_list: Vec<serde_json::Value> = match client.get(&progress_url).send().await {
-        Ok(r) if r.status().is_success() => r
-            .json::<serde_json::Value>()
-            .await
-            .ok()
-            .and_then(|j| j["playerstats"]["achievements"].as_array().cloned())
-            .unwrap_or_default(),
-        _ => return,
-    };
+    let (progress_list, schema_map) =
+        match fetch_progress_and_schema(client, &api_key, &steam_id, app_id, lang, game_dir).await {
+            Ok(r) => r,
+            Err(_) => return,
+        };
     if progress_list.is_empty() {
         return;
     }
+    write_player_cache(game_dir, lang, &merge_achievements(&progress_list, &schema_map), now_secs());
 
     // Check if existing achievements.json already matches current unlock state (skip heavy work)
     let out_path = game_dir.join("achievements.json");
     let existing_unlocked: Option<u64> = std::fs::read_to_string(&out_path)
         .ok()
         .and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(&s).ok())
-        .map(|arr| {
-            arr.iter()
-                .filter(|a| a["achieved"].as_u64() == Some(1))
-                .count() as u64
-        });
+        .map(|arr| arr.iter().filter(|a| a["achieved"].as_u64() == Some(1)).count() as u64);
     let current_unlocked = progress_list
         .iter()
         .filter(|a| a["achieved"].as_u64() == Some(1))
@@ -91,35 +368,6 @@ pub async fn download_achievements(
     if existing_unlocked == Some(current_unlocked) && icons_exist {
         return;
     }
-
-    // Fetch schema for display names + both icon URLs
-    let schema_url = format!(
-        "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/\
-         ?key={}&appid={}&l={}",
-        api_key, app_id, lang
-    );
-    let schema_map: std::collections::HashMap<String, serde_json::Value> =
-        match client.get(&schema_url).send().await {
-            Ok(r) if r.status().is_success() => r
-                .json::<serde_json::Value>()
-                .await
-                .ok()
-                .and_then(|j| {
-                    j["game"]["availableGameStats"]["achievements"]
-                        .as_array()
-                        .cloned()
-                })
-                .map(|arr| {
-                    arr.into_iter()
-                        .filter_map(|a| {
-                            let name = a["name"].as_str()?.to_string();
-                            Some((name, a))
-                        })
-                        .collect()
-                })
-                .unwrap_or_default(),
-            _ => std::collections::HashMap::new(),
-        };
 
     let _ = std::fs::create_dir_all(&icons_dir);
 
@@ -144,10 +392,12 @@ pub async fn download_achievements(
         let icon_gray_url = schema.and_then(|s| s["icongray"].as_str()).unwrap_or("");
 
         // Download both locked and unlocked icons
-        let icon_file = format!("{}_unlocked.jpg", apiname);
-        let icon_gray_file = format!("{}_locked.jpg", apiname);
-        fetch_icon(client, icon_url, &icons_dir.join(&icon_file)).await;
-        fetch_icon(client, icon_gray_url, &icons_dir.join(&icon_gray_file)).await;
+        let icon_file = icon_file_name(apiname, true);
+        let icon_gray_file = icon_file_name(apiname, false);
+        if safe_icon_stem(apiname) {
+            fetch_icon(client, icon_url, &icons_dir.join(&icon_file)).await;
+            fetch_icon(client, icon_gray_url, &icons_dir.join(&icon_gray_file)).await;
+        }
 
         let display_name = schema
             .and_then(|s| s["displayName"].as_str())
@@ -298,33 +548,9 @@ pub async fn steam_achievements_download(
         .str_err()?;
     let game_dir = app_data_dir.join("metadata").join(&app_id);
     std::fs::create_dir_all(&game_dir).str_err()?;
-    let l = lang.unwrap_or_else(|| "spanish".to_string());
+    let l = normalize_steam_lang(lang.as_deref());
     download_achievements(&app_handle, &app_id, &game_dir, &l).await;
     Ok(())
-}
-
-#[tauri::command]
-pub async fn steam_achievement_icon(
-    app_handle: tauri::AppHandle,
-    app_id: String,
-    filename: String,
-) -> Result<String, String> {
-    let icons_dir = app_handle
-        .path()
-        .app_data_dir()
-        .str_err()?
-        .join("metadata")
-        .join(&app_id)
-        .join("achievements");
-    let path = icons_dir.join(&filename);
-    if !path.exists() {
-        return Err("not found".into());
-    }
-    let bytes = std::fs::read(&path).str_err()?;
-    Ok(format!(
-        "data:image/jpeg;base64,{}",
-        crate::utils::base64_encode(&bytes)
-    ))
 }
 
 #[tauri::command]
@@ -352,6 +578,9 @@ pub async fn steam_get_owned_games(
     Ok(json["response"].clone())
 }
 
+/// Live progress merged with the (cached, 7-day) schema. Persists the merged
+/// result so the next open paints it from disk first
+/// (`steam_get_cached_achievements`).
 #[tauri::command]
 pub async fn steam_get_player_achievements(
     app_handle: tauri::AppHandle,
@@ -361,115 +590,132 @@ pub async fn steam_get_player_achievements(
     let api_key = steam_api_key(&app_handle.state::<crate::db::MetadeaDb>())?
         .ok_or("No Steam API key")?;
     let steam_id = detect_steam_user_id().ok_or("Could not detect Steam user ID")?;
-    let language = lang.unwrap_or_else(|| "spanish".to_string());
+    let language = normalize_steam_lang(lang.as_deref());
+    let app_id = app_id.to_string();
+    let game_dir = app_handle.path().app_data_dir().str_err()?.join("metadata").join(&app_id);
 
     let client = crate::http::http_client();
+    let (progress, schema) =
+        fetch_progress_and_schema(client, &api_key, &steam_id, &app_id, &language, &game_dir).await?;
+    let now = now_secs();
+    let mut merged = merge_achievements(&progress, &schema);
+    write_player_cache(&game_dir, &language, &merged, now);
+    merged["fetched_at"] = now.into();
+    attach_local_icons(&mut merged, &game_dir);
+    Ok(merged)
+}
 
-    // Fetch player progress (achieved status + unlock times)
-    let progress_url = format!(
-        "https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/\
-         ?key={}&steamid={}&appid={}&l={}",
-        api_key, steam_id, app_id, language
-    );
-    let progress_resp = client
-        .get(&progress_url)
-        .send()
-        .await
-        .str_err()?;
-    if !progress_resp.status().is_success() {
-        return Err(format!("Steam API error (HTTP {})", progress_resp.status()));
+/// The last merged result persisted for (game, language), or the downloaded
+/// achievements.json — disk only, `null` when neither exists. `fetched_at`
+/// (unix seconds) lets the caller decide whether a live refresh is due.
+#[tauri::command]
+pub async fn steam_get_cached_achievements(
+    app_handle: tauri::AppHandle,
+    app_id: u32,
+    lang: Option<String>,
+) -> Result<Option<serde_json::Value>, String> {
+    let language = normalize_steam_lang(lang.as_deref());
+    Ok(game_metadata_dir(&app_handle, &app_id.to_string())
+        .and_then(|dir| read_cached_achievements(&dir, &language)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_game_dir(tag: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("metadea-steam-{tag}-{}-{}", std::process::id(), now_secs()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
     }
-    let progress_json: serde_json::Value = progress_resp.json().await.str_err()?;
-    let progress_list = progress_json["playerstats"]["achievements"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
 
-    // Fetch schema for display names, descriptions and icon URLs
-    let schema_url = format!(
-        "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/\
-         ?key={}&appid={}&l={}",
-        api_key, app_id, language
-    );
-    let schema_resp = client
-        .get(&schema_url)
-        .send()
-        .await
-        .str_err()?;
-    let schema_map: std::collections::HashMap<String, serde_json::Value> =
-        if schema_resp.status().is_success() {
-            let schema_json: serde_json::Value = schema_resp.json().await.unwrap_or_default();
-            schema_json["game"]["availableGameStats"]["achievements"]
-                .as_array()
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|a| {
-                            let name = a["name"].as_str()?.to_string();
-                            Some((name, a.clone()))
-                        })
-                        .collect()
-                })
-                .unwrap_or_default()
-        } else {
-            std::collections::HashMap::new()
-        };
+    fn progress() -> Vec<serde_json::Value> {
+        vec![
+            serde_json::json!({ "apiname": "A", "achieved": 0, "unlocktime": 0 }),
+            serde_json::json!({ "apiname": "B", "achieved": 1, "unlocktime": 1700000000u64 }),
+        ]
+    }
 
-    // Merge: progress + schema
-    let merged: Vec<serde_json::Value> = progress_list
-        .iter()
-        .map(|p| {
-            let apiname = p["apiname"].as_str().unwrap_or("");
-            let schema = schema_map.get(apiname);
-            let display_name = schema
-                .and_then(|s| s["displayName"].as_str())
-                .filter(|s| !s.is_empty())
-                .unwrap_or_else(|| p["name"].as_str().unwrap_or(apiname));
-            let description = schema
-                .and_then(|s| s["description"].as_str())
-                .filter(|s| !s.is_empty())
-                .or_else(|| p["description"].as_str().filter(|s| !s.is_empty()))
-                .unwrap_or("");
-            let icon = schema
-                .and_then(|s| {
-                    if p["achieved"].as_u64() == Some(1) {
-                        s["icon"].as_str()
-                    } else {
-                        s["icongray"].as_str().or_else(|| s["icon"].as_str())
-                    }
-                })
-                .unwrap_or("");
-            let hidden = is_hidden_achievement(schema);
-            serde_json::json!({
-                "apiname":     apiname,
-                "achieved":    p["achieved"].as_u64().unwrap_or(0),
-                "hidden":      hidden,
-                "unlocktime":  p["unlocktime"].as_u64().unwrap_or(0),
-                "name":        display_name,
-                "description": description,
-                "icon":        icon,
-            })
-        })
-        .collect();
+    fn schema() -> Vec<serde_json::Value> {
+        vec![
+            serde_json::json!({ "name": "A", "displayName": "Alpha", "description": "d", "hidden": 1,
+                                "icon": "https://cdn/a.jpg", "icongray": "https://cdn/a_gray.jpg" }),
+            serde_json::json!({ "name": "B", "displayName": "Beta", "icon": "https://cdn/b.jpg", "icongray": "https://cdn/b_gray.jpg" }),
+        ]
+    }
 
-    let total = merged.len() as u64;
-    let unlocked = merged
-        .iter()
-        .filter(|a| a["achieved"].as_u64() == Some(1))
-        .count() as u64;
+    #[test]
+    fn merge_sorts_unlocked_first_and_picks_the_state_icon() {
+        let merged = merge_achievements(&progress(), &schema_map(&schema()));
+        assert_eq!(merged["unlocked"], 1);
+        assert_eq!(merged["total"], 2);
+        assert_eq!(merged["list"][0]["apiname"], "B");
+        assert_eq!(merged["list"][0]["icon"], "https://cdn/b.jpg");
+        assert_eq!(merged["list"][1]["icon"], "https://cdn/a_gray.jpg");
+        assert_eq!(merged["list"][1]["hidden"], true);
+        assert_eq!(merged["list"][1]["name"], "Alpha");
+    }
 
-    // Sort: unlocked first, then locked
-    let mut sorted = merged;
-    sorted.sort_by_key(|a| {
-        if a["achieved"].as_u64() == Some(1) {
-            0u8
-        } else {
-            1u8
-        }
-    });
+    #[test]
+    fn player_cache_roundtrips_with_local_icons() {
+        let dir = temp_game_dir("roundtrip");
+        let merged = merge_achievements(&progress(), &schema_map(&schema()));
+        write_player_cache(&dir, "english", &merged, 1234);
+        std::fs::create_dir_all(dir.join("achievements")).unwrap();
+        std::fs::write(dir.join("achievements").join("B_unlocked.jpg"), b"x").unwrap();
 
-    Ok(serde_json::json!({
-        "unlocked": unlocked,
-        "total":    total,
-        "list":     sorted,
-    }))
+        let cached = read_cached_achievements(&dir, "english").unwrap();
+        assert_eq!(cached["fetched_at"], 1234);
+        let icon = dir.join("achievements").join("B_unlocked.jpg");
+        assert_eq!(cached["list"][0]["icon_local"], icon.to_string_lossy().as_ref());
+        assert!(cached["list"][1].get("icon_local").is_none());
+        let mut without_icon = cached.clone();
+        without_icon["list"][0].as_object_mut().unwrap().remove("icon_local");
+        assert_eq!(without_icon["list"], merged["list"]);
+        // Another language has no cache of its own and no download to fall back to.
+        assert!(read_cached_achievements(&dir, "spanish").is_none());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cached_read_falls_back_to_the_downloaded_achievements_json() {
+        let dir = temp_game_dir("legacy");
+        std::fs::write(dir.join("achievements.json"), serde_json::json!([
+            { "apiname": "A", "name": "Alpha", "description": "", "achieved": 0, "hidden": true, "unlocktime": 0,
+              "icon_unlocked": "A_unlocked.jpg", "icon_locked": "A_locked.jpg" },
+            { "apiname": "B", "name": "Beta", "description": "", "achieved": 1, "hidden": false, "unlocktime": 5,
+              "icon_unlocked": "B_unlocked.jpg", "icon_locked": "B_locked.jpg" },
+        ]).to_string()).unwrap();
+        let cached = read_cached_achievements(&dir, "german").unwrap();
+        assert_eq!(cached["unlocked"], 1);
+        assert_eq!(cached["total"], 2);
+        assert_eq!(cached["list"][0]["apiname"], "B");
+        assert!(cached["fetched_at"].as_u64().unwrap() > 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn schema_cache_honours_its_ttl() {
+        let dir = temp_game_dir("schema");
+        write_schema_cache(&dir, "english", &schema(), 1000);
+        let (at, list) = read_schema_cache(&dir, "english").unwrap();
+        assert_eq!(at, 1000);
+        assert_eq!(list.len(), 2);
+        assert!(schema_is_fresh(at, 1000 + SCHEMA_TTL_SECS - 1));
+        assert!(!schema_is_fresh(at, 1000 + SCHEMA_TTL_SECS));
+        // A clock that went backwards never trusts the cache.
+        assert!(!schema_is_fresh(at, 999));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn language_is_a_plain_lowercase_word_or_english() {
+        assert_eq!(normalize_steam_lang(Some("spanish")), "spanish");
+        assert_eq!(normalize_steam_lang(None), "english");
+        assert_eq!(normalize_steam_lang(Some("../x")), "english");
+        assert_eq!(normalize_steam_lang(Some("Spanish")), "english");
+        assert!(!safe_icon_stem("../evil"));
+        assert!(safe_icon_stem("ACH_WIN_1"));
+    }
 }

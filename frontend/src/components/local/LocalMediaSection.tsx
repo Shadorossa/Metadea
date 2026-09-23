@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useHydrated } from '../shared/hooks/useHydrated';
 import type { Translations } from '../../i18n/index';
 import { motion } from 'motion/react';
 import { getT } from '../../i18n/runtime';
-import { type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
+import { type LocalGame, type CatalogEntryLike } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { useCoverCacheBatch } from './hooks/useCoverCacheBatch';
 import { isInProgressStatus } from '../../lib/media/media-types';
@@ -19,7 +20,6 @@ import { SortModeSelect } from './ui/SortModeSelect';
 import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
 import { LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from '../../lib/local/platforms';
 import { catalogReleaseTimestampMs } from '../../lib/media/mappers/mapper-utils';
-import { CONTAINS_RELATION_TYPES } from '../../lib/media/saga/saga-relation-types';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -95,7 +95,7 @@ interface LocalMediaSectionProps {
   // VN has been linked to a catalog entry (a Steam-ID guess, or a manual
   // "editar metadatos" pick), its card shows that entry's own title_main
   // instead of the raw scanned Steam name.
-  catalogMapById?: Map<string, MediaCatalogEntry>;
+  catalogMapById?: Map<string, CatalogEntryLike>;
   // "Eliminar de la lista" — only ever passed (and only ever rendered, see
   // isGameLike below) for Visual Novel, the one non-Videojuegos category
   // with its own scanned-install ("steam" kind) and catalog-tracked
@@ -110,8 +110,7 @@ interface LocalMediaSectionProps {
 }
 
 export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, catalogMapById, onRemoveGame, onDeleteLibraryItem, onRefreshScan, sectionRefs, ssrLocal }: LocalMediaSectionProps) {
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => { setIsMounted(true); }, []);
+  const isMounted = useHydrated();
 
   const t = getT();
   const local = isMounted ? t.local : (ssrLocal ?? t.local);
@@ -313,7 +312,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
     const rawSections = [
       { title: p.section_in_progress, icon: undefined, entries: toEntries(inProgress, steamInProgress), platformId: undefined },
       ...(isGameLike ? [] : [{ title: p.section_planning, icon: undefined, entries: toEntries(planning, steamPlanning), platformId: undefined }]),
-      { title: 'Sin estrenar', icon: undefined, entries: toEntries(unreleased, []), platformId: undefined },
+      { title: t.local.section_unreleased, icon: undefined, entries: toEntries(unreleased, []), platformId: undefined },
       ...platformSections,
     ];
     // toEntries' own name-matching (see buildLibraryStatusEntries' chapter-
@@ -456,7 +455,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
             <DeleteContextMenu
               x={deleteMenu.x}
               y={deleteMenu.y}
-              label="Eliminar de la lista"
+              label={t.local.remove_from_list}
               onDelete={() => deleteMenu.kind === 'game' ? handleDeleteGame(deleteMenu.game) : handleDeleteLibraryItem(deleteMenu.item)}
               onClose={closeDeleteMenu}
             />

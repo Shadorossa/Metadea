@@ -5,6 +5,9 @@ import type { MediaPageData, MediaSeasonInfo } from '../../../lib/media/types';
 import { getApiSportsEventMatches, getApiSportsEventSeasons } from '../../../lib/tauri/episodes';
 import { fetchApiSportsSeasonMatches, type EventMatch } from '../../../lib/search/providers/apisports';
 import { pickAggregateStatus } from '../../../lib/media/media-types';
+import { useKeyedState } from '../../shared/hooks/useKeyedState';
+
+const EMPTY_MATCHES: EventMatch[] = [];
 
 interface Params {
   currentId: string;
@@ -36,7 +39,8 @@ export function useEventMatches({
   libRating,
   inLibrary,
 }: Params) {
-  const [matches,            setMatches]            = useState<EventMatch[]>([]);
+  // Empty again for every navigation; the match effect below refills it.
+  const [matches,            setMatches]            = useKeyedState<EventMatch[]>(`${previewMode}\n${currentId}\n${dataType}`, EMPTY_MATCHES);
   const [eventSeasonEntries, setEventSeasonEntries] = useState<Record<string, LibraryEntry | null>>({});
 
   // Season relationships are stored locally after the first successful
@@ -73,7 +77,7 @@ export function useEventMatches({
       });
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [previewMode, isEventCompetition, currentId]);
+  }, [previewMode, isEventCompetition, currentId, setData]);
 
   useEffect(() => {
     if (previewMode || !isEventCompetition || !unifySeasonsEnabled) {
@@ -146,17 +150,13 @@ export function useEventMatches({
   }, [isEventCompetition, unifySeasonsEnabled, dataSeasons, eventSeasonEntries]);
 
   useEffect(() => {
-    if (previewMode || dataType !== 'event' || !currentId) {
-      setMatches([]);
-      return;
-    }
+    if (previewMode || dataType !== 'event' || !currentId) return;
     let cancelled = false;
-    setMatches([]);
     fetchApiSportsSeasonMatches(currentId)
       .then(rows => { if (!cancelled) setMatches(rows); })
       .catch(() => { if (!cancelled) setMatches([]); });
     return () => { cancelled = true; };
-  }, [previewMode, currentId, dataType]);
+  }, [previewMode, currentId, dataType, setMatches]);
 
   return {
     matches,

@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getLocalScreenshots, steamGetScreenshots, wrapAssetUrl, type LocalScreenshot, type SteamAchievement } from '../../../lib/tauri';
+import { useKeyedState } from '../../shared/hooks/useKeyedState';
+
+const NO_SCREENSHOTS: LocalScreenshot[] = [];
+import {
+  getEmulatorScreenshots, getLocalScreenshots, steamGetScreenshots, wrapAssetUrl,
+  type LocalScreenshot, type SteamAchievement,
+} from '../../../lib/tauri';
 import { getT } from '../../../i18n/runtime';
 import { AchievementCell } from './AchievementCell';
 
@@ -11,52 +17,102 @@ interface MediaScreenshotsSectionProps {
   workName: string;
   achievements: { unlocked: number; total: number; list: SteamAchievement[] } | null;
   achievementsLoading: boolean;
+  // Achievements tab for a source other than Steam (RetroAchievements):
+  // the same list shape, grid, cells and loading state, plus that source's
+  // own controls in the tabs row and its own message when there is no list.
+  achievementsTab?: {
+    // AchievementCell's appId; irrelevant for remote icons but keyed on.
+    iconAppId: string;
+    // Rendered in the tabs row while the achievements tab is active.
+    controls?: React.ReactNode;
+    // Shown in place of the "no achievements" text (not linked, not
+    // configured, error...).
+    empty?: React.ReactNode;
+  };
+  // A scanned ROM: the emulator's own capture folder joins the list.
+  emulator?: { platformId: string; romPath: string; title?: string };
 }
 
-export function MediaScreenshotsSection({ appId, workName, achievements, achievementsLoading }: MediaScreenshotsSectionProps) {
+export function MediaScreenshotsSection({ appId, workName, achievements, achievementsLoading, achievementsTab, emulator }: MediaScreenshotsSectionProps) {
   const t = getT();
-  const [activeTab, setActiveTab] = useState<'screenshots' | 'achievements'>('screenshots');
-  const [screenshots, setScreenshots] = useState<LocalScreenshot[]>([]);
+  const hasAchievementsTab = !!appId || !!achievementsTab;
+  const achievementsIconAppId = appId ?? achievementsTab?.iconAppId ?? '';
+  const emulatorPlatformId = emulator?.platformId;
+  const emulatorRomPath = emulator?.romPath;
+  const emulatorTitle = emulator?.title;
+  // Everything below starts over for each work this section is shown for.
+  const workKey = `${appId}\n${workName}\n${emulatorRomPath ?? ''}`;
+  const [activeTab, setActiveTab] = useKeyedState<'screenshots' | 'achievements'>(workKey, 'screenshots');
+  const [screenshots, setScreenshots] = useKeyedState<LocalScreenshot[]>(workKey, NO_SCREENSHOTS);
+  // The emulator folder had nothing named after this game, so what it
+  // contributed is its recent captures for the platform.
+  const [emulatorUnfiltered, setEmulatorUnfiltered] = useKeyedState(workKey, false);
   const screenshotsGridRef = useRef<HTMLDivElement>(null);
   const achievementsGridRef = useRef<HTMLDivElement>(null);
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-  const [screenshotEpisodeFilter, setScreenshotEpisodeFilter] = useState('all');
-  const [screenshotsPage, setScreenshotsPage] = useState(0);
+  const [previewIndex, setPreviewIndex] = useKeyedState<number | null>(workKey, null);
+  const [screenshotEpisodeFilter, setScreenshotEpisodeFilter] = useKeyedState(workKey, 'all');
+  const [screenshotsPage, setScreenshotsPage] = useKeyedState(workKey, 0);
   const [screenshotColumns, setScreenshotColumns] = useState(3);
-  const [achievementsPage, setAchievementsPage] = useState(0);
+  const [achievementsPage, setAchievementsPage] = useKeyedState(workKey, 0);
   const [achievementColumns, setAchievementColumns] = useState(6);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useKeyedState(workKey, true);
+  const [failed, setFailed] = useKeyedState(workKey, false);
+  // The captures (a local folder walk, Steam's screenshot folder, the
+  // emulator's capture folder) are only listed once this section has been
+  // scrolled into view with its screenshots tab active — it sits below the
+  // panel's summary, so a panel opened for its header alone never issues
+  // them. Latched per work: once wanted, later tab switches keep the list
+  // and its focus refresh instead of re-listing.
+  const sectionRef = useRef<HTMLElement>(null);
+  const [inView, setInView] = useKeyedState(workKey, false);
+  const [screenshotsWanted, setScreenshotsWanted] = useKeyedState(workKey, false);
 
   useEffect(() => {
+    if (inView) return;
+    const section = sectionRef.current;
+    if (!section || typeof IntersectionObserver === 'undefined') { setInView(true); return; }
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); observer.disconnect(); } },
+      { rootMargin: '200px' },
+    );
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [inView, setInView]);
+
+  useEffect(() => {
+    if (inView && activeTab === 'screenshots') setScreenshotsWanted(true);
+  }, [inView, activeTab, setScreenshotsWanted]);
+
+  useEffect(() => {
+    if (!screenshotsWanted) return;
     let cancelled = false;
-    setScreenshots([]);
-    setPreviewIndex(null);
-    setScreenshotEpisodeFilter('all');
-    setScreenshotsPage(0);
-    setAchievementsPage(0);
-    setActiveTab('screenshots');
-    setLoading(true);
-    setFailed(false);
 
     const loadScreenshots = async (showLoading: boolean) => {
       if (showLoading) setLoading(true);
-      const requests = [getLocalScreenshots(workName)];
-      if (appId) requests.push(steamGetScreenshots(appId));
+      const requests: Promise<{ screenshots: LocalScreenshot[]; filtered: boolean }>[] = [
+        getLocalScreenshots(workName).then(screenshots => ({ screenshots, filtered: true })),
+      ];
+      if (appId) requests.push(steamGetScreenshots(appId).then(screenshots => ({ screenshots, filtered: true })));
+      if (emulatorPlatformId && emulatorRomPath) {
+        requests.push(getEmulatorScreenshots(emulatorPlatformId, emulatorRomPath, { title: emulatorTitle }));
+      }
       const results = await Promise.allSettled(requests);
       if (cancelled) return;
 
       const loaded: LocalScreenshot[] = [];
       let succeeded = 0;
+      let unfiltered = false;
       for (const result of results) {
         if (result.status === 'fulfilled') {
           succeeded++;
-          loaded.push(...result.value);
+          loaded.push(...result.value.screenshots);
+          if (!result.value.filtered && result.value.screenshots.length > 0) unfiltered = true;
         } else {
           console.error('[Local screenshots] Failed to load captures:', result.reason);
         }
       }
       setScreenshots([...new Map(loaded.map(screenshot => [screenshot.path, screenshot])).values()]);
+      setEmulatorUnfiltered(unfiltered);
       setFailed(succeeded === 0);
       if (showLoading) setLoading(false);
     };
@@ -74,7 +130,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [appId, workName]);
+  }, [screenshotsWanted, appId, workName, emulatorPlatformId, emulatorRomPath, emulatorTitle, setScreenshots, setEmulatorUnfiltered, setFailed, setLoading]);
 
   useEffect(() => {
     if (activeTab !== 'screenshots' || screenshots.length === 0) return;
@@ -170,8 +226,8 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
   );
 
   return (
-    <section className="local-steam-media">
-      {appId ? <div className="local-steam-media-tabs" role="group" aria-label={`${t.local.screenshots} / ${t.local.stat_achievements}`}>
+    <section className="local-steam-media" ref={sectionRef}>
+      {hasAchievementsTab ? <div className="local-steam-media-tabs" role="group" aria-label={`${t.local.screenshots} / ${t.local.stat_achievements}`}>
         <button
           type="button"
           className={`local-steam-media-tab${activeTab === 'screenshots' ? ' active' : ''}`}
@@ -181,7 +237,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
           <span>{t.local.screenshots}</span>
           <span className="local-steam-media-count">{loading ? '…' : screenshots.length}</span>
         </button>
-        {appId && <button
+        <button
           type="button"
           className={`local-steam-media-tab${activeTab === 'achievements' ? ' active' : ''}`}
           aria-pressed={activeTab === 'achievements'}
@@ -191,8 +247,9 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
           <span className="local-steam-media-count">
             {achievementsLoading ? '…' : achievements ? `${achievements.unlocked}/${achievements.total}` : '0'}
           </span>
-        </button>}
+        </button>
         {activeTab === 'screenshots' && screenshotFilter}
+        {activeTab === 'achievements' && achievementsTab?.controls}
       </div> : (
         <div className="local-steam-screenshots-heading">
           <p className="local-steam-media-title">{t.local.screenshots}</p>
@@ -204,6 +261,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
         <div className="local-steam-media-panel" role="tabpanel">
           {screenshots.length > 0 ? (
             <>
+              {emulatorUnfiltered && <p className="local-steam-screenshots-empty">{t.local.emulator_screenshots_recent}</p>}
               <div className="local-steam-screenshots-grid" ref={screenshotsGridRef}>
                 {visibleScreenshots.map((screenshot, index) => {
                   const absoluteIndex = visibleScreenshotsPage * screenshotsPerPage + index;
@@ -234,21 +292,21 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
             </p>
           )}
         </div>
-      ) : appId ? (
-        <div className="local-steam-media-panel" role="tabpanel">
+      ) : hasAchievementsTab ? (
+        <div className={`local-steam-media-panel${achievementsLoading ? ' local-steam-media-panel--reserved' : ''}`} role="tabpanel">
           {achievementsLoading ? (
             <p className="local-steam-screenshots-empty">{t.local.steam_achievements_loading}</p>
           ) : achievementList.length > 0 ? (
             <>
               <div className="local-game-detail-achievement-grid" ref={achievementsGridRef}>
                 {visibleAchievements.map(achievement => (
-                  <AchievementCell key={achievement.apiname} ach={achievement} appId={appId} />
+                  <AchievementCell key={achievement.apiname} ach={achievement} appId={achievementsIconAppId} />
                 ))}
               </div>
               {pagination(visibleAchievementsPage, achievementPageCount, setAchievementsPage)}
             </>
           ) : (
-            <p className="local-steam-screenshots-empty">{t.local.steam_achievements_empty}</p>
+            achievementsTab?.empty ?? <p className="local-steam-screenshots-empty">{t.local.steam_achievements_empty}</p>
           )}
         </div>
       ) : null}

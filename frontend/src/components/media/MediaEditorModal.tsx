@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } from 'react';
+import React, { useReducer, useEffect, useLayoutEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { ModalShell } from '../shared/ModalShell';
 import type { LibraryEntry } from '../../lib/tauri';
 import { getLibraryEntry, deleteLibraryEntry, readMonthlyHistoryTyped, syncFavorites, saveImageFile } from '../../lib/tauri';
@@ -6,7 +6,7 @@ import { getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { generateShareImage } from '../../lib/media/editor/share-image';
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
-import { syncToAniList, fetchAniListLogData, isAniListType } from '../../lib/media/anilist-sync';
+import { syncToAniList, isAniListType } from '../../lib/media/anilist-sync';
 import type { Translations } from '../../i18n/index';
 import {
   IconStatusPlanning, IconStatusInProgress, IconStatusCompleted,
@@ -15,16 +15,18 @@ import {
 } from '../local/ui/icons';
 import {
   type LogState,
-  createDefaultLog, entryInit, entryReducer, uiReducer, createEmptyVersionEntry,
+  canRedoEntry, canUndoEntry, createDefaultLog, entryInit, entryReducer, uiReducer, createEmptyVersionEntry,
 } from '../../lib/media/editor/library-log-state';
+import { useShortcuts } from '../shared/hooks/useShortcuts';
 import { pickAggregateStatus } from '../../lib/media/media-types';
+import { reconsumeLabelKey } from '../../lib/media/editor/reconsumption-run';
 import { motion } from 'motion/react';
 import { getRatingName2, getRating2System, getRating2Min, getRating2Max, isUnifySeasonsEnabled, type RatingSlot } from '../../lib/storage/preferences';
 import { loadSagaChain } from '../../lib/media/saga/saga-loader';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mappers/mapper-utils';
 import { getCoverPreference } from '../../lib/media/cover-preferences';
-import { getProgressConfig, isFutureDate } from './media-editor/media-editor-helpers';
+import { getProgressConfig } from './media-editor/media-editor-helpers';
 import { HeaderField, HoursField, NumberField } from './media-editor/MediaEditorFields';
 import {
   fetchMonthMediaInfo, fetchCoverCandidates, fetchAnimeSeasonChainLogs,
@@ -143,7 +145,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       .then(candidates => { if (!cancelled) setCoverCandidates(candidates); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [baseId, externalId, data.parentGame, data.titleMain, data.cover]);
+  }, [baseId, externalId, data.parentGame, data.type, data.titleMain, data.cover]);
 
   // "Unificar temporadas" (Settings > Preferencias) — every other season in
   // the chain gets its own tab here too, same as the edition/version tabs
@@ -163,7 +165,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     && isUnifySeasonsEnabled()
     && /^event:apisports:(football|basketball):\d+$/.test(externalId)
     && (data.seasons?.length ?? 0) > 0;
-  const eventSeasons = isUnifiedEvent ? data.seasons ?? [] : [];
+  const eventSeasons = useMemo(() => (isUnifiedEvent ? data.seasons ?? [] : []), [isUnifiedEvent, data.seasons]);
   const GENERAL_LOG_ID = isUnifiedAnime && animeSeasonChain[0] ? `general:${animeSeasonChain[0].externalId}` : '';
   const isGeneralTab = (isUnifiedAnime && entry.activeLogId === GENERAL_LOG_ID)
     || (isUnifiedEvent && entry.activeLogId === externalId);
@@ -257,7 +259,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // key a real one off of. data.seasons is already fetched (TMDB's own
   // detail response), so unlike anime this needs no extra chain lookup.
   const isUnifiedSeries = data.type === 'series' && isUnifySeasonsEnabled() && (data.seasons?.length ?? 0) > 0;
-  const seriesSeasons = isUnifiedSeries ? data.seasons ?? [] : [];
+  const seriesSeasons = useMemo(() => (isUnifiedSeries ? data.seasons ?? [] : []), [isUnifiedSeries, data.seasons]);
 
   useEffect(() => {
     if (!isUnifiedSeries) return;
@@ -298,7 +300,9 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // re-run the effect (and refetch every linked version over IPC) on every
   // single log edit, not just when a new version gets linked.
   const logsRef = useRef(entry.logs);
-  logsRef.current = entry.logs;
+  useLayoutEffect(() => {
+    logsRef.current = entry.logs;
+  });
 
   // Dynamically load newly selected edition. The tab-switch click handler
   // already seeds a synchronous LOAD_LOG for the version it just linked, so
@@ -363,6 +367,8 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           startedAt:       activeLog.startedAt,
           finishedAt:      activeLog.finishedAt,
           notes:           activeLog.notes,
+          repeat:          activeLog.reconsumptionCount,
+          reconsuming:     activeLog.reconsuming,
         }).then(result => {
           if (result.ok) {
             if (!result.skipped) {
@@ -383,7 +389,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     } finally {
       dispatchUi({ type: 'SET_SAVING', value: false });
     }
-  }, [entry, activeLog, externalId, baseId, data.type, data.parentGame, data.totalCount, onSaved, handleClose]);
+  }, [entry, activeLog, externalId, baseId, data.type, data.totalCount, animeSeasonChain, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
     const activeId = entry.activeLogId || externalId;
@@ -651,6 +657,42 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   const hasCoverCandidates = coverCandidates.length > 1 && data.type === 'game';
 
+  // ── Keyboard shortcuts (modal context) ───────────────────────────────────
+  // mod+tab / mod+shift+tab walk the version tabs in the order
+  // MediaEditorVersionTabs renders them (general/original first, then
+  // seasons or editions), linking and seeding a log the same way a click does.
+  const versionTabIds = useMemo(() => {
+    if (isUnifiedAnime) return [GENERAL_LOG_ID, ...animeSeasonChain.map(season => season.externalId)];
+    if (isUnifiedEvent) return [externalId, ...eventSeasons.map(season => season.externalId).filter((id): id is string => !!id)];
+    if (isUnifiedSeries) return [baseId, ...seriesSeasons.map(season => seriesSeasonExternalId(externalId, season.seasonNumber))];
+    if (data.parentGame || allAvailableEditions.length > 0) return [...(isBundle ? [] : [baseId]), ...allAvailableEditions.map(edition => edition.externalId)];
+    return [];
+  }, [isUnifiedAnime, isUnifiedEvent, isUnifiedSeries, GENERAL_LOG_ID, animeSeasonChain, externalId, eventSeasons, baseId, seriesSeasons, data.parentGame, allAvailableEditions, isBundle]);
+  const cycleVersionTab = (delta: 1 | -1) => {
+    if (versionTabIds.length < 2) return;
+    const index = versionTabIds.indexOf(entry.activeLogId);
+    const nextId = versionTabIds[(index + delta + versionTabIds.length) % versionTabIds.length];
+    const edition = allAvailableEditions.find(item => item.externalId === nextId);
+    if (!isUnifiedAnime && !isUnifiedEvent && !isUnifiedSeries && edition && !edition.isBundleChild && !edition.isSeasonTab) {
+      const baseLog = entry.logs[baseId] || createDefaultLog();
+      const linked = baseLog.selectedVersion ? baseLog.selectedVersion.split(',') : [];
+      if (!linked.includes(nextId)) dispatchEntry({ type: 'SET_VERSION', value: [...linked, nextId].join(','), baseId });
+    }
+    if (!entry.logs[nextId]) {
+      const kind = isUnifiedAnime || edition?.isSeasonTab ? 'anime' : isUnifiedEvent ? 'event' : isUnifiedSeries ? 'series' : 'game';
+      dispatchEntry({ type: 'LOAD_LOG', id: nextId, entry: createEmptyVersionEntry(nextId, kind) });
+    }
+    dispatchEntry({ type: 'SWITCH_LOG', id: nextId });
+  };
+  useShortcuts('modal', [
+    { id: 'media_editor.save', keys: 'mod+s', description: 'shortcuts.editor_save', allowInInputs: true, when: () => !ui.saving && !ui.loading, handler: () => void handleSave() },
+    { id: 'media_editor.confirm', keys: 'mod+enter', description: 'shortcuts.editor_confirm', allowInInputs: true, when: () => !ui.saving && !ui.loading, handler: () => void handleSave() },
+    { id: 'media_editor.undo', keys: 'mod+z', description: 'shortcuts.editor_undo', when: () => canUndoEntry(entry), handler: () => dispatchEntry({ type: 'UNDO' }) },
+    { id: 'media_editor.redo', keys: ['mod+y', 'mod+shift+z'], description: 'shortcuts.editor_redo', when: () => canRedoEntry(entry), handler: () => dispatchEntry({ type: 'REDO' }) },
+    { id: 'media_editor.next_tab', keys: 'mod+tab', description: 'shortcuts.editor_next_tab', allowInInputs: true, when: () => versionTabIds.length > 1, handler: () => cycleVersionTab(1) },
+    { id: 'media_editor.prev_tab', keys: 'mod+shift+tab', description: 'shortcuts.editor_prev_tab', allowInInputs: true, when: () => versionTabIds.length > 1, handler: () => cycleVersionTab(-1) },
+  ]);
+
   const handleShare = useCallback(async () => {
     setSharing(true);
     try {
@@ -720,6 +762,12 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   activeTotalCount={activeTotalCount}
                   totalCount2={data.totalCount_2}
                   dispatchEntry={dispatchEntry}
+                  reconsumption={{
+                    count: activeLog.reconsumptionCount, reconsuming: activeLog.reconsuming,
+                    inProgressStatus: data.progressStatus,
+                    toggleLabel: te[reconsumeLabelKey(data.progressStatus)],
+                    countLabel: te.reconsumption_count,
+                  }}
                 />
 
                 {/* Progress input — game/vnovel is hours logged as "H:MM"
@@ -930,7 +978,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                 <textarea className="me-textarea" rows={12}
                   placeholder={te.notes_ph}
                   value={activeLog.notes}
-                  onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { notes: e.target.value } })} />
+                  onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { notes: e.target.value }, coalesceKey: 'notes', at: Date.now() })} />
 
                 <MediaEditorMonthGrid
                   te={te}

@@ -9,6 +9,15 @@
 use rusqlite::{Connection, OptionalExtension, Result as SqlResult, Transaction};
 
 use crate::db::{current_schema_version, mark_migration, merge_fragmented_sagas};
+mod aniskip;
+mod continue_watching;
+mod emulator_screenshots;
+mod jukebox;
+mod mal;
+mod reconsumption;
+
+pub(crate) mod retro_achievements;
+pub(crate) mod epub_reader;
 
 type Migration = fn(&Transaction) -> SqlResult<()>;
 
@@ -23,7 +32,15 @@ const MIGRATIONS: &[(i64, Migration)] = &[
     (45, m45), (46, m46), (47, m47), (48, m48), (49, m49), (50, m50), (51, m51),
     (52, m52), (53, m53), (54, m54), (55, m55), (56, m56), (57, m57), (58, m58),
     (59, m59), (60, m60), (61, m61), (62, m62), (63, m63), (64, m64), (65, m65),
-    (66, m66), (67, m67), (68, m68),
+    (66, m66), (67, m67), (68, m68), (69, m69),
+    (70, aniskip::add_mal_id_and_aniskip_cache),
+    (71, retro_achievements::migrate),
+    (72, epub_reader::migrate),
+    (73, reconsumption::migrate),
+    (74, jukebox::migrate),
+    (75, mal::migrate),
+    (76, emulator_screenshots::migrate),
+    (77, continue_watching::migrate),
 ];
 
 pub(crate) fn run_migrations(conn: &Connection) -> SqlResult<()> {
@@ -1212,6 +1229,31 @@ fn m68(tx: &Transaction) -> SqlResult<()> {
             ON user_library(user_id, external_id);
          CREATE INDEX IF NOT EXISTS idx_media_relations_related
             ON media_relations(related_media_external_id);",
+    )
+}
+
+// ROM library (platform_scanning/rom_library.rs, rom_rename.rs):
+// - emulator_configs.rom_extensions: comma list of the extensions the
+//   configured emulator handles; '' means the platform's built-in default
+//   (emulators::default_rom_extensions). The scanner only looks at these,
+//   so saves/configs beside the ROMs never match.
+// - local_game_links.manual: every row written so far came from the IGDB
+//   picker (save_game_link), so they are all manual. Automatic ROM matches
+//   insert with 0 and never overwrite a 1 (game_links::save_auto_game_link).
+// - rom_rename_journal: one row per file the automatic clean-up renamed,
+//   what the Local tab's "N files renamed · Undo" toast reverts.
+fn m69(tx: &Transaction) -> SqlResult<()> {
+    add_column(tx, "ALTER TABLE emulator_configs ADD COLUMN rom_extensions TEXT NOT NULL DEFAULT ''")?;
+    add_column(tx, "ALTER TABLE local_game_links ADD COLUMN manual INTEGER NOT NULL DEFAULT 0")?;
+    tx.execute("UPDATE local_game_links SET manual = 1", [])?;
+    tx.execute_batch(
+        "CREATE TABLE IF NOT EXISTS rom_rename_journal (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            old_path   TEXT NOT NULL,
+            new_path   TEXT NOT NULL,
+            scanned_at TEXT NOT NULL,
+            undone_at  TEXT
+        );",
     )
 }
 

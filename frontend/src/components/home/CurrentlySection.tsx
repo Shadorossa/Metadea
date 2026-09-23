@@ -1,20 +1,34 @@
 // "Actualmente" on Home — what you're currently watching/reading/playing,
 // grouped by media type, capped to 5 per type so one type with 40 entries
-// doesn't push everything else off-screen.
+// doesn't push everything else off-screen. First paint comes from the Home
+// snapshot (lib/home/home-snapshot.ts); the live bundle then reconciles it,
+// and the +/- shortcuts only appear once that live data is in.
 import { useEffect, useState } from 'react';
 import { getT } from '../../i18n/runtime';
-import { getCachedLibraryAndCatalog, getCachedMediaRelations } from '../../lib/profile/library-data-cache';
+import { loadHomeData, loadHomeSagaNames } from '../../lib/home/home-data';
 import { isInProgressStatus, getTypeLabel } from '../../lib/media/media-types';
-import { wrapAssetUrl, saveLibraryEntry, getSagaNames } from '../../lib/tauri';
+import { wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import { typeIconMap } from '../../lib/dom/icon-strings';
 import { toSmallCover } from '../../lib/media/small-cover';
 import { isAniListType, syncToAniList } from '../../lib/media/anilist-sync';
 import { isUnifySeasonsEnabled } from '../../lib/storage/preferences';
 import { unifyAnimeSeasons } from '../../lib/profile/library-grouping';
+import {
+  readHomeSnapshot,
+  sameIds,
+  updateHomeSnapshot,
+  type CurrentlyCardItem,
+  type CurrentlyTypeGroup as TypeGroup,
+} from '../../lib/home/home-snapshot';
 
 const TYPE_ICON = typeIconMap(14);
 const MAX_PER_TYPE = 5;
+// Covers in the first two groups are the first row on screen.
+const EAGER_GROUPS = 2;
+
+const groupsKey = (groups: TypeGroup[]) =>
+  groups.map(g => `${g.type}:${g.items.map(i => `${i.linkId}/${i.displayProgress}/${i.coverUrl ?? ''}`).join(',')}`);
 
 // linkId is always the earliest-release season's own id ("la primera y más
 // básica" — same convention LibraryCard's fused card uses for its own
@@ -38,37 +52,30 @@ const MAX_PER_TYPE = 5;
 // redistribute the +/- across seasons (fill season 1 up to its own total,
 // then season 2, ...) instead of just piling extra progress onto whichever
 // season happened to be "active" past its own episode count.
-interface CurrentlyCardItem {
-  linkId: string;
-  trackedEntry: LibraryEntry;
-  coverUrl: string | null;
-  displayProgress: number;
-  seasonMembers?: Array<{ entry: LibraryEntry; total: number }>;
-}
-
-interface TypeGroup {
-  type:  string;
-  items: CurrentlyCardItem[];
-}
+// (CurrentlyCardItem / TypeGroup live in lib/home/home-snapshot.ts, since
+// the snapshot persists them.)
 
 export function CurrentlySection() {
   const t = getT().home;
-  const [groups, setGroups] = useState<TypeGroup[] | null>(null);
+  // client:only island: the snapshot can seed the very first render.
+  const [initialGroups] = useState(() => readHomeSnapshot()?.currently ?? null);
+  const [groups, setGroups] = useState<TypeGroup[] | null>(initialGroups);
+  const [live, setLive] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      const [{ items, catalog }, relations] = await Promise.all([
-        getCachedLibraryAndCatalog(),
-        getCachedMediaRelations(),
-      ]);
+      // One get_home_bundle round trip (shared with the calendar below and
+      // the profile tabs) instead of the per-command chain.
+      const data = await loadHomeData();
       if (cancelled) return;
+      const { items, catalog, relations } = data;
       const catalogMap = new Map(catalog.map(c => [c.external_id, c]));
 
       let cards: CurrentlyCardItem[];
       if (isUnifySeasonsEnabled()) {
-        const sagaNames = await getSagaNames(items.map(i => i.external_id)).catch(() => ({} as Record<string, string>));
+        const sagaNames = await loadHomeSagaNames(data);
         if (cancelled) return;
         const { consumedIds, groups: seasonGroups } = unifyAnimeSeasons(items, catalogMap, relations, sagaNames);
         const standalone = items.filter(i => !consumedIds.has(i.external_id));
@@ -120,7 +127,8 @@ export function CurrentlySection() {
           .sort((a, b) => (b.trackedEntry.updated_at ?? '').localeCompare(a.trackedEntry.updated_at ?? ''))
           .slice(0, MAX_PER_TYPE),
       }));
-      setGroups(result);
+      setGroups(prev => (prev && sameIds(groupsKey(prev), groupsKey(result), k => k) ? prev : result));
+      setLive(true);
     })();
 
     return () => { cancelled = true; };
@@ -134,6 +142,12 @@ export function CurrentlySection() {
   // `previous` is the groups snapshot from before the optimistic update: if
   // the save fails the UI returns to it, instead of keeping a count the
   // database never accepted.
+  // Keep the snapshot in step with what is on screen (live data only, so a
+  // stale snapshot never writes itself back).
+  useEffect(() => {
+    if (live && groups) updateHomeSnapshot({ currently: groups });
+  }, [live, groups]);
+
   function persistAndSync(updated: LibraryEntry, previous: TypeGroup[]) {
     saveLibraryEntry(updated).catch(err => {
       console.error('Failed to update progress:', err);
@@ -222,8 +236,8 @@ export function CurrentlySection() {
   if (!groups || groups.length === 0) return null;
 
   return (
-    <div className="home-currently-groups">
-      {groups.map(group => (
+    <div className={`home-currently-groups${initialGroups === null ? ' home-fade-in' : ''}`}>
+      {groups.map((group, groupIndex) => (
         <div className="home-currently-group" key={group.type}>
           <div className="home-currently-group-label">
             <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[group.type] ?? '' }} />
@@ -237,10 +251,19 @@ export function CurrentlySection() {
                   href={`/media?id=${encodeURIComponent(item.linkId)}`}
                 >
                   {item.coverUrl
-                    ? <img className="home-currently-cover" src={wrapAssetUrl(toSmallCover(item.coverUrl))} alt="" loading="lazy" />
+                    ? <img
+                        className="home-currently-cover"
+                        src={wrapAssetUrl(toSmallCover(item.coverUrl))}
+                        alt=""
+                        width={90}
+                        height={130}
+                        loading={groupIndex < EAGER_GROUPS ? 'eager' : 'lazy'}
+                        fetchPriority={groupIndex < EAGER_GROUPS ? 'high' : 'auto'}
+                        decoding="async"
+                      />
                     : <div className="home-currently-cover home-currently-cover--empty" />}
                 </a>
-                {group.type !== 'game' && (
+                {live && group.type !== 'game' && (
                   <div className="home-currently-progress">
                     <button
                       type="button"

@@ -7,17 +7,23 @@ import '../styles/components/navbar.css';
 import '../styles/components/quick-search.css';
 import '../styles/components/footer.css';
 import '../styles/components/global-loading-bar.css';
+import '../styles/components/shortcut-sheet.css';
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
 import { QuickSearchOverlay } from '../components/search/QuickSearchOverlay';
+import { GlobalShortcuts } from '../components/shared/GlobalShortcuts';
 import { NowPlayingBar } from '../components/local/NowPlayingBar';
 import { NowReadingBar } from '../components/reader/NowReadingBar';
+import { UiThemeLoader } from '../components/ui-themes/UiThemeLoader';
 import '../styles/components/now-playing-bar.css';
+import { JukeboxIsland } from '../components/jukebox/JukeboxIsland';
+import '../styles/components/jukebox.css';
 import { CharacterPrEditorModal } from '../components/character/CharacterPrEditorModal';
 import type { Locale } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
 import { STORAGE_KEYS } from '../lib/storage/storage-keys';
 import ClientRouter from 'astro/components/ClientRouter.astro';
+import LocaleBootstrap from '../components/i18n/LocaleBootstrap.astro';
 
 import '../styles/core/themes/nebula.css';
 import '../styles/core/themes/cyberpunk.css';
@@ -36,20 +42,26 @@ import '../styles/core/themes/blueprint.css';
 
 interface Props {
   title: string;
+  /** Dot-path key of the page name so the tab title follows the runtime
+   *  locale (rendered as `<value><titleSuffix>`); `title` is the build-time text. */
+  titleKey?: string;
+  titleSuffix?: string;
   lang: Locale;
   activePage?: 'home' | 'search' | 'local' | 'notifications' | 'profile' | 'settings' | 'tier' | 'admin';
 }
 
-const { title, lang, activePage } = Astro.props;
+const { title, titleKey, titleSuffix = ' — Metadea', lang, activePage } = Astro.props;
 const t = useTranslations(lang);
 ---
 
 <html lang={lang}>
   <head>
     <meta charset="utf-8" />
+    <!-- First: resolves the UI locale before paint (components/i18n/). -->
+    <LocaleBootstrap buildLang={lang} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title}</title>
+    <title data-i18n-doc-title={titleKey} data-i18n-suffix={titleKey ? titleSuffix : undefined}>{title}</title>
     <ClientRouter />
 
     <!-- React Refresh Dev Mock Workaround -->
@@ -81,6 +93,10 @@ const t = useTranslations(lang);
     <div id="app-bg" aria-hidden="true" transition:persist></div>
     <Navbar activePage={activePage} i18n={t.nav} typeLabels={t.search.types} />
     <QuickSearchOverlay client:load />
+    <!-- Keyboard shortcuts: the single window keydown dispatcher, the
+         global bindings (mod+K, mod+1..6, alt+arrows, ?) and the "?" sheet.
+         See lib/shared/keyboard/shortcut-registry.ts. -->
+    <GlobalShortcuts client:load transition:persist />
     <div id="page-content" transition:name="page-content">
       <slot />
     </div>
@@ -91,6 +107,14 @@ const t = useTranslations(lang);
          same way #global-toast/#app-bg do. -->
     <NowPlayingBar client:load transition:persist />
     <NowReadingBar client:load transition:persist />
+    <!-- Jukebox mini player (components/jukebox/, lib/jukebox/): the OP/ED
+         favourites queue and its audio element outlive every page. -->
+    <JukeboxIsland client:load transition:persist />
+
+    <!-- User UI themes / skins (docs/THEMING.md): injects the active theme's
+         <style id="metadea-ui-theme"> after every stylesheet above and owns
+         the mod+shift+t "deactivate theme" escape hatch. -->
+    <UiThemeLoader client:load transition:persist />
 
     <!-- Global character editor (see window.__metadeaCharacterEditor in
          lib/shared/editor-session-bus.ts) — used to only be mounted per-page
@@ -118,7 +142,7 @@ const t = useTranslations(lang);
     <dialog id="auth-modal" class="auth-modal">
       <div class="auth-modal-box">
 
-        <p class="modal-title">Crea tu perfil local</p>
+        <p class="modal-title" data-i18n="auth.create_local_profile">{t.auth.create_local_profile}</p>
 
         <form id="modal-login-form" style="display: flex; flex-direction: column; gap: 0.75rem; width: 100%;">
           <input 
@@ -126,17 +150,16 @@ const t = useTranslations(lang);
             id="modal-username-input" 
             class="input-dark" 
             placeholder={t.auth.username_placeholder}
-            required 
+            data-i18n-placeholder="auth.username_placeholder"
+            required
             minlength="3" 
             maxlength="20"
           />
-          <button type="submit" class="btn btn--primary" style="justify-content: center; width: 100%;">
-            Comenzar
-          </button>
+          <button type="submit" class="btn btn--primary" style="justify-content: center; width: 100%;" data-i18n="auth.start">{t.auth.start}</button>
         </form>
 
         <!-- Close -->
-        <button class="auth-close" id="close-auth-modal" aria-label={t.auth.close}>
+        <button class="auth-close" id="close-auth-modal" aria-label={t.auth.close} data-i18n-aria-label="auth.close">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -177,8 +200,6 @@ const t = useTranslations(lang);
       }
       
       let updaterChecked = false;
-      let communityCatalogSynced = false;
-      const COMMUNITY_CATALOG_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 1/day
       let activityFeedsRefreshed = false;
 
       function isTauriRuntime() {
@@ -186,35 +207,52 @@ const t = useTranslations(lang);
           ('__TAURI_IPC__' in window || '__TAURI_INTERNALS__' in window || '__TAURI__' in window || '__TAURI_OAM__' in window);
       }
 
+      // Runs once per app launch (sessionStorage gate, like the updater
+      // check) and always reports the outcome, so every start visibly
+      // confirms the community catalog from GitHub was fetched.
       async function syncCommunityCatalog() {
         if (!isTauriRuntime()) return;
         if (!navigator.onLine) return;
+        const { getT } = await import('../i18n/runtime');
+        const tm = getT().settings;
         try {
-          const lastSync = localStorage.getItem(STORAGE_KEYS.communityCatalogLastSync);
-          if (lastSync && Date.now() - parseInt(lastSync, 10) < COMMUNITY_CATALOG_SYNC_INTERVAL_MS) return;
-
           const { syncCommunityCatalog: sync } = await import(/* @vite-ignore */ '../lib/tauri');
           const imported = await sync();
           localStorage.setItem(STORAGE_KEYS.communityCatalogLastSync, String(Date.now()));
-          if (imported > 0) {
-            console.info(`[CommunityCatalog] Imported ${imported} new entries from the shared catalog.`);
-          }
+          showGlobalToast(
+            imported > 0
+              ? tm.community_catalog_synced_count.replace('{count}', String(imported))
+              : tm.community_catalog_synced,
+            2500,
+          );
         } catch (error) {
           console.warn('[CommunityCatalog] Sync failed:', error);
+          showGlobalToast(tm.community_catalog_sync_failed, 3500);
         }
       }
 
       // Shared with the manual "Buscar actualizaciones" button in Settings
       // (lib/settings/updater.ts) — same toast element, so only one status
       // message is ever visible regardless of which path triggered it.
+      // Timed messages queue behind each other (update check, then the
+      // community-data confirmation) instead of overwriting one another; an
+      // untimed status ("checking…") is replaced by whatever comes next.
+      let toastHideTimer: ReturnType<typeof setTimeout> | null = null;
+      let toastBusyUntil = 0;
       function showGlobalToast(msg: string, autoHideMs?: number) {
         const el = document.getElementById('global-toast');
         if (!el) return;
-        el.textContent = msg;
-        el.classList.add('visible');
-        if (autoHideMs) setTimeout(() => el.classList.remove('visible'), autoHideMs);
+        const wait = Math.max(0, toastBusyUntil - Date.now());
+        if (autoHideMs) toastBusyUntil = Date.now() + wait + autoHideMs;
+        setTimeout(() => {
+          if (toastHideTimer) { clearTimeout(toastHideTimer); toastHideTimer = null; }
+          el.textContent = msg;
+          el.classList.add('visible');
+          if (autoHideMs) toastHideTimer = setTimeout(() => el.classList.remove('visible'), autoHideMs);
+        }, wait);
       }
       function hideGlobalToast() {
+        if (toastHideTimer) { clearTimeout(toastHideTimer); toastHideTimer = null; }
         document.getElementById('global-toast')?.classList.remove('visible');
       }
 
@@ -261,7 +299,7 @@ const t = useTranslations(lang);
         const { getT } = await import('../i18n/runtime');
         const tm = getT().settings;
         const showStatus = isOnHomePage();
-        if (showStatus) showGlobalToast(tm.app_checking_update || 'Buscando actualizaciones...');
+        if (showStatus) showGlobalToast(tm.app_checking_update);
         try {
           const { check } = await import('@tauri-apps/plugin-updater');
           const { relaunch } = await import('@tauri-apps/plugin-process');
@@ -269,15 +307,13 @@ const t = useTranslations(lang);
           const update = await check();
           if (update && update.available) {
             hideGlobalToast();
-            const confirmUpdate = confirm(
-              `¡Nueva versión ${update.version} disponible!\n\n¿Quieres descargarla e instalarla automáticamente ahora?`
-            );
+            const confirmUpdate = confirm(tm.app_update_found.replace('{version}', update.version));
             if (confirmUpdate) {
               await update.downloadAndInstall();
               await relaunch();
             }
           } else if (showStatus) {
-            showGlobalToast(tm.app_up_to_date || '¡Estás en la última versión!', 2500);
+            showGlobalToast(tm.app_up_to_date, 2500);
           }
         } catch (error) {
           console.warn("[Updater] No se pudo comprobar actualizaciones:", error);
@@ -332,8 +368,8 @@ const t = useTranslations(lang);
           sessionStorage.setItem(STORAGE_KEYS.updaterCheckedThisSession, '1');
           setTimeout(checkAppUpdates, 2000);
         }
-        if (!communityCatalogSynced) {
-          communityCatalogSynced = true;
+        if (!sessionStorage.getItem(STORAGE_KEYS.communityCatalogSyncedThisSession)) {
+          sessionStorage.setItem(STORAGE_KEYS.communityCatalogSyncedThisSession, '1');
           setTimeout(syncCommunityCatalog, 3000);
         }
 

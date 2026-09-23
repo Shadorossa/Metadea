@@ -1,6 +1,6 @@
 import type { MediaCatalogEntry } from '../../../lib/tauri/catalog';
 import type { Translations } from '../../../i18n/index';
-import type { DragHandlers } from '../hooks/useDragReorder';
+import type { SortableListActions } from '../../shared/SortableList';
 import { PrEditorRelationCardList } from './PrEditorRelationCardList';
 import type { BundledRelation } from '../../../lib/media/editor/pr-editor-types';
 
@@ -10,8 +10,7 @@ interface Props {
   issueRelations: BundledRelation[];
   isLoadingIssuePreview: boolean;
   issuePreviewError: string | null;
-  draggedIndex: number | null;
-  dragHandlers: (index: number) => DragHandlers;
+  sortable: SortableListActions;
   onRemove: (id: string) => void;
   onSelectVolume: () => void;
   onResetSource: () => void;
@@ -23,7 +22,7 @@ interface Props {
 // Relations grid.
 export function PrEditorIssuesSection({
   pe, entry, issueRelations, isLoadingIssuePreview, issuePreviewError,
-  draggedIndex, dragHandlers, onRemove, onSelectVolume, onResetSource, onEditWork,
+  sortable, onRemove, onSelectVolume, onResetSource, onEditWork,
 }: Props) {
   return (
     <div className="pr-editor-section">
@@ -42,8 +41,7 @@ export function PrEditorIssuesSection({
       {!isLoadingIssuePreview && (
         <PrEditorRelationCardList
           relations={issueRelations}
-          draggedIndex={draggedIndex}
-          dragHandlers={dragHandlers}
+          sortable={sortable}
           onRemove={onRemove}
           onEditWork={onEditWork}
         />

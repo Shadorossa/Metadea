@@ -1,7 +1,8 @@
 import { API_URL } from '../../api/urls';
 import { igdbSearch, igdbImageUrl } from '../../tauri/igdb';
 import { isTauri } from '../../tauri/bridge';
-import { readEnvConfig, type EnvConfig } from '../../tauri/env';
+import type { EnvConfig } from '../../tauri/env';
+import { readSearchEnvConfig } from '../env-config-read';
 import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../types';
 import { cleanEditionTitle } from '../../media/title-utils';
 import { unixToDateParts } from '../../media/mappers/mapper-utils';
@@ -124,7 +125,7 @@ async function searchGamesByCategories(
   mediaType: MediaType = 'game',
 ): Promise<SearchPage> {
   if (isTauri()) {
-    const cfg = await readEnvConfig().catch((): EnvConfig => ({}));
+    const cfg = await readSearchEnvConfig().catch((): EnvConfig => ({}));
     if (!cfg.igdb_client_id || !cfg.igdb_client_secret) return { results: [], hasMore: false };
 
     let pageResult;
@@ -170,7 +171,7 @@ async function searchGamesLocal(
   page: number,
   filters?: SearchFilters,
 ): Promise<SearchPage> {
-  const cfg = await readEnvConfig().catch((): EnvConfig => ({}));
+  const cfg = await readSearchEnvConfig().catch((): EnvConfig => ({}));
   if (!cfg.igdb_client_id || !cfg.igdb_client_secret) {
     throw new MissingApiKeyError(['igdb']);
   }
@@ -183,7 +184,7 @@ async function searchGamesLocal(
       filterGenres: filters?.genres,
     });
   } catch (e) {
-    throw new Error(typeof e === 'string' ? e : 'IGDB error');
+    throw new Error(typeof e === 'string' ? e : 'IGDB error', { cause: e });
   }
 
   const format = mediaType === 'vnovel' ? 'VISUAL_NOVEL' : 'GAME';

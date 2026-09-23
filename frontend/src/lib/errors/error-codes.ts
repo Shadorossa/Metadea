@@ -1,0 +1,76 @@
+// Mirror of src-tauri/src/error_codes.rs — the stable machine codes a Rust
+// command returns instead of user-facing prose. error-codes.test.ts parses
+// the Rust file and fails when the two lists drift; the `errors.*` i18n
+// namespace (es.ts is the source of truth) must carry one key per code,
+// which `formatAppError` relies on at compile time.
+export const ERROR_CODES = [
+  'E_CAPTURE_DIR_CREATE',
+  'E_PICTURES_DIR_LOCATE',
+  'E_COMIC_OPEN_CBR',
+  'E_COMIC_READ_CBR',
+  'E_COMIC_OPEN_CBZ',
+  'E_COMIC_READ_CBZ',
+  'E_COMIC_EXTRACT_PAGE',
+  'E_COMIC_CREATE_FILE',
+  'E_COMIC_FORMAT_UNSUPPORTED',
+  'E_COMIC_READ_FILE',
+  'E_COMIC_NO_PAGES',
+  'E_COMIC_DECODE_BASE64',
+  'E_COMIC_OPEN_PAGE_IMAGE',
+  'E_COMIC_SAVE_PNG',
+  'E_EPUB_INVALID',
+  'E_EPUB_CHAPTER_TOO_LARGE',
+  'E_EPUB_NOT_OPEN',
+  'E_BACKUP_DEST_IS_DIR',
+  'E_BACKUP_ZIP_UNSAFE_PATH',
+  'E_BACKUP_ZIP_OPEN',
+  'E_BACKUP_ZIP_INVALID',
+  'E_BACKUP_MANIFEST_INVALID',
+  'E_BACKUP_ZIP_RESERVED_ENTRY',
+  'E_BACKUP_NOT_METADEA',
+  'E_BACKUP_FORMAT_UNSUPPORTED',
+  'E_BACKUP_NO_DATABASE',
+  'E_BACKUP_INSIDE_DATA_DIR',
+  'E_BACKUP_FILE_NOT_FOUND',
+  'E_RESTORE_MARKER_INVALID',
+  'E_RESTORE_STAGE_MISSING',
+  'E_RESTORE_MOVE_CURRENT',
+  'E_RESTORE_ACTIVATE',
+  'E_GITHUB_SESSION_EXPIRED',
+  'E_GITHUB_API',
+  'E_GITHUB_NETWORK',
+  'E_GOG_GALAXY_NOT_FOUND',
+  'E_GOG_LAUNCH',
+  'E_GOG_WINDOWS_ONLY',
+  'E_GAME_INSTALL_PATH_UNKNOWN',
+  'E_RA_HASH_UNAVAILABLE',
+  'E_RA_HASH_FAILED',
+  'E_RA_NOT_CONFIGURED',
+  'E_RA_UNAUTHORIZED',
+  'E_RA_API',
+  'E_RA_NETWORK',
+  'E_RA_CONSOLE_UNSUPPORTED',
+  'E_RA_LINK_INVALID',
+  'E_MAL_NOT_CONFIGURED',
+  'E_MAL_NOT_CONNECTED',
+  'E_MAL_AUTH',
+  'E_MAL_STATE_MISMATCH',
+  'E_MAL_API',
+  'E_MAL_NETWORK',
+  'E_UI_THEME_INVALID_ID',
+  'E_UI_THEME_NOT_FOUND',
+  'E_UI_THEME_MANIFEST_INVALID',
+  'E_UI_THEME_CSS_TOO_LARGE',
+  'E_UI_THEME_IO',
+  'E_UI_THEME_OPEN_FOLDER',
+  'E_THEME_VIDEO_DOWNLOAD',
+  'E_THEME_VIDEO_CANCELLED',
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+const CODE_SET: ReadonlySet<string> = new Set<string>(ERROR_CODES);
+
+export function isErrorCode(value: string): value is ErrorCode {
+  return CODE_SET.has(value);
+}

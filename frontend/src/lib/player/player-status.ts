@@ -16,6 +16,13 @@ export interface PlayerTrack {
   external: boolean;
 }
 
+// One MKV chapter (mpv `chapter-list`); skip segments are derived from the
+// titles in lib/player/skip-segments.ts.
+export interface PlayerChapter {
+  title: string | null;
+  time_secs: number;
+}
+
 export interface PlayerStatus {
   state: PlayerStateKind;
   position_secs: number;
@@ -24,6 +31,7 @@ export interface PlayerStatus {
   playlist_index: number;
   playlist_len: number;
   tracks: PlayerTrack[];
+  chapters: PlayerChapter[];
   volume: number;
   muted: boolean;
   speed: number;
@@ -35,6 +43,10 @@ export interface PlayerSessionInfo {
   queue: string[];
   episode_labels: string[];
   titles: string[];
+  // Catalog id (`anime:<anilistId>`) and per-entry episode numbers, so the
+  // controls window can resolve skip segments for what is playing.
+  external_id: string | null;
+  episode_numbers: number[];
 }
 
 export interface PlayerTrackChanged {
@@ -50,6 +62,9 @@ export interface PlayerEnded {
   duration_secs: number;
   playlist_index: number;
   path: string | null;
+  /** Frame captured at the stop point for Home's "Continue watching" card
+   *  (player/continue_frame.rs); null when nothing was captured. */
+  frame_path: string | null;
 }
 
 export interface PlayerErrorEvent {
@@ -77,6 +92,7 @@ export const EMPTY_PLAYER_STATUS: PlayerStatus = {
   playlist_index: -1,
   playlist_len: 0,
   tracks: [],
+  chapters: [],
   volume: 100,
   muted: false,
   speed: 1,

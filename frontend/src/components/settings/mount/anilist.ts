@@ -29,8 +29,13 @@ export function initAniListAuth() {
   const anilistSaveTokenBtn = byId<HTMLButtonElement>('anilist-save-token-btn');
   const anilistCancelTokenBtn = document.getElementById('anilist-cancel-token-btn');
 
+  interface AniListUserProfileResponse {
+    data?: { Viewer?: { name: string; avatar?: { large?: string } } | null };
+    errors?: Array<{ message?: string }>;
+  }
+
   async function fetchAniListUser(token: string) {
-    return invoke<any>('get_anilist_user_profile', { token });
+    return invoke<AniListUserProfileResponse | null>('get_anilist_user_profile', { token });
   }
 
   const statusEls = { loginBtn: anilistLoginBtn, statusEl: anilistUserStatus, avatarEl: anilistAvatarContainer };

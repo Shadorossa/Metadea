@@ -22,6 +22,7 @@ const CHARACTER_ROLES = [
 ] as const;
 
 export function PrEditorCharactersSection({ t, characters, onRemove, onOpenSearch, onOpenCreate, onOpenCharacterEditor }: Props) {
+  const pe = t.pr_editor;
   const [charPage, setCharPage] = useState(0);
   const [contextMenu, setContextMenu] = useState<{ externalId: string; x: number; y: number } | null>(null);
   useEffect(() => {
@@ -59,10 +60,10 @@ export function PrEditorCharactersSection({ t, characters, onRemove, onOpenSearc
                 {group.label} <span>({group.allCharacters.length})</span>
               </h3>
               <div className="pr-editor-character-role-actions">
-                <button type="button" className="pr-editor-character-role-action" onClick={() => onOpenCreate(group.value)} title={t.character.non_anilist_character_title} aria-label="Crear personaje">
+                <button type="button" className="pr-editor-character-role-action" onClick={() => onOpenCreate(group.value)} title={t.character.non_anilist_character_title} aria-label={pe.create_character}>
                   <UserRoundPlus size={16} aria-hidden="true" />
                 </button>
-                <button type="button" className="pr-editor-character-role-action" onClick={() => onOpenSearch(group.value)} title="Añadir personaje" aria-label="Añadir personaje">
+                <button type="button" className="pr-editor-character-role-action" onClick={() => onOpenSearch(group.value)} title={pe.add_character} aria-label={pe.add_character}>
                   <Search size={15} aria-hidden="true" />
                 </button>
               </div>
@@ -85,7 +86,7 @@ export function PrEditorCharactersSection({ t, characters, onRemove, onOpenSearc
                       type="button"
                       className="pr-editor-media-card-remove"
                       onClick={() => onRemove(character.external_id)}
-                      aria-label={`Eliminar ${character.name}`}
+                      aria-label={pe.remove_named.replace('{name}', character.name)}
                     >
                       ×
                     </button>
@@ -107,17 +108,17 @@ export function PrEditorCharactersSection({ t, characters, onRemove, onOpenSearc
             className="pr-editor-btn pr-editor-btn--cancel"
             disabled={safeCharPage === 0}
             onClick={() => setCharPage(page => Math.max(0, page - 1))}
-            aria-label="Página anterior"
+            aria-label={pe.page_prev}
           >
             ‹
           </button>
-          <span>Página {safeCharPage + 1} de {totalPages}</span>
+          <span>{pe.page_of.replace('{page}', String(safeCharPage + 1)).replace('{total}', String(totalPages))}</span>
           <button
             type="button"
             className="pr-editor-btn pr-editor-btn--cancel"
             disabled={safeCharPage >= totalPages - 1}
             onClick={() => setCharPage(page => Math.min(totalPages - 1, page + 1))}
-            aria-label="Página siguiente"
+            aria-label={pe.page_next}
           >
             ›
           </button>
@@ -134,7 +135,7 @@ export function PrEditorCharactersSection({ t, characters, onRemove, onOpenSearc
             onOpenCharacterEditor(contextMenu.externalId, characters.find(character => character.external_id === contextMenu.externalId)?.name);
             setContextMenu(null);
           }}>
-            Editar personaje
+            {pe.edit_character}
           </button>
         </div>,
         document.body,

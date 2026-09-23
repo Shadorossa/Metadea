@@ -1,4 +1,5 @@
 import { tauriCmd, tauriRun } from './bridge';
+import { notifyMediaPartChanged } from './change-events';
 // ── Per-episode metadata (media page's "Episodios" tab) ─────────────────────
 
 export interface MediaEpisode {
@@ -31,11 +32,13 @@ export async function getAllMediaEpisodesGrouped(): Promise<MediaEpisodeGroup[]>
 }
 
 export async function saveMediaEpisodes(externalId: string, episodes: MediaEpisode[]): Promise<void> {
-  return tauriRun('save_media_episodes', { externalId, episodes });
+  await tauriRun('save_media_episodes', { externalId, episodes });
+  notifyMediaPartChanged('episodes');
 }
 
 export async function deleteAllMediaEpisodes(externalId: string): Promise<void> {
-  return tauriRun('delete_all_media_episodes', { externalId });
+  await tauriRun('delete_all_media_episodes', { externalId });
+  notifyMediaPartChanged('episodes');
 }
 
 // API-Sports competition structure and match results are persisted separately

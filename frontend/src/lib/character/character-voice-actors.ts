@@ -4,17 +4,17 @@
 import type { AniListCharacterDetail } from '../search/providers/anilist';
 import type { DbCharacterActor } from '../tauri/actors';
 
-const VOICE_ACTOR_LANG_MAP: Readonly<Record<string, { code: string; label: string }>> = {
-  'japanese': { code: 'JP', label: 'Japonés' },
-  'spanish': { code: 'ES', label: 'Español' },
-  'english': { code: 'EN', label: 'Inglés' },
-  'italian': { code: 'IT', label: 'Italiano' },
-  'french': { code: 'FR', label: 'Francés' },
-  'german': { code: 'DE', label: 'Alemán' },
-  'portuguese': { code: 'PT', label: 'Portugués' },
-  'korean': { code: 'KR', label: 'Coreano' },
-  'chinese': { code: 'ZH', label: 'Chino' },
-  'mandarin': { code: 'ZH', label: 'Chino' },
+const VOICE_ACTOR_LANG_MAP: Readonly<Record<string, { code: string }>> = {
+  'japanese': { code: 'JP' },
+  'spanish': { code: 'ES' },
+  'english': { code: 'EN' },
+  'italian': { code: 'IT' },
+  'french': { code: 'FR' },
+  'german': { code: 'DE' },
+  'portuguese': { code: 'PT' },
+  'korean': { code: 'KR' },
+  'chinese': { code: 'ZH' },
+  'mandarin': { code: 'ZH' },
 };
 
 // Orden de prioridad para las pestañas de idiomas

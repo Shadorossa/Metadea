@@ -1,4 +1,4 @@
-import { getMediaRelationsForEditor, getCatalogEntry } from '../../../lib/tauri';
+import { readLocalRelationsForEditor as getMediaRelationsForEditor, readLocalCatalogEntry as getCatalogEntry } from '../../../lib/local/local-read-cache';
 import { useAsyncResource } from '../../shared/hooks/useAsyncResource';
 import type { LocalMediaItem } from './useLocalMediaEntries';
 

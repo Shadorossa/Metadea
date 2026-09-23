@@ -9,9 +9,10 @@ import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type 
 import { parseCSV } from '../shared/text/string-utils';
 import { dedupeByExternalId } from '../shared/collections/dedupe';
 import { searchCharactersDb, type CharacterEntry } from '../tauri/characters';
-import { getCustomImagesMap, wrapAssetUrl, getMediaRelations, type FavoriteCustomImage } from '../tauri';
-import { isUnifySeasonsEnabled } from '../storage/preferences';
+import { getCustomImagesMap, wrapAssetUrl, getMediaRelations } from '../tauri';
+import { isAdultContentEnabled, isUnifySeasonsEnabled } from '../storage/preferences';
 import { isMediaTypeDisabled } from '../media/media-types';
+import { SearchMemo, SEARCH_MEMO_TTL_MS, SEARCH_MEMO_MAX_ENTRIES } from './search-memo';
 
 export { MissingApiKeyError };
 export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
@@ -26,7 +27,53 @@ const ALL_SEARCH_TYPES: Exclude<MediaType, 'all'>[] = [
   'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event',
 ];
 
+// Only the external (provider) half of a search is memoised — the local
+// catalog half is re-read every time (it's one cheap IPC call, and a row the
+// user just added must show up immediately). The key carries every input
+// that changes what a provider returns, including the two preferences the
+// providers read on their own (adult filter, unified seasons), so toggling
+// either in Settings never serves a page fetched under the other setting.
+export const externalSearchMemo = new SearchMemo<SearchPage>({ ttlMs: SEARCH_MEMO_TTL_MS, maxEntries: SEARCH_MEMO_MAX_ENTRIES });
+
+function externalSearchKey(
+  mediaType: Exclude<MediaType, 'all'>,
+  searchQuery: string,
+  page: number,
+  eventDiscipline?: ApiSportsDiscipline | null,
+): string {
+  const prefs = `${isAdultContentEnabled() ? 'adult' : 'safe'}:${isUnifySeasonsEnabled() ? 'unified' : 'seasons'}`;
+  return `${mediaType}:${page}:${eventDiscipline ?? ''}:${prefs}:${searchQuery.trim().toLowerCase()}`;
+}
+
+// A memo hit (or a shared in-flight page) is handed out as a fresh copy —
+// searchCharacters rewrites externalId/coverUrl on the rows it merges, and
+// no caller should ever see another caller's edits.
+function clonePage(page: SearchPage): SearchPage {
+  return { results: page.results.map(r => ({ ...r })), hasMore: page.hasMore };
+}
+
+function memoExternal(key: string, run: (signal: AbortSignal) => Promise<SearchPage>, signal: AbortSignal): Promise<SearchPage> {
+  return externalSearchMemo.fetch(key, run, signal).then(clonePage);
+}
+
 function fetchFromApi(
+  mediaType: Exclude<MediaType, 'all'>,
+  searchQuery: string,
+  signal: AbortSignal,
+  page: number,
+  eventDiscipline?: ApiSportsDiscipline | null,
+): Promise<SearchPage> {
+  // Characters merge a local DB read and the user's custom images on top of
+  // two providers — only those two are memoised (inside searchCharacters).
+  if (mediaType === 'character') return fetchFromApiUncached(mediaType, searchQuery, signal, page, eventDiscipline);
+  return memoExternal(
+    externalSearchKey(mediaType, searchQuery, page, eventDiscipline),
+    memoSignal => fetchFromApiUncached(mediaType, searchQuery, memoSignal, page, eventDiscipline),
+    signal,
+  );
+}
+
+function fetchFromApiUncached(
   mediaType: Exclude<MediaType, 'all'>,
   searchQuery: string,
   signal: AbortSignal,
@@ -115,9 +162,11 @@ function characterEntryToSearchResult(entry: CharacterEntry): SearchResult {
 }
 
 async function searchCharacters(searchQuery: string, signal: AbortSignal, page: number): Promise<SearchPage> {
+  const emptyPage = (): SearchPage => ({ results: [], hasMore: false });
+  const normalizedQuery = searchQuery.trim().toLowerCase();
   const [anilistPage, comicvinePage, localEntries] = await Promise.all([
-    searchAniListCharacters(searchQuery, signal, page).catch(() => ({ results: [], hasMore: false } as SearchPage)),
-    searchComicVineCharacters(searchQuery, signal, page).catch(() => ({ results: [], hasMore: false } as SearchPage)),
+    memoExternal(`character:anilist:${page}:${normalizedQuery}`, s => searchAniListCharacters(searchQuery, s, page), signal).catch(emptyPage),
+    memoExternal(`character:comicvine:${page}:${normalizedQuery}`, s => searchComicVineCharacters(searchQuery, s, page), signal).catch(emptyPage),
     page === 1 ? searchCharactersDb(searchQuery).catch(() => [] as CharacterEntry[]) : Promise.resolve([] as CharacterEntry[]),
   ]);
 
@@ -213,8 +262,15 @@ async function hasLocalAnimePrequel(externalId: string): Promise<boolean> {
 // they're already in the local catalog. Not paginated — only checked on
 // page 1, merged in without overriding an API hit for the same id (the live
 // result is generally fresher/richer).
-async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaType, 'all' | 'character' | 'staff'>): Promise<SearchResult[]> {
-  const entries = await searchCatalog(searchQuery).catch(() => [] as MediaCatalogEntry[]);
+//
+// `catalogEntries` is the one search_catalog read shared by every type of an
+// "all" search (it isn't type-filtered on the Rust side, so the ten per-type
+// calls this used to make all returned the same rows).
+async function searchLocalCatalog(
+  catalogEntries: Promise<MediaCatalogEntry[]>,
+  mediaType: Exclude<MediaType, 'all' | 'character' | 'staff'>,
+): Promise<SearchResult[]> {
+  const entries = await catalogEntries;
   const filtered = entries
     .filter(e => e.type === mediaType)
     // Guards against stray rows whose external_id doesn't actually start
@@ -287,19 +343,48 @@ function mergeUnifiedEventResults(apiResults: SearchResult[], localResults: Sear
   return { results: [...apiResults, ...localExtras, ...localCompetitions], hasMore };
 }
 
+// Local-catalog rows as they'd appear in the final page (already blocked-
+// filtered by search_catalog itself), handed to the caller as soon as the
+// local read settles — typically well before the providers answer — so the
+// grid can show them right away. The final page still lists them after the
+// provider hits exactly as before; the UI sorts by date/score, so what's
+// already on screen keeps its place as the rest merges in.
+function localPreview(
+  mediaType: Exclude<MediaType, 'all' | 'character' | 'staff'>,
+  localResults: SearchResult[],
+): SearchResult[] {
+  if (mediaType === 'event' && isUnifySeasonsEnabled()) {
+    return mergeUnifiedEventResults([], localResults, false).results;
+  }
+  return localResults;
+}
+
 async function searchOne(
   mediaType: Exclude<MediaType, 'all'>,
   searchQuery: string,
   signal: AbortSignal,
   page: number,
-  eventDiscipline?: ApiSportsDiscipline | null,
+  eventDiscipline: ApiSportsDiscipline | null | undefined,
+  catalogEntries: Promise<MediaCatalogEntry[]> | null,
+  onLocalResults?: (results: SearchResult[]) => void,
 ): Promise<SearchPage> {
   const apiPromise = fetchFromApi(mediaType, searchQuery, signal, page, eventDiscipline);
   if (mediaType === 'character' || mediaType === 'staff' || page !== 1) return apiPromise;
 
+  const localPromise = searchLocalCatalog(
+    catalogEntries ?? searchCatalog(searchQuery).catch(() => [] as MediaCatalogEntry[]),
+    mediaType,
+  );
+  if (onLocalResults) {
+    localPromise.then(local => {
+      if (signal.aborted || local.length === 0) return;
+      onLocalResults(localPreview(mediaType, local));
+    }, () => {});
+  }
+
   const [apiOutcome, localResults] = await Promise.all([
     apiPromise.then(p => ({ ok: true as const, page: p })).catch(err => ({ ok: false as const, err })),
-    searchLocalCatalog(searchQuery, mediaType),
+    localPromise,
   ]);
 
   if (!apiOutcome.ok) {
@@ -329,11 +414,17 @@ async function searchOne(
 // long as *something* else came back, and only surfaced (as a combined
 // MissingApiKeyError) when literally nothing did, so the UI can tell "no
 // matches" apart from "can't search these types at all yet".
-async function searchAll(searchQuery: string, signal: AbortSignal, page: number): Promise<SearchPage> {
+async function searchAll(
+  searchQuery: string,
+  signal: AbortSignal,
+  page: number,
+  onLocalResults?: (results: SearchResult[]) => void,
+): Promise<SearchPage> {
+  const catalogEntries = page === 1 ? searchCatalog(searchQuery).catch(() => [] as MediaCatalogEntry[]) : null;
   const settled = await Promise.allSettled(
     ALL_SEARCH_TYPES
       .filter(type => !isMediaTypeDisabled(type))
-      .map(type => searchOne(type, searchQuery, signal, page)),
+      .map(type => searchOne(type, searchQuery, signal, page, undefined, catalogEntries, onLocalResults)),
   );
 
   const results: SearchResult[] = [];
@@ -395,16 +486,25 @@ async function filterReclassified(page: SearchPage): Promise<SearchPage> {
   return { ...page, results: page.results.filter(r => !reclassifiedSet.has(r.externalId)) };
 }
 
+export interface SearchOptions {
+  /** Called (possibly once per type on an "all" search) with the local
+   *  catalog rows matching the query as soon as they're read, before any
+   *  provider has answered. Never called after the returned page settles,
+   *  nor after `signal` aborts. Page 1 only. */
+  onLocalResults?: (results: SearchResult[]) => void;
+}
+
 export async function search(
   searchQuery: string,
   mediaType: MediaType,
   signal: AbortSignal,
   page = 1,
   eventDiscipline?: ApiSportsDiscipline | null,
+  options: SearchOptions = {},
 ): Promise<SearchPage> {
   const page_ = mediaType === 'all'
-    ? await searchAll(searchQuery, signal, page)
-    : await searchOne(mediaType, searchQuery, signal, page, eventDiscipline);
+    ? await searchAll(searchQuery, signal, page, options.onLocalResults)
+    : await searchOne(mediaType, searchQuery, signal, page, eventDiscipline, null, options.onLocalResults);
   if (mediaType === 'character' || mediaType === 'staff') return page_;
   return filterReclassified(await filterBlocked(page_));
 }

@@ -1,0 +1,28 @@
+---
+// Makes server-rendered text follow the runtime UI locale (Settings choice →
+// system language → English). Goes in <head>: the inline script resolves the
+// locale before first paint and hides the body only when it differs from the
+// build locale; the module script re-translates every `data-i18n*` element on
+// load and after each view-transition swap (lib/i18n-dom/).
+import '../../styles/core/i18n-pending.css';
+import { LOCALES, type Locale } from '../../i18n/index';
+import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
+import { buildLocaleBootstrapScript } from '../../lib/i18n-dom/locale-bootstrap';
+
+interface Props {
+  buildLang: Locale;
+}
+
+const bootstrap = buildLocaleBootstrapScript({
+  storageKey: STORAGE_KEYS.locale,
+  locales: LOCALES,
+  buildLang: Astro.props.buildLang,
+});
+---
+
+<script is:inline set:html={bootstrap} />
+<script>
+  import { registerDocumentTranslation } from '../../lib/i18n-dom/document-locale';
+
+  registerDocumentTranslation();
+</script>

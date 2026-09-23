@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react';
-import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri';
+import { useEffect } from 'react';
+import { useKeyedState } from '../../shared/hooks/useKeyedState';
+// Visit-scoped reads (lib/local/local-read-cache.ts): the same relation and
+// catalog rows are read by the panel's own season resolution and by the
+// episode history hook, and reopening a work must not re-fetch them.
+import { readLocalCatalogEntry as getCatalogEntry, readLocalRelationsForEditor as getMediaRelationsForEditor } from '../../../lib/local/local-read-cache';
 import { CONTAINS_RELATION_TYPES } from '../../../lib/media/saga/saga-relation-types';
 import { normalizeForMatch } from '../../../lib/local/folder-match';
 import { extractEpisodeNumberFromTitle } from '../../../lib/media/saga/media-relations';
@@ -20,6 +24,8 @@ export interface NeighborInfo {
   format?:    string | null;
 }
 
+const NO_NEIGHBORS: NeighborInfo[] = [];
+
 export interface MediaNeighbors {
   prequel:        NeighborInfo | null;
   sequel:         NeighborInfo | null;
@@ -35,14 +41,12 @@ export interface MediaNeighbors {
 // this logic reaches every category, not just whichever panel it was
 // originally written for.
 export function useMediaNeighbors(relationsExternalId: string | undefined, selfTitle: string): MediaNeighbors {
-  const [prequel, setPrequel] = useState<NeighborInfo | null>(null);
-  const [sequel,  setSequel]  = useState<NeighborInfo | null>(null);
-  const [bundleChildren, setBundleChildren] = useState<NeighborInfo[]>([]);
+  // All three start empty again for every id; the effect below fills them.
+  const [prequel, setPrequel] = useKeyedState<NeighborInfo | null>(relationsExternalId, null);
+  const [sequel,  setSequel]  = useKeyedState<NeighborInfo | null>(relationsExternalId, null);
+  const [bundleChildren, setBundleChildren] = useKeyedState<NeighborInfo[]>(relationsExternalId, NO_NEIGHBORS);
 
   useEffect(() => {
-    setPrequel(null);
-    setSequel(null);
-    setBundleChildren([]);
     if (!relationsExternalId) return;
     let cancelled = false;
     getMediaRelationsForEditor(relationsExternalId).then(async relations => {

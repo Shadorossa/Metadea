@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, getMediaRelationsForIds, type LibraryEntry, type MediaCatalogEntry, type DbMediaRelation } from '../../../lib/tauri';
+import {
+  getAllLibraryEntries, getAllCatalogEntries, getMediaRelationsForIds, getLocalLibraryBundle,
+  type LibraryEntry, type CatalogEntryLike, type DbMediaRelation,
+} from '../../../lib/tauri';
 import { isInProgressStatus } from '../../../lib/media/media-types';
 import { LOCAL_CATEGORY_BY_MEDIA_TYPE, type CategoryId } from '../../../lib/local/platforms';
 
@@ -23,21 +26,26 @@ import type { LocalMediaItem } from '../../../lib/local/local-media-item';
 
 export interface LocalMediaRaw {
   entries:   LibraryEntry[];
-  catalog:   MediaCatalogEntry[];
+  // Every visible catalog row in the CatalogSummary projection — the grid,
+  // the status matching and the visual-novel classification only read
+  // those columns — except the library's own game/visual-novel entries,
+  // which are full rows (shop_links_csv, see usePendingLaunchers). A detail
+  // panel that needs a wide column for anything else reads that one row by
+  // id (lib/local/local-read-cache.ts's readLocalFullCatalogEntries).
+  catalog:   CatalogEntryLike[];
   relations: DbMediaRelation[];
 }
 
 // Fetches the whole library/catalog set once, plus the relations owned by
 // (or pointing at) the library's own rows — the only ones the PREQUEL
-// lookup below ever reads. Every media category's grid is just a different
-// filter over the exact same three tables. The catalog stays the full row
-// set: the detail panels read columns (banners_csv, shop_links_csv,
-// synopsis) that the profile's CatalogSummary projection leaves out.
-// Called once from LocalLibrary itself (which stays mounted for as
-// long as the Local page is open) rather than from LocalMediaSection (which
-// unmounts whenever the user steps out to "Videojuegos" and back), so
-// switching between categories — including via videojuegos — never re-hits
-// the DB or flashes a loading state after the very first load.
+// lookup below ever reads — in ONE get_local_library_bundle round trip
+// (local_bundle.rs). Every media category's grid is just a different
+// filter over the exact same three tables. Called once from LocalLibrary
+// itself (which stays mounted for as long as the Local page is open) rather
+// than from LocalMediaSection (which unmounts whenever the user steps out
+// to "Videojuegos" and back), so switching between categories — including
+// via videojuegos — never re-hits the DB or flashes a loading state after
+// the very first load.
 export function useLocalMediaData() {
   const [raw,     setRaw]     = useState<LocalMediaRaw | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,14 +54,9 @@ export function useLocalMediaData() {
   const load = useCallback((silent = false) => {
     if (!silent) setLoading(true);
 
-    const entriesPromise = getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
-    return Promise.all([
-      entriesPromise,
-      getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
-      entriesPromise.then(entries => getMediaRelationsForIds(entries.map(e => e.external_id))).catch(() => [] as DbMediaRelation[]),
-    ]).then(([entries, catalog, relations]) => {
+    return loadLocalMediaRaw().then(next => {
       if (cancelledRef.current) return;
-      setRaw({ entries, catalog, relations });
+      setRaw(next);
     }).finally(() => { if (!cancelledRef.current && !silent) setLoading(false); });
   }, []);
 
@@ -69,6 +72,29 @@ export function useLocalMediaData() {
   const refetch = useCallback(() => load(true), [load]);
 
   return { raw, loading, refetch };
+}
+
+// The bundle, or — should the bundle command itself fail — the same three
+// reads it replaces, each falling back to [] like before.
+async function loadLocalMediaRaw(): Promise<LocalMediaRaw> {
+  const bundle = await getLocalLibraryBundle().catch((err: unknown) => {
+    console.error('[useLocalMediaData] bundle failed, falling back to per-command reads:', err);
+    return undefined;
+  });
+  if (bundle) {
+    // Full rows win over their own summary for the same id.
+    const fullById = new Map(bundle.game_rows.map(row => [row.external_id, row]));
+    const catalog: CatalogEntryLike[] = bundle.catalog.map(row => fullById.get(row.external_id) ?? row);
+    return { entries: bundle.entries, catalog, relations: bundle.relations };
+  }
+  if (bundle === null) return { entries: [], catalog: [], relations: [] };
+  const entriesPromise = getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
+  const [entries, catalog, relations] = await Promise.all([
+    entriesPromise,
+    getAllCatalogEntries().catch(() => [] as CatalogEntryLike[]),
+    entriesPromise.then(entries => getMediaRelationsForIds(entries.map(e => e.external_id))).catch(() => [] as DbMediaRelation[]),
+  ]);
+  return { entries, catalog, relations };
 }
 
 // Pure derivation over already-fetched data — a category switch is just a

@@ -1,4 +1,20 @@
 import { getBaseEditionCandidatesForRedirect, getCatalogEntry, getCatalogEntryForEditor } from '../tauri';
+import type { MediaCatalogEntry } from '../tauri';
+
+// The three reads the walks below issue. A caller that already memoises
+// them (lib/local/local-read-cache.ts, for one Local visit) passes its own;
+// the default goes straight to the Tauri commands.
+export interface PortRedirectReads {
+  getCatalogEntryForEditor: (externalId: string) => Promise<MediaCatalogEntry | null>;
+  getBaseEditionCandidatesForRedirect: (externalId: string) => Promise<string[]>;
+  getCatalogEntry: (externalId: string) => Promise<MediaCatalogEntry | null>;
+}
+
+const DIRECT_READS: PortRedirectReads = {
+  getCatalogEntryForEditor: id => getCatalogEntryForEditor(id),
+  getBaseEditionCandidatesForRedirect: id => getBaseEditionCandidatesForRedirect(id),
+  getCatalogEntry: id => getCatalogEntry(id),
+};
 
 // A PORT-format catalog entry (IGDB's own categorization for e.g. a Steam
 // release that's specifically a port of an existing edition — Final Fantasy
@@ -18,34 +34,35 @@ async function findVisibleBaseEdition(
   externalId: string,
   visited: Set<string>,
   depth: number,
+  reads: PortRedirectReads,
 ): Promise<string | null> {
   if (depth > MAX_BASE_EDITION_HOPS || visited.has(externalId)) return null;
   const nextVisited = new Set(visited);
   nextVisited.add(externalId);
 
-  const entry = await getCatalogEntryForEditor(externalId).catch(() => null);
+  const entry = await reads.getCatalogEntryForEditor(externalId).catch(() => null);
   if (!entry) return null;
   if (!entry.blocked_at) return externalId;
 
-  const candidates = await getBaseEditionCandidatesForRedirect(externalId).catch(() => []);
+  const candidates = await reads.getBaseEditionCandidatesForRedirect(externalId).catch(() => []);
   for (const candidateId of candidates) {
-    const resolved = await findVisibleBaseEdition(candidateId, nextVisited, depth + 1);
+    const resolved = await findVisibleBaseEdition(candidateId, nextVisited, depth + 1, reads);
     if (resolved) return resolved;
   }
   return null;
 }
 
-export async function resolvePortRedirect(externalId: string): Promise<string | null> {
-  const entry = await getCatalogEntryForEditor(externalId).catch(() => null);
+export async function resolvePortRedirect(externalId: string, reads: PortRedirectReads = DIRECT_READS): Promise<string | null> {
+  const entry = await reads.getCatalogEntryForEditor(externalId).catch(() => null);
   if (!entry) return null;
   const startsBlocked = !!entry.blocked_at;
   if (!startsBlocked && entry.format !== 'PORT') return externalId;
 
-  const candidates = await getBaseEditionCandidatesForRedirect(externalId).catch(() => []);
+  const candidates = await reads.getBaseEditionCandidatesForRedirect(externalId).catch(() => []);
   if (!candidates.length) return startsBlocked ? null : externalId;
 
   for (const candidateId of candidates) {
-    const resolved = await findVisibleBaseEdition(candidateId, new Set([externalId]), 1);
+    const resolved = await findVisibleBaseEdition(candidateId, new Set([externalId]), 1, reads);
     if (resolved) return resolved;
   }
   return null;
@@ -54,10 +71,10 @@ export async function resolvePortRedirect(externalId: string): Promise<string | 
 // Local installs can still point at a catalog identity blocked by the
 // curator. In that case, show the first visible BASE_EDITION ancestor
 // instead, without changing the installed game's own identity or launch data.
-export async function getLocalCatalogEntry(externalId: string) {
-  const exactEntry = await getCatalogEntryForEditor(externalId).catch(() => null);
-  if (!exactEntry) return getCatalogEntry(externalId).catch(() => null);
+export async function getLocalCatalogEntry(externalId: string, reads: PortRedirectReads = DIRECT_READS): Promise<MediaCatalogEntry | null> {
+  const exactEntry = await reads.getCatalogEntryForEditor(externalId).catch(() => null);
+  if (!exactEntry) return reads.getCatalogEntry(externalId).catch(() => null);
   if (!exactEntry.blocked_at) return exactEntry;
-  const targetId = await resolvePortRedirect(externalId);
-  return !targetId || targetId === externalId ? null : getCatalogEntry(targetId).catch(() => null);
+  const targetId = await resolvePortRedirect(externalId, reads);
+  return !targetId || targetId === externalId ? null : reads.getCatalogEntry(targetId).catch(() => null);
 }

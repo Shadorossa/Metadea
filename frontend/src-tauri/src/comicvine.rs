@@ -8,8 +8,18 @@
 // headers — a browser fetch() to it is blocked outright regardless of the
 // request itself being otherwise valid.
 use serde::{Deserialize, Serialize};
+use crate::igdb::RequestBudget;
 
 const COMICVINE_BASE: &str = "https://comicvine.gamespot.com/api";
+// Comic Vine allows 200 requests per resource per hour and additionally
+// throttles bursts ("velocity detection") — one shared hourly quota across
+// every resource keeps this app comfortably under the per-resource one, and
+// the 250 ms gap keeps a typed-search burst from tripping the velocity check.
+static COMICVINE_BUDGET: RequestBudget = RequestBudget::new(
+    200,
+    std::time::Duration::from_secs(3600),
+    std::time::Duration::from_millis(250),
+);
 const FIELD_LIST: &str = "id,name,image,start_year,publisher,count_of_issues,description,deck,site_detail_url";
 // Only the singular /volume/ detail resource documents character_credits/
 // concept_credits/person_credits as populated fields — the /search/ (list)
@@ -149,6 +159,8 @@ pub async fn comicvine_search(
     let limit_str = PAGE_SIZE.to_string();
     let offset_str = offset.to_string();
 
+    COMICVINE_BUDGET.acquire().await;
+
     let resp = client
         .get(format!("{COMICVINE_BASE}/search/"))
         .query(&[
@@ -202,6 +214,8 @@ pub async fn comicvine_search_characters(
     let limit_str = PAGE_SIZE.to_string();
     let offset_str = offset.to_string();
 
+    COMICVINE_BUDGET.acquire().await;
+
     let resp = client
         .get(format!("{COMICVINE_BASE}/search/"))
         .query(&[
@@ -244,6 +258,8 @@ pub async fn comicvine_get_volume(
 ) -> Result<Option<ComicVineVolume>, String> {
     let api_key = comicvine_api_key(&app_handle).await?;
     let client = crate::http::http_client();
+
+    COMICVINE_BUDGET.acquire().await;
 
     let resp = client
         .get(format!("{COMICVINE_BASE}/volume/{VOLUME_RESOURCE_PREFIX}-{volume_id}/"))
@@ -328,6 +344,8 @@ async fn fetch_images_by_ids(client: &reqwest::Client, api_key: &str, resource_p
     let ids_str: Vec<String> = ids.iter().take(100).map(|id| id.to_string()).collect();
     let filter = format!("id:{}", ids_str.join("|"));
 
+    COMICVINE_BUDGET.acquire().await;
+
     let resp = match client
         .get(format!("{COMICVINE_BASE}/{resource_plural}/"))
         .query(&[
@@ -402,6 +420,7 @@ struct ComicVineIssueEnrichment {
 }
 
 async fn fetch_issue_enrichment(client: &reqwest::Client, api_key: &str, issue_id: u64) -> Option<ComicVineIssueEnrichment> {
+    COMICVINE_BUDGET.acquire().await;
     let resp = client
         .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
         .query(&[
@@ -469,6 +488,7 @@ pub async fn comicvine_get_issues_cast(
 }
 
 async fn fetch_issue_cover_date(client: &reqwest::Client, api_key: &str, issue_id: u64) -> Option<String> {
+    COMICVINE_BUDGET.acquire().await;
     let resp = client
         .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
         .query(&[
@@ -553,6 +573,8 @@ pub async fn comicvine_get_issues(
     loop {
         let limit_str = LIMIT.to_string();
         let offset_str = offset.to_string();
+
+        COMICVINE_BUDGET.acquire().await;
 
         let resp = client
             .get(format!("{COMICVINE_BASE}/issues/"))
@@ -647,6 +669,8 @@ pub async fn comicvine_get_issue(
 ) -> Result<Option<ComicVineIssueDetail>, String> {
     let api_key = comicvine_api_key(&app_handle).await?;
     let client = crate::http::http_client();
+
+    COMICVINE_BUDGET.acquire().await;
 
     let resp = client
         .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
