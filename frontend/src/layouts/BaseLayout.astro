@@ -30,6 +30,7 @@ import { useTranslations } from '../i18n/index';
 import { STORAGE_KEYS } from '../lib/storage/storage-keys';
 import ClientRouter from 'astro/components/ClientRouter.astro';
 import LocaleBootstrap from '../components/i18n/LocaleBootstrap.astro';
+import UiScaleBootstrap from '../components/ui-scale/UiScaleBootstrap.astro';
 
 import '../styles/core/themes/nebula.css';
 import '../styles/core/themes/cyberpunk.css';
@@ -65,6 +66,8 @@ const t = useTranslations(lang);
     <meta charset="utf-8" />
     <!-- First: resolves the UI locale before paint (components/i18n/). -->
     <LocaleBootstrap buildLang={lang} />
+    <!-- Interface scale before paint (components/ui-scale/). -->
+    <UiScaleBootstrap />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title data-i18n-doc-title={titleKey} data-i18n-suffix={titleKey ? titleSuffix : undefined}>{title}</title>

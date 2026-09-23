@@ -5,7 +5,9 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'motion/react';
 import { deleteLibraryEntry, type LocalGame, type CatalogEntryLike } from '../../lib/tauri';
 import { beginLocalVisit, endLocalVisit } from '../../lib/local/local-read-cache';
-import { runMetadataFetch, cancelMetadataFetch } from '../../lib/local/metadata-fetch';
+import { runMetadataFetch, cancelMetadataFetch, outcomeNeedsAttention, selectPendingMetadataGames, type MetadataFetchOutcome } from '../../lib/local/metadata-fetch';
+import { showToast } from '../../lib/dom/toast';
+import { interpolate } from '../../lib/shared/text/interpolate';
 import { getT } from '../../i18n/runtime';
 import { CATEGORY_ICONS } from './ui/category-icons';
 
@@ -99,7 +101,8 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const cancelRef = useRef(false);
+  const [metaOutcome,    setMetaOutcome]    = useState<MetadataFetchOutcome | null>(null);
+  const metaRunRef = useRef<{ cancelled: boolean } | null>(null);
 
   // mod+F goes to this grid's own name search (preventDefault in the
   // dispatcher keeps the WebView's find bar closed). Escape inside the field
@@ -165,7 +168,7 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
 
   // ── Fetch metadata ───────────────────────────────────────────────────────────
 
-  const handleFetchMetadata = useCallback(async (types: MetaType[]) => {
+  const handleFetchMetadata = useCallback(async (types: MetaType[], retryNotFound = false) => {
     const doBasic        = types.includes('basic');
     const doAchievements = types.includes('achievements');
 
@@ -175,33 +178,61 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
     // the same regardless of launcher — see resolve_igdb_game's own launcher
     // param, which just skips the Steam-App-ID-specific shortcuts for
     // anything that isn't actually a Steam app_id.
-    const pending = games
-      .filter(g => (g.launcher === 'steam' || g.launcher === 'gog' || !!g.rom_platform) && g.app_id)
-      .filter(g => {
-        const cached    = pathCache[g.app_id!];
-        const basicDone = !doBasic || !!(cached?.cover_path && cached?.banner_path);
-        const achievementsRelevant = doAchievements && g.launcher === 'steam';
-        return !basicDone || achievementsRelevant;
-      });
+    const pending = selectPendingMetadataGames(games, pathCache, { doBasic, doAchievements });
 
-    if (pending.length === 0) return;
     setMetaSelector(false);
-    cancelRef.current = false;
+    setMetaOutcome(null);
+    // Nothing to fetch used to return with the selector still open and no
+    // word, which read as a button that never starts.
+    if (pending.length === 0) {
+      setMetaProgress(null);
+      showToast(t.local.meta_up_to_date, 'success');
+      return;
+    }
 
-    setMetaProgress({ total: pending.length, current: 0, currentName: 'Iniciando…', cancelled: false });
+    // Each run owns its cancel flag: a run the user cancelled and replaced
+    // (Cancel, then Download again before it wound down) neither keeps
+    // going on the new run's reset flag nor closes the new run's modal.
+    const run = { cancelled: false };
+    metaRunRef.current = run;
+    const isCurrent = () => metaRunRef.current === run;
+
+    setMetaProgress({ total: pending.length, current: 0, currentName: '', cancelled: false });
 
     // One batched command for the whole list (see lib/local/metadata-fetch.ts
     // and igdb/batch.rs) instead of a worker pool of per-game commands —
     // the modal keeps counting games and showing the one just finished.
-    await runMetadataFetch(
-      pending.map(g => ({ app_id: g.app_id!, name: g.name, launcher: g.launcher, rom_platform: g.rom_platform })),
-      { doBasic, doAchievements },
-      progress => { if (!cancelRef.current) setMetaProgress({ ...progress, cancelled: false }); },
-      () => cancelRef.current,
+    const outcome = await runMetadataFetch(
+      pending,
+      { doBasic, doAchievements, retryNotFound },
+      progress => { if (!run.cancelled && isCurrent()) setMetaProgress({ ...progress, cancelled: false }); },
+      () => run.cancelled,
     );
     await refreshMeta();
+    if (run.cancelled || !isCurrent()) return;
+    if (outcomeNeedsAttention(outcome)) {
+      // The modal stays open on the result: the error (with the way to fix
+      // it) or what did not download and why.
+      setMetaOutcome(outcome);
+      return;
+    }
     setMetaProgress(null);
-  }, [games, pathCache, refreshMeta]);
+    showToast(interpolate(t.local.meta_updated_toast, { n: pending.length }), 'success');
+  }, [games, pathCache, refreshMeta, t]);
+
+  const cancelMetadata = useCallback(() => {
+    if (metaRunRef.current) metaRunRef.current.cancelled = true;
+    metaRunRef.current = null;
+    setMetaProgress(null);
+    setMetaOutcome(null);
+    void cancelMetadataFetch();
+  }, []);
+
+  const closeMetadataResult = useCallback(() => {
+    metaRunRef.current = null;
+    setMetaProgress(null);
+    setMetaOutcome(null);
+  }, []);
 
   // ── Derived state ────────────────────────────────────────────────────────────
 
@@ -371,11 +402,6 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
     return { currently, rest };
   }, [safeGames, gameStatusMatch]);
 
-  const groupedGames = React.useMemo(() => LAUNCHER_ORDER.reduce<Map<PlatformId, typeof safeGames>>((acc, id) => {
-    const list = filterGames(statusBuckets.rest.filter(g => g.launcher === id));
-    if (list.length > 0) acc.set(id, list);
-    return acc;
-  }, new Map()), [statusBuckets.rest, filterGames]);
   const installedPlatforms = React.useMemo(() => new Set(safeGames.map(g => g.launcher)), [safeGames]);
 
   // Videojuegos' own status sections mix in catalog-tracked 'game' entries
@@ -472,6 +498,19 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   // mid-view. Holding both halves back until BOTH sources are ready makes
   // every card in these mixed sections appear in one pass instead of two.
   const sectionsReady = gamesState !== 'idle' && gamesState !== 'loading' && !mediaLoading;
+  // A catalog "En progreso" row can NAME-match an installed game whose own
+  // status is something else (buildLibraryStatusEntries' edition/chapter
+  // fallbacks) — that game is then already on screen in the rail, so its
+  // platform section leaves it out instead of showing the same card twice.
+  const groupedGames = React.useMemo(() => {
+    // Gated like the rail itself (GamesGrid only renders it once sectionsReady).
+    const inRail = new Set((sectionsReady ? currentlyEntries : []).flatMap(e => (e.kind === 'game' ? [e.game] : [])));
+    return LAUNCHER_ORDER.reduce<Map<PlatformId, typeof safeGames>>((acc, id) => {
+      const list = filterGames(statusBuckets.rest.filter(g => g.launcher === id && !inRail.has(g)));
+      if (list.length > 0) acc.set(id, list);
+      return acc;
+    }, new Map());
+  }, [statusBuckets.rest, filterGames, currentlyEntries, sectionsReady]);
 
   // A profile-card quick action enters /local with ?resume=<external_id>.
   // Resolve it through the same game/catalog matching used by Local's own
@@ -588,7 +627,10 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
       {metaProgress && (
         <MetadataModal
           progress={metaProgress}
-          onCancel={() => { cancelRef.current = true; setMetaProgress(null); void cancelMetadataFetch(); }}
+          outcome={metaOutcome}
+          onCancel={cancelMetadata}
+          onClose={closeMetadataResult}
+          onRetrySkipped={() => { void handleFetchMetadata(['basic'], true); }}
         />
       )}
 

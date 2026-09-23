@@ -16,7 +16,10 @@ vi.mock('../tauri', () => ({
 vi.mock('../dom/toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../i18n/runtime', () => ({ getT: () => ({ settings: {} }) }));
 
-import { combinedProgress, metadataPhases, runMetadataFetch, toBatchRequest, steamWebApiRateLimiter } from './metadata-fetch';
+import {
+  combinedProgress, metadataPhases, runMetadataFetch, toBatchRequest, steamWebApiRateLimiter,
+  selectPendingMetadataGames, errorNeedsIgdbKeys, outcomeNeedsAttention,
+} from './metadata-fetch';
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -77,5 +80,109 @@ describe('runMetadataFetch', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('selectPendingMetadataGames', () => {
+  const games = [
+    { name: 'Done', launcher: 'steam', app_id: '1' },
+    { name: 'Cover only', launcher: 'gog', app_id: 'g' },
+    { name: 'ROM', launcher: 'local', app_id: 'rom', rom_platform: 'snes' },
+    { name: 'Epic', launcher: 'epic', app_id: 'e' },
+    { name: 'No id', launcher: 'steam' },
+  ];
+  const index = { '1': { cover_path: 'c', banner_path: 'b' }, g: { cover_path: 'c' } };
+
+  it('is empty when every game already has its cover and banner', () => {
+    expect(selectPendingMetadataGames([games[0], games[3], games[4]], index, { doBasic: true, doAchievements: false })).toEqual([]);
+  });
+
+  it('keeps Steam, GOG and ROM games missing art, and Steam games for achievements', () => {
+    expect(selectPendingMetadataGames(games, index, { doBasic: true, doAchievements: false }).map(g => g.app_id)).toEqual(['g', 'rom']);
+    expect(selectPendingMetadataGames(games, index, { doBasic: false, doAchievements: true }).map(g => g.app_id)).toEqual(['1']);
+  });
+});
+
+describe('runMetadataFetch outcomes', () => {
+  const steamGame = { app_id: '1', name: 'A', launcher: 'steam' };
+
+  it('surfaces a rejected batch as the outcome error instead of only logging it', async () => {
+    const unlisten = vi.fn();
+    mocks.listenMetadataProgress.mockImplementation(async () => unlisten);
+    mocks.igdbFetchMetadataBatch.mockRejectedValue('E_IGDB_KEYS_MISSING');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const outcome = await runMetadataFetch([steamGame], { doBasic: true, doAchievements: false }, () => {}, () => false);
+      expect(outcome.error).toBe('E_IGDB_KEYS_MISSING');
+      expect(errorNeedsIgdbKeys(outcome.error)).toBe(true);
+      expect(outcomeNeedsAttention(outcome)).toBe(true);
+      expect(unlisten).toHaveBeenCalledTimes(1);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('keeps a thrown Error message and only points to the keys for key/auth codes', async () => {
+    mocks.igdbFetchMetadataBatch.mockRejectedValue(new Error('Tauri not available'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const outcome = await runMetadataFetch([steamGame], { doBasic: true, doAchievements: false }, () => {}, () => false);
+      expect(outcome.error).toBe('Tauri not available');
+      expect(errorNeedsIgdbKeys(outcome.error)).toBe(false);
+      expect(errorNeedsIgdbKeys('E_IGDB_AUTH: Twitch auth failed (HTTP 400)')).toBe(true);
+      expect(errorNeedsIgdbKeys('E_IGDB_NETWORK: timeout')).toBe(false);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('counts the batch results and passes the retry flag through', async () => {
+    mocks.igdbFetchMetadataBatch.mockResolvedValue([
+      { app_id: '1', status: 'done', cover_path: 'c', error: null },
+      { app_id: '2', status: 'cached', cover_path: 'c', error: null },
+      { app_id: '3', status: 'skipped', cover_path: null, error: null },
+      { app_id: '4', status: 'not_found', cover_path: null, error: 'x' },
+      { app_id: '5', status: 'error', cover_path: null, error: 'x' },
+    ]);
+    const outcome = await runMetadataFetch([steamGame], { doBasic: true, doAchievements: false, retryNotFound: true }, () => {}, () => false);
+    expect(mocks.igdbFetchMetadataBatch.mock.calls[0][1]).toBe(true);
+    expect(outcome).toEqual({ error: null, summary: { done: 1, cached: 1, notFound: 1, skipped: 1, failed: 1, achievementsFailed: 0 } });
+    expect(outcomeNeedsAttention(outcome)).toBe(true);
+  });
+
+  it('a clean run needs no attention; an empty list never reaches the batch as work', async () => {
+    mocks.igdbFetchMetadataBatch.mockResolvedValue([{ app_id: '1', status: 'done', cover_path: 'c', error: null }]);
+    const clean = await runMetadataFetch([steamGame], { doBasic: true, doAchievements: false }, () => {}, () => false);
+    expect(outcomeNeedsAttention(clean)).toBe(false);
+
+    mocks.igdbFetchMetadataBatch.mockResolvedValue([]);
+    const empty = await runMetadataFetch([], { doBasic: true, doAchievements: true }, () => {}, () => false);
+    expect(empty.error).toBeNull();
+    expect(outcomeNeedsAttention(empty)).toBe(false);
+    expect(mocks.steamAchievementsDownload).not.toHaveBeenCalled();
+  });
+
+  it('counts failed achievement downloads instead of swallowing them', async () => {
+    vi.useFakeTimers();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      mocks.steamAchievementsDownload.mockRejectedValue('boom');
+      const run = runMetadataFetch([steamGame], { doBasic: false, doAchievements: true }, () => {}, () => false);
+      // The shared limiter may still hold an earlier test's fake-clock hits.
+      await vi.advanceTimersByTimeAsync(15_000);
+      const outcome = await run;
+      expect(outcome.summary.achievementsFailed).toBe(1);
+      expect(outcomeNeedsAttention(outcome)).toBe(true);
+    } finally {
+      errorSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('a run cancelled before it starts sends nothing', async () => {
+    const outcome = await runMetadataFetch([steamGame], { doBasic: true, doAchievements: true }, () => {}, () => true);
+    expect(mocks.igdbFetchMetadataBatch).not.toHaveBeenCalled();
+    expect(mocks.steamAchievementsDownload).not.toHaveBeenCalled();
+    expect(outcome.error).toBeNull();
   });
 });

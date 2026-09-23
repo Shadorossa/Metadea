@@ -58,26 +58,35 @@ pub fn steam_root() -> Option<PathBuf> {
 
 // Every steamapps directory: the root's own plus each extra library
 // folder listed in libraryfolders.vdf.
+// Compared by normalized_path: the registry's SteamPath is spelled
+// "c:/program files (x86)/steam" while libraryfolders.vdf lists the same
+// root as "C:\Program Files (x86)\Steam", and a plain PathBuf comparison
+// kept both, so every game in the main library was scanned twice.
 pub(super) fn steam_library_paths(steam_root: &std::path::Path) -> Vec<PathBuf> {
     let vdf_path = steam_root.join("steamapps").join("libraryfolders.vdf");
-    let mut library_paths: Vec<PathBuf> = vec![steam_root.join("steamapps")];
+    let content = std::fs::read_to_string(&vdf_path).unwrap_or_default();
+    library_paths_from_vdf(steam_root, &content, |path| path.exists())
+}
 
-    if let Ok(content) = std::fs::read_to_string(&vdf_path) {
-        for line in content.lines() {
-            let line = line.trim();
-            if line.contains("\"path\"") {
-                let parts: Vec<&str> = line.splitn(5, '"').collect();
-                if parts.len() >= 4 {
-                    let raw = parts[3];
-                    let path_str = if raw.contains("\\\\") {
-                        raw.replace("\\\\", "\\")
-                    } else {
-                        raw.to_string()
-                    };
-                    let lib_path = PathBuf::from(&path_str).join("steamapps");
-                    if lib_path.exists() && !library_paths.contains(&lib_path) {
-                        library_paths.push(lib_path);
-                    }
+fn library_paths_from_vdf(steam_root: &std::path::Path, content: &str, exists: impl Fn(&std::path::Path) -> bool) -> Vec<PathBuf> {
+    let mut library_paths: Vec<PathBuf> = vec![steam_root.join("steamapps")];
+    let mut seen: std::collections::HashSet<String> =
+        library_paths.iter().map(|p| super::common::normalized_path(&p.to_string_lossy())).collect();
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.contains("\"path\"") {
+            let parts: Vec<&str> = line.splitn(5, '"').collect();
+            if parts.len() >= 4 {
+                let raw = parts[3];
+                let path_str = if raw.contains("\\\\") {
+                    raw.replace("\\\\", "\\")
+                } else {
+                    raw.to_string()
+                };
+                let lib_path = PathBuf::from(&path_str).join("steamapps");
+                if exists(&lib_path) && seen.insert(super::common::normalized_path(&lib_path.to_string_lossy())) {
+                    library_paths.push(lib_path);
                 }
             }
         }
@@ -166,4 +175,30 @@ pub(super) fn scan_steam_games() -> Vec<LocalGame> {
     }
 
     games
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // The owner's own setup: HKCU SteamPath "c:/program files (x86)/steam",
+    // libraryfolders.vdf listing that same root in its own spelling.
+    #[test]
+    fn the_root_library_is_listed_once_however_it_is_spelled() {
+        let vdf = r#""libraryfolders"
+{
+	"0"
+	{
+		"path"		"C:\Program Files (x86)\Steam"
+	}
+	"1"
+	{
+		"path"		"D:\SteamLibrary"
+	}
+}
+"#;
+        let paths = library_paths_from_vdf(std::path::Path::new("c:/program files (x86)/steam"), vdf, |_| true);
+        let normalized: Vec<String> = paths.iter().map(|p| crate::platform_scanning::common::normalized_path(&p.to_string_lossy())).collect();
+        assert_eq!(normalized, vec!["c:/program files (x86)/steam/steamapps", "d:/steamlibrary/steamapps"]);
+    }
 }

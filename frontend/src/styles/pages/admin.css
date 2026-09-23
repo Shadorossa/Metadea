@@ -94,7 +94,7 @@
 .catalog-admin-source-btn.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 

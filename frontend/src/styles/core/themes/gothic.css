@@ -6,15 +6,15 @@ html[data-theme="gothic"], [data-theme="gothic"] {
 
   --text-main: #e2d9cd; /* Pergamino antiguo */
   --text-muted: #a68968; /* Oro bruñido */
-  --text-dim: #6e5843;
+  --text-dim: #857058;
 
   --border-color: #5c1414; /* Hierro forjado / sangre gótica */
 
-  --accent: #b71c1c; /* Antorcha apagada / Escarlata */
-  --accent-rgb: 183 28 28;
-  --accent-soft: rgba(183, 28, 28, 0.08);
+  --accent: #d32f2f; /* Escarlata (lifted from #b71c1c: ~2.8:1 as text) */
+  --accent-rgb: 211 47 47;
+  --accent-soft: rgba(211, 47, 47, 0.1);
   --accent-border: #801010;
-  --accent-glow: rgba(183, 28, 28, 0.4);
+  --accent-glow: rgba(211, 47, 47, 0.4);
 
   --radius-sm: 0px;
   --radius-md: 0px;

@@ -488,18 +488,15 @@
    fixed width) to divide the column's actual available width evenly
    between however many themes there are, instead of overflowing into a
    scrollbar or wrapping into a second line. */
-/* 7 columns × 2 rows (14 themes total) — capped at .color-picker-container's
-   own height (padding + 56px swatch + gap + 32px reset button ≈ 132px) so
-   this section doesn't tower over its neighbor; overflow:hidden is a safety
-   clamp in case a future theme addition would otherwise push a 3rd row
-   past that cap instead of silently growing the section taller again. */
+/* 7 columns × 2 rows (14 themes total). No fixed-px height cap: a two-line
+   name ("Newspaper Dark", "Astro (Sci-Fi)") or a wider theme font made the
+   rows taller than the old 132px clamp, which cut the second row's names off
+   (and clipped the active card's glow and hover lift). */
 .theme-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 0.5rem;
   margin-top: 0.5rem;
-  max-height: 132px;
-  overflow: hidden;
 }
 
 .theme-card {
@@ -559,6 +556,8 @@
   height: 18px;
   border-radius: 50%;
   background: var(--accent);
+  /* The tick is stroked in currentColor: dark on light accents. */
+  color: var(--text-on-accent);
   display: none;
   align-items: center;
   justify-content: center;
@@ -800,7 +799,7 @@
 .rating-system-btn-2.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .rating-value-text {
@@ -893,7 +892,7 @@
   justify-content: flex-start;
 }
 
-/* ── Language Picker ───────────────────────────────────────────────────── */
+/* ── Language Picker (and the Interface scale picker, same look) ─────────── */
 .language-picker {
   display: flex;
   gap: 0.4rem;
@@ -901,7 +900,8 @@
   overflow-x: auto;
 }
 
-.language-btn {
+.language-btn,
+.ui-scale-btn {
   flex: 1;
   display: flex;
   align-items: center;
@@ -919,15 +919,17 @@
   transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
 }
 
-.language-btn:hover {
+.language-btn:hover,
+.ui-scale-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.language-btn.active {
+.language-btn.active,
+.ui-scale-btn.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 /* ── Color Picker ──────────────────────────────────────────────────────── */

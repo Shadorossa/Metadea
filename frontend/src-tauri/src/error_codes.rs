@@ -175,6 +175,15 @@ pub const GAME_PAUSE_SAVE_STATE: &str = "E_GAME_PAUSE_SAVE_STATE";
 pub const GAME_PAUSE_SETTINGS: &str = "E_GAME_PAUSE_SETTINGS";
 pub const GAME_PAUSE_FAILED: &str = "E_GAME_PAUSE_FAILED";
 
+// "Download metadata" in Local (src/igdb/batch.rs). KEYS_MISSING is no IGDB
+// client id/secret in Settings › Environment; AUTH is Twitch refusing them;
+// NETWORK is Twitch/IGDB unreachable; METADATA_DB_BUSY the local database
+// staying locked by another operation for longer than the batch waits.
+pub const IGDB_KEYS_MISSING: &str = "E_IGDB_KEYS_MISSING";
+pub const IGDB_AUTH: &str = "E_IGDB_AUTH";
+pub const IGDB_NETWORK: &str = "E_IGDB_NETWORK";
+pub const METADATA_DB_BUSY: &str = "E_METADATA_DB_BUSY";
+
 /// Every code above, for the parity tests below (the TS side parses the
 /// consts themselves — see lib/errors/error-codes.test.ts).
 #[cfg(test)]
@@ -287,6 +296,10 @@ pub const ALL: &[&str] = &[
     GAME_PAUSE_SAVE_STATE,
     GAME_PAUSE_SETTINGS,
     GAME_PAUSE_FAILED,
+    IGDB_KEYS_MISSING,
+    IGDB_AUTH,
+    IGDB_NETWORK,
+    METADATA_DB_BUSY,
 ];
 
 /// `"E_CODE: detail"` — the detail is technical (an io/zip/reqwest error),

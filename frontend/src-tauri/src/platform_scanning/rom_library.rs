@@ -25,7 +25,7 @@ pub struct RomFolderConfig {
     pub rom_extensions: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RomFile {
     pub path: String,
     pub file_name: String,
@@ -42,7 +42,7 @@ pub struct RomFile {
     pub header_title: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RomGame {
     pub platform_id: String,
     pub app_id: String,
@@ -63,6 +63,14 @@ pub struct RomGame {
     // one (other discs, absorbed .bin tracks...), for rom_disc_merge.rs.
     #[serde(skip)]
     pub replaced_paths: Vec<String>,
+    // Other dumps of this same game dropped by the stem dedupe ("Game.iso"
+    // next to "Game.chd"); see emulator_roms.rs's aliases.
+    #[serde(skip)]
+    pub alias_paths: Vec<String>,
+    // Platforms whose (overlapping) ROM folder also reached this very file;
+    // the scan keeps it once, under the most specific folder.
+    #[serde(skip)]
+    pub alias_platforms: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,6 +80,12 @@ pub struct RomScanResult {
 }
 
 const SIDECAR_EXTENSIONS: &[&str] = &["sav", "ml1", "ml2", "srm", "cht", "ips"];
+
+const ARCHIVE_EXTENSIONS: &[&str] = &["zip", "7z", "rar"];
+
+fn is_archive_extension(ext: &str) -> bool {
+    ARCHIVE_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str())
+}
 
 pub fn is_sidecar_extension(ext: &str) -> bool {
     let ext = ext.to_ascii_lowercase();
@@ -335,7 +349,7 @@ pub fn switch_base_title_id(title_id: &str, kind: &str) -> String {
 pub fn group_rom_files(platform_id: &str, files: Vec<RomFile>) -> Vec<RomGame> {
     let mut games: Vec<RomGame> = Vec::new();
     let mut by_base_id: HashMap<String, usize> = HashMap::new();
-    let mut seen_stems: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut by_stem: HashMap<String, usize> = HashMap::new();
     let mut orphans: Vec<RomFile> = Vec::new();
 
     let make_game = |file: RomFile| RomGame {
@@ -348,14 +362,32 @@ pub fn group_rom_files(platform_id: &str, files: Vec<RomFile>) -> Vec<RomGame> {
         playlist: None,
         title_stem: None,
         replaced_paths: Vec::new(),
+        alias_paths: Vec::new(),
+        alias_platforms: Vec::new(),
     };
 
     for file in files {
         let Some(title_id) = file.title_id.clone().filter(|_| platform_id == "switch") else {
             // A dump collection commonly has the same game twice ("Game.3ds"
-            // and "Game.cia") — keep the first per stem.
-            if seen_stems.insert(file.stem.trim().to_ascii_lowercase()) {
-                games.push(make_game(file));
+            // and "Game.cia", "Game.iso" and "Game.chd") — one entry per
+            // stem: the first, unless it is an archive and the other is the
+            // extracted dump. The dropped file's identity stays an alias.
+            let stem_key = file.stem.trim().to_ascii_lowercase();
+            match by_stem.get(&stem_key) {
+                None => {
+                    by_stem.insert(stem_key, games.len());
+                    games.push(make_game(file));
+                }
+                Some(&idx) => {
+                    let game = &mut games[idx];
+                    if is_archive_extension(&game.base.extension) && !is_archive_extension(&file.extension) {
+                        let archive = std::mem::replace(&mut game.base, file);
+                        game.app_id = synthetic_app_id("rom", &game.base.path);
+                        game.alias_paths.push(archive.path);
+                    } else {
+                        game.alias_paths.push(file.path);
+                    }
+                }
             }
             continue;
         };
@@ -545,27 +577,75 @@ pub fn rom_games_from_files(platform_id: &str, files: Vec<RomFile>, fs: &dyn sup
             playlist: set.playlist,
             title_stem: Some(set.title_stem),
             replaced_paths: set.replaced,
+            alias_paths: Vec::new(),
+            alias_platforms: Vec::new(),
         });
     }
     games
 }
 
 pub fn scan_rom_games(configs: &[RomFolderConfig]) -> Vec<RomGame> {
-    let mut games = Vec::new();
+    let mut ranked = Vec::new();
     for cfg in configs {
         let files = scan_rom_folder_files(cfg);
         let mut grouped = rom_games_from_files(&cfg.platform_id, files, &super::multi_disc::RealFs);
-        with_rom_header_cache(|cache| {
-            for game in &mut grouped {
-                if let Some(header) = cache.header_for(Path::new(&game.base.path), read_rom_header) {
-                    game.base.header_id = Some(header.game_id);
-                    game.base.header_title = header.title;
-                }
-            }
+        let formats: Vec<Option<&'static str>> = with_rom_header_cache(|cache| {
+            grouped.iter_mut().map(|game| {
+                let header = cache.header_for(Path::new(&game.base.path), read_rom_header)?;
+                game.base.header_id = Some(header.game_id);
+                game.base.header_title = header.title;
+                Some(header.format)
+            }).collect()
         });
-        games.extend(grouped);
+        for (game, format) in grouped.into_iter().zip(formats) {
+            let rank = folder_rank(cfg, &game.base.path, format);
+            ranked.push((game, rank));
+        }
     }
-    games
+    dedupe_overlapping_folders(ranked)
+}
+
+// How well a configured folder owns a file it reached: the deeper the
+// folder the more specific it is (a "Roms" folder configured for one
+// platform also reaches "Roms/PS2" configured for another), then whether
+// the file's own header names that platform (Dolphin's Wii and GameCube
+// entries pointed at one shared folder).
+pub(crate) fn folder_rank(cfg: &RomFolderConfig, file_path: &str, header_format: Option<&str>) -> (usize, bool) {
+    let folder = super::common::normalized_path(&cfg.rom_folder);
+    let depth = if super::common::normalized_path(file_path).starts_with(&format!("{folder}/")) { folder.len() } else { 0 };
+    let header_matches = header_format.is_some_and(|format| format == cfg.platform_id || (format == "nds" && cfg.platform_id == "ds"));
+    (depth, header_matches)
+}
+
+// Overlapping ROM folders (a parent and its subfolder, or one folder set on
+// two platforms) reach the same file twice: one entry per file, kept under
+// the best-ranked platform, the others recorded as aliases so their old
+// identities never come back as ghosts. Order otherwise preserved.
+pub(crate) fn dedupe_overlapping_folders(ranked: Vec<(RomGame, (usize, bool))>) -> Vec<RomGame> {
+    let mut kept: Vec<(RomGame, (usize, bool))> = Vec::with_capacity(ranked.len());
+    let mut by_path: HashMap<String, usize> = HashMap::new();
+    for (game, rank) in ranked {
+        let key = super::common::normalized_path(&game.base.path);
+        let Some(&idx) = by_path.get(&key) else {
+            by_path.insert(key, kept.len());
+            kept.push((game, rank));
+            continue;
+        };
+        let (current, current_rank) = &mut kept[idx];
+        let (mut winner, loser) = if rank > *current_rank {
+            *current_rank = rank;
+            (game, std::mem::take(current))
+        } else {
+            (std::mem::take(current), game)
+        };
+        if loser.platform_id != winner.platform_id && !winner.alias_platforms.contains(&loser.platform_id) {
+            winner.alias_platforms.push(loser.platform_id);
+        }
+        winner.alias_platforms.extend(loser.alias_platforms);
+        winner.alias_paths.extend(loser.alias_paths);
+        *current = winner;
+    }
+    kept.into_iter().map(|(game, _)| game).collect()
 }
 
 #[tauri::command]
@@ -820,5 +900,65 @@ mod tests {
         };
         assert_eq!(emulator_dir(&cfg), None);
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_same_rom_in_two_formats_is_one_game_and_the_other_stays_an_alias() {
+        let games = group_rom_files("ps2", vec![file("Okami.chd"), file("Okami.iso")]);
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].base.file_name, "Okami.chd");
+        assert_eq!(games[0].alias_paths, vec![file("Okami.iso").path]);
+    }
+
+    #[test]
+    fn an_extracted_dump_wins_over_its_archive() {
+        let games = group_rom_files("arcade", vec![file("Metal Slug.7z"), file("Metal Slug.zip"), file("Metal Slug.iso")]);
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].base.file_name, "Metal Slug.iso");
+        assert_eq!(games[0].app_id, synthetic_app_id("rom", &games[0].base.path));
+        assert_eq!(games[0].alias_paths.len(), 2);
+    }
+
+    #[test]
+    fn two_regions_of_one_rom_stay_two_games() {
+        let games = group_rom_files("ps2", vec![file("Okami (USA).iso"), file("Okami (Europe).iso")]);
+        assert_eq!(games.len(), 2);
+    }
+
+    #[test]
+    fn overlapping_rom_folders_list_a_file_once_under_the_most_specific_folder() {
+        let root = temp_root("overlap");
+        let ps2_dir = root.join("PlayStation 2");
+        std::fs::create_dir_all(&ps2_dir).unwrap();
+        std::fs::write(ps2_dir.join("Okami.iso"), vec![0u8; 16]).unwrap();
+        let cfg = |platform: &str, folder: &Path| RomFolderConfig {
+            platform_id: platform.into(),
+            rom_folder: folder.to_string_lossy().to_string(),
+            executable_path: String::new(),
+            rom_extensions: vec!["iso".into()],
+        };
+        // The parent folder configured for PSP also reaches the PS2 folder.
+        let games = scan_rom_games(&[cfg("psp", &root), cfg("ps2", &ps2_dir)]);
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].platform_id, "ps2");
+        assert_eq!(games[0].alias_platforms, vec!["psp".to_string()]);
+        // One folder set on two platforms: kept once, under the first.
+        let games = scan_rom_games(&[cfg("ps2", &ps2_dir), cfg("psp", &ps2_dir)]);
+        assert_eq!(games.len(), 1);
+        assert_eq!(games[0].platform_id, "ps2");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_shared_folder_prefers_the_platform_the_header_names() {
+        let cfg = |platform: &str| RomFolderConfig {
+            platform_id: platform.into(),
+            rom_folder: "D:\\Dolphin Games".into(),
+            executable_path: String::new(),
+            rom_extensions: vec!["rvz".into()],
+        };
+        let path = "D:\\Dolphin Games\\Fire Emblem - Radiant Dawn.rvz";
+        assert!(folder_rank(&cfg("wii"), path, Some("wii")) > folder_rank(&cfg("gamecube"), path, Some("wii")));
+        assert!(folder_rank(&cfg("ds"), "D:\\Dolphin Games\\x.nds", Some("nds")).1);
     }
 }

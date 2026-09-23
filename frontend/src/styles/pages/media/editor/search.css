@@ -188,7 +188,7 @@
   bottom: 2px;
   right: 2px;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 0.6rem;
   font-weight: 700;
   padding: 0.08rem 0.25rem;

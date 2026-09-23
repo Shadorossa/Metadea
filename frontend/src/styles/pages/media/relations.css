@@ -10,6 +10,14 @@
   margin-bottom: 1.5rem;
 }
 
+/* Narrow windows (see --media-gutter in base.css): three cards per row keep
+   them the width they have at 1920 px instead of squeezing four. */
+@media (max-width: 1500px) {
+  .media-relations-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* Anime openings/endings ("Temas" tab, animethemes.moe) - same relation
    cover-card grid as Episodios (media-relation-card), a badge (OP1/ED1/...)
    standing in for the episode-card's own "#N" pill since there's no cover
@@ -584,7 +592,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #fff;
+  color: var(--text-on-accent);
   background: var(--accent);
   padding: 0.3rem 0.55rem 0.65rem;
   width: max-content;
@@ -619,7 +627,7 @@
   display: grid;
   grid-template-columns: 4.1fr 0.9fr;
   gap: 2.5rem;
-  padding: 0 15% 3rem;
+  padding: 0 var(--media-gutter, 15%) 3rem;
   align-items: start;
 }
 
@@ -651,14 +659,18 @@
 .media-users-grid-scroll {
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
+  /* !important: themes style every scrollbar (newspaper-dark sets
+     `[data-theme] * { scrollbar-width: thin }`), which beat this. */
+  scrollbar-width: none !important;
   --uf-fade: 30px;
   mask-image: linear-gradient(to bottom, transparent 0%, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent 100%);
 }
 
 .media-users-grid-scroll::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .media-users-grid-scroll.at-top {
@@ -897,7 +909,7 @@
 .media-banner-badges-container {
   position: absolute;
   top: 19rem;
-  right: 15%;
+  right: var(--media-gutter, 15%);
   z-index: 20;
   display: flex;
   align-items: center;
@@ -963,7 +975,7 @@
 .media-banner-developer-badge {
   position: absolute;
   top: 19rem;
-  left: 15%;
+  left: var(--media-gutter, 15%);
   z-index: 20;
   display: inline-flex;
   align-items: center;

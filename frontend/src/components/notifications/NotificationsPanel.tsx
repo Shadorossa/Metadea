@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useHydrated } from '../shared/hooks/useHydrated';
 import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../shared/hooks/useOwnerGate';
@@ -16,12 +17,18 @@ interface Props {
 // falls back to the same "coming soon" placeholder the page used to show statically.
 export function NotificationsPanel({ i18n }: Props) {
   const isMounted = useHydrated();
+  // Runtime language once hydrated; the static props are the build locale.
+  const strings = useMemo(() => {
+    if (!isMounted) return i18n;
+    const rt = getT();
+    return { media: rt.media, discord: rt.discord, notifications: rt.notifications, admin: rt.admin };
+  }, [isMounted, i18n]);
 
   const gate = useOwnerGate();
   const t = isMounted ? getT().notifications : i18n.notifications;
 
   if (gate.state === 'owner' && gate.token && isRepoOwner(gate.username)) {
-    return <PullRequestList token={gate.token} i18n={i18n} />;
+    return <PullRequestList token={gate.token} i18n={strings} />;
   }
 
   return (

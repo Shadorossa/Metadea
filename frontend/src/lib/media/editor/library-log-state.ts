@@ -34,7 +34,7 @@ export interface LogState {
   // reconsumption-run.ts for the toggle's transitions.
   reconsumptionCount: number;
   reconsuming:     boolean;
-  // Mirrors LibraryEntry.skip_filler ("Filler: Watched / Skipped", see
+  // Mirrors LibraryEntry.skip_filler ("Watched with filler" unchecked = true, see
   // lib/anime/filler.ts). Undefined = never loaded/touched: the save omits
   // it and Rust keeps the stored value.
   skipFiller?:     boolean;

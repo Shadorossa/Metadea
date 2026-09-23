@@ -77,6 +77,7 @@ export const playerCycleTrack = (kind: 'sub' | 'audio') => runPlayer('player_cyc
 // closed the player) vs 'navigate' (route left) let the page decide
 // whether it still has to navigate away itself.
 export const playerStopClose = (reason: 'stopped' | 'navigate' = 'stopped') => runPlayer('player_stop_close', { reason });
+// Physical pixels of the main window's client area (ui-scale's toPhysicalRect).
 export const playerSetVideoBounds = (x: number, y: number, width: number, height: number) =>
   runPlayer('player_set_video_bounds', { x, y, width, height });
 export const playerSetFullscreen = (fullscreen: boolean) => runPlayer('player_set_fullscreen', { fullscreen });

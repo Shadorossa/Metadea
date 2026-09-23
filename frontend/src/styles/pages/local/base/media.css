@@ -1,7 +1,7 @@
+/* No top rule: the section title carries its own side lines. */
 .local-steam-media {
   margin-top: 1rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--border-color);
 }
 
 .local-steam-media-tabs {

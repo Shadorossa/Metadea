@@ -1,15 +1,17 @@
 import { useEffect, type RefObject } from 'react';
 import { playerSetVideoBounds } from '../../../lib/tauri/player';
+import { toPhysicalRect } from '../../../lib/ui-scale/ui-scale';
 
-// Reports where the video area sits inside the main window (CSS px of the
-// WebView, which Rust scales to physical px at the moment of the call) so
-// the native surface and the overlay window follow it. Coalesced to one
-// report per animation frame; a zero rect on unmount hides both.
+// Reports where the video area sits inside the main window, in physical px
+// (the CSS rect × devicePixelRatio, which covers both the monitor scale and
+// the Interface scale zoom), so the native surface and the overlay window
+// follow it. Coalesced to one report per animation frame; a zero rect on
+// unmount hides both.
 //
 // Triggers: the element resizing (ResizeObserver), the window resizing or
-// scrolling, and a DPR change (moving the window to another monitor keeps
-// the CSS rect identical, so nothing else would fire — but Rust must
-// re-scale it). Rust's own window-event hook covers the OS-side move.
+// scrolling, and a DPR change (moving the window to another monitor or
+// changing the Interface scale can keep the CSS rect identical, so nothing
+// else would fire). Rust's own window-event hook covers the OS-side move.
 export function useVideoBounds(ref: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const element = ref.current;
@@ -21,11 +23,11 @@ export function useVideoBounds(ref: RefObject<HTMLElement | null>) {
     const report = () => {
       frame = null;
       const rect = element.getBoundingClientRect();
-      const x = Math.round(rect.left);
-      const y = Math.round(rect.top);
-      const width = Math.round(rect.width);
-      const height = Math.round(rect.height);
-      const key = `${x},${y},${width},${height}@${window.devicePixelRatio}`;
+      const { x, y, width, height } = toPhysicalRect(
+        { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+        window.devicePixelRatio,
+      );
+      const key = `${x},${y},${width},${height}`;
       if (key === last) return;
       last = key;
       playerSetVideoBounds(x, y, width, height).catch(err => console.error('Video bounds update failed', err));

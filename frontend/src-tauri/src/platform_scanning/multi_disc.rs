@@ -550,10 +550,13 @@ pub fn stack_multi_disc(files: Vec<RomFile>, fs: &dyn DiscFs) -> StackResult {
             }
         }
         if discs.len() < 2 {
-            // A playlist listing a single scanned disc: both stay what they
-            // were, two plain entries.
+            // A playlist listing a single scanned disc is that disc's game,
+            // not a second one: the disc stays the entry and the playlist
+            // (a card of its own before) folds into it.
+            if let (Some(disc), Some(playlist)) = (discs.first(), set.playlist_file.as_ref()) {
+                result.absorbed.entry(disc.path.clone()).or_default().push(playlist.path.clone());
+            }
             singles.extend(discs);
-            singles.extend(set.playlist_file);
             continue;
         }
         result.sets.push(DiscSet {
@@ -846,5 +849,15 @@ mod tests {
         assert!(result.sets.is_empty());
         assert_eq!(result.singles.len(), 3);
         assert!(fs.files.borrow().is_empty(), "no playlist written");
+    }
+
+    #[test]
+    fn a_playlist_for_a_single_disc_is_that_disc_not_a_second_game() {
+        let fs = MemFs::with(&[("/r/Crash Bandicoot.m3u", "Crash Bandicoot (USA).chd\n")]);
+        let files = vec![rom("/r/Crash Bandicoot (USA).chd"), rom("/r/Crash Bandicoot.m3u")];
+        let result = stack_multi_disc(files, &fs);
+        assert!(result.sets.is_empty());
+        assert_eq!(names(&result.singles), vec!["Crash Bandicoot (USA).chd"]);
+        assert_eq!(result.absorbed.get("/r/Crash Bandicoot (USA).chd").unwrap(), &vec!["/r/Crash Bandicoot.m3u".to_string()]);
     }
 }

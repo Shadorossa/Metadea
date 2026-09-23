@@ -6,7 +6,7 @@ html[data-theme="pipboy"], [data-theme="pipboy"] {
 
   --text-main: #1dff73; /* High-brightness phosphor green */
   --text-muted: #11ab4d; /* Muted phosphor green */
-  --text-dim: #0b7032; /* Low-brightness green */
+  --text-dim: #0e8a3f; /* Low-brightness green (kept readable: ~3.8:1 on cards) */
 
   --border-color: #11ab4d;
 
@@ -157,9 +157,11 @@ html[data-theme="pipboy"]::after {
 }
 
 /* Typography Terminal dividers */
-[data-theme="pipboy"] h2,
-[data-theme="pipboy"] h3,
-[data-theme="pipboy"] .section-label {
+/* Page headings only: dialog, Big Picture, player and ambient titles keep
+   their own layout (a rule under them clashed with close buttons and art). */
+[data-theme="pipboy"] h2:not(:where([role="dialog"], dialog, .bp-shell, .player-overlay, .ambient-screen) *),
+[data-theme="pipboy"] h3:not(:where([role="dialog"], dialog, .bp-shell, .player-overlay, .ambient-screen) *),
+[data-theme="pipboy"] .section-label:not(:where([role="dialog"], dialog, .bp-shell, .player-overlay, .ambient-screen) *) {
   border-bottom: 2px dashed var(--border-color) !important;
   font-family: 'Consolas', 'Courier New', Courier, monospace !important;
   color: var(--text-main) !important;

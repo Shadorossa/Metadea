@@ -3,9 +3,8 @@ import type { MediaEpisode } from '../../../lib/tauri';
 import type { MediaPageData } from '../../../lib/media/types';
 import { fillerKindOf, seasonEpisodeToAbsolute, type FillerInfo, type FillerKind } from '../../../lib/anime/filler';
 import {
-  FILLER_INFO_CHANGED_EVENT, loadAllFillerInfo, loadFillerIndex, resolveChainFillerInfo, type ChainFillerState,
+  FILLER_INFO_CHANGED_EVENT, loadAllFillerInfo, resolveChainFillerInfo, type ChainFillerState,
 } from '../../../lib/anime/filler-data';
-import { isHideFillerEpisodesEnabled, setHideFillerEpisodesEnabled } from '../../../lib/storage/preferences';
 import { useKeyedState } from '../../shared/hooks/useKeyedState';
 
 interface Params {
@@ -22,17 +21,10 @@ export interface EpisodeFillerView {
   applies: boolean;
   /** This entry's filler info (link + fetched show). */
   ownInfo: FillerInfo | undefined;
-  /** This entry's stored link slug even while its show has no data. */
-  ownSlug: string | undefined;
   state: ChainFillerState | null;
-  /** The show index could be loaded (the link control is useful). */
-  indexAvailable: boolean;
-  airing: boolean;
   kindOf: (ep: MediaEpisode) => FillerKind | null;
-  /** Whether any listed episode is filler (the "Hide filler" toggle). */
+  /** Whether any listed episode is filler (the attribution line). */
   anyFiller: boolean;
-  hideFiller: boolean;
-  setHideFiller: (hide: boolean) => void;
 }
 
 function isAiring(data: MediaPageData | null): boolean {
@@ -41,15 +33,13 @@ function isAiring(data: MediaPageData | null): boolean {
 }
 
 // Episodes-section filler state for the media page: the chain's links and
-// show data (auto-linked on the first visit), the per-episode category and
-// the persisted "Hide filler" toggle. Badge rendering stays in
-// EpisodeFillerBadge / FillerEpisodesToolbar.
+// show data (auto-linked on the first visit) and the per-episode category.
+// Badge rendering stays in EpisodeFillerBadge; the entry editor also calls
+// this for the auto-link.
 export function useEpisodeFiller({ currentId, previewMode, data, episodeOffset }: Params): EpisodeFillerView {
   const applies = !previewMode && !!currentId && (data?.type === 'anime' || data?.type === 'series');
   const [state, setState] = useKeyedState<ChainFillerState | null>(currentId, null);
-  const [indexAvailable, setIndexAvailable] = useKeyedState(currentId, false);
   const [version, setVersion] = useState(0);
-  const [hideFiller, setHideFillerState] = useState(() => typeof window !== 'undefined' && isHideFillerEpisodesEnabled());
   const airing = isAiring(data);
 
   useEffect(() => {
@@ -68,21 +58,12 @@ export function useEpisodeFiller({ currentId, previewMode, data, episodeOffset }
     // page (saga completion, the editor).
     void loadAllFillerInfo();
     resolveChainFillerInfo(currentId, { titles: titlesKey.split('\n').filter(Boolean), totalCount, airing, format })
-      .then(resolved => {
-        if (cancelled) return;
-        setState(resolved);
-        if (!resolved.infos.has(currentId) && !resolved.pendingSlugs.has(currentId)) {
-          void loadFillerIndex().then(index => { if (!cancelled) setIndexAvailable(index.length > 0); });
-        } else {
-          setIndexAvailable(true);
-        }
-      })
+      .then(resolved => { if (!cancelled) setState(resolved); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [applies, currentId, titlesKey, totalCount, airing, format, version, setState, setIndexAvailable]);
+  }, [applies, currentId, titlesKey, totalCount, airing, format, version, setState]);
 
   const ownInfo = state?.infos.get(currentId);
-  const ownSlug = ownInfo?.slug ?? state?.pendingSlugs.get(currentId);
 
   const seasons = data?.seasons;
   const seasonCounts = useMemo(
@@ -112,10 +93,5 @@ export function useEpisodeFiller({ currentId, previewMode, data, episodeOffset }
 
   const anyFiller = useMemo(() => !!state && [...state.infos.values()].some(info => info.fillerAbsolute.length > 0), [state]);
 
-  const setHideFiller = useCallback((hide: boolean) => {
-    setHideFillerState(hide);
-    setHideFillerEpisodesEnabled(hide);
-  }, []);
-
-  return { applies, ownInfo, ownSlug, state, indexAvailable, airing, kindOf, anyFiller, hideFiller, setHideFiller };
+  return { applies, ownInfo, state, kindOf, anyFiller };
 }

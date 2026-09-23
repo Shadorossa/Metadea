@@ -14,6 +14,12 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 - Every Fixed bullet states its cause: `- <summary> — Cause: <cause>`.
 - English, for end users: one short line per bullet, related items merged.
 
+## [Unreleased]
+
+### Improved
+
+- **Interface:** Interface scales proportionally on smaller screens (Settings › Preferences › Interface scale).
+
 ## [0.7.1] - 2026-09-23
 
 ### Highlights

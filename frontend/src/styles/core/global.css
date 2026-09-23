@@ -1,8 +1,15 @@
 
 /* ── Design tokens ──────────────────────────────────────────────────────── */
 :root {
-  --bg-base: #07070e;
+  /* Every bundled theme is dark: native widgets (the open <select> list,
+     number spinners, time/date pickers, scrollbars) follow it instead of
+     rendering the light OS look. The E-Ink reader opts back into light. */
+  color-scheme: dark;
+
   --bg-primary: #07070e;
+  /* Follows the active theme's page colour (themes only set --bg-primary);
+     big picture, jukebox, ambient, share-image and the navbar tint read it. */
+  --bg-base: var(--bg-primary);
   --bg-elevated: #13131f;
   --bg-card: #191927;
   --bg-card-rgb: 25 25 39;
@@ -66,8 +73,19 @@
   box-sizing: border-box;
 }
 
-input[type="checkbox"] {
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+progress {
   accent-color: var(--accent);
+}
+
+/* The open list of a native <select> ignores the closed box's styling:
+   give its options the theme's opaque page colour and text. */
+select option,
+select optgroup {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
 }
 
 .info-indicator {

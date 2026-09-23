@@ -99,13 +99,13 @@
 
 .lists-filter-btn--active {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   opacity: 1;
 }
 
 .lists-filter-btn--active:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   opacity: 0.9;
 }
 

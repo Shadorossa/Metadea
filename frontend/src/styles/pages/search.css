@@ -161,7 +161,7 @@
 .search-page-wrapper .search-input::placeholder { color: var(--text-muted); }
 .search-page-wrapper .search-input:focus {
   border-color: var(--accent) !important;
-  background: rgba(192, 132, 252, 0.03) !important;
+  background: rgb(var(--accent-rgb) / 0.03) !important;
 }
 
 /* Botones a la derecha del input */
@@ -768,7 +768,7 @@
 .card-media-placeholder {
   position: absolute;
   inset: 0;
-  background: linear-gradient(160deg, var(--bg-card), rgba(192, 132, 252, 0.08));
+  background: linear-gradient(160deg, var(--bg-card), rgb(var(--accent-rgb) / 0.08));
 }
 
 .card-title {

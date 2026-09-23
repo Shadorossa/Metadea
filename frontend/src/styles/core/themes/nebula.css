@@ -1,5 +1,11 @@
 html[data-theme="nebula"], [data-theme="nebula"], html:not([data-theme]) {
   --bg-primary: #07070e;
+  /* global.css's base muted/dim sat at ~2.7:1 and ~1.4:1 on the cards, so
+     every heading, calendar number and hint drawn with them (home cards,
+     settings hints, footer) was unreadable. Same violet hue, lifted to the
+     contrast newspaper-dark's pair has. */
+  --text-muted: #8484a8;
+  --text-dim: #68688f;
 }
 
 [data-theme="nebula"] #app-bg,

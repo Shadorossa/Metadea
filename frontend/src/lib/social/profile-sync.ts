@@ -10,7 +10,7 @@ import { getAuthToken, getUserInfo, saveUserInfo, readUserJourneyTyped, getAllLi
 import { STORAGE_KEYS } from '../storage/storage-keys';
 import { getImage } from '../storage/images';
 import { decodeJwtPayload } from '../profile/media-type-label';
-import { readCoverPreferences } from '../media/cover-preferences';
+import { getCoverPreference, readCoverPreferences } from '../media/cover-preferences';
 import { getCharacterReactions } from '../tauri/character-reactions';
 import { getYearlyBingo, type YearlyBingoData } from '../tauri/yearly-bingo';
 import { getCachedLibraryAndCatalog, getCachedMediaRelations } from '../profile/library-data-cache';
@@ -23,6 +23,7 @@ import {
   buildCharacterReactionsPayload, buildBingoPayload,
   type LibraryPayloadItem, type JourneyPayloadEvent, type CharacterReactionsPayload, type BingoPayloadYear,
 } from './profile-sync-payload';
+import { getCatalogMainCover } from '../tauri/catalog';
 
 export const PROFILE_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_ACTIVITY_ENTRIES = 30;
@@ -110,7 +111,16 @@ async function compileWebProfile(
   try {
     const [{ items, catalog }, relations] = await Promise.all([getCachedLibraryAndCatalog(), getCachedMediaRelations()]);
     if (items.length === 0 && library.length > 0) return null;
-    return buildWebProfileSummary({ items, catalog, relations, favorites, journey });
+    const summary = buildWebProfileSummary({ items, catalog, relations, favorites, journey });
+    // Visitors see each work's main cover, not the owner's custom pick
+    // (the cached catalog carries the pick; lib/media/public-cover.ts).
+    const preferences = readCoverPreferences();
+    summary.works = await Promise.all(summary.works.map(async work => {
+      if (!getCoverPreference(work.external_id, preferences)) return work;
+      const main = await getCatalogMainCover(work.external_id).catch(() => null);
+      return { ...work, cover_url: main && /^https?:\/\//.test(main) ? main : null };
+    }));
+    return summary;
   } catch {
     return null;
   }

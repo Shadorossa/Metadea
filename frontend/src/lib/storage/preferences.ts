@@ -278,16 +278,3 @@ export function setAmbientJukeboxEnabled(enabled: boolean): void {
   writeAmbientSetting(STORAGE_KEYS.ambientJukebox, enabled.toString());
 }
 
-// Media page episodes' "Hide filler" toggle (AnimeFillerList data, see
-// lib/anime/filler.ts). Mixed canon/filler episodes are never hidden.
-export function isHideFillerEpisodesEnabled(): boolean {
-  return readStoredFlag(STORAGE_KEYS.hideFillerEpisodes, false);
-}
-
-export function setHideFillerEpisodesEnabled(enabled: boolean): void {
-  try {
-    localStorage.setItem(STORAGE_KEYS.hideFillerEpisodes, enabled.toString());
-  } catch {
-    // Storage unavailable: the toggle still applies for this visit.
-  }
-}

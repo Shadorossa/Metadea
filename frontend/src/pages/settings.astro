@@ -148,6 +148,7 @@ const version = pkg.version;
   import { initActivitySettings } from "../components/settings/mount/activity";
   import { initDualRating } from "../components/settings/mount/dual-rating";
   import { initLanguageSwitcher } from "../components/settings/mount/language";
+  import { initUiScaleSetting } from "../components/settings/mount/ui-scale";
   import { initBio } from "../components/settings/mount/bio";
   import { initWebProfile } from "../components/settings/mount/web-profile";
   import { initUpdater } from "../components/settings/mount/updater";
@@ -245,6 +246,7 @@ const version = pkg.version;
     initActivitySettings(showToast);
     initDualRating(showToast);
     initLanguageSwitcher();
+    initUiScaleSetting();
     initBio(showToast);
     initWebProfile(showToast);
 

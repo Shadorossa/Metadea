@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../shared/hooks/useOwnerGate';
 import { isRepoOwner } from '../../lib/github/ownership';
@@ -12,6 +12,8 @@ import { CharactersTab } from './tabs/CharactersTab';
 import { GithubFilesTab } from './tabs/GithubFilesTab';
 import { EpisodesTab } from './tabs/EpisodesTab';
 import { AddWorkTab } from './tabs/AddWorkTab';
+import { useHydrated } from '../shared/hooks/useHydrated';
+import { getT } from '../../i18n/runtime';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
@@ -21,8 +23,15 @@ interface Props {
 // data and stays mounted while hidden (rendering nothing), so queries and
 // loaded lists survive switching between tabs and every local list starts
 // loading right away, without waiting for the owner gate.
-export function CatalogAdminPanel({ i18n }: Props) {
+export function CatalogAdminPanel({ i18n: staticStrings }: Props) {
   const gate = useOwnerGate();
+  // Runtime language once hydrated; the static props are the build locale.
+  const hydrated = useHydrated();
+  const i18n = useMemo<Props['i18n']>(() => {
+    if (!hydrated) return staticStrings;
+    const rt = getT();
+    return { media: rt.media, discord: rt.discord, admin: rt.admin };
+  }, [hydrated, staticStrings]);
   const t = i18n.admin;
 
   const [source, setSource] = useState<Source>('local');

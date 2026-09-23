@@ -72,6 +72,26 @@
   opacity: 1;
 }
 
+/* Scrolls (wheel/touch/keyboard) without a visible bar: the achievements
+   tab makes the panel taller than the window. !important because themes
+   restyle every scrollbar (e.g. newspaper-dark's global scrollbar-width). */
+.local-game-detail-content {
+  scrollbar-width: none !important;
+}
+
+.local-game-detail-content::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+}
+
+/* The panel is a scrolling flex column: without this, a tall section below
+   (the achievements grid) made flex shrink the summary and the duration
+   block, cutting the synopsis mid-line. Sections keep their height and the
+   panel scrolls instead. */
+.local-game-detail-content > * {
+  flex-shrink: 0;
+}
+
 .local-game-detail-summary {
   font-size: 0.82rem;
   line-height: 1.6;

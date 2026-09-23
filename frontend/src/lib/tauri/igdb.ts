@@ -132,9 +132,13 @@ export interface MetadataBatchProgress {
   current_name: string;
 }
 
-export async function igdbFetchMetadataBatch(games: IgdbBatchGameRequest[]): Promise<IgdbBatchGameResult[]> {
+// Straight `invoke`, not tauriCmd: an empty fallback here read as "nothing
+// to do" and the modal closed without a word; outside Tauri this rejects
+// instead, and runMetadataFetch shows the error. retryNotFound ignores the
+// not-found memo ("Retry skipped games").
+export async function igdbFetchMetadataBatch(games: IgdbBatchGameRequest[], retryNotFound = false): Promise<IgdbBatchGameResult[]> {
   if (games.length === 0) return [];
-  return tauriCmd<IgdbBatchGameResult[]>('igdb_fetch_metadata_batch', [], { games });
+  return invoke<IgdbBatchGameResult[]>('igdb_fetch_metadata_batch', { games, retryNotFound });
 }
 
 export async function igdbCancelMetadataBatch(): Promise<void> {

@@ -229,9 +229,9 @@ img[data-textless='poster'] {
 
 .btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
-.btn--primary:hover { background: #a855f7; transform: translateY(-1px); }
+.btn--primary:hover { background: color-mix(in srgb, var(--accent) 86%, #000); transform: translateY(-1px); }
 
 .btn--secondary {
   background: var(--bg-elevated);
@@ -346,7 +346,7 @@ img[data-textless='poster'] {
 
 .list-btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   border-color: var(--accent);
 }
 

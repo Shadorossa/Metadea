@@ -237,7 +237,7 @@
 .meta-type-option.selected .meta-type-check {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .meta-type-text {
@@ -270,7 +270,7 @@
   background: var(--accent);
   border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;

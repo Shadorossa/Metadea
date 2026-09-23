@@ -2,14 +2,14 @@
 // loads the anime's PREQUEL/SEQUEL chain links in one call, auto-links the
 // chain on the first visit (index match → fetch the show → verify offsets →
 // store), and lets Rust refresh a linked show when it's due (airing: weekly;
-// finished: never). Manual link edits live here too. The library-wide map
+// finished: never). The library-wide map
 // the stats read synchronously is ./filler-store.ts.
 //
 // Everything degrades to "no data": an empty index, a backoff or offline
 // just hides the filler UI.
 
 import {
-  ensureFillerShow, getFillerIndex, getFillerInfo, removeFillerLink, setFillerLink,
+  ensureFillerShow, getFillerIndex, getFillerInfo, setFillerLink,
   type FillerIndexShow,
 } from '../tauri/anime-filler';
 import type { AnimeChainRow } from '../tauri/media-page';
@@ -172,34 +172,3 @@ export async function resolveChainFillerInfo(externalId: string, self: ResolveFi
   for (const row of infoRows) if (!row.show) pendingSlugs.set(row.link.externalId, row.link.slug);
   return { entries, infos, pendingSlugs };
 }
-
-/** Offset suggested when the user picks `slug` by hand: where the earlier
- *  chain entries already linked to the same show end. */
-export function suggestFillerOffset(state: ChainFillerState, externalId: string, slug: string): number {
-  let offset = 0;
-  for (const entry of state.entries) {
-    if (entry.externalId === externalId) break;
-    const info = state.infos.get(entry.externalId);
-    if (info?.slug === slug) offset = info.episodeOffset + entry.totalCount;
-  }
-  return offset;
-}
-
-export async function saveManualFillerLink(externalId: string, slug: string, episodeOffset: number, airing: boolean): Promise<void> {
-  await setFillerLink({ externalId, slug, episodeOffset: Math.max(0, Math.floor(episodeOffset)), confidence: 1, manual: true });
-  await ensureFillerShow(slug, airing);
-  notifyFillerInfoChanged();
-}
-
-export async function clearFillerLink(externalId: string): Promise<void> {
-  await removeFillerLink(externalId);
-  notifyFillerInfoChanged();
-}
-
-/** The popover's manual "Refresh" (a finished show is otherwise never
- *  refetched). Rust still honours the day-long backoff. */
-export async function refreshFillerShow(slug: string, airing: boolean): Promise<void> {
-  await ensureFillerShow(slug, airing, true);
-  notifyFillerInfoChanged();
-}
-

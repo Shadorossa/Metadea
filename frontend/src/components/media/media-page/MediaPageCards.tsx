@@ -12,7 +12,7 @@ import { SpoilerChip } from '../../spoilers/SpoilerShield';
 import { getT } from '../../../i18n/runtime';
 import { interpolate } from '../../../lib/shared/text/interpolate';
 import type { FillerKind } from '../../../lib/anime/filler';
-import { EpisodeFillerBadge, fillerCardClass } from './EpisodeFillerBadge';
+import { EpisodeFillerBadge, fillerCardClass, fillerCardTitle } from './EpisodeFillerBadge';
 
 // `onRevealSpoiler` is set while the spoiler shield hides this episode (past
 // the user's progress): the still is blurred and the title becomes a plain
@@ -24,7 +24,7 @@ export const EpisodeCard = memo(function EpisodeCard({ ep, onRevealSpoiler, fill
     ? interpolate(getT().spoilers.episode_placeholder, { episode: episodeLabel })
     : ep.name ?? `#${episodeLabel}`;
   return (
-    <div className={`media-relation-card media-relation-card--static${fillerCardClass(fillerKind)}`}>
+    <div className={`media-relation-card media-relation-card--static${fillerCardClass(fillerKind)}`} title={fillerCardTitle(fillerKind)}>
       <EpisodeFillerBadge kind={fillerKind} />
       <div className="media-relation-bg-layer media-episode-bg-layer">
         {ep.cover_url && <img className={onRevealSpoiler ? 'spoiler-blur' : undefined} src={ep.cover_url} alt="" loading="lazy" decoding="async" />}
@@ -36,7 +36,7 @@ export const EpisodeCard = memo(function EpisodeCard({ ep, onRevealSpoiler, fill
           <span className="media-relation-title">{title}</span>
         </div>
       </div>
-      {onRevealSpoiler && <SpoilerChip onReveal={onRevealSpoiler} className="spoiler-shield-chip--corner" />}
+      {onRevealSpoiler && <SpoilerChip onReveal={onRevealSpoiler} className="spoiler-shield-chip--episode" />}
     </div>
   );
 });

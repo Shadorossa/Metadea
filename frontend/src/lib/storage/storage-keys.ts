@@ -55,8 +55,6 @@ export const STORAGE_KEYS = {
   emulatorsConfig: 'emulators_config',
   romAutoRename: 'metadea_local_roms_auto_rename',
   unifySeasonsEnabled: 'metadea_unify_seasons_enabled',
-  // Media page episodes: "Hide filler" (lib/anime/filler.ts).
-  hideFillerEpisodes: 'metadea_hide_filler_episodes',
   unifySeasonsHighestRatedCover: 'metadea_unify_seasons_highest_rated_cover',
   completedMangaIssueCover: 'metadea_completed_manga_issue_cover',
   // Settings > Preferences > Library: show textless covers where one exists
@@ -115,4 +113,10 @@ export const STORAGE_KEYS = {
   playerTrackMemory: 'metadea_player_track_memory',
   // Clip chooser's last answer, the next export's default (lib/player/clip-choice.ts).
   playerClipLastChoice: 'metadea_player_clip_last_choice',
+  // Interface scale (lib/ui-scale/): the Settings › Preferences choice
+  // ('auto' when missing), the zoom applied to the main window (the player
+  // overlay copies it) and, in sessionStorage, the zoom of this webview.
+  uiScale: 'metadea_ui_scale',
+  uiScaleMainZoom: 'metadea_ui_scale_main_zoom',
+  uiScaleWebviewZoom: 'metadea_ui_scale_webview_zoom',
 } as const;

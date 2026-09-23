@@ -342,6 +342,11 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   background: var(--bg-primary);
 }
 
+/* The picker tick is stroked in currentColor: keep it light on this badge. */
+[data-theme="newspaper-dark"] .theme-card-check {
+  color: var(--text-main);
+}
+
 /* Standalone bundle favorite toggle (media page cover) — square vintage
    badge instead of the default circular glass button, matching every other
    overlay badge in this theme. */

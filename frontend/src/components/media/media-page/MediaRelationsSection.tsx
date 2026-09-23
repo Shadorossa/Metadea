@@ -43,7 +43,7 @@ interface Props {
   /** Spoiler shield answers for this page (absent: nothing hidden). */
   spoilers?: MediaSpoilers;
   /** AnimeFillerList data for the episodes tab (absent: no badges). */
-  filler?: { view: EpisodeFillerView; toolbar: ReactNode; footer: ReactNode };
+  filler?: { view: EpisodeFillerView; footer: ReactNode };
 }
 
 export function MediaRelationsSection({
@@ -242,7 +242,6 @@ export function MediaRelationsSection({
             episodes.length > 0 && (() => {
               const regularEps = episodes
                 .filter(e => e.episode_number > 0)
-                .filter(e => !filler?.view.hideFiller || filler.view.kindOf(e) !== 'filler')
                 .sort((a, b) => a.episode_number - b.episode_number);
               const specialEps = episodes
                 .filter(e => e.episode_number < 0)
@@ -264,7 +263,6 @@ export function MediaRelationsSection({
 
               return (
                 <>
-                  {filler?.toolbar}
                   <div className="media-relations-grid">
                     {pageEpisodes.map(ep => (
                       <EpisodeCard

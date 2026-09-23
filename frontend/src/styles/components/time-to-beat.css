@@ -147,3 +147,80 @@
 .ttb-progress--done .ttb-progress-remaining {
   color: var(--color-completed, var(--accent));
 }
+
+/* ── Local game panel: integrated like the panel's other sections ────────
+   No card: a lined section title ("DURATION ———— IGDB", same rule as
+   "Screenshots") and three stats split by thin dividers. */
+.ttb-block--local {
+  gap: 0.65rem;
+  margin: 1rem 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.ttb-block--local .ttb-header {
+  gap: 0.75rem;
+}
+
+.ttb-block--local .ttb-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.ttb-block--local .ttb-title::before,
+.ttb-block--local .ttb-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.ttb-block--local .ttb-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 0;
+}
+
+.ttb-block--local .ttb-pill {
+  min-width: 0;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.5rem;
+  border: 0;
+  border-left: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  text-align: center;
+}
+
+.ttb-block--local .ttb-pill:first-child {
+  border-left: 0;
+}
+
+.ttb-block--local .ttb-pill-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.ttb-block--local .ttb-pill-value {
+  font-size: 1.05rem;
+}
+
+.ttb-block--local .ttb-pill--main .ttb-pill-value {
+  color: var(--accent);
+}
+
+.ttb-block--local.ttb-block--loading {
+  gap: 0.5rem;
+}

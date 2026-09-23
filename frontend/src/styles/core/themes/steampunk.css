@@ -6,7 +6,7 @@ html[data-theme="steampunk"], [data-theme="steampunk"] {
 
   --text-main: #dfc2a1; /* Oro viejo */
   --text-muted: #b49b7f; /* Latón pulido */
-  --text-dim: #7d6550;
+  --text-dim: #8a735c;
 
   --border-color: #8c6239; /* Cobre */
 
@@ -15,6 +15,8 @@ html[data-theme="steampunk"], [data-theme="steampunk"] {
   --accent-soft: rgba(212, 163, 115, 0.08);
   --accent-border: #a67c52;
   --accent-glow: rgba(212, 163, 115, 0.35);
+  /* Light accent: text on accent fills (primary buttons, active pills) goes dark. */
+  --text-on-accent: var(--bg-primary);
 
   --radius-sm: 0px;
   --radius-md: 4px;

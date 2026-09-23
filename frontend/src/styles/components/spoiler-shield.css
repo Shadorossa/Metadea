@@ -40,9 +40,11 @@ img.spoiler-blur,
   gap: 0.15rem;
   max-width: calc(100% - 1rem);
   padding: 0.3rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-medium);
   border-radius: 999px;
-  background: #3f3f46;
+  /* Theme-tinted neutral (was a fixed zinc grey that clashed with every
+     non-Nebula palette); --bg-primary keeps it opaque on glass themes. */
+  background: color-mix(in srgb, var(--text-muted) 24%, var(--bg-primary));
   color: var(--text-main);
   font-size: 0.72rem;
   font-weight: 600;
@@ -64,6 +66,19 @@ img.spoiler-blur,
   font-size: 0.66rem;
 }
 
+/* Episode cards: bottom-right and square like the card itself — the top-right
+   corner holds the "#N" ribbon. */
+.spoiler-shield-chip--episode {
+  top: auto;
+  left: auto;
+  right: 0.45rem;
+  bottom: 0.45rem;
+  transform: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.66rem;
+}
+
 .spoiler-shield-chip-label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -74,7 +89,7 @@ img.spoiler-blur,
 }
 
 .spoiler-shield-chip:hover {
-  background: #52525b;
+  background: color-mix(in srgb, var(--text-muted) 34%, var(--bg-primary));
   border-color: var(--accent-border);
 }
 
@@ -92,7 +107,7 @@ img.spoiler-blur,
   max-width: 100%;
   padding: 0 4px;
   border-radius: 4px;
-  background: #3f3f46;
+  background: color-mix(in srgb, var(--text-muted) 30%, var(--bg-primary));
   color: transparent !important;
   cursor: pointer;
   user-select: none;
@@ -104,7 +119,7 @@ img.spoiler-blur,
 }
 
 .spoiler-shield-inline:hover {
-  background: #52525b;
+  background: color-mix(in srgb, var(--text-muted) 40%, var(--bg-primary));
 }
 
 /* While the library data is still loading, a synopsis/biography that might

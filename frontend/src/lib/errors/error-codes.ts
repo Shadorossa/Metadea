@@ -112,6 +112,10 @@ export const ERROR_CODES = [
   'E_GAME_PAUSE_SAVE_STATE',
   'E_GAME_PAUSE_SETTINGS',
   'E_GAME_PAUSE_FAILED',
+  'E_IGDB_KEYS_MISSING',
+  'E_IGDB_AUTH',
+  'E_IGDB_NETWORK',
+  'E_METADATA_DB_BUSY',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

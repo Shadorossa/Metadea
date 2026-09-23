@@ -76,6 +76,14 @@ export async function getCatalogEntry(externalId: string): Promise<MediaCatalogE
   return entry ? { ...entry, cover_url: getPreferredCover(entry.external_id, entry.cover_url) } : null;
 }
 
+/** The catalog row's own cover_url, without the user's custom-cover
+ *  substitution getCatalogEntry applies — for what other people see
+ *  (lib/media/public-cover.ts). */
+export async function getCatalogMainCover(externalId: string): Promise<string | null> {
+  const entry = await tauriCmd<MediaCatalogEntry | null>('get_catalog_entry', null, { externalId });
+  return entry?.cover_url ?? null;
+}
+
 // Used to filter a live API fetch's raw relations/recommendations — the
 // provider has no idea a related title was blocked (hidden) locally via the
 // collaborative-catalog editor, so this must be checked client-side before

@@ -134,9 +134,9 @@ export function EpubReaderView({
   useEffect(() => {
     if (loadState !== 'ready') return;
     const coverUrl = cover && cover.startsWith('http') ? toMediumCover(cover) : undefined;
-    const timer = setTimeout(() => setReadingPresence({ title, pageLabel: percentLabel, coverUrl, startTime: readingStartRef.current }), 800);
+    const timer = setTimeout(() => setReadingPresence({ title, externalId, pageLabel: percentLabel, coverUrl, startTime: readingStartRef.current }), 800);
     return () => clearTimeout(timer);
-  }, [loadState, percentLabel, title, cover]);
+  }, [loadState, percentLabel, title, cover, externalId]);
   useEffect(() => () => { clearReadingPresence(); }, []);
 
   const handleAddBookmark = async () => {

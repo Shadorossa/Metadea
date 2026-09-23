@@ -6,7 +6,7 @@ html[data-theme="cyberneon"], [data-theme="cyberneon"] {
 
   --text-main: #00f0ff; /* Cian láser */
   --text-muted: #ff0055; /* Magenta láser */
-  --text-dim: #73003c;
+  --text-dim: #c2185b; /* Readable dim magenta (the old #73003c was ~1.7:1) */
 
   --border-color: #ff0055;
 
@@ -15,6 +15,8 @@ html[data-theme="cyberneon"], [data-theme="cyberneon"] {
   --accent-soft: rgba(255, 255, 0, 0.08);
   --accent-border: #ffff00;
   --accent-glow: rgba(255, 255, 0, 0.5);
+  /* Light accent: text on accent fills (primary buttons, active pills) goes dark. */
+  --text-on-accent: var(--bg-primary);
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -32,7 +34,8 @@ body[data-theme="cyberneon"], html[data-theme="cyberneon"] body {
 
 /* ── Cyberneon Backdrop Grid ────────────────────────────── */
 
-#app-bg {
+/* Scoped: unscoped, this grid leaked under every other theme's backdrop. */
+[data-theme="cyberneon"] #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;

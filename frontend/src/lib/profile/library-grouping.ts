@@ -491,6 +491,9 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
   for (const item of ownedItems) {
     if (catalogMap.get(item.external_id)?.type !== 'anime') continue;
     if (!sagaGraph.has(item.external_id)) continue; // not part of any chain
+    // A planned season stays its own card under Planning: folding it into a
+    // watched/completed chain would hide it (or file a finished work there).
+    if (item.status === 'planning') continue;
     const comp = sagaGraph.find(item.external_id);
     const list = byComponent.get(comp) ?? [];
     list.push(item);

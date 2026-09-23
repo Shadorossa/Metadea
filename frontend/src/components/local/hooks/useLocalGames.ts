@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { debugScanInfo, type LocalGame } from '../../../lib/tauri';
 import { scanGamesWithSteam } from '../../../lib/local/steam-merge';
 import { romDisplayTitle } from '../../../lib/local/rom-name-parser';
+import { dedupeLocalGames, gameLinkKey } from '../../../lib/local/game-identity';
 import { takeRomDiscMergeSummary } from '../../../lib/tauri/roms';
 import { showToast } from '../../../lib/dom/toast';
 import { interpolateTranslation } from '../../../lib/i18n-dom/apply-translations';
@@ -25,13 +26,19 @@ export function useLocalGames() {
   // A plain load lets every launcher whose registry/manifests/folders are
   // unchanged answer from the Rust-side memo (scan_cache.rs); rescanGames
   // (the "Escanear de nuevo" button) always re-walks everything.
+  // Only the latest scan's answer lands: a reload fired while an earlier
+  // scan is still running (the ROM clean-up's rescan, a manual rescan)
+  // must not be overwritten by the older, pre-rename result arriving last.
+  const scanSeqRef = useRef(0);
   const scanWith = useCallback((force: boolean) => {
+    const seq = ++scanSeqRef.current;
     setGamesState('loading');
     setScanError(null);
     setDebugInfo(null);
     scanGamesWithSteam(force)
       .then(g => {
-        const list: LocalGame[] = withRomDisplayNames(Array.isArray(g) ? g : []);
+        if (seq !== scanSeqRef.current) return;
+        const list: LocalGame[] = dedupeLocalGames(withRomDisplayNames(Array.isArray(g) ? g : []));
         setGames(list);
         setGamesState(list.length === 0 ? 'empty' : 'done');
         // Old per-disc entries folded into their multi-disc set by this
@@ -45,6 +52,7 @@ export function useLocalGames() {
           .catch(() => {});
       })
       .catch((e: unknown) => {
+        if (seq !== scanSeqRef.current) return;
         setScanError(typeof e === 'string' ? e : String(e));
         setGamesState('empty');
       });
@@ -83,7 +91,7 @@ export function useLocalGames() {
     // without the visible flash in between).
     const scrollY = window.scrollY;
     flushSync(() => {
-      setGames(prev => prev.filter(g => !(g.launcher === launcher && (g.app_id ?? g.install_path ?? g.name) === linkKey)));
+      setGames(prev => prev.filter(g => !(g.launcher === launcher && gameLinkKey(g) === linkKey)));
     });
     window.scrollTo(0, scrollY);
   }, []);
@@ -97,7 +105,7 @@ export function useLocalGames() {
   // (launcher, app_id ?? install_path ?? name) identity as removeGame above.
   const relinkGame = useCallback((launcher: string, linkKey: string, externalId: string) => {
     setGames(prev => prev.map(g =>
-      g.launcher === launcher && (g.app_id ?? g.install_path ?? g.name) === linkKey
+      g.launcher === launcher && gameLinkKey(g) === linkKey
         ? { ...g, external_id: externalId }
         : g));
   }, []);

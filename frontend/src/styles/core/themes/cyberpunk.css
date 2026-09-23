@@ -16,6 +16,8 @@ html[data-theme="cyberpunk"], [data-theme="cyberpunk"] {
   --accent-border: #00ffff; /* Cyber Cyan accent */
   --accent-glow: rgba(252, 238, 10, 0.35);
   --accent-cyan-glow: rgba(0, 255, 255, 0.4);
+  /* Light accent: text on accent fills (primary buttons, active pills) goes dark. */
+  --text-on-accent: var(--bg-primary);
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -156,9 +158,11 @@ body[data-theme="cyberpunk"], html[data-theme="cyberpunk"] body {
 }
 
 /* Headers style with yellow border underneath */
-[data-theme="cyberpunk"] h2,
-[data-theme="cyberpunk"] h3,
-[data-theme="cyberpunk"] .section-label {
+/* Page headings only: dialog, Big Picture, player and ambient titles keep
+   their own layout (a rule under them clashed with close buttons and art). */
+[data-theme="cyberpunk"] h2:not(:where([role="dialog"], dialog, .bp-shell, .player-overlay, .ambient-screen) *),
+[data-theme="cyberpunk"] h3:not(:where([role="dialog"], dialog, .bp-shell, .player-overlay, .ambient-screen) *),
+[data-theme="cyberpunk"] .section-label:not(:where([role="dialog"], dialog, .bp-shell, .player-overlay, .ambient-screen) *) {
   border-bottom: 2px solid var(--border-color) !important;
   color: var(--text-main) !important;
   text-transform: uppercase;

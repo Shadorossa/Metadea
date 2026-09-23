@@ -1,0 +1,33 @@
+---
+// Interface scale (lib/ui-scale/): the whole UI rendered as the same design
+// shrunk on narrow windows, via the webview zoom. Goes in <head>: the inline
+// script applies the zoom before first paint; the module keeps it right on
+// resize, monitor DPI changes and Settings changes. Always place it after
+// <LocaleBootstrap>: that one's first-run migration reads any `metadea_*`
+// key as a pre-0.7 install, and this one writes such a key.
+import '../../styles/core/ui-scale-pending.css';
+import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
+import { buildUiScaleBootstrapScript } from '../../lib/ui-scale/ui-scale-bootstrap';
+
+interface Props {
+  /** 'follow-main' for the player overlay window (copies the main zoom). */
+  mode?: 'window' | 'follow-main';
+}
+
+const mode = Astro.props.mode ?? 'window';
+const bootstrap = buildUiScaleBootstrapScript({
+  preferenceKey: STORAGE_KEYS.uiScale,
+  mainZoomKey: STORAGE_KEYS.uiScaleMainZoom,
+  webviewZoomKey: STORAGE_KEYS.uiScaleWebviewZoom,
+  mode,
+});
+---
+
+<script is:inline set:html={bootstrap} />
+<meta name="metadea-ui-scale-mode" content={mode} />
+<script>
+  import { registerUiScale } from '../../lib/ui-scale/ui-scale-runtime';
+
+  const marker = document.querySelector<HTMLMetaElement>('meta[name="metadea-ui-scale-mode"]');
+  registerUiScale(marker?.content === 'follow-main' ? 'follow-main' : 'window');
+</script>

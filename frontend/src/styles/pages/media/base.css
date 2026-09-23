@@ -2,6 +2,17 @@
 
 .media-page {
   min-height: 100vh;
+  /* Side gutter of the body, the characters row and the banner badges. The
+     Interface scale (lib/ui-scale/) keeps windows from ~1290 px up at the
+     1920 px design; only narrower ones (or a fixed large scale) get here
+     with less room, where 15 % gutters left the columns cramped. */
+  --media-gutter: 15%;
+}
+
+@media (max-width: 1500px) {
+  .media-page {
+    --media-gutter: 6%;
+  }
 }
 
 
@@ -392,7 +403,7 @@
   display: grid;
   grid-template-columns: 1.1fr 3fr 0.9fr;
   gap: 2.5rem;
-  padding: 4.5rem 15% 2rem;
+  padding: 4.5rem var(--media-gutter, 15%) 2rem;
   align-items: start;
 }
 
@@ -1250,7 +1261,7 @@
   top: 4px;
   right: 4px;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 0.65rem;
   font-weight: 700;
   width: 18px;

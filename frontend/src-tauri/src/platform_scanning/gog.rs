@@ -150,6 +150,7 @@ fn scan_gog_games_registry() -> Vec<LocalGame> {
             discs: Vec::new(),
             disc_playlist: None,
             replaced_app_ids: Vec::new(),
+            aliases: Vec::new(),
         });
     }
 
@@ -221,6 +222,7 @@ pub(super) fn scan_gog_games() -> Vec<LocalGame> {
                                             discs: Vec::new(),
                                             disc_playlist: None,
                                             replaced_app_ids: Vec::new(),
+                                            aliases: Vec::new(),
                                         });
                                     }
                                 }
@@ -233,6 +235,6 @@ pub(super) fn scan_gog_games() -> Vec<LocalGame> {
         }
     }
 
-    games.dedup_by(|a, b| a.name == b.name);
+    super::common::dedupe_by_name(&mut games);
     games
 }

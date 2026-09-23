@@ -5,6 +5,7 @@
   "windows": ["player-overlay"],
   "permissions": [
     "core:default",
+    "core:webview:allow-set-webview-zoom",
     "allow-player-commands"
   ]
 }

@@ -45,9 +45,13 @@ import { MediaEditorMonthGrid } from './media-editor/MediaEditorMonthGrid';
 import { MediaEditorActions } from './media-editor/MediaEditorActions';
 import { MediaEditorStatusRow } from './media-editor/MediaEditorStatusRow';
 import { MediaEditorDateFields } from './media-editor/MediaEditorDateFields';
-import { FillerChoice } from './media-page/FillerChoice';
-import { useFillerInfo } from './hooks/useFillerInfo';
-import { completionEpisode, entryHasFiller } from '../../lib/anime/filler';
+import { useEpisodeFiller } from './media-page/useEpisodeFiller';
+import { useFillerInfoVersion } from './hooks/useFillerInfoVersion';
+import {
+  absoluteFromCanonProgress, completionEpisode, effectiveEpisodeTotal, effectiveProgress, entryHasFiller,
+  skipFillerFromWatchedWithFiller, skipsFiller, sumEffectiveSeasons,
+} from '../../lib/anime/filler';
+import { getLoadedFillerInfo } from '../../lib/anime/filler-store';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -580,17 +584,33 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return [];
   }, [isUnifiedAnime, isUnifiedEvent, animeSeasonChain, eventSeasons]);
 
+  // The general tab's totals: each season's effective total and progress
+  // (lib/anime/filler.ts) — a season whose "Watched with filler" is off
+  // counts its canon episodes only. Filler data comes from the library-wide
+  // map; `fillerVersion` re-derives once it loads or a link changes.
+  const fillerVersion = useFillerInfoVersion();
+  const generalSeasonSums = useMemo(() => {
+    void fillerVersion;
+    return sumEffectiveSeasons(unifiedSeasonIds.map(id => {
+      const log = entry.logs[id];
+      return {
+        entry: { skip_filler: log?.skipFiller ? 1 : 0, progress: log?.progress ?? 0 },
+        info: isUnifiedAnime ? getLoadedFillerInfo(id) : undefined,
+        total: seasonMetaMap[id]?.totalCount,
+      };
+    }));
+  }, [unifiedSeasonIds, entry.logs, isUnifiedAnime, seasonMetaMap, fillerVersion]);
+
   const generalTotalCount = useMemo(() => {
     if (!isUnifiedAnime && !isUnifiedEvent) return data.totalCount;
-    return unifiedSeasonIds.reduce((sum, id) => sum + (seasonMetaMap[id]?.totalCount ?? 0), 0);
-  }, [isUnifiedAnime, isUnifiedEvent, unifiedSeasonIds, seasonMetaMap, data.totalCount]);
+    return generalSeasonSums.total;
+  }, [isUnifiedAnime, isUnifiedEvent, generalSeasonSums, data.totalCount]);
 
   const generalProgress = useMemo(() => {
     if (!isUnifiedAnime && !isUnifiedEvent) return activeLog.progress;
-    const seasonsProgress = unifiedSeasonIds.reduce((sum, id) => sum + (entry.logs[id]?.progress ?? 0), 0);
     const hasSeasonLogs = unifiedSeasonIds.some(id => !!entry.logs[id]);
-    return seasonsProgress || (isUnifiedEvent && !hasSeasonLogs ? entry.logs[externalId]?.progress ?? 0 : 0);
-  }, [isUnifiedAnime, isUnifiedEvent, unifiedSeasonIds, entry.logs, activeLog.progress, externalId]);
+    return generalSeasonSums.progress || (isUnifiedEvent && !hasSeasonLogs ? entry.logs[externalId]?.progress ?? 0 : 0);
+  }, [isUnifiedAnime, isUnifiedEvent, unifiedSeasonIds, entry.logs, activeLog.progress, externalId, generalSeasonSums]);
 
   // The general tab's own "seasons watched" count — auto-derived from how
   // many chain members are actually marked completed, same read-only
@@ -615,13 +635,24 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return data.totalCount;
   }, [isUnifiedAnime, isUnifiedEvent, isGeneralTab, generalTotalCount, seasonMetaMap, entry.activeLogId, data.totalCount, activeSeriesSeasonInfo]);
 
-  // "Filler: Watched / Skipped" (lib/anime/filler.ts), for an anime log whose
-  // episodes include filler. Skipped completes the log at its last canon
-  // episode; the progress number itself stays the real one.
-  const fillerInfo = useFillerInfo(data.type === 'anime' && !isGeneralTab ? entry.activeLogId : null);
-  const skipFiller = activeLog.skipFiller ?? false;
-  const showFillerChoice = entryHasFiller(fillerInfo, activeTotalCount);
-  const completeAtEpisode = completionEpisode({ skip_filler: skipFiller ? 1 : 0 }, fillerInfo, activeTotalCount);
+  // "Watched with filler" (lib/anime/filler.ts), for an anime season whose
+  // episodes include filler. Unchecked (skip_filler = 1), the progress field
+  // counts canon/mixed episodes against the canon total and completes at the
+  // last canon episode; what is stored stays the real episode number, so
+  // AniList/MAL sync is unaffected. activeTotalCount stays the real total:
+  // the status/date shortcuts write it as the finished progress.
+  const fillerInfo = data.type === 'anime' && !isGeneralTab ? getLoadedFillerInfo(entry.activeLogId) : undefined;
+  // Auto-links the chain to AnimeFillerList when the editor opens on an
+  // anime whose page was never visited (the media page does the same).
+  useEpisodeFiller({ currentId: data.externalId, previewMode: data.type !== 'anime', data, episodeOffset: 0 });
+  const fillerEntry = { skip_filler: activeLog.skipFiller ? 1 : 0, progress: activeLog.progress };
+  const showFillerCheckbox = data.type === 'anime' && !isGeneralTab && entryHasFiller(fillerInfo, activeTotalCount);
+  const skippingFiller = !isGeneralTab && skipsFiller(fillerEntry, fillerInfo, activeTotalCount);
+  const displayTotalCount = skippingFiller ? effectiveEpisodeTotal(fillerEntry, fillerInfo, activeTotalCount) : activeTotalCount;
+  const displayProgress = isGeneralTab
+    ? generalProgress
+    : skippingFiller ? effectiveProgress(fillerEntry, fillerInfo, activeTotalCount) : activeLog.progress;
+  const completeAtEpisode = completionEpisode(fillerEntry, fillerInfo, activeTotalCount);
 
   const generalStartDate = useMemo(
     () => isUnifiedAnime ? computeChainBoundaryDate('start', animeSeasonChain, entry.logs) : '',
@@ -796,13 +827,16 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                           dispatchEntry({ type: 'UPDATE_LOG', updates });
                         }} />
                     ) : (
-                    <NumberField label={progLabel} value={isGeneralTab ? generalProgress : activeLog.progress} step={progStep}
-                      max={activeTotalCount && activeTotalCount > 0 ? activeTotalCount : undefined}
-                      unknownMax={data.status === 'RELEASING' && !(activeTotalCount && activeTotalCount > 0)}
+                    <NumberField label={progLabel} value={displayProgress} step={progStep}
+                      max={displayTotalCount && displayTotalCount > 0 ? displayTotalCount : undefined}
+                      unknownMax={data.status === 'RELEASING' && !(displayTotalCount && displayTotalCount > 0)}
                       disabled={isGeneralTab}
                       onChange={v => {
-                        const updates: Partial<LogState> = { progress: v };
-                        if (!isUpcoming && completeAtEpisode && completeAtEpisode > 0 && v >= completeAtEpisode && activeLog.status !== 'completed') {
+                        // Skipping filler: the field is a canon count, stored
+                        // as that canon episode's real number.
+                        const progress = skippingFiller ? absoluteFromCanonProgress(v, fillerInfo, activeTotalCount) : v;
+                        const updates: Partial<LogState> = { progress };
+                        if (!isUpcoming && completeAtEpisode && completeAtEpisode > 0 && progress >= completeAtEpisode && activeLog.status !== 'completed') {
                           updates.status = 'completed';
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
@@ -855,14 +889,18 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     )}
                   </div>
                 )}
-                {showFillerChoice && (
-                  <FillerChoice
-                    t={t.filler}
-                    skip={skipFiller}
-                    info={fillerInfo}
-                    total={activeTotalCount}
-                    onChange={skip => dispatchEntry({ type: 'UPDATE_LOG', updates: { skipFiller: skip } })}
-                  />
+                {showFillerCheckbox && (
+                  <label className="me-header-field media-filler-watched" title={t.filler.watched_with_filler_hint}>
+                    <input
+                      type="checkbox"
+                      checked={!activeLog.skipFiller}
+                      onChange={e => dispatchEntry({
+                        type: 'UPDATE_LOG',
+                        updates: { skipFiller: skipFillerFromWatchedWithFiller(e.target.checked) === 1 },
+                      })}
+                    />
+                    <span className="me-header-field-label">{t.filler.watched_with_filler}</span>
+                  </label>
                 )}
 
                 {/* Rating — rating_2 (its own name/system) only when this

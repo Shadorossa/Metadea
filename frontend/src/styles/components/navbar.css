@@ -49,6 +49,11 @@
   pointer-events: none;
   z-index: 1;
   width: auto;
+  /* Centred on the viewport, so it must stop short of the left group
+     (arrows + icons + "Explore", ~19.5vw): wider serif/mono theme fonts
+     otherwise slid the first category under "Explore". Past this the
+     links scroll with the arrow buttons below. */
+  max-width: calc(61vw - 1rem);
 }
 
 .nav-center-slot {
@@ -124,7 +129,10 @@
 .nav-center-text {
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* `safe`: once the links overflow they start at the left edge (and scroll)
+     instead of spilling out of both sides, where the first ones can't be
+     reached. */
+  justify-content: safe center;
   pointer-events: auto;
   flex: 1;
   min-width: 0;

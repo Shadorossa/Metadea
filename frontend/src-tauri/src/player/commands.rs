@@ -286,9 +286,11 @@ pub async fn player_stop_close(app: AppHandle, reason: Option<String>) -> Result
 }
 
 /// The player modal (components/player/PlayerStage) reports where its video
-/// area sits inside the main window's client area, in CSS pixels; the native
-/// surface and the overlay follow. A zero size hides both (modal closed,
-/// layout collapsed).
+/// area sits inside the main window's client area, already in physical
+/// pixels: the page converts with `devicePixelRatio`, which folds in the
+/// Interface scale (webview zoom) that the window's scale factor knows
+/// nothing about. The native surface and the overlay follow. A zero size
+/// hides both (modal closed, layout collapsed).
 #[tauri::command]
 pub async fn player_set_video_bounds(
     app: AppHandle,
@@ -298,11 +300,8 @@ pub async fn player_set_video_bounds(
     width: f64,
     height: f64,
 ) -> Result<(), PlayerError> {
-    let main = main_window(&app)?;
-    let scale = main.scale_factor()?;
-    let rect = (width > 0.0 && height > 0.0).then(|| {
-        ((x * scale).round() as i32, (y * scale).round() as i32, (width * scale).round() as i32, (height * scale).round() as i32)
-    });
+    let rect = (width > 0.0 && height > 0.0)
+        .then(|| (x.round() as i32, y.round() as i32, width.round() as i32, height.round() as i32));
     {
         let mut engine = state.0.lock().map_err(|_| PlayerError::mpv("engine lock poisoned"))?;
         engine.video_rect = rect;

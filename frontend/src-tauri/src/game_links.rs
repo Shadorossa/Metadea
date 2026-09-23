@@ -118,9 +118,15 @@ pub fn touch_games_seen(conn: &rusqlite::Connection, games: &[(String, String, S
 // unlike local_game_links' 14-day grace period (a different concern — losing
 // the catalog *link*), staying listed doesn't hurt anything, so this keeps
 // showing a game indefinitely until the user removes it.
+//
+// "Isn't part of this scan" means under any identity: `live` also knows the
+// aliases and the paths/titles a game's key used to be derived from, so a
+// ROM renamed by the clean-up, a Switch update now grouped under its base or
+// a row keyed by a raw path from before synthetic ids existed never comes
+// back as a duplicate "not installed" card next to the live entry.
 pub fn restore_missing_seen_games(
     conn: &rusqlite::Connection,
-    already_present: &std::collections::HashSet<(String, String)>,
+    live: &crate::platform_scanning::LiveGames,
 ) -> Vec<crate::platform_scanning::LocalGame> {
     let mut stmt = match conn.prepare("SELECT launcher, link_key, name FROM local_games_seen WHERE name != ''") {
         Ok(s) => s,
@@ -135,7 +141,7 @@ pub fn restore_missing_seen_games(
     };
 
     rows.filter_map(|r| r.ok())
-        .filter(|(launcher, link_key, _)| !already_present.contains(&(launcher.clone(), link_key.clone())))
+        .filter(|(launcher, link_key, name)| !live.supersedes(launcher, link_key, name))
         .map(|(launcher, link_key, name)| {
             // Ignore legacy path-based keys so they aren't treated as unsafe app_id cache paths.
             let app_id = if link_key.contains(['\\', '/', ':']) { None } else { Some(link_key.clone()) };
@@ -143,7 +149,7 @@ pub fn restore_missing_seen_games(
                 name, launcher, app_id, external_id: None,
                 install_path: None, playtime_minutes: None, last_played: None,
                 installed: Some(false), rom_platform: None,
-                discs: Vec::new(), disc_playlist: None, replaced_app_ids: Vec::new(),
+                discs: Vec::new(), disc_playlist: None, replaced_app_ids: Vec::new(), aliases: Vec::new(),
             }
         })
         .collect()
@@ -253,4 +259,59 @@ pub fn prune_stale_game_links(conn: &rusqlite::Connection) {
          )",
         [cutoff],
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::platform_scanning::{synthetic_app_id, LiveGames, LocalGame};
+
+    fn seen(conn: &rusqlite::Connection, launcher: &str, key: &str, name: &str) {
+        conn.execute(
+            "INSERT INTO local_games_seen (launcher, link_key, last_seen_at, name) VALUES (?1, ?2, 'then', ?3)",
+            rusqlite::params![launcher, key, name],
+        )
+        .unwrap();
+    }
+
+    fn live_rom(name: &str, path: &str) -> LocalGame {
+        LocalGame {
+            name: name.into(),
+            launcher: "nintendo".into(),
+            app_id: Some(synthetic_app_id("rom", path)),
+            install_path: Some(path.into()),
+            installed: Some(true),
+            ..Default::default()
+        }
+    }
+
+    // Rows copied from the owner's database: the renamed 3DS dump under its
+    // pre-synthetic-id path key, the Switch update now grouped under its
+    // base, a Steam game that really is uninstalled, and the live ROM itself.
+    #[test]
+    fn only_games_missing_under_every_identity_come_back_as_not_installed() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        let inazuma = "D:/videojuegos/Nintendo 3Ds/Inazuma Eleven GO - Chrono Stones - Thunderflash.3ds";
+        let scarlet = "D:/videojuegos/Nintendo Switch/Pokemon Scarlet [0100A3D008C5C000].xci";
+        let update = "D:/videojuegos/Nintendo Switch/Pokémon Scarlet [0100A3D008C5C800][v786432].nsp";
+        seen(&conn, "nintendo", &synthetic_app_id("rom", inazuma), "Inazuma Eleven GO - Chrono Stones - Thunderflash");
+        seen(
+            &conn,
+            "nintendo",
+            "D:/videojuegos/Nintendo 3Ds/Inazuma Eleven GO - Chrono Stones - Thunderflash (Europe) (En,Fr,De,Es,It).3ds",
+            "Inazuma Eleven GO - Chrono Stones - Thunderflash (Europe) (En,Fr,De,Es,It)",
+        );
+        seen(&conn, "nintendo", &synthetic_app_id("rom", update), "Pokémon Scarlet [0100A3D008C5C800][v786432]");
+        seen(&conn, "steam", "1245620", "ELDEN RING");
+
+        let mut scarlet_game = live_rom("Pokemon Scarlet [0100A3D008C5C000]", scarlet);
+        scarlet_game.aliases.push(("nintendo".into(), synthetic_app_id("rom", update)));
+        let live = LiveGames::from_games(&[live_rom("Inazuma Eleven GO - Chrono Stones - Thunderflash", inazuma), scarlet_game]);
+
+        let restored = restore_missing_seen_games(&conn, &live);
+        let names: Vec<&str> = restored.iter().map(|g| g.name.as_str()).collect();
+        assert_eq!(names, vec!["ELDEN RING"]);
+        assert_eq!(restored[0].installed, Some(false));
+    }
 }

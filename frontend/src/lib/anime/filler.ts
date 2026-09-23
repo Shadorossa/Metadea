@@ -110,7 +110,7 @@ export function entryFillerCount(info: MaybeInfo, total: number | null | undefin
   return countFillerBetween(info, 1, entrySpan(info, total));
 }
 
-/** Whether the "Filler: Watched / Skipped" choice applies at all. */
+/** Whether the editor's "Watched with filler" checkbox applies at all. */
 export function entryHasFiller(info: MaybeInfo, total: number | null | undefined): boolean {
   return entryFillerCount(info, total) > 0;
 }
@@ -141,6 +141,60 @@ export function effectiveProgress(
   const progress = Math.max(0, entry?.progress ?? 0);
   if (!skipsFiller(entry, info, total)) return progress;
   return Math.max(0, progress - countFillerBetween(info, 1, progress));
+}
+
+/**
+ * The inverse of effectiveProgress for a Skipped entry: the stored (real)
+ * episode number of the entry's `canonProgress`-th canon/mixed episode, so a
+ * canon count typed in the editor is saved as the absolute episode AniList/MAL
+ * sync expects. 0 for 0; clamped to the entry's last canon/mixed episode (or
+ * `total`) when the count exceeds what the entry has. Episodes past
+ * AnimeFillerList's data count as canon. Without data it returns the count.
+ */
+export function absoluteFromCanonProgress(canonProgress: number, info: MaybeInfo, total: number | null | undefined): number {
+  const target = Math.max(0, Math.floor(canonProgress));
+  const limit = total && total > 0 ? total : Number.POSITIVE_INFINITY;
+  if (target === 0) return 0;
+  if (!info) return Math.min(target, limit);
+  const listed = Math.max(0, info.lastEpisode - info.episodeOffset);
+  let canon = 0;
+  let lastCanon = 0;
+  for (let episode = 1; episode <= Math.min(listed, limit); episode++) {
+    if (isFillerEpisode(info, episode)) continue;
+    canon++;
+    lastCanon = episode;
+    if (canon === target) return episode;
+  }
+  if (listed >= limit) return lastCanon || limit;
+  // Past the listed episodes every episode is canon.
+  return Math.min(listed + (target - canon), limit);
+}
+
+/** The editor's "Watched with filler" checkbox → library_entry.skip_filler
+ *  (unchecked = Skipped). */
+export function skipFillerFromWatchedWithFiller(watchedWithFiller: boolean): 0 | 1 {
+  return watchedWithFiller ? 0 : 1;
+}
+
+export interface SeasonFillerCount {
+  entry: FillerEntryLike | null | undefined;
+  info: MaybeInfo;
+  total: number | null | undefined;
+}
+
+/**
+ * A unified season chain's general totals: each season's effective total
+ * and displayed progress (its own skip_filler and filler data), summed.
+ * Seasons with an unknown total add nothing to the total.
+ */
+export function sumEffectiveSeasons(seasons: readonly SeasonFillerCount[]): { total: number; progress: number } {
+  let total = 0;
+  let progress = 0;
+  for (const season of seasons) {
+    total += effectiveEpisodeTotal(season.entry, season.info, season.total) ?? 0;
+    progress += effectiveProgress(season.entry, season.info, season.total);
+  }
+  return { total, progress };
 }
 
 /** The entry's last canon or mixed episode (1..total); 0 when every

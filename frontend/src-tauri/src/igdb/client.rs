@@ -98,6 +98,18 @@ pub(crate) static IGDB_BUDGET: RequestBudget =
 
 // -- IGDB helpers --------------------------------------------------------------
 
+// Longest single wait after a 429. A server Retry-After of minutes (or a
+// garbage value) would otherwise park a batch with no progress for that long;
+// with MAX_RETRIES the whole retry chain stays bounded at a couple of minutes.
+pub(crate) const MAX_RETRY_WAIT_SECS: u64 = 30;
+
+pub(crate) fn retry_wait_secs(retry_after: Option<&str>, backoff_secs: u64) -> u64 {
+    retry_after
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .unwrap_or(backoff_secs)
+        .clamp(1, MAX_RETRY_WAIT_SECS)
+}
+
 pub(crate) async fn igdb_query(
     client: &reqwest::Client,
     client_id: &str,
@@ -130,12 +142,8 @@ pub(crate) async fn igdb_query(
                 ));
             }
             // Respect Retry-After header if present, otherwise exponential backoff
-            let wait = resp
-                .headers()
-                .get("Retry-After")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|s| s.parse::<u64>().ok())
-                .unwrap_or(delay_secs);
+            let wait = retry_wait_secs(resp.headers().get("Retry-After").and_then(|v| v.to_str().ok()), delay_secs);
+            log::info!("[IGDB] HTTP 429 (attempt {}/{MAX_RETRIES}), retrying in {wait}s", attempt + 1);
             tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
             delay_secs = (delay_secs * 2).min(30);
             continue;
@@ -168,6 +176,16 @@ mod budget_tests {
         let wait = budget.reserve(t0 + Duration::from_secs(2));
         assert_eq!(wait, Duration::from_secs(8));
         assert!(budget.reserve(t0 + Duration::from_secs(10)).is_zero());
+    }
+
+    #[test]
+    fn a_429_wait_is_bounded_whatever_the_server_says() {
+        use super::{retry_wait_secs, MAX_RETRY_WAIT_SECS};
+        assert_eq!(retry_wait_secs(Some("3"), 1), 3);
+        assert_eq!(retry_wait_secs(Some("86400"), 1), MAX_RETRY_WAIT_SECS);
+        assert_eq!(retry_wait_secs(Some("0"), 8), 1, "never a zero-wait spin");
+        assert_eq!(retry_wait_secs(Some("Wed, 21 Oct 2015 07:28:00 GMT"), 4), 4);
+        assert_eq!(retry_wait_secs(None, 64), MAX_RETRY_WAIT_SECS);
     }
 
     #[test]

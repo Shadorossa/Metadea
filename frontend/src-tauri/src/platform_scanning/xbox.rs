@@ -53,7 +53,10 @@ fn xbox_candidate_dirs() -> Vec<PathBuf> {
         }
     }
 
-    candidates.dedup();
+    // The same root can be listed twice (a fixed candidate and again in
+    // GamingRootMetadata.json / the registry, spelled differently).
+    let mut seen = std::collections::HashSet::new();
+    candidates.retain(|dir| seen.insert(super::common::normalized_path(&dir.to_string_lossy())));
     candidates
 }
 
@@ -137,6 +140,6 @@ pub(super) fn scan_xbox_games() -> Vec<LocalGame> {
         }
     }
 
-    games.dedup_by(|a, b| a.name == b.name);
+    super::common::dedupe_by_name(&mut games);
     games
 }

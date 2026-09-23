@@ -1,6 +1,8 @@
 import { updateDiscordPresence, resetDiscordPresence, type PresenceButton } from '../tauri/discord-presence';
 import { formatPresenceLines, formatThemePresenceLines } from '../player/presence-sync';
 import { toMediumCover } from '../media/small-cover';
+import { createPublicCoverResolver } from '../media/public-cover';
+import { getCatalogMainCover } from '../tauri/catalog';
 import { buildShareUrl, isValidDeepLinkTarget } from '../deep-link/deep-link-routes';
 import { buildShareLink, type ShareableWork } from '../deep-link/share-link';
 import { createExternalStore } from '../shared/state/external-store';
@@ -63,6 +65,8 @@ export interface PlaybackPresence {
 
 export interface ReadingPresence {
   title: string;
+  /** The work being read: its main cover is what Discord shows. */
+  externalId?: string;
   pageLabel: string;
   coverUrl?: string;
   // Unix seconds the reading session opened — Discord shows the elapsed time.
@@ -104,10 +108,29 @@ export const gamePresenceStore = createExternalStore<GamePresence | null>(null);
 // page load and on "game-sessions-changed" (game-session-state.ts), so it
 // survives navigation; nothing here listens for sessions itself.
 
+// Other people see the work's main cover, never the user's custom one
+// (lib/media/public-cover.ts); resolving it re-sends the presence.
+const publicCovers = createPublicCoverResolver({
+  loadRaw: getCatalogMainCover,
+  onResolved: () => applyCurrentPresence(),
+});
+
+function presenceCover(externalId: string | undefined, coverUrl: string | undefined): string | undefined {
+  const cover = publicCovers.resolve(externalId, coverUrl);
+  return cover && cover.startsWith('http') ? toMediumCover(cover) : undefined;
+}
+
+// The share link's preview image follows the same rule.
+function publicShare(share: ShareableWork | undefined): ShareableWork | undefined {
+  if (!share) return share;
+  const cover = publicCovers.resolve(share.externalId, share.coverUrl ?? undefined);
+  return { ...share, coverUrl: cover ?? null };
+}
+
 function applyCurrentPresence() {
   // 1. Highest priority: Active game
   if (activeGame) {
-    const cover = activeGame.coverUrl ? toMediumCover(activeGame.coverUrl) : undefined;
+    const cover = presenceCover(activeGame.externalId, activeGame.coverUrl);
     // ROMs show their console as the small image; everything else Metadea.
     const consoleImage = platformPresenceImage(activeGame.romPlatform);
     updateDiscordPresence(
@@ -126,7 +149,7 @@ function applyCurrentPresence() {
 
   // 2. Second priority: Active video playback (built-in player)
   if (activePlayback) {
-    const cover = activePlayback.coverUrl ? toMediumCover(activePlayback.coverUrl) : undefined;
+    const cover = presenceCover(activePlayback.externalId, activePlayback.coverUrl);
     const lines = formatPresenceLines({
       title: activePlayback.title,
       episodeNumber: activePlayback.episodeNumber,
@@ -144,7 +167,7 @@ function applyCurrentPresence() {
       "metadea",
       "Metadea",
       'watching',
-      mediaPresenceButton(activePlayback.externalId, activePlayback.share),
+      mediaPresenceButton(activePlayback.externalId, publicShare(activePlayback.share)),
     ).catch(() => {});
     return;
   }
@@ -152,7 +175,7 @@ function applyCurrentPresence() {
   // 3. A theme (OP/ED) playing on a media page — beats the page's own
   // "Viewing" tier and the reader (the reader can't be open on a media page).
   if (activeTheme) {
-    const cover = activeTheme.coverUrl ? toMediumCover(activeTheme.coverUrl) : undefined;
+    const cover = presenceCover(activeTheme.externalId ?? activeMediaPage?.externalId, activeTheme.coverUrl);
     const lines = formatThemePresenceLines(activeTheme);
     updateDiscordPresence(
       lines.details,
@@ -166,7 +189,7 @@ function applyCurrentPresence() {
       'listening',
       mediaPresenceButton(
         activeTheme.externalId ?? activeMediaPage?.externalId,
-        activeTheme.share ?? activeMediaPage?.share,
+        publicShare(activeTheme.share ?? activeMediaPage?.share),
       ),
     ).catch(() => {});
     return;
@@ -175,7 +198,7 @@ function applyCurrentPresence() {
   // 4. Reading in reader modal — Discord has no "Reading" type; "Watching"
   // is the closest header.
   if (activeReading) {
-    const cover = activeReading.coverUrl ? toMediumCover(activeReading.coverUrl) : undefined;
+    const cover = presenceCover(activeReading.externalId, activeReading.coverUrl);
     updateDiscordPresence(
       `Reading ${activeReading.title}`,
       `Page ${activeReading.pageLabel}`,
@@ -192,7 +215,7 @@ function applyCurrentPresence() {
 
   // 5. Viewing a media catalog entry
   if (activeMediaPage) {
-    const cover = activeMediaPage.coverUrl ? toMediumCover(activeMediaPage.coverUrl) : undefined;
+    const cover = presenceCover(activeMediaPage.externalId, activeMediaPage.coverUrl);
     updateDiscordPresence(
       `Viewing ${activeMediaPage.typeLabel}`,
       "",
@@ -203,7 +226,7 @@ function applyCurrentPresence() {
       "metadea",
       "Metadea",
       undefined,
-      mediaPresenceButton(activeMediaPage.externalId, activeMediaPage.share),
+      mediaPresenceButton(activeMediaPage.externalId, publicShare(activeMediaPage.share)),
     ).catch(() => {});
     return;
   }

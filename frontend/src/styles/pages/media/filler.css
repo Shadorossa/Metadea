@@ -1,12 +1,14 @@
 /* Anime filler lists (AnimeFillerList.com): episode card accents and pills,
-   the episodes toolbar ("Hide filler", Watched/Skipped, link control), its
-   link popover and the attribution line. Filler is red (--color-error),
-   mixed canon/filler blue (--color-info). */
+   the attribution line and the entry editor's "Watched with filler"
+   checkbox. Filler is red (--color-error), mixed canon/filler blue
+   (--color-info). */
 
 /* ── Episode cards ─────────────────────────────────────────────────────── */
 
 .media-relation-card.media-episode--filler {
-  border-color: color-mix(in srgb, var(--color-error) 45%, var(--border-color));
+  /* The frame alone marks filler (no pill): thicker and stronger red. */
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--color-error) 75%, var(--border-color));
   box-shadow: inset 3px 0 0 var(--color-error);
 }
 
@@ -60,238 +62,19 @@
   box-shadow: none;
 }
 
-/* ── Toolbar above the grid ────────────────────────────────────────────── */
+/* ── Entry editor: "Watched with filler" ───────────────────────────────── */
 
-.media-filler-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-  margin-bottom: 0.6rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.media-filler-hide {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  cursor: pointer;
-  color: var(--text-main);
-}
-
-.media-filler-hide input {
-  accent-color: var(--color-error);
-}
-
-.media-filler-progress {
-  color: var(--text-main);
-  font-variant-numeric: tabular-nums;
-}
-
-.media-filler-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-left: auto;
-  min-width: 0;
-}
-
-.media-filler-link-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 16rem;
-}
-
-.media-filler-link-pending {
-  font-style: italic;
-}
-
-.media-filler-link-btn,
-.media-filler-popover-btn {
-  padding: 0.2rem 0.6rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-medium);
-  background: transparent;
-  color: var(--text-main);
-  font-size: 0.7rem;
-  cursor: pointer;
-  transition: border-color var(--anim-fast) var(--anim-ease), color var(--anim-fast) var(--anim-ease);
-}
-
-.media-filler-link-btn:hover,
-.media-filler-popover-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.media-filler-popover-btn:disabled {
-  opacity: var(--opacity-40);
-  cursor: default;
-}
-
-/* ── Watched / Skipped (toolbar and library editor) ────────────────────── */
-
-.media-filler-choice {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.media-filler-choice-label {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.62rem;
-}
-
-.media-filler-choice-buttons {
-  display: inline-flex;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.media-filler-choice-btn {
-  padding: 0.18rem 0.6rem;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.7rem;
+.media-filler-watched {
   cursor: pointer;
 }
 
-.media-filler-choice-btn + .media-filler-choice-btn {
-  border-left: 1px solid var(--border-medium);
-}
-
-.media-filler-choice-btn.is-active {
-  background: var(--accent-soft);
-  color: var(--text-main);
-}
-
-.media-filler-choice-total {
-  color: var(--text-main);
-  font-variant-numeric: tabular-nums;
-}
-
-/* ── Link popover ──────────────────────────────────────────────────────── */
-
-.media-filler-popover {
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  right: 0;
-  z-index: 30;
-  width: min(20rem, calc(100vw - 2rem));
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-medium);
-  background: var(--bg-elevated);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  color: var(--text-main);
-}
-
-.media-filler-popover-title {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.media-filler-popover-search,
-.media-filler-popover-offset input {
-  width: 100%;
-  padding: 0.35rem 0.5rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-medium);
-  background: var(--bg-card);
-  color: var(--text-main);
-  font-size: 0.75rem;
-}
-
-.media-filler-popover-results {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 12rem;
-  overflow-y: auto;
-}
-
-.media-filler-popover-result {
-  width: 100%;
-  padding: 0.3rem 0.45rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-main);
-  font-size: 0.74rem;
-  text-align: left;
+.media-filler-watched input {
+  order: 1;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.2rem 0;
+  accent-color: var(--accent);
   cursor: pointer;
-}
-
-.media-filler-popover-result:hover,
-.media-filler-popover-result.is-selected {
-  background: var(--accent-soft);
-}
-
-.media-filler-popover-empty {
-  margin: 0;
-  padding: 0.3rem 0.45rem;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.media-filler-popover-selected {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding-top: 0.4rem;
-  border-top: 1px solid var(--border-light);
-}
-
-.media-filler-popover-selected-title {
-  font-size: 0.74rem;
-  font-weight: 700;
-}
-
-.media-filler-popover-offset {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.7rem;
-  color: var(--text-muted);
-}
-
-.media-filler-popover-offset input {
-  width: 5.5rem;
-}
-
-.media-filler-popover-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.media-filler-popover-spacer {
-  flex: 1;
-}
-
-.media-filler-popover-btn--primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--text-on-accent);
-}
-
-.media-filler-popover-btn--primary:hover:not(:disabled) {
-  color: var(--text-on-accent);
-  filter: brightness(1.1);
 }
 
 /* ── Attribution ───────────────────────────────────────────────────────── */

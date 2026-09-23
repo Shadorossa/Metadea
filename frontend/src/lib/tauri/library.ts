@@ -34,7 +34,7 @@ export interface LibraryEntry {
   // through — see lib/media/editor/reconsumption-run.ts for the editor side.
   reconsumption_count?: number;
   reconsuming?: number;
-  /** "Filler: Watched / Skipped" for anime with filler (1 = skipped; see
+  /** "Watched with filler" unchecked, for anime with filler (1 = skipped; see
    *  lib/anime/filler.ts). Omitted on save → Rust keeps the stored value. */
   skip_filler?: number;
 }

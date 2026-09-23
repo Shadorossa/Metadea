@@ -99,6 +99,6 @@ pub(super) fn scan_ea_games() -> Vec<LocalGame> {
         }
     }
 
-    games.dedup_by(|a, b| a.name == b.name);
+    super::common::dedupe_by_name(&mut games);
     games
 }

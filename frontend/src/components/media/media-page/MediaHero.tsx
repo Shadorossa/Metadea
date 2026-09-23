@@ -2,7 +2,7 @@ import type { RefObject } from 'react';
 import type { Translations } from '../../../i18n/index';
 import type { MediaPageData } from '../../../lib/media/types';
 import { CONTAINS_RELATION_TYPES } from '../../../lib/media/saga/saga-relation-types';
-import { IconPlus, IconCheck, IconLayers, IconHeart, IconRefresh, IconLink } from '../../local/ui/icons';
+import { IconPlus, IconCheck, IconLayers, IconHeart, IconRefresh, IconLink, IconGithub } from '../../local/ui/icons';
 import { getT } from '../../../i18n/runtime';
 import { StarRating, StatusDropdown } from './MediaPageControls';
 import { CompanyName, PublisherLine } from './CompanyLinks';
@@ -105,8 +105,9 @@ export function MediaHero({
               className="media-banner-pr-btn"
               onClick={onProposeChanges}
               title={tm.propose_github_changes}
+              aria-label={tm.propose_github_changes}
             >
-              <IconPlus />
+              <IconGithub />
             </button>
           )}
           {!previewMode && (

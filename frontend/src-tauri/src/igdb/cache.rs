@@ -148,6 +148,55 @@ pub(super) fn write_index(meta_root: &std::path::Path, index: &serde_json::Value
     );
 }
 
+// Applies `updates` to the index as it is on disk *now*, not to a copy read
+// earlier: a batch downloads for minutes, and writing back its own early
+// snapshot would drop whatever a per-game fetch or manual pick wrote in the
+// meantime — leaving those games' files on disk with no index entry, so the
+// grid never shows their cover and every later batch counts them "cached".
+pub(super) fn merge_index_updates(meta_root: &std::path::Path, updates: Vec<(String, serde_json::Value)>) {
+    if updates.is_empty() {
+        return;
+    }
+    let mut index = read_index(meta_root);
+    if let Some(obj) = index.as_object_mut() {
+        for (app_id, entry) in updates {
+            obj.insert(app_id, entry);
+        }
+    }
+    write_index(meta_root, &index);
+}
+
+// True when read_metadata_index would hand the grid both a cover and a
+// banner for this entry (the frontend's own "basic metadata done" test).
+pub(super) fn index_entry_is_complete(entry: Option<&serde_json::Value>) -> bool {
+    let Some(entry) = entry else { return false };
+    let projected = project_index_entry(entry, None);
+    projected["cover_path"].is_string() && projected["banner_path"].is_string()
+}
+
+// An index entry rebuilt from files already on disk (cover, banner,
+// info.json), for a game whose downloads survived but whose index entry did
+// not. None without a cover file.
+pub(super) fn index_entry_from_disk(game_dir: &std::path::Path, game_name: &str) -> Option<serde_json::Value> {
+    let cover_path = std::fs::read_dir(game_dir)
+        .ok()?
+        .flatten()
+        .find(|e| e.file_name().to_string_lossy().ends_with("_cover.webp"))
+        .map(|e| e.path())?;
+    let info: serde_json::Value = std::fs::read_to_string(game_dir.join("info.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or(serde_json::Value::Null);
+    // info.json keeps genres as plain names; build_index_entry reads the raw
+    // IGDB shape ({ name }).
+    let genres: Vec<serde_json::Value> = info["genres"]
+        .as_array()
+        .map(|g| g.iter().filter_map(|n| n.as_str()).map(|n| serde_json::json!({ "name": n })).collect())
+        .unwrap_or_default();
+    let igdb_game = serde_json::json!({ "id": info["igdb_id"], "genres": genres });
+    Some(build_index_entry(game_dir, game_name, &cover_path, &igdb_game))
+}
+
 fn upsert_index_entry(meta_root: &std::path::Path, app_id: &str, entry: serde_json::Value) {
     let mut index = read_index(meta_root);
     if let Some(obj) = index.as_object_mut() {
@@ -561,6 +610,36 @@ mod index_tests {
         assert_eq!(read["7"]["igdb_id"].as_u64(), Some(99));
         let plain = build_index_entry(&game_dir, "Game", &cover, &serde_json::json!({ "id": 1, "genres": [{ "name": "RPG" }] }));
         assert!(plain.get("is_vn").is_none());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn games_on_disk_without_an_index_entry_are_reindexed_and_merges_keep_other_writes() {
+        let root = temp_root("reindex");
+        let game_dir = root.join("5");
+        std::fs::create_dir_all(&game_dir).unwrap();
+        std::fs::write(game_dir.join("c_cover.webp"), b"").unwrap();
+        std::fs::write(game_dir.join("b_banner.webp"), b"").unwrap();
+        std::fs::write(game_dir.join("info.json"), r#"{"igdb_id": 12, "genres": ["Visual Novel"]}"#).unwrap();
+
+        // An entry lost from index.json: files on disk, nothing indexed.
+        assert!(!index_entry_is_complete(read_index(&root).get("5")));
+        let rebuilt = index_entry_from_disk(&game_dir, "Game").expect("cover on disk");
+        assert!(index_entry_is_complete(Some(&rebuilt)));
+        assert_eq!(rebuilt["igdb_id"].as_u64(), Some(12));
+        assert_eq!(rebuilt["is_vn"].as_bool(), Some(true));
+        assert!(index_entry_from_disk(&root.join("missing"), "X").is_none());
+
+        // A write that landed after the batch started survives its merge.
+        write_index(&root, &serde_json::json!({ "other": { "name": "Other" } }));
+        merge_index_updates(&root, vec![("5".to_string(), rebuilt)]);
+        let index = read_index(&root);
+        assert!(index.get("other").is_some());
+        assert!(index_entry_is_complete(index.get("5")));
+
+        // A cover without a banner is not "done" for the grid.
+        std::fs::remove_file(game_dir.join("b_banner.webp")).unwrap();
+        assert!(!index_entry_is_complete(index.get("5")));
         let _ = std::fs::remove_dir_all(&root);
     }
 }

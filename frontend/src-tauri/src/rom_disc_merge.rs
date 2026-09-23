@@ -371,6 +371,7 @@ mod tests {
             discs: Vec::new(),
             disc_playlist: None,
             replaced_app_ids: others.iter().map(|p| synthetic_app_id("rom", p)).collect(),
+            aliases: Vec::new(),
         }
     }
 

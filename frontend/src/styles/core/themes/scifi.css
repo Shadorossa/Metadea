@@ -6,7 +6,7 @@ html[data-theme="scifi"], [data-theme="scifi"] {
 
   --text-main: #00e5ff;
   --text-muted: #5394a6;
-  --text-dim: #23515e;
+  --text-dim: #357a8c;
 
   --border-color: #007799;
 
@@ -15,6 +15,8 @@ html[data-theme="scifi"], [data-theme="scifi"] {
   --accent-soft: rgba(0, 255, 170, 0.06);
   --accent-border: #00e5ff;
   --accent-glow: rgba(0, 229, 255, 0.3);
+  /* Light accent: text on accent fills (primary buttons, active pills) goes dark. */
+  --text-on-accent: var(--bg-primary);
 
   --radius-sm: 2px;
   --radius-md: 4px;

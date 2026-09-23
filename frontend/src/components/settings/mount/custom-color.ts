@@ -5,11 +5,20 @@ import { debouncedSave, runSave } from './autosave';
 
 const DEFAULT_COLOR = '#c084fc';
 
+const ACCENT_PROPS = ['--accent', '--accent-soft', '--accent-border', '--accent-glow'] as const;
+
+// The default is Nebula's accent: writing it inline would repaint every other
+// theme's buttons, checkboxes and active pills purple, so it clears instead.
 function applyCustomColor(color: string) {
-  document.documentElement.style.setProperty('--accent', color);
-  document.documentElement.style.setProperty('--accent-soft', `${color}19`);
-  document.documentElement.style.setProperty('--accent-border', `${color}40`);
-  document.documentElement.style.setProperty('--accent-glow', `${color}4d`);
+  const style = document.documentElement.style;
+  if (color.toLowerCase() === DEFAULT_COLOR) {
+    ACCENT_PROPS.forEach((prop) => style.removeProperty(prop));
+    return;
+  }
+  style.setProperty('--accent', color);
+  style.setProperty('--accent-soft', `${color}19`);
+  style.setProperty('--accent-border', `${color}40`);
+  style.setProperty('--accent-glow', `${color}4d`);
 }
 
 // DB is the source of truth; localStorage is kept as a fast read cache.

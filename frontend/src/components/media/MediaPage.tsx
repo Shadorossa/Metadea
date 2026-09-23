@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useKeyedState } from '../shared/hooks/useKeyedState';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
@@ -27,7 +27,8 @@ import { shareableWorkFromPage } from '../../lib/deep-link/share-link';
 import { showToast } from '../../lib/dom/toast';
 import { useShortcuts } from '../shared/hooks/useShortcuts';
 
-import { getPreferredCover } from '../../lib/media/cover-preferences';
+import { getPreferredCover, getCoverPreference } from '../../lib/media/cover-preferences';
+import { getCatalogMainCover } from '../../lib/tauri/catalog';
 import { invalidateMediaPageReads } from '../../lib/media/media-page-read-cache';
 import { usePrEditorSession } from './media-page/usePrEditorSession';
 import { ThemePlayerOverlay } from './media-page/ThemePlayerOverlay';
@@ -46,10 +47,10 @@ import { MediaCastSection, type CharTab } from './media-page/MediaCastSection';
 import { MediaScoresSection } from './media-page/MediaScoresSection';
 import { useMediaSpoilers } from './media-page/useMediaSpoilers';
 import { useEpisodeFiller } from './media-page/useEpisodeFiller';
-import { FillerAttribution, FillerEpisodesToolbar } from './media-page/FillerEpisodesToolbar';
-import { completionEpisode, nextCanonEpisode, skipsFiller } from '../../lib/anime/filler';
-import { formatAppError } from '../../lib/errors/format-error';
+import { FillerAttribution } from './media-page/FillerAttribution';
+import { absoluteFromCanonProgress, completionEpisode, effectiveProgress, nextCanonEpisode, skipsFiller } from '../../lib/anime/filler';
 import { SpoilerShield } from '../spoilers/SpoilerShield';
+import { useHydrated } from '../shared/hooks/useHydrated';
 
 
 // ── MediaPage ──────────────────────────────────────────────────────────────
@@ -66,7 +67,15 @@ interface Props {
   previewUpdatedRelationIds?: string[];
 }
 
-export default function MediaPage({ i18n, previewData, previewMode = false, previewAddedRelationIds = [], previewUpdatedRelationIds = [] }: Props) {
+export default function MediaPage({ i18n: staticStrings, previewData, previewMode = false, previewAddedRelationIds = [], previewUpdatedRelationIds = [] }: Props) {
+  // The static build renders the reference locale (English); once hydrated
+  // the island switches to the user's language (same as AuthorPage).
+  const hydrated = useHydrated();
+  const i18n = useMemo<Pick<Translations, 'media' | 'discord'>>(() => {
+    if (!hydrated) return staticStrings;
+    const rt = getT();
+    return { media: rt.media, discord: rt.discord };
+  }, [hydrated, staticStrings]);
   const t  = i18n;
   const tm = t.media;
   const pe = getT().pr_editor;
@@ -151,8 +160,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     applyDeleted,
     rollback,
   } = useLibraryEntry(currentId, data?.type);
-  // AnimeFillerList badges, "Hide filler" and the Watched/Skipped choice
-  // (lib/anime/filler.ts).
+  // AnimeFillerList badges and the entry's filler info (lib/anime/filler.ts);
+  // "Watched with filler" is set in the entry editor.
   const filler = useEpisodeFiller({ currentId, previewMode, data, episodeOffset });
   const isEventCompetition = data?.type === 'event'
     && /^event:apisports:(football|basketball):\d+$/.test(currentId);
@@ -407,7 +416,12 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
   // hero's button and the `l` shortcut.
   const handleCopyLink = useCallback(async () => {
     const deepLinkText = getT().deep_link;
-    const work = data && data.externalId === currentId ? shareableWorkFromPage(data) : undefined;
+    let work = data && data.externalId === currentId ? shareableWorkFromPage(data) : undefined;
+    // The preview others see uses the main cover, not the user's custom one.
+    if (work && getCoverPreference(currentId)) {
+      const main = await getCatalogMainCover(currentId).catch(() => null);
+      work = { ...work, coverUrl: main && main.startsWith('https://') ? main : null };
+    }
     const copied = await copyDeepLink({ kind: 'media', external_id: currentId }, work);
     showToast(copied ? deepLinkText.copied : deepLinkText.copy_failed, copied ? 'success' : 'error');
   }, [currentId, data]);
@@ -419,12 +433,15 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     if (!data) return;
     const current = libEntry?.progress ?? 0;
     const total = data.totalCount && data.totalCount > 0 ? data.totalCount : null;
-    // Filler: Skipped → `+` jumps to the next canon/mixed episode and the
-    // entry completes at its last one. Progress stays the real episode number.
+    // Watched without filler → `+` jumps to the next canon/mixed episode,
+    // `-` back to the previous canon one, and the entry completes at its
+    // last one. Progress stays the real episode number.
     const skipping = skipsFiller(libEntry, filler.ownInfo, total);
-    const stepped = skipping && delta === 1
-      ? nextCanonEpisode(current, filler.ownInfo, total).episode ?? (total ?? current + 1)
-      : current + delta;
+    const stepped = !skipping
+      ? current + delta
+      : delta === 1
+        ? nextCanonEpisode(current, filler.ownInfo, total).episode ?? (total ?? current + 1)
+        : absoluteFromCanonProgress(effectiveProgress(libEntry, filler.ownInfo, total) - 1, filler.ownInfo, total);
     const next = Math.max(0, total ? Math.min(total, stepped) : stepped);
     if (next === current) return;
     const overrides: Partial<LibraryEntry> = { progress: next };
@@ -448,32 +465,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false, prev
     }
   }, [data, libEntry, libStatus, currentId, updateLocal, applySaved, rollback, filler.ownInfo]);
 
-  // "Filler: Watched / Skipped" from the episodes toolbar. Display and
-  // counting only; nothing is synced to AniList/MAL.
-  const handleSkipFillerChange = useCallback(async (skip: boolean) => {
-    const draft = updateLocal({ skip_filler: skip ? 1 : 0 });
-    try {
-      applySaved(await saveLibraryEntry(draft));
-    } catch (e) {
-      rollback();
-      showToast(formatAppError(e, getT()), 'error');
-    }
-  }, [updateLocal, applySaved, rollback]);
-
-  // Hiding filler reshapes the pages, so it goes back to the first one.
-  const fillerView = { ...filler, setHideFiller: (hide: boolean) => { filler.setHideFiller(hide); setRelationPage(1); } };
   const fillerSection = filler.applies ? {
-    view: fillerView,
-    toolbar: (
-      <FillerEpisodesToolbar
-        t={tm.filler}
-        currentId={currentId}
-        view={fillerView}
-        entry={inLibrary ? libEntry : null}
-        total={data?.totalCount}
-        onSkipFillerChange={skip => void handleSkipFillerChange(skip)}
-      />
-    ),
+    view: filler,
     footer: filler.anyFiller ? <FillerAttribution t={tm.filler} slug={filler.ownInfo?.slug} /> : null,
   } : undefined;
 

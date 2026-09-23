@@ -307,13 +307,14 @@ function ComicReaderModal({
     const timer = setTimeout(() => {
       setReadingPresence({
         title,
+        externalId,
         pageLabel,
         coverUrl,
         startTime: readingStartRef.current,
       });
     }, 800);
     return () => clearTimeout(timer);
-  }, [loadState, pageLabel, title, cover]);
+  }, [loadState, pageLabel, title, cover, externalId]);
 
   useEffect(() => {
     return () => { clearReadingPresence(); };

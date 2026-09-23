@@ -21,17 +21,18 @@
 // batch checks between stages and downloads.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::Duration;
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 
 use crate::db::ToStringErr;
-use crate::igdb_env::load_env_config;
+use crate::error_codes::{self, with_detail};
 use crate::igdb_matching::{igdb_platform_clause, normalize_name, steam_release_year, try_normalized_match, try_similarity_match};
 use super::auth::get_twitch_token;
-use super::cache::{build_index_entry, download_game_files, read_index, write_index};
+use super::cache::{build_index_entry, download_game_files, index_entry_from_disk, index_entry_is_complete, merge_index_updates, read_index};
 use super::client::{igdb_query, IGDB_API_ARTWORKS, IGDB_API_EXTERNAL_GAMES, IGDB_API_GAMES, IGDB_API_MULTIQUERY, IGDB_API_SCREENSHOTS, IGDB_GAME_FIELDS};
 use super::images::{extract_image_candidates, pick_landscape_image};
 use super::mapping::{extract_cover_and_game, is_non_game};
@@ -47,7 +48,16 @@ const DOWNLOAD_CONCURRENCY: usize = 4;
 const ARTWORKS_PER_GAME: usize = 10;
 const SCREENSHOTS_PER_GAME: usize = 5;
 
+// How long the batch waits for the database lock before failing with
+// E_METADATA_DB_BUSY instead of sitting on its first game.
+const DB_WAIT: Duration = Duration::from_secs(20);
+// Cover + banner for one game: two requests under the shared client's 15 s
+// timeout plus the webp re-encode; this caps the whole thing per game.
+const GAME_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
+
 static CANCEL_REQUESTED: AtomicBool = AtomicBool::new(false);
+// Id of the newest run; an older run that sees a different id stops.
+static ACTIVE_RUN: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BatchGameRequest {
@@ -187,6 +197,48 @@ pub(crate) fn group_image_candidates(response: &serde_json::Value, per_game: usi
     grouped
 }
 
+// ── Phase decisions (tested) ──────────────────────────────────────────────────
+
+// A run stops when Cancel was pressed or a newer run has started (the modal
+// was closed and the fetch started again while this one was still between
+// stages). Without the run check, the new run's reset of the cancel flag
+// revived the run it replaced and both kept writing the same files.
+pub(crate) fn run_should_stop(cancel_requested: bool, active_run: u64, this_run: u64) -> bool {
+    cancel_requested || active_run != this_run
+}
+
+// Whether the not-found memo skips a game this run. "Retry skipped games"
+// in the modal asks again regardless of the memo.
+pub(crate) fn memo_skips(entry: Option<&NotFoundEntry>, game_name: &str, now: u64, retry_not_found: bool) -> bool {
+    !retry_not_found && entry.is_some_and(|entry| not_found_is_fresh(entry, game_name, now))
+}
+
+// Outcome for a game no stage matched. Only a genuine no-match is memoised:
+// when an IGDB lookup for it failed (network, HTTP error, rate limit) the
+// miss says nothing about the game, and memoising it would hide the game
+// from every fetch for NOT_FOUND_TTL.
+pub(crate) fn unmatched_status(lookup_failed: bool) -> &'static str {
+    if lookup_failed { "error" } else { "not_found" }
+}
+
+// Both keys, non-blank, or E_IGDB_KEYS_MISSING (the modal points to
+// Settings › Environment for that code).
+pub(crate) fn igdb_credentials(client_id: Option<String>, client_secret: Option<String>) -> Result<(String, String), String> {
+    let present = |v: Option<String>| v.filter(|s| !s.trim().is_empty());
+    match (present(client_id), present(client_secret)) {
+        (Some(id), Some(secret)) => Ok((id, secret)),
+        _ => Err(error_codes::IGDB_KEYS_MISSING.to_string()),
+    }
+}
+
+// get_twitch_token's error text → an E_* code: an unreachable Twitch is a
+// network problem, anything else (HTTP 400/401/403, unparseable reply) means
+// the stored client id/secret were refused.
+pub(crate) fn twitch_error(err: &str) -> String {
+    let code = if err.starts_with("Twitch request failed") { error_codes::IGDB_NETWORK } else { error_codes::IGDB_AUTH };
+    with_detail(code, err)
+}
+
 // ── The command ───────────────────────────────────────────────────────────────
 
 struct Progress {
@@ -203,10 +255,6 @@ impl Progress {
     fn working_on(&self, name: &str) {
         let _ = self.app.emit(METADATA_PROGRESS_EVENT, MetadataBatchProgress { total: self.total, current: self.done, current_name: name.to_string() });
     }
-}
-
-fn cancelled() -> bool {
-    CANCEL_REQUESTED.load(Ordering::Relaxed)
 }
 
 fn has_cover_and_banner(game_dir: &std::path::Path) -> bool {
@@ -235,8 +283,31 @@ struct Resolved {
     igdb_game: serde_json::Value,
 }
 
+// Runs `f` against the database on the blocking pool and gives up after
+// DB_WAIT. MetadeaDb.conn is a std Mutex: a lock taken inline here would
+// park a runtime worker, and a long holder elsewhere (a big rescan, a
+// community sync) would leave the modal sitting on its first game with no
+// sign of why. Past the wait the batch fails with E_METADATA_DB_BUSY.
+async fn with_db<T, F>(app: &tauri::AppHandle, phase: &'static str, f: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce(&crate::db::MetadeaDb) -> Result<T, String> + Send + 'static,
+{
+    let app = app.clone();
+    let task = tokio::task::spawn_blocking(move || f(&app.state::<crate::db::MetadeaDb>()));
+    match tokio::time::timeout(DB_WAIT, task).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(join_err)) => Err(join_err.to_string()),
+        Err(_) => {
+            log::warn!("[metadata] {phase}: database still locked after {}s", DB_WAIT.as_secs());
+            Err(with_detail(error_codes::METADATA_DB_BUSY, phase))
+        }
+    }
+}
+
 #[tauri::command]
 pub async fn igdb_cancel_metadata_batch() -> Result<(), String> {
+    log::info!("[metadata] cancel requested");
     CANCEL_REQUESTED.store(true, Ordering::Relaxed);
     Ok(())
 }
@@ -244,23 +315,41 @@ pub async fn igdb_cancel_metadata_batch() -> Result<(), String> {
 #[tauri::command]
 pub async fn igdb_fetch_metadata_batch(
     app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::db::MetadeaDb>,
     games: Vec<BatchGameRequest>,
+    // "Retry skipped games": ignore the not-found memo for this run.
+    retry_not_found: Option<bool>,
 ) -> Result<Vec<BatchGameResult>, String> {
-    CANCEL_REQUESTED.store(false, Ordering::Relaxed);
+    let run = ACTIVE_RUN.fetch_add(1, Ordering::SeqCst) + 1;
+    CANCEL_REQUESTED.store(false, Ordering::SeqCst);
+    let cancelled = move || run_should_stop(CANCEL_REQUESTED.load(Ordering::Relaxed), ACTIVE_RUN.load(Ordering::SeqCst), run);
+    let retry_not_found = retry_not_found.unwrap_or(false);
     let meta_root = app_handle.path().app_data_dir().str_err()?.join("metadata");
     let total = games.len();
+    log::info!("[metadata] run {run}: start, {total} game(s), retry_not_found={retry_not_found}");
     let mut results: Vec<Option<BatchGameResult>> = vec![None; total];
     let mut progress = Progress { app: app_handle.clone(), total, done: 0 };
+    // Index entries written at the end, merged into the index as it is then.
+    let mut index_updates: Vec<(String, serde_json::Value)> = Vec::new();
 
-    // 1. Already complete on disk — no request at all.
+    // 1. Already complete on disk — no request at all. A game whose files
+    // are there but whose index entry is missing or stale is re-indexed
+    // from disk, or the grid would never show it and it would stay
+    // "pending" forever.
+    let index_now = read_index(&meta_root);
     for (i, g) in games.iter().enumerate() {
         let game_dir = meta_root.join(&g.app_id);
         if has_cover_and_banner(&game_dir) {
+            if !index_entry_is_complete(index_now.get(&g.app_id)) {
+                if let Some(entry) = index_entry_from_disk(&game_dir, &g.game_name) {
+                    index_updates.push((g.app_id.clone(), entry));
+                }
+            }
             results[i] = Some(result(&g.app_id, "cached", Some(game_dir.to_string_lossy().to_string()), None));
             progress.finished(&g.game_name);
         }
     }
+    let cached = results.iter().flatten().count();
+    log::info!("[metadata] run {run}: phase cached: {cached} on disk, {} re-indexed", index_updates.len());
 
     // 2. Recently tried and not found — skip until the memo expires.
     let now = unix_now();
@@ -269,30 +358,57 @@ pub async fn igdb_fetch_metadata_batch(
         if results[i].is_some() {
             continue;
         }
-        if not_found.get(&g.app_id).is_some_and(|entry| not_found_is_fresh(entry, &g.game_name, now)) {
+        if memo_skips(not_found.get(&g.app_id), &g.game_name, now, retry_not_found) {
             results[i] = Some(result(&g.app_id, "skipped", None, None));
             progress.finished(&g.game_name);
         }
     }
 
     let pending: Vec<usize> = (0..total).filter(|i| results[*i].is_none()).collect();
+    log::info!("[metadata] run {run}: phase memo: {} skipped, {} to look up", total - cached - pending.len(), pending.len());
     if pending.is_empty() {
+        merge_index_updates(&meta_root, index_updates);
         return Ok(results.into_iter().flatten().collect());
     }
     if let Some(first) = pending.first() {
         progress.working_on(&games[*first].game_name);
     }
 
-    let cfg = load_env_config(&app_handle)?;
-    let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
-    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
-    let token = get_twitch_token(&client_id, &client_secret).await?;
+    let cfg = with_db(&app_handle, "env", crate::igdb_env::env_from_db).await;
+    // Whatever the outcome, keep the re-indexed entries.
+    let credentials = cfg.and_then(|cfg| igdb_credentials(cfg.igdb_client_id, cfg.igdb_client_secret));
+    let (client_id, client_secret) = match credentials {
+        Ok(keys) => keys,
+        Err(err) => {
+            log::warn!("[metadata] run {run}: stopped before IGDB: {err}");
+            merge_index_updates(&meta_root, index_updates);
+            return Err(err);
+        }
+    };
+    let token = match get_twitch_token(&client_id, &client_secret).await {
+        Ok(token) => token,
+        Err(err) => {
+            let err = twitch_error(&err);
+            log::warn!("[metadata] run {run}: Twitch token failed: {err}");
+            merge_index_updates(&meta_root, index_updates);
+            return Err(err);
+        }
+    };
+    log::info!("[metadata] run {run}: phase auth: Twitch token ready");
     let client = crate::http::http_client();
 
     // 3. A manual pick (IgdbPickerModal) always wins — see save_game_link.
-    let links = {
-        let conn = state.conn.lock().str_err()?;
-        crate::game_links::lookup_game_links(&conn)
+    let links = match with_db(&app_handle, "links", |db| {
+        let conn = db.conn.lock().str_err()?;
+        Ok(crate::game_links::lookup_game_links(&conn))
+    })
+    .await
+    {
+        Ok(links) => links,
+        Err(err) => {
+            merge_index_updates(&meta_root, index_updates);
+            return Err(err);
+        }
     };
     let mut known_id: HashMap<usize, u64> = HashMap::new();
     let mut manual: Vec<usize> = Vec::new();
@@ -307,6 +423,10 @@ pub async fn igdb_fetch_metadata_batch(
             manual.push(i);
         }
     }
+    log::info!("[metadata] run {run}: phase links: {} manual pick(s)", manual.len());
+
+    // Games an IGDB lookup failed for (not a miss): never memoised.
+    let mut lookup_failed: std::collections::HashSet<usize> = std::collections::HashSet::new();
 
     // 4. Steam ids, ten per external_games request.
     let steam_unknown: Vec<usize> = pending.iter().copied().filter(|i| !known_id.contains_key(i) && games[*i].launcher == "steam").collect();
@@ -314,9 +434,17 @@ pub async fn igdb_fetch_metadata_batch(
         if cancelled() {
             break;
         }
+        progress.working_on(&games[chunk[0]].game_name);
         let uids = chunk.iter().map(|i| format!("\"{}\"", games[*i].app_id)).collect::<Vec<_>>().join(",");
         let body = format!("fields game,uid; where uid = ({uids}) & category = 1; limit {};", chunk.len());
-        let Ok(rows) = igdb_query(client, &client_id, &token, IGDB_API_EXTERNAL_GAMES, &body).await else { continue };
+        let rows = match igdb_query(client, &client_id, &token, IGDB_API_EXTERNAL_GAMES, &body).await {
+            Ok(rows) => rows,
+            Err(err) => {
+                log::warn!("[metadata] run {run}: Steam id lookup failed: {err}");
+                lookup_failed.extend(chunk.iter().copied());
+                continue;
+            }
+        };
         let by_uid: HashMap<String, u64> = rows
             .as_array()
             .map(|arr| arr.iter().filter_map(|r| Some((r["uid"].as_str()?.to_string(), r["game"].as_u64()?))).collect())
@@ -327,6 +455,7 @@ pub async fn igdb_fetch_metadata_batch(
             }
         }
     }
+    log::info!("[metadata] run {run}: phase steam ids: {} of {} resolved", steam_unknown.iter().filter(|i| known_id.contains_key(i)).count(), steam_unknown.len());
 
     // 5. Every known id, ten per games request.
     let mut resolved: Vec<Resolved> = Vec::new();
@@ -339,11 +468,17 @@ pub async fn igdb_fetch_metadata_batch(
             break;
         }
         let body = format!("fields {IGDB_GAME_FIELDS}; where id = ({}) & cover != null; limit {};", id_set(&chunk), chunk.len());
-        if let Ok(rows) = igdb_query(client, &client_id, &token, IGDB_API_GAMES, &body).await {
-            for row in rows.as_array().cloned().unwrap_or_default() {
-                if let Some(id) = row["id"].as_u64() {
-                    rows_by_id.insert(id, row);
+        match igdb_query(client, &client_id, &token, IGDB_API_GAMES, &body).await {
+            Ok(rows) => {
+                for row in rows.as_array().cloned().unwrap_or_default() {
+                    if let Some(id) = row["id"].as_u64() {
+                        rows_by_id.insert(id, row);
+                    }
                 }
+            }
+            Err(err) => {
+                log::warn!("[metadata] run {run}: game rows by id failed: {err}");
+                lookup_failed.extend(known_id.iter().filter(|(_, id)| chunk.contains(id)).map(|(i, _)| *i));
             }
         }
     }
@@ -374,24 +509,30 @@ pub async fn igdb_fetch_metadata_batch(
             _ => needs_fuzzy.push(i),
         }
     }
+    log::info!("[metadata] run {run}: phase by id: {} resolved, {} need a name search", resolved.len(), needs_fuzzy.len());
 
     // 6. Fuzzy name search, ten games per multiquery request. Steam's own
     // release year (its store API, one request per Steam game that gets
-    // this far) breaks ties exactly as resolve_igdb_game does.
+    // this far) breaks ties exactly as resolve_igdb_game does. One request
+    // per game can take minutes on a big library, so each one reports the
+    // game it is on — this stage used to sit on the first name silently.
     let mut steam_years: HashMap<usize, Option<i32>> = HashMap::new();
     for &i in &needs_fuzzy {
         if cancelled() {
             break;
         }
         if games[i].launcher == "steam" {
+            progress.working_on(&games[i].game_name);
             steam_years.insert(i, steam_release_year(client, &games[i].app_id).await);
         }
     }
+    log::info!("[metadata] run {run}: phase steam years: {} looked up", steam_years.len());
     let mut unmatched: Vec<usize> = Vec::new();
     for chunk in chunks_of(&needs_fuzzy, BATCH_CHUNK) {
         if cancelled() {
             break;
         }
+        progress.working_on(&games[chunk[0]].game_name);
         let searches: Vec<(String, String)> = chunk
             .iter()
             .map(|i| (search_query_for(&games[*i].game_name), igdb_platform_clause(games[*i].rom_platform.as_deref())))
@@ -400,6 +541,7 @@ pub async fn igdb_fetch_metadata_batch(
         let per_game = match igdb_query(client, &client_id, &token, IGDB_API_MULTIQUERY, &body).await {
             Ok(response) => split_multiquery_results(&response, chunk.len()),
             Err(err) => {
+                log::warn!("[metadata] run {run}: name search failed: {err}");
                 for i in chunk {
                     results[i] = Some(result(&games[i].app_id, "error", None, Some(err.clone())));
                     progress.finished(&games[i].game_name);
@@ -418,18 +560,30 @@ pub async fn igdb_fetch_metadata_batch(
             }
         }
     }
+    log::info!("[metadata] run {run}: phase name search: {} resolved in total, {} unmatched", resolved.len(), unmatched.len());
 
     // A ROM's automatic match is recorded (never over a manual pick) so the
     // card keeps its catalog identity on rescans — same as the per-game path.
-    {
-        let conn = state.conn.lock().str_err()?;
-        for r in &resolved {
+    let auto_links: Vec<(String, String, String)> = resolved
+        .iter()
+        .filter(|r| games[r.index].rom_platform.is_some() && !manual.contains(&r.index))
+        .filter_map(|r| {
             let g = &games[r.index];
-            if g.rom_platform.is_some() && !manual.contains(&r.index) {
-                if let Some(igdb_id) = r.igdb_game["id"].as_u64() {
-                    let _ = crate::game_links::save_auto_game_link(&conn, &g.launcher, &g.app_id, &format!("game:{igdb_id}"));
-                }
+            Some((g.launcher.clone(), g.app_id.clone(), format!("game:{}", r.igdb_game["id"].as_u64()?)))
+        })
+        .collect();
+    if !auto_links.is_empty() {
+        let saved = with_db(&app_handle, "auto links", move |db| {
+            let conn = db.conn.lock().str_err()?;
+            for (launcher, app_id, external_id) in &auto_links {
+                let _ = crate::game_links::save_auto_game_link(&conn, launcher, app_id, external_id);
             }
+            Ok(())
+        })
+        .await;
+        // Not fatal: the covers still download; the link is written next run.
+        if let Err(err) = saved {
+            log::warn!("[metadata] run {run}: auto links not saved: {err}");
         }
     }
 
@@ -457,15 +611,21 @@ pub async fn igdb_fetch_metadata_batch(
             banner_by_game.insert(id, if candidates.is_empty() { None } else { pick_landscape_image(&candidates) });
         }
     }
+    log::info!("[metadata] run {run}: phase banners: {} game(s) with a banner", banner_by_game.values().filter(|b| b.is_some()).count());
 
-    // 8. Downloads, a few at a time; index entries collected in memory.
-    let mut index = read_index(&meta_root);
+    // 8. Downloads, a few at a time, each bounded by GAME_DOWNLOAD_TIMEOUT;
+    // index entries collected in memory.
+    let (mut downloaded, mut failed) = (0usize, 0usize);
     let mut downloads = futures::stream::iter(resolved.into_iter().filter(|_| !cancelled()).map(|r| {
         let g = games[r.index].clone();
         let game_dir = meta_root.join(&g.app_id);
         let banner = r.igdb_game["id"].as_u64().and_then(|id| banner_by_game.get(&id).cloned().flatten());
         async move {
-            let outcome = download_game_files(client, &game_dir, &r.igdb_game, &r.cover_image_id, banner.as_deref(), &g.app_id).await;
+            let download = download_game_files(client, &game_dir, &r.igdb_game, &r.cover_image_id, banner.as_deref(), &g.app_id);
+            let outcome = match tokio::time::timeout(GAME_DOWNLOAD_TIMEOUT, download).await {
+                Ok(outcome) => outcome,
+                Err(_) => Err(format!("Download timed out after {}s", GAME_DOWNLOAD_TIMEOUT.as_secs())),
+            };
             (r, g, game_dir, outcome)
         }
     }))
@@ -474,36 +634,53 @@ pub async fn igdb_fetch_metadata_batch(
         match outcome {
             Ok(()) => {
                 let cover_path = game_dir.join(format!("{}_cover.webp", r.cover_image_id));
-                if let Some(obj) = index.as_object_mut() {
-                    obj.insert(g.app_id.clone(), build_index_entry(&game_dir, &g.game_name, &cover_path, &r.igdb_game));
-                }
+                index_updates.push((g.app_id.clone(), build_index_entry(&game_dir, &g.game_name, &cover_path, &r.igdb_game)));
                 not_found.remove(&g.app_id);
                 results[r.index] = Some(result(&g.app_id, "done", Some(cover_path.to_string_lossy().to_string()), None));
+                downloaded += 1;
             }
-            Err(err) => results[r.index] = Some(result(&g.app_id, "error", None, Some(err))),
+            Err(err) => {
+                log::warn!("[metadata] run {run}: download failed for {}: {err}", g.app_id);
+                results[r.index] = Some(result(&g.app_id, "error", None, Some(err)));
+                failed += 1;
+            }
         }
         progress.finished(&g.game_name);
     }
     drop(downloads);
-    write_index(&meta_root, &index);
+    merge_index_updates(&meta_root, index_updates);
+    log::info!("[metadata] run {run}: phase downloads: {downloaded} done, {failed} failed");
 
-    // 9. Nothing matched: remember, so the next scan doesn't ask again.
+    // 9. Nothing matched: remember, so the next scan doesn't ask again —
+    // unless a lookup for the game failed, which proves nothing.
     for i in unmatched {
         if results[i].is_some() {
             continue;
         }
-        not_found.insert(games[i].app_id.clone(), NotFoundEntry { name: games[i].game_name.clone(), tried_at: now });
-        results[i] = Some(result(&games[i].app_id, "not_found", None, Some(format!("No match found for {:?}", games[i].game_name))));
+        let status = unmatched_status(lookup_failed.contains(&i));
+        if status == "not_found" {
+            not_found.insert(games[i].app_id.clone(), NotFoundEntry { name: games[i].game_name.clone(), tried_at: now });
+        } else {
+            not_found.remove(&games[i].app_id);
+        }
+        let detail = if status == "not_found" { format!("No match found for {:?}", games[i].game_name) } else { "IGDB lookup failed".to_string() };
+        results[i] = Some(result(&games[i].app_id, status, None, Some(detail)));
         progress.finished(&games[i].game_name);
     }
     write_not_found(&meta_root, &not_found);
 
     // Whatever a cancel (or a failed stage) left untouched.
-    Ok(results
+    let results: Vec<BatchGameResult> = results
         .into_iter()
         .enumerate()
         .map(|(i, r)| r.unwrap_or_else(|| result(&games[i].app_id, "cancelled", None, None)))
-        .collect())
+        .collect();
+    log::info!(
+        "[metadata] run {run}: finished{} ({} cancelled)",
+        if cancelled() { " after cancel" } else { "" },
+        results.iter().filter(|r| r.status == "cancelled").count()
+    );
+    Ok(results)
 }
 
 #[cfg(test)]
@@ -518,6 +695,46 @@ mod tests {
         assert!(!not_found_is_fresh(&entry, "Some Game (Renamed)", 1_000_001));
         // A clock that went backwards never turns a memo stale into an error.
         assert!(not_found_is_fresh(&entry, "Some Game", 999_000));
+    }
+
+    #[test]
+    fn the_memo_only_skips_fresh_entries_and_never_on_a_retry() {
+        let entry = NotFoundEntry { name: "Some Game".into(), tried_at: 1_000_000 };
+        assert!(memo_skips(Some(&entry), "Some Game", 1_000_100, false));
+        assert!(!memo_skips(Some(&entry), "Some Game", 1_000_100, true), "Retry skipped games asks again");
+        assert!(!memo_skips(Some(&entry), "Some Game", 1_000_000 + NOT_FOUND_TTL_SECS, false));
+        assert!(!memo_skips(None, "Some Game", 1_000_100, false));
+    }
+
+    #[test]
+    fn only_a_genuine_no_match_is_memoised() {
+        assert_eq!(unmatched_status(false), "not_found");
+        // A failed Steam-id or by-id lookup (network, 429, auth) proves nothing.
+        assert_eq!(unmatched_status(true), "error");
+    }
+
+    #[test]
+    fn missing_or_blank_keys_are_one_code() {
+        let some = |s: &str| Some(s.to_string());
+        assert_eq!(igdb_credentials(some("id"), some("secret")), Ok(("id".into(), "secret".into())));
+        for (id, secret) in [(None, some("s")), (some("id"), None), (some("  "), some("s")), (some("id"), some("")), (None, None)] {
+            assert_eq!(igdb_credentials(id, secret), Err(crate::error_codes::IGDB_KEYS_MISSING.to_string()));
+        }
+    }
+
+    #[test]
+    fn twitch_failures_map_to_network_or_auth() {
+        assert!(twitch_error("Twitch request failed: error sending request").starts_with("E_IGDB_NETWORK: "));
+        assert!(twitch_error("Twitch auth failed (HTTP 400 Bad Request): invalid client secret").starts_with("E_IGDB_AUTH: "));
+        assert!(twitch_error("Twitch parse failed: EOF").starts_with("E_IGDB_AUTH: "));
+    }
+
+    #[test]
+    fn a_run_stops_on_cancel_or_when_a_newer_run_starts() {
+        assert!(!run_should_stop(false, 3, 3));
+        assert!(run_should_stop(true, 3, 3));
+        // The previous run, after run 4 reset the cancel flag, still stops.
+        assert!(run_should_stop(false, 4, 3));
     }
 
     #[test]

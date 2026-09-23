@@ -218,7 +218,7 @@
 }
 
 .player-queue__item--current {
-  background: rgba(192, 132, 252, 0.16);
+  background: color-mix(in srgb, var(--player-accent) 16%, transparent);
   border-left: 3px solid var(--player-accent);
 }
 

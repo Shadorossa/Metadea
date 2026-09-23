@@ -43,7 +43,9 @@ pub(crate) async fn get_twitch_token(client_id: &str, client_secret: &str) -> Re
         ])
         .send()
         .await
-        .map_err(|e| format!("Twitch request failed: {}", e))?;
+        // without_url: the request URL carries client_id and client_secret
+        // as query parameters, and this message reaches the UI and the log.
+        .map_err(|e| format!("Twitch request failed: {}", e.without_url()))?;
     if !http.status().is_success() {
         let status = http.status();
         let body = http.text().await.unwrap_or_default();

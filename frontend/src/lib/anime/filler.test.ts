@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  absoluteFromCanonProgress,
   completionEpisode,
   countFillerBetween,
   effectiveEpisodeTotal,
@@ -11,6 +12,8 @@ import {
   lastCanonEpisode,
   nextCanonEpisode,
   seasonEpisodeToAbsolute,
+  skipFillerFromWatchedWithFiller,
+  sumEffectiveSeasons,
   toFillerInfo,
   type FillerInfo,
 } from './filler';
@@ -155,5 +158,77 @@ describe('seasonEpisodeToAbsolute', () => {
     expect(seasonEpisodeToAbsolute(seasons, 2, 1)).toBe(26);
     expect(seasonEpisodeToAbsolute(seasons, 3, 10)).toBe(47);
     expect(seasonEpisodeToAbsolute(seasons, 0, 3)).toBeNull();
+  });
+});
+
+// 12 episodes: filler 4–6 and 11, episode 7 mixed → 8 canon/mixed
+// (1, 2, 3, 7, 8, 9, 10, 12).
+const SMALL = info({ last: 12, filler: [4, 5, 6, 11], mixed: [7] });
+
+describe('absoluteFromCanonProgress', () => {
+  it('maps the n-th canon/mixed episode across filler gaps', () => {
+    expect(absoluteFromCanonProgress(0, SMALL, 12)).toBe(0);
+    expect(absoluteFromCanonProgress(3, SMALL, 12)).toBe(3);
+    expect(absoluteFromCanonProgress(4, SMALL, 12)).toBe(7);
+    expect(absoluteFromCanonProgress(7, SMALL, 12)).toBe(10);
+    expect(absoluteFromCanonProgress(8, SMALL, 12)).toBe(12);
+  });
+
+  it('round-trips with effectiveProgress', () => {
+    for (let n = 0; n <= 8; n++) {
+      expect(effectiveProgress(skipped(absoluteFromCanonProgress(n, SMALL, 12)), SMALL, 12)).toBe(n);
+    }
+    for (let n = 0; n <= 203; n += 7) {
+      expect(effectiveProgress(skipped(absoluteFromCanonProgress(n, BLEACH, 366)), BLEACH, 366)).toBe(n);
+    }
+  });
+
+  it('clamps past the canon count to the last canon episode or the total', () => {
+    expect(absoluteFromCanonProgress(9, SMALL, 12)).toBe(12);
+    expect(absoluteFromCanonProgress(203, BLEACH, 366)).toBe(354);
+    expect(absoluteFromCanonProgress(500, BLEACH, 366)).toBe(354);
+    expect(absoluteFromCanonProgress(-3, SMALL, 12)).toBe(0);
+  });
+
+  it('counts episodes past the listed data as canon', () => {
+    expect(absoluteFromCanonProgress(9, SMALL, 20)).toBe(13);
+    expect(absoluteFromCanonProgress(100, SMALL, 20)).toBe(20);
+    expect(absoluteFromCanonProgress(10, SMALL, null)).toBe(14);
+  });
+
+  it('goes through the entry offset', () => {
+    // Fairy Tail (2014): entry 28–51 are absolute 203–226 (filler).
+    expect(absoluteFromCanonProgress(27, FAIRY_TAIL_2014, 102)).toBe(27);
+    expect(absoluteFromCanonProgress(28, FAIRY_TAIL_2014, 102)).toBe(52);
+  });
+
+  it('is the count itself without data', () => {
+    expect(absoluteFromCanonProgress(5, null, 12)).toBe(5);
+    expect(absoluteFromCanonProgress(20, undefined, 12)).toBe(12);
+    expect(absoluteFromCanonProgress(20, null, null)).toBe(20);
+  });
+});
+
+describe('"Watched with filler" checkbox', () => {
+  it('maps unchecked to skip_filler = 1', () => {
+    expect(skipFillerFromWatchedWithFiller(true)).toBe(0);
+    expect(skipFillerFromWatchedWithFiller(false)).toBe(1);
+    expect(effectiveEpisodeTotal({ skip_filler: skipFillerFromWatchedWithFiller(false) }, SMALL, 12)).toBe(8);
+    expect(effectiveEpisodeTotal({ skip_filler: skipFillerFromWatchedWithFiller(true) }, SMALL, 12)).toBe(12);
+  });
+});
+
+describe('sumEffectiveSeasons', () => {
+  it('sums each season with its own skip flag and filler data', () => {
+    expect(sumEffectiveSeasons([
+      { entry: skipped(10), info: SMALL, total: 12 },
+      { entry: watched(5), info: SMALL, total: 12 },
+      { entry: null, info: undefined, total: 24 },
+      { entry: skipped(3), info: undefined, total: null },
+    ])).toEqual({ total: 8 + 12 + 24, progress: 7 + 5 + 0 + 3 });
+  });
+
+  it('is zero for no seasons', () => {
+    expect(sumEffectiveSeasons([])).toEqual({ total: 0, progress: 0 });
   });
 });

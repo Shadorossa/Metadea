@@ -442,7 +442,7 @@
 
 .pr-editor-merge-cast-option:hover {
   border-color: var(--accent);
-  background: rgba(192, 132, 252, 0.09);
+  background: rgb(var(--accent-rgb) / 0.09);
 }
 
 

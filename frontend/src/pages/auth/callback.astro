@@ -3,6 +3,7 @@ import { getLang, useTranslations } from '../../i18n/index';
 import '../../styles/core/global.css';
 import '../../styles/pages/login.css';
 import LocaleBootstrap from '../../components/i18n/LocaleBootstrap.astro';
+import UiScaleBootstrap from '../../components/ui-scale/UiScaleBootstrap.astro';
 
 const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
@@ -11,13 +12,15 @@ const t    = useTranslations(lang);
   <head>
     <meta charset="utf-8" />
     <LocaleBootstrap buildLang={lang} />
+    <UiScaleBootstrap />
     <title data-i18n-doc-title="auth.authenticating">{t.auth.authenticating}</title>
   </head>
   <body class="callback-body">
     <p id="status" data-i18n="auth.signing_in">{t.auth.signing_in}</p>
 
     <script>
-      import { storeAuthToken, initTauriDatabase } from '../../lib/tauri';
+      import { storeAuthToken, initTauriDatabase, getAuthToken, getUserInfo, saveUserInfo } from '../../lib/tauri';
+      import { nameToKeep } from '../../lib/auth/keep-chosen-name';
       import { API_URL } from '../../lib/api/urls';
       import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
       import { getT } from '../../i18n/runtime';
@@ -56,8 +59,25 @@ const t    = useTranslations(lang);
         status.textContent = errorTemplate.replace('{message}', decodeURIComponent(error));
         setTimeout(() => { window.location.replace('/login'); }, 2000);
       } else if (code) {
+        // The name picked before linking Google (offline login) must not be
+        // replaced by the Google-derived server name: keep it as the custom
+        // display name, which the UI and the profile sync already prefer.
+        const keepChosenName = async (newUsername: string) => {
+          const [previous, info] = await Promise.all([
+            getAuthToken().catch(() => null),
+            getUserInfo().catch(() => ({} as Record<string, unknown>)),
+          ]);
+          const keep = nameToKeep(previous?.username, newUsername, info.display_name as string | undefined);
+          if (!keep) return;
+          await saveUserInfo({ display_name: keep });
+          localStorage.setItem('profile_username_cache', keep);
+        };
+
         redeemCode()
-          .then(({ token, username }) => storeAuthToken(token, username ?? ''))
+          .then(async ({ token, username }) => {
+            await keepChosenName(username ?? '').catch(err => console.warn('[callback] could not keep the chosen name:', err));
+            await storeAuthToken(token, username ?? '');
+          })
           .then(() => {
             const destination = localStorage.getItem(STORAGE_KEYS.onboardingCompleted) === '1' ? '/home' : '/welcome';
             window.location.replace(destination);

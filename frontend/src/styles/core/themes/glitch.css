@@ -6,7 +6,7 @@ html[data-theme="glitch"], [data-theme="glitch"] {
 
   --text-main: #39ff14; /* Verde neón Matrix */
   --text-muted: #bc39fa; /* Morado eléctrico */
-  --text-dim: #5c1882;
+  --text-dim: #9333d1;
 
   --border-color: #39ff14;
 
@@ -83,10 +83,10 @@ body[data-theme="glitch"], html[data-theme="glitch"] body {
   box-shadow: 0px 0px 0px #ff007f;
 }
 
+/* Every themed text field, select and time box alike (the E-Ink reader keeps
+   its paper look; the settings name preview stays a bare display line). */
 [data-theme="glitch"] .search-input,
-[data-theme="glitch"] input[type="text"],
-[data-theme="glitch"] input[type="number"],
-[data-theme="glitch"] textarea {
+[data-theme="glitch"] :is(input[type="text"], input[type="search"], input[type="number"], input[type="time"], select, textarea):not(.font-preview-input, .reader-eink *) {
   border: 1px solid var(--border-color) !important;
   background-color: #050209 !important;
   color: #39ff14 !important;
@@ -94,7 +94,7 @@ body[data-theme="glitch"], html[data-theme="glitch"] body {
 }
 
 [data-theme="glitch"] .search-input:focus,
-[data-theme="glitch"] input[type="text"]:focus {
+[data-theme="glitch"] :is(input[type="text"], input[type="search"], input[type="number"], input[type="time"], select, textarea):focus:not(.font-preview-input, .reader-eink *) {
   border-color: #ff007f !important;
   box-shadow: 0 0 10px rgba(255, 0, 127, 0.4) !important;
 }

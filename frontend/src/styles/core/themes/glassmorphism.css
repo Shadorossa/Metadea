@@ -165,3 +165,22 @@ body[data-theme="glassmorphism"], html[data-theme="glassmorphism"] body {
   border: 2px solid transparent !important;
   background-clip: padding-box !important;
 }
+
+/* ── Floating surfaces ────────────────────────────────────────────────────
+   Toasts, popovers and context menus paint --bg-elevated, which is 45 %
+   transparent here: with no backdrop behind them the page text showed
+   through. Frosted glass, as the panels above, but denser so it reads. */
+[data-theme="glassmorphism"] :is(
+  .global-toast,
+  .settings-toast,
+  .web-link-copied-toast,
+  .calendar-day-popover,
+  .tier-row-menu,
+  .share-image-menu,
+  .local-media-detail-locate-menu,
+  .catalog-admin-context-menu
+) {
+  background-color: rgba(20, 15, 38, 0.82);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}

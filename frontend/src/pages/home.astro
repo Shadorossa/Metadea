@@ -217,7 +217,14 @@ const t = useTranslations(lang);
           return;
         }
 
-        if (status) status.textContent = ht.home.profile_sync_error;
+        // The server's own answer (HTTP status + message) when it replied,
+        // so "check your connection" isn't the only clue on a server error.
+        let detail = "";
+        try {
+          const last = JSON.parse(localStorage.getItem(STORAGE_KEYS.profileSyncLastAttempt) ?? "null");
+          if (last?.result === "failed_response" && typeof last.detail === "string") detail = last.detail;
+        } catch { /* no attempt record */ }
+        if (status) status.textContent = detail ? `${ht.home.profile_sync_error} (${detail})` : ht.home.profile_sync_error;
         syncButton.textContent = ht.home.profile_sync_button;
         syncButton.disabled = false;
       });

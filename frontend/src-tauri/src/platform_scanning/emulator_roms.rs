@@ -30,11 +30,22 @@ fn company_for_platform(platform_id: &str) -> &'static str {
 fn to_local_game(game: RomGame) -> LocalGame {
     use super::common::synthetic_app_id;
     let replaced_app_ids = game.replaced_paths.iter().map(|path| synthetic_app_id("rom", path)).collect();
+    // Files folded into this entry that are not disc-merge material (Switch
+    // update/DLC dumps, an alternate dump of the same ROM, the same file
+    // reached through an overlapping ROM folder): each may once have been a
+    // card of its own, so its old identity counts as this game from now on.
+    let launcher = company_for_platform(&game.platform_id);
+    let aliases = game.updates.iter().chain(game.dlc.iter()).map(|file| &file.path)
+        .chain(game.alias_paths.iter())
+        .map(|path| (launcher.to_string(), synthetic_app_id("rom", path)))
+        .chain(game.alias_platforms.iter().map(|platform| (company_for_platform(platform).to_string(), synthetic_app_id("rom", &game.base.path))))
+        .collect();
     LocalGame {
         name: game.title_stem.clone().unwrap_or_else(|| game.base.stem.clone()),
         discs: if game.discs.len() > 1 { game.discs.iter().map(|d| d.path.clone()).collect() } else { Vec::new() },
         disc_playlist: game.playlist,
         replaced_app_ids,
+        aliases,
         launcher: company_for_platform(&game.platform_id).to_string(),
         app_id: Some(game.app_id),
         external_id: None,
@@ -63,4 +74,34 @@ pub(super) fn emulator_rom_folders(conn: &rusqlite::Connection) -> Vec<RomFolder
 
 pub(super) fn scan_rom_folders(folders: &[RomFolderConfig]) -> Vec<LocalGame> {
     scan_rom_games(folders).into_iter().map(to_local_game).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::platform_scanning::rom_library::{group_rom_files, RomFile};
+    use crate::platform_scanning::synthetic_app_id;
+
+    fn switch_file(path: &str) -> RomFile {
+        let p = std::path::Path::new(path);
+        let stem = p.file_stem().unwrap().to_string_lossy().to_string();
+        let (title_id, kind) = crate::platform_scanning::rom_library::switch_title_id_and_kind(&stem);
+        RomFile { path: path.into(), file_name: p.file_name().unwrap().to_string_lossy().to_string(), stem, extension: "nsp".into(), title_id, kind, ..Default::default() }
+    }
+
+    // The owner's Switch folder: the update and DLC dumps used to be cards of
+    // their own (rom_66b9…, rom_0ad0… in local_games_seen); grouped under the
+    // base game, their old identities must count as that game.
+    #[test]
+    fn grouped_update_and_dlc_dumps_are_aliases_of_their_base_game() {
+        let update = "D:/Switch/Pokémon Scarlet [0100A3D008C5C800][v786432].nsp";
+        let dlc = "D:/Switch/Pokemon Scarlet [New Uniform Set] [0100A3D008C5D001].nsp";
+        let base = "D:/Switch/Pokemon Scarlet [0100A3D008C5C000].nsp";
+        let games = group_rom_files("switch", vec![switch_file(update), switch_file(dlc), switch_file(base)]);
+        assert_eq!(games.len(), 1);
+        let game = to_local_game(games.into_iter().next().unwrap());
+        assert_eq!(game.app_id.as_deref(), Some(synthetic_app_id("rom", base).as_str()));
+        assert!(game.aliases.contains(&("nintendo".to_string(), synthetic_app_id("rom", update))));
+        assert!(game.aliases.contains(&("nintendo".to_string(), synthetic_app_id("rom", dlc))));
+    }
 }

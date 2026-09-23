@@ -541,7 +541,7 @@
 
 .me-btn--save {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   border-color: var(--accent);
   min-height: 50px;
   display: flex;
@@ -692,7 +692,7 @@
 .me-month-btn.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   font-weight: 700;
   box-shadow: 0 0 0 2px var(--accent-soft), 0 2px 8px rgba(0, 0, 0, 0.25);
 }

@@ -3,7 +3,7 @@
 
 use tauri::Manager;
 use crate::db::ToStringErr;
-use super::common::{apply_game_link, game_link_key, LocalGame};
+use super::common::{apply_game_link, dedupe_scanned_games, game_link_key, LiveGames, LocalGame};
 use super::ea::{ea_scan_signature, scan_ea_games};
 use super::emulator_roms::{emulator_rom_folders, scan_emulator_roms, scan_rom_folders};
 use super::epic::{epic_scan_signature, scan_epic_games};
@@ -33,13 +33,16 @@ fn scan_all_launchers(rom_folders: &[super::rom_library::RomFolderConfig], video
     all.extend(scan_cache::cached("xbox", xbox_scan_signature(), scan_xbox_games));
     all.extend(scan_cache::cached("ea", ea_scan_signature(), scan_ea_games));
     all.extend(scan_cache::cached("roms", rom_scan_signature(rom_folders), || scan_rom_folders(rom_folders)));
-    if let Some(folder) = videojuegos_path.filter(|f| !f.is_empty()) {
-        all.extend(scan_cache::cached("videojuegos-folder", local_folder_signature(&folder), || scan_local_folder(&folder)));
-    }
+    // The VN folder before the plain videojuegos folder: when both routes
+    // reach the same game folder, the entry that knows its executable (and
+    // that it is a visual novel) is the one dedupe_scanned_games keeps.
     if let Some(folder) = vn_path.filter(|f| !f.is_empty()) {
         all.extend(scan_cache::cached("vn-folder", local_folder_signature(&folder), || scan_vn_folder(&folder)));
     }
-    all
+    if let Some(folder) = videojuegos_path.filter(|f| !f.is_empty()) {
+        all.extend(scan_cache::cached("videojuegos-folder", local_folder_signature(&folder), || scan_local_folder(&folder)));
+    }
+    dedupe_scanned_games(all)
 }
 
 #[tauri::command]
@@ -92,9 +95,11 @@ pub async fn scan_all_games(
     // Steam's owned-games API on the frontend) still knows about — see
     // restore_missing_seen_games's own comment for why this can't just rely
     // on "was it in `all`" alone.
-    let present: std::collections::HashSet<(String, String)> =
-        seen.iter().map(|(l, k, _)| (l.clone(), k.clone())).collect();
-    let mut restored = crate::game_links::restore_missing_seen_games(&conn, &present);
+    // A seen row counts as present too when this scan shows the same game
+    // under a new identity (LiveGames::supersedes) — otherwise a renamed,
+    // moved or regrouped game came back as a second, "not installed" card.
+    let live = LiveGames::from_games(&all);
+    let mut restored = crate::game_links::restore_missing_seen_games(&conn, &live);
     for game in &mut restored {
         apply_game_link(game, &links);
     }

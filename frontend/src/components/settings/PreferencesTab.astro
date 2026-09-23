@@ -3,6 +3,7 @@ import { ICON_STAR, ICON_RATING_FACES } from "../../lib/dom/icon-strings";
 import type { Translations } from "../../i18n/index";
 import { LOCALES } from "../../i18n/index";
 import { KeyboardShortcutsSection } from "./KeyboardShortcutsSection";
+import { UI_SCALE_PRESETS } from "../../lib/ui-scale/ui-scale";
 
 interface Props {
   t: Translations;
@@ -162,26 +163,50 @@ const LANGUAGE_NAMES: Record<string, string> = {
       </div>
     </div>
 
-    <!-- Idioma -->
-    <div class="settings-section prefs-card" data-onboarding-part="basics-language">
-      <h3 class="settings-section-title" data-i18n="settings.language_section_title">
-        {t.settings.language_section_title}
-      </h3>
-      <div class="language-picker" id="language-picker">
-        {LOCALES.map((code) => (
-          <button
-            type="button"
-            class="language-btn"
-            data-value={code}
-            title={LANGUAGE_NAMES[code] ?? code}
-          >
-            {code.toUpperCase()}
-          </button>
-        ))}
+    <!-- Idioma + Escala de la interfaz (mount/language.ts, mount/ui-scale.ts) -->
+    <div class="prefs-card">
+      <div class="settings-section" data-onboarding-part="basics-language">
+        <h3 class="settings-section-title" data-i18n="settings.language_section_title">
+          {t.settings.language_section_title}
+        </h3>
+        <div class="language-picker" id="language-picker">
+          {LOCALES.map((code) => (
+            <button
+              type="button"
+              class="language-btn"
+              data-value={code}
+              title={LANGUAGE_NAMES[code] ?? code}
+            >
+              {code.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <p class="settings-hint" data-i18n="settings.language_hint">
+          {t.settings.language_hint}
+        </p>
       </div>
-      <p class="settings-hint" data-i18n="settings.language_hint">
-        {t.settings.language_hint}
-      </p>
+
+      <div class="settings-section" id="ui-scale-section">
+        <div class="prefs-row">
+          <h3 class="settings-section-title" data-i18n="settings.ui_scale_title">
+            {t.settings.ui_scale_title}
+          </h3>
+          <button type="button" class="settings-help-btn" data-i18n-title="settings.ui_scale_hint" title={t.settings.ui_scale_hint}>
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
+        </div>
+        <div class="language-picker" id="ui-scale-picker" role="group" aria-label={t.settings.ui_scale_title} data-i18n-aria-label="settings.ui_scale_title">
+          <button type="button" class="ui-scale-btn" data-value="auto" data-i18n="settings.ui_scale_auto">
+            {t.settings.ui_scale_auto}
+          </button>
+          {UI_SCALE_PRESETS.map((percent) => (
+            <button type="button" class="ui-scale-btn" data-value={String(percent)}>
+              {percent}%
+            </button>
+          ))}
+        </div>
+        <p class="settings-hint" id="ui-scale-current" aria-live="polite" hidden></p>
+      </div>
     </div>
 
     <!-- Biblioteca y portadas (mount/activity.ts) -->

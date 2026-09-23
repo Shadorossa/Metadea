@@ -1,0 +1,6 @@
+/* Set on <html> by the Interface scale bootstrap (lib/ui-scale/ui-scale-bootstrap.ts)
+   while the webview zoom is being changed, so the unscaled layout never
+   flashes. Removed once the zoom lands, or after 800 ms anyway. */
+html.ui-scale-pending body {
+  visibility: hidden;
+}

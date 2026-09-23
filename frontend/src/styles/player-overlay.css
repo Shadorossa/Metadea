@@ -5,7 +5,9 @@
 :root {
   --player-fg: #f2f2f8;
   --player-fg-muted: rgba(242, 242, 248, 0.65);
-  --player-accent: #c084fc;
+  /* Theme accent where one is loaded (PlayerModal in the main window); the
+     bare overlay window has no theme and keeps Nebula's violet. */
+  --player-accent: var(--accent, #c084fc);
   --player-panel: rgba(12, 12, 20, 0.86);
   --player-panel-border: rgba(255, 255, 255, 0.1);
   --player-scrim: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0));
@@ -132,8 +134,8 @@ body.player-overlay-body {
   margin-left: 0.5rem;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: rgba(192, 132, 252, 0.2);
-  border: 1px solid rgba(192, 132, 252, 0.4);
+  background: color-mix(in srgb, var(--player-accent) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--player-accent) 40%, transparent);
   font-size: 0.75rem;
   color: var(--player-fg);
 }
