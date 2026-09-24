@@ -16,11 +16,33 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-09-25
+
+### Highlights
+
+- Plugin system, a PS5-style Big Picture and Sakuga clips.
+
 ### Added
 
-- **Big Picture:** PS5-style skin (Settings › Appearance), inspired by the PS5ish Playnite theme.
-- **Plugins:** Plugin system: install plugins from file or URL; sources for reading, media-page actions and panels, events (docs/PLUGINS.md)
-- Sakuga: every clip per animator from Sakugabooru, sorted by votes, on anime and creator pages
+- **Plugins:** install from file or URL; reading sources, media-page actions and panels, events (docs/PLUGINS.md).
+- **Big Picture:** PS5-style skin (Settings › Appearance), inspired by the PS5ish Playnite theme; light novels get their own tab.
+- **Sakuga:** every clip per animator from Sakugabooru, sorted by votes, on anime and creator pages.
+- **Player:** night mode for clearer dialogue (D).
+
+### Improved
+
+- **Player:** speed limited to 1× or slower.
+- **Creator and company pages:** grid/timeline icons; timeline fills missing years; no size jump between views.
+- **Spoiler shield:** characters only in unread source material (e.g. the manga after the anime) are hidden.
+- **Unified seasons:** planned seasons group together; the release calendar lists seasons.
+- **Discord:** updates throttled and fields kept within Discord's limits.
+- **Settings:** compact API keys box.
+
+### Fixed
+
+- Empty pages after an update until F5 — Cause: the page stopped waiting for the backend after 1.5 s.
+- Discord card blank in the small profile — Cause: too many updates and out-of-range fields.
+- Series seasons missing from the release calendar — Cause: it reused a stats filter that drops seasons.
 
 ## [0.7.2] - 2026-09-24
 
