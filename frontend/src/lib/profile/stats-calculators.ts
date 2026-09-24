@@ -445,8 +445,12 @@ export function computeUpcomingPlanningReleases(
   catalogMap: Map<string, CatalogSummary>,
   minDate: Date, // lower bound; pass the 1st of the month to include earlier-this-month releases, not just today onward
 ): UpcomingRelease[] {
-  const releases = getNonEditionItems(items, catalogMap)
-    .filter(item => item.status === 'planning')
+  // Every planned entry with a date — seasons included (a new season airing
+  // is exactly what the calendar is for, even with "Unify seasons" on); only
+  // version-log children (editions picked on another entry) are left out.
+  const editionChildren = getEditionChildIds(items);
+  const releases = items
+    .filter(item => item.status === 'planning' && !editionChildren.has(item.external_id))
     .map(item => {
       const entry = catalogMap.get(item.external_id);
       if (!entry) return null;

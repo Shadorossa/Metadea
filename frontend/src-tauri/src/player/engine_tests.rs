@@ -119,6 +119,19 @@ fn open_builds_the_playlist_and_arms_the_start_offset() {
 }
 
 #[test]
+fn speed_is_capped_at_one() {
+    let fake = FakeMpv::new(vec![]);
+    let mut engine = PlayerEngine::default();
+    engine.attach(fake.clone(), Box::new(SinkHandle(Arc::new(RecordingSink::default())))).unwrap();
+    engine.set_speed(2.0).unwrap();
+    engine.set_speed(0.5).unwrap();
+    engine.set_speed(0.1).unwrap();
+    engine.close();
+    let speeds: Vec<String> = fake.properties.lock().unwrap().iter().filter(|(name, _)| name == "speed").map(|(_, value)| value.clone()).collect();
+    assert_eq!(speeds, ["1.000", "0.500", "0.250"]);
+}
+
+#[test]
 fn event_thread_delivers_status_and_track_changes_to_the_sink() {
     let fake = FakeMpv::new(vec![
         prop("path", PropertyValue::Str("a.mkv".into())),

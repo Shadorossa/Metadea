@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' https: data: asset: http://asset.localhost https://asset.localhost; font-src 'self' asset: http://asset.localhost https://asset.localhost; connect-src 'self' https: ipc: http://asset.localhost https://asset.localhost; script-src 'self'; style-src 'self' 'unsafe-inline';",
+      "csp": "default-src 'self'; img-src 'self' https: data: asset: http://asset.localhost https://asset.localhost; font-src 'self' asset: http://asset.localhost https://asset.localhost; connect-src 'self' https: ipc: http://asset.localhost https://asset.localhost; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline';",
       "dangerousDisableAssetCspModification": [
         "style-src"
       ],

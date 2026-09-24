@@ -17,7 +17,9 @@ mod emulator_screenshots;
 mod game_sessions;
 mod jukebox;
 mod mal;
+mod plugins;
 mod reconsumption;
+mod sakuga;
 mod social_profile_parity;
 mod tier_list_board;
 mod yearly_bingo;
@@ -63,6 +65,8 @@ pub(crate) const MIGRATIONS: &[(i64, Migration)] = &[
     (86, anime_filler::migrate),
     (87, game_sessions::migrate),
     (88, wallpaper_cache::migrate),
+    (89, plugins::migrate),
+    (90, sakuga::migrate),
 ];
 
 pub(crate) fn run_migrations(conn: &Connection) -> SqlResult<()> {

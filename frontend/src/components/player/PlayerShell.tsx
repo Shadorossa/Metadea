@@ -17,6 +17,7 @@ import { useAutoHide } from './hooks/useAutoHide';
 import { useClipMode } from './hooks/useClipMode';
 import { usePlayerFillerNext } from './hooks/usePlayerFillerNext';
 import { usePlayerKeys } from './hooks/usePlayerKeys';
+import { usePlayerNightMode } from './hooks/usePlayerNightMode';
 import { usePlayerSkipSegments } from './hooks/usePlayerSkipSegments';
 import { usePlayerStatus } from './hooks/usePlayerStatus';
 import { usePlayerTrackPreferences } from './hooks/usePlayerTrackPreferences';
@@ -75,12 +76,13 @@ export function PlayerShell({ docked = false, onSkipReady }: Props) {
   });
 
   const trackPreferences = usePlayerTrackPreferences(status, session);
+  const nightMode = usePlayerNightMode(status);
   const clip = useClipMode(status, getT());
   const fillerNext = usePlayerFillerNext(status, session, activeSegment?.kind === 'ending');
   const clipActive = clip.phase === 'trimming' || clip.phase === 'choosing';
 
   // Clip mode keys ([ / ] / Enter): a second `player` registration made
-  // while clip mode is on, so it shadows speed [ / ] only for that time
+  // while clip mode is on, so it shadows speed-down [ only for that time
   // (lib/player/keymap.ts CLIP_KEY_BINDINGS). [ / ] only while trimming;
   // Enter confirms the trim, then exports, and leaves focused buttons alone.
   const clipBindings = useMemo<ShortcutBinding[]>(() => CLIP_KEY_BINDINGS.map(binding => ({
@@ -206,6 +208,7 @@ export function PlayerShell({ docked = false, onSkipReady }: Props) {
           onResetTrackMemory={trackPreferences.resetMemory}
           seekPreview={!docked}
           clip={clip}
+          nightMode={nightMode}
         />
       </div>
 

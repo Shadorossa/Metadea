@@ -9,9 +9,18 @@
 // another. It is *protected* while the user has at least one of its works in
 // the library (anything but a dropped row with no progress) and has not
 // completed every released one.
+//
+// A *story* is the cross-medium franchise: those chains joined by the
+// adaptation links between them (ADAPTATION/SOURCE: an anime and the manga
+// it adapts, the light novel behind both). Spin-offs, side stories and
+// loose ALTERNATIVE/CHARACTER links across media stay out. A story is
+// protected while the user engages with any of its works and has not
+// completed every released one, including works they never added to the
+// library (the manga behind the anime seasons they finished) as long as
+// the relations/catalog cache knows them.
 import { SEQUEL_RELATION_TYPES, isSagaComponentRelationType } from '../media/saga/saga-relation-types';
 import { stripSeasonSuffix } from '../media/mappers/mapper-utils';
-import { COMPLETED_STATUS, type ProgressRow } from './spoiler-progress';
+import { COMPLETED_STATUS, isUnitAhead, primaryUnitForType, type ProgressRow } from './spoiler-progress';
 
 export interface SpoilerLibraryRow extends ProgressRow {
   external_id: string;
@@ -59,6 +68,9 @@ export interface SpoilerFranchise {
 
 export interface SpoilerIndex {
   franchiseOf: (id: string) => SpoilerFranchise;
+  /** The cross-medium story around `id` (its franchise plus every chain
+   *  linked to it by adaptation relations), ordered by release. */
+  storyOf: (id: string) => SpoilerFranchise;
   libraryRow: (id: string) => SpoilerLibraryRow | undefined;
   typeOf: (id: string) => string;
   titleOf: (id: string) => string | null;
@@ -67,6 +79,11 @@ export interface SpoilerIndex {
   predecessorsOf: (id: string) => ReadonlySet<string>;
   isStarted: (id: string) => boolean;
   isCompleted: (id: string) => boolean;
+  /** Something of the work was actually consumed: completed, or any
+   *  watched/read progress (for types with no progress unit, started). */
+  isConsumed: (id: string) => boolean;
+  /** Completed, or progress has reached unit `position` of the work. */
+  isConsumedPast: (id: string, position: number) => boolean;
 }
 
 // Library statuses that mean the user has begun the work even at zero
@@ -80,6 +97,56 @@ const MEDIUM_BY_TYPE: Record<string, string> = {
 };
 
 const UNRELEASED_CATALOG_STATUS = 'NOT_YET_RELEASED';
+
+// Cross-medium links that make two chains one story: a work and its
+// adaptation (AniList's pair plus the user-editable REL_ variants).
+const STORY_LINK_RELATION_TYPES: ReadonlySet<string> = new Set([
+  'ADAPTATION', 'SOURCE', 'REL_ADAPTATION', 'REL_SOURCE',
+]);
+
+export function isStoryLinkRelationType(relationType: string): boolean {
+  return STORY_LINK_RELATION_TYPES.has(relationType);
+}
+
+interface UnionFind {
+  has: (id: string) => boolean;
+  find: (id: string) => string;
+  union: (a: string, b: string) => void;
+  /** Members per root. */
+  groups: () => Map<string, string[]>;
+}
+
+function createUnionFind(): UnionFind {
+  const parent = new Map<string, string>();
+  const find = (id: string): string => {
+    let root = id;
+    for (let up = parent.get(root); up !== undefined && up !== root; up = parent.get(root)) root = up;
+    let node = id;
+    for (let next = parent.get(node); node !== root && next !== undefined; next = parent.get(node)) {
+      parent.set(node, root);
+      node = next;
+    }
+    return root;
+  };
+  const union = (a: string, b: string) => {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent.set(rootA < rootB ? rootB : rootA, rootA < rootB ? rootA : rootB);
+  };
+  const groups = () => {
+    const out = new Map<string, string[]>();
+    for (const id of parent.keys()) {
+      const root = find(id);
+      const members = out.get(root);
+      if (members) members.push(id);
+      else out.set(root, [id]);
+    }
+    return out;
+  };
+  return { has: id => parent.has(id), find, union, groups };
+}
 
 function typeFromId(id: string): string {
   const colon = id.indexOf(':');
@@ -118,50 +185,36 @@ export function buildSpoilerIndex(input: SpoilerIndexInput): SpoilerIndex {
 
   const typeOf = (id: string) => catalogById.get(id)?.type ?? libraryById.get(id)?.type ?? typeFromId(id);
 
-  // Union-find over same-medium chain edges.
-  const parent = new Map<string, string>();
-  const find = (id: string): string => {
-    let root = id;
-    for (let up = parent.get(root); up !== undefined && up !== root; up = parent.get(root)) root = up;
-    let node = id;
-    for (let next = parent.get(node); node !== root && next !== undefined; next = parent.get(node)) {
-      parent.set(node, root);
-      node = next;
-    }
-    return root;
-  };
+  // Union-find over same-medium chain edges (franchises), and over those
+  // plus adaptation links (stories).
+  const chains = createUnionFind();
+  const stories = createUnionFind();
   const addEdge = (edges: Map<string, Set<string>>, from: string, to: string) => {
     const set = edges.get(from);
     if (set) set.add(to);
     else edges.set(from, new Set([to]));
-  };
-  const union = (a: string, b: string) => {
-    if (!parent.has(a)) parent.set(a, a);
-    if (!parent.has(b)) parent.set(b, b);
-    const rootA = find(a);
-    const rootB = find(b);
-    if (rootA !== rootB) parent.set(rootA < rootB ? rootB : rootA, rootA < rootB ? rootA : rootB);
   };
 
   const leaders = new Map<string, Set<string>>();
   for (const relation of input.relations) {
     const owner = relation.media_external_id;
     const target = relation.related_media_external_id;
-    if (!owner || !target || owner === target || !isSagaComponentRelationType(relation.relation_type)) continue;
+    if (!owner || !target || owner === target) continue;
+    if (STORY_LINK_RELATION_TYPES.has(relation.relation_type)) {
+      stories.union(owner, target);
+      continue;
+    }
+    if (!isSagaComponentRelationType(relation.relation_type)) continue;
     if (mediumOfType(typeOf(owner)) !== mediumOfType(typeOf(target))) continue;
-    union(owner, target);
+    chains.union(owner, target);
+    stories.union(owner, target);
     const pair = orderedPair(relation);
     if (!pair) continue;
     addEdge(leaders, pair[1], pair[0]);
   }
 
-  const membersByRoot = new Map<string, string[]>();
-  for (const id of parent.keys()) {
-    const root = find(id);
-    const members = membersByRoot.get(root);
-    if (members) members.push(id);
-    else membersByRoot.set(root, [id]);
-  }
+  const membersByRoot = chains.groups();
+  const storyMembersByRoot = stories.groups();
 
   const predecessorCache = new Map<string, Set<string>>();
   const predecessorsOf = (id: string): Set<string> => {
@@ -196,32 +249,71 @@ export function buildSpoilerIndex(input: SpoilerIndexInput): SpoilerIndex {
     return row?.release_year != null && row.release_year > currentYear;
   };
 
-  const franchiseCache = new Map<string, SpoilerFranchise>();
-  const franchiseOf = (id: string): SpoilerFranchise => {
-    const root = parent.has(id) ? find(id) : id;
-    const cached = franchiseCache.get(root);
-    if (cached) return cached;
-    const members = membersByRoot.get(root) ?? [id];
-    const memberIds = [...members].sort((a, b) =>
-      predecessorsOf(a).size - predecessorsOf(b).size || releaseKey(a) - releaseKey(b) || (a < b ? -1 : a > b ? 1 : 0));
+  const isCountable = (member: string) => (catalogById.has(member) || libraryById.has(member)) && !isUpcoming(member);
+
+  const makeFranchise = (memberIds: string[]): SpoilerFranchise => {
     // Members the user can actually complete: known works that are out.
-    const countable = memberIds.filter(member => (catalogById.has(member) || libraryById.has(member)) && !isUpcoming(member));
+    const countable = memberIds.filter(isCountable);
     const rows = memberIds.map(member => libraryById.get(member)).filter((row): row is SpoilerLibraryRow => !!row);
     const completed = countable.length > 0 && countable.every(isCompleted);
     const first = memberIds.find(member => titleOf(member)) ?? memberIds[0];
-    const franchise: SpoilerFranchise = {
+    return {
       id: [...memberIds].sort()[0],
       memberIds,
       name: stripSeasonSuffix(titleOf(first) ?? first),
       isProtected: rows.some(isEngagingRow) && !completed,
       isCompleted: completed,
     };
+  };
+
+  const byId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+  const franchiseCache = new Map<string, SpoilerFranchise>();
+  const franchiseOf = (id: string): SpoilerFranchise => {
+    const root = chains.has(id) ? chains.find(id) : id;
+    const cached = franchiseCache.get(root);
+    if (cached) return cached;
+    const members = membersByRoot.get(root) ?? [id];
+    const memberIds = [...members].sort((a, b) =>
+      predecessorsOf(a).size - predecessorsOf(b).size || releaseKey(a) - releaseKey(b) || byId(a, b));
+    const franchise = makeFranchise(memberIds);
     franchiseCache.set(root, franchise);
     return franchise;
   };
 
+  const storyCache = new Map<string, SpoilerFranchise>();
+  const storyOf = (id: string): SpoilerFranchise => {
+    const root = stories.has(id) ? stories.find(id) : id;
+    const cached = storyCache.get(root);
+    if (cached) return cached;
+    const members = storyMembersByRoot.get(root) ?? [id];
+    // Across media only release dates compare; the chain order breaks ties.
+    const memberIds = [...members].sort((a, b) =>
+      releaseKey(a) - releaseKey(b) || predecessorsOf(a).size - predecessorsOf(b).size || byId(a, b));
+    const story = makeFranchise(memberIds);
+    storyCache.set(root, story);
+    return story;
+  };
+
+  const isConsumed = (id: string): boolean => {
+    const row = libraryById.get(id);
+    if (!row) return false;
+    if (row.status === COMPLETED_STATUS) return true;
+    if ((row.progress ?? 0) > 0 || (row.progress_2 ?? 0) > 0) return true;
+    return primaryUnitForType(typeOf(id)) === null && isRowStarted(row);
+  };
+
+  const isConsumedPast = (id: string, position: number): boolean => {
+    if (isCompleted(id)) return true;
+    const type = typeOf(id);
+    const unit = primaryUnitForType(type);
+    if (unit === null) return isConsumed(id);
+    return !isUnitAhead(position, libraryById.get(id), type, unit);
+  };
+
   return {
     franchiseOf,
+    storyOf,
     libraryRow: id => libraryById.get(id),
     typeOf,
     titleOf,
@@ -229,6 +321,8 @@ export function buildSpoilerIndex(input: SpoilerIndexInput): SpoilerIndex {
     predecessorsOf,
     isStarted: id => isRowStarted(libraryById.get(id)),
     isCompleted,
+    isConsumed,
+    isConsumedPast,
   };
 }
 

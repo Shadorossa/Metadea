@@ -88,39 +88,115 @@
 
 /* ── Grid | Timeline switch (components/shared/CreatorViewSwitch.tsx) ───── */
 
-.creator-view-switch {
+/* "Previous · Page X of Y · Next" (components/shared/PrevNextPagination):
+   the creator page's works and its Sakuga row. */
+.prev-next-pagination {
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
 }
 
-.creator-view-divider {
-  color: var(--text-dim);
-  font-size: 0.7rem;
-  opacity: 0.5;
+.prev-next-pagination__btn {
+  min-width: 100px;
+}
+
+.prev-next-pagination__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Compact: "‹ Page X of Y ›" for narrow columns. */
+.prev-next-pagination--compact .prev-next-pagination__btn {
+  min-width: 2rem;
+  padding-inline: 0.5rem;
+}
+
+.prev-next-pagination--compact .prev-next-pagination__label {
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+/* Grid and timeline share one grid cell; the inactive one stays laid out
+   but hidden, so the section keeps the same box in both views and nothing
+   below it moves when switching. */
+.creator-works-stack {
+  display: grid;
+  min-width: 0;
+}
+
+.creator-works-pane {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.creator-works-pane--inactive {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The timeline fills the shared box (the grid and its pagination, when
+   those are taller), its track centred vertically, so no blank band is
+   left between its scrollbar and the next section. */
+.creator-works-pane:has(> .career-timeline) {
+  display: flex;
+  flex-direction: column;
+}
+
+.creator-works-pane > .career-timeline {
+  flex: 1 1 auto;
+}
+
+.creator-works-pane > .career-timeline > .career-timeline-scroller {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+}
+
+.creator-works-pane > .career-timeline .career-timeline-track {
+  flex: 0 0 auto;
+}
+
+/* Two icon buttons at the right end of the "Works" title line. */
+.creator-view-switch {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.2rem;
 }
 
 .creator-view-tab {
-  padding: 0.15rem 0;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   cursor: pointer;
-  transition: color var(--anim-fast);
+  transition: color var(--anim-fast), border-color var(--anim-fast), background-color var(--anim-fast);
 }
 
-.creator-view-tab:hover,
+.creator-view-tab:hover {
+  color: var(--text-main);
+}
+
 .creator-view-tab:focus-visible {
   color: var(--text-main);
+  border-color: var(--accent-border);
   outline: none;
 }
 
 .creator-view-tab.active {
   color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* The author page's own filter row (it has no other filters). */
@@ -130,10 +206,6 @@
   align-items: center;
   gap: 0.75rem 1rem;
   margin-bottom: 1.25rem;
-}
-
-.author-works-toolbar .creator-view-switch {
-  margin-left: auto;
 }
 
 .author-works-toggle {
@@ -155,53 +227,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.career-timeline-bar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  min-height: 28px;
-}
-
-.career-timeline-summary {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.career-timeline-nav {
-  display: flex;
-  gap: 0.35rem;
-  margin-left: auto;
-}
-
-.career-timeline-arrow {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-  background: var(--bg-card);
-  color: var(--text-main);
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: border-color var(--anim-fast), opacity var(--anim-fast);
-}
-
-.career-timeline-arrow:hover:not(:disabled),
-.career-timeline-arrow:focus-visible {
-  border-color: var(--accent);
-  outline: none;
-}
-
-.career-timeline-arrow:disabled {
-  opacity: 0.35;
-  cursor: default;
 }
 
 .career-timeline-scroller {

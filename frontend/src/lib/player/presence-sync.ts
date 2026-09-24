@@ -58,7 +58,8 @@ export interface PresenceSnapshot {
 export const PRESENCE_DRIFT_SECONDS = 4;
 
 // Wall-clock start/end for the "elapsed / remaining" display. `speed`
-// stretches what is left: at 2× a 40 s remainder ends 20 s from now. Null
+// stretches what is left: at 0.5× a 40 s remainder ends 80 s from now. The
+// player never goes above 1×, so a higher value is read as 1×. Null
 // while the duration is unknown (mpv reports 0 until the demuxer knows).
 export function computePresenceTimestamps(
   nowSec: number,
@@ -67,7 +68,7 @@ export function computePresenceTimestamps(
   speed = 1,
 ): { startTime: number; endTime: number } | null {
   if (!Number.isFinite(lengthSecs) || lengthSecs <= 0) return null;
-  const rate = Number.isFinite(speed) && speed > 0 ? speed : 1;
+  const rate = Number.isFinite(speed) && speed > 0 ? Math.min(speed, 1) : 1;
   const time = Math.max(0, Math.min(timeSecs, lengthSecs));
   const startTime = Math.round(nowSec - time / rate);
   const endTime = Math.round(nowSec + (lengthSecs - time) / rate);

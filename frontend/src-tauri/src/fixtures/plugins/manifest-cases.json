@@ -1,0 +1,3944 @@
+[
+  {
+    "name": "full valid manifest",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "minimal manifest",
+    "manifest": {
+      "id": "a.b",
+      "name": "N",
+      "version": "0.0.1",
+      "apiVersion": 1,
+      "author": "A",
+      "main": "x.js"
+    },
+    "valid": true
+  },
+  {
+    "name": "icon svg in subfolder",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      },
+      "icon": "img/icon.svg"
+    },
+    "valid": true
+  },
+  {
+    "name": "wildcard and port hosts",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "*.example.com",
+          "localhost:4567",
+          "192.168.1.2:*",
+          "[::1]:8080"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "prerelease version",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "2.0.0-beta.1",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "missing id",
+    "manifest": {
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "id not reverse-DNS",
+    "manifest": {
+      "id": "reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "id with uppercase",
+    "manifest": {
+      "id": "com.Example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "id with traversal",
+    "manifest": {
+      "id": "../../etc.x",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "bad version",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "unsupported apiVersion",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 2,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_API_UNSUPPORTED"
+  },
+  {
+    "name": "apiVersion as string",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": "1",
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_API_UNSUPPORTED"
+  },
+  {
+    "name": "missing apiVersion",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "empty name",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "  ",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "name too long",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "missing author",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "unknown top-level field",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      },
+      "homepage": "https://x"
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "main not js",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.ts",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "main absolute",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "/main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "main traversal",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "../main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "icon wrong type",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      },
+      "icon": "icon.exe"
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "host with scheme",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "https://api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "bare wildcard host",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "*"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "tld wildcard host",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "*.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "host with path",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "example.com/api"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "duplicate host",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "a.example.com",
+          "a.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "settingsHosts on non-url setting",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "token"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "settingsHosts unknown key",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "nope"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "unknown capability",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "filesystem"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "unknown permission field",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ],
+        "tauri": true
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "bad setting key",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "1server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "duplicate setting key",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "server",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "unknown setting type",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "file",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "select without options",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "options on non-select",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true,
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ]
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "number default out of range",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 99
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "select default not an option",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "z"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "secret with default",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token",
+          "default": "x"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "min greater than max",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 60,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "source without types",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": []
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "source with unknown type",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "anime"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "bad source id",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "Main Source",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "duplicate source id",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          },
+          {
+            "id": "main",
+            "name": "Again",
+            "types": [
+              "comic"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "unknown event",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "library.deleted"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "unknown contribution kind",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ],
+        "commands": []
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "workAction with unknown type",
+    "manifest": {
+      "id": "com.example.reader",
+      "name": "Example",
+      "version": "1.0.0",
+      "apiVersion": 1,
+      "author": "Someone",
+      "description": "d",
+      "main": "main.js",
+      "permissions": {
+        "hosts": [
+          "api.example.com"
+        ],
+        "settingsHosts": [
+          "server"
+        ],
+        "capabilities": [
+          "notifications"
+        ]
+      },
+      "settings": [
+        {
+          "key": "server",
+          "type": "url",
+          "label": "Server",
+          "required": true
+        },
+        {
+          "key": "token",
+          "type": "secret",
+          "label": "Token"
+        },
+        {
+          "key": "limit",
+          "type": "number",
+          "label": "Limit",
+          "min": 1,
+          "max": 50,
+          "default": 10
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "label": "Mode",
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "default": "a"
+        }
+      ],
+      "contributes": {
+        "sources": [
+          {
+            "id": "main",
+            "name": "Main",
+            "types": [
+              "manga"
+            ]
+          }
+        ],
+        "workActions": [
+          {
+            "id": "open",
+            "label": "Open",
+            "types": [
+              "podcast"
+            ]
+          }
+        ],
+        "workPanels": [
+          {
+            "id": "info",
+            "label": "Info"
+          }
+        ],
+        "events": [
+          "progress.changed"
+        ]
+      }
+    },
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  },
+  {
+    "name": "not an object",
+    "manifest": [],
+    "valid": false,
+    "code": "E_PLUGIN_MANIFEST_INVALID"
+  }
+]

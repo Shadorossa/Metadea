@@ -377,7 +377,7 @@ export const guideCa: Translations['guide'] = {
         s1: "No cal instal·lar res: el reproductor (libmpv) ve amb Metadea.",
         s2: "Tria els controls: superposats al vídeo o en una barra fixa a sota.",
         s3: "Prem «Reproduir» en un episodi de Play. La resta de la temporada es posa a la cua; prem Q per veure-la.",
-        s4: "Fes servir els menús per canviar la pista d'àudio, els subtítols i la velocitat (de 0,5× a 2×).",
+        s4: "Fes servir els menús per canviar la pista d'àudio, els subtítols i la velocitat (de 0,25× a 1×: més lent, mai més ràpid).",
         s5: "Al 80 %, l'episodi es marca com a vist: s'actualitzen l'estat, el progrés i AniList. Un avís et permet desfer-ho.",
         s6: "Si tanques abans del 80 %, el següent «Reproduir» reprèn al segon exacte.",
       },
@@ -394,7 +394,7 @@ export const guideCa: Translations['guide'] = {
       steps: {
         s1: "Espai posa en pausa; les fletxes avancen o retrocedeixen 5 s (30 s amb Maj) i canvien el volum.",
         s2: "N i P (o Ctrl+→ i Ctrl+←) passen a l'episodi següent o anterior.",
-        s3: ", i . avancen fotograma a fotograma; [ i ] canvien la velocitat.",
+        s3: ", i . avancen fotograma a fotograma; [ redueix la velocitat; D activa o desactiva el mode nocturn (diàlegs clars).",
         s4: "Les tecles numèriques salten al 10 %, 20 %… del vídeo.",
       },
       tips: {

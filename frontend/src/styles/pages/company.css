@@ -193,11 +193,6 @@
   font-size: 0.74rem;
 }
 
-/* The Grid | Timeline switch sits at the far right of the filter row. */
-.company-filters-end {
-  margin-left: auto;
-  padding-bottom: 0.45rem;
-}
 
 .company-filter {
   display: flex;

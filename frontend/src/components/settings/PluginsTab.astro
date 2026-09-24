@@ -1,10 +1,13 @@
 ---
-// Settings › Plugins: one block per kind of plugin (a heading and a short
-// description over its own controls). UI themes (skins) is the first kind;
-// a new kind adds another `settings-plugin-category` section below it.
+// Settings › Plugins: one block per kind of extension (a heading and a short
+// description over its own controls). "Plugins" are code packages that run
+// isolated in workers (components/plugins, docs/PLUGINS.md); "Themes" are
+// the CSS skins (components/ui-themes, docs/THEMING.md).
 import type { Translations } from "../../i18n/index";
 import { UiThemesSection } from "../ui-themes/UiThemesSection";
+import { PluginsSection } from "../plugins/PluginsSection";
 import "../../styles/components/ui-themes.css";
+import "../../styles/components/plugins.css";
 
 interface Props {
   t: Translations;
@@ -17,6 +20,16 @@ const { t } = Astro.props;
     <h3 class="settings-section-title" data-i18n="plugins.tab">{t.plugins.tab}</h3>
     <p class="settings-hint" data-i18n="plugins.intro">{t.plugins.intro}</p>
   </div>
+
+  <section class="settings-divider settings-plugin-category" aria-labelledby="plugins-code-title" data-plugin-category="plugins">
+    <div class="settings-section">
+      <h3 class="settings-section-title" id="plugins-code-title" data-i18n="plugins.plugins_title">
+        {t.plugins.plugins_title}
+      </h3>
+      <p class="settings-hint" data-i18n="plugins.plugins_description">{t.plugins.plugins_description}</p>
+      <PluginsSection client:load />
+    </div>
+  </section>
 
   <section class="settings-divider settings-plugin-category" aria-labelledby="plugins-ui-themes-title" data-plugin-category="ui_themes">
     <div class="settings-section">

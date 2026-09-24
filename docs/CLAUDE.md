@@ -61,6 +61,7 @@ Todo string que el usuario ve pasa por el sistema i18n (`frontend/src/i18n/`).
 | `lib/tauri/` | Capa IPC: un módulo por dominio de comandos Rust (`bridge.ts` es el `invoke`) | kebab-case |
 | `lib/errors/` | `error-codes.ts` (espejo de `src-tauri/src/error_codes.rs`) y `formatAppError` — traduce los códigos `E_*` que devuelven los comandos Rust | kebab-case |
 | `lib/player/` | Reproductor integrado (libmpv): cola, reglas de progreso, keymap, estado del modal, presencia | kebab-case |
+| `lib/plugins/` | Runtime de plugins (ver `docs/PLUGINS.md`): manifest, un Web Worker por plugin (`sdk-bootstrap.js` + RPC), puntos de extensión, eventos; la UI en `components/plugins/` | kebab-case |
 | `lib/deep-link/` | Rutas `metadea://` (`deep-link-routes`), listener, copia de enlaces y enlaces con vista previa (`share-link` + `share-link-codec`, códec duplicado en el repo `metadea-web` con `share-link-fixtures.json` como tabla de paridad) | kebab-case |
 | `lib/media/` | Dominio de obras; subcarpetas `mappers/`, `saga/`, `editions/`, `episodes/`, `themes/`, `editor/` | kebab-case |
 | `lib/local/` | Biblioteca local: `folder-match`, `season-resolve`, `playback-service`, `discord-presence`, `platforms` | kebab-case |
@@ -69,7 +70,7 @@ Todo string que el usuario ve pasa por el sistema i18n (`frontend/src/i18n/`).
 | `lib/storage/` | localStorage/IndexedDB: `storage-keys`, `preferences`, `images` | kebab-case |
 | `lib/dom/` | Helpers de DOM sin React: `toast`, `modal-utils`, `global-loading`, `icon-strings` | kebab-case |
 | `lib/notifications/` | Notificaciones del SO | kebab-case |
-| `lib/spoilers/` | Escudo antispoilers: franquicias protegidas (biblioteca + relaciones de la caché de visita), comparación de progreso, líneas de stats sensibles, late debuts, ajustes y reveals (sesión / franquicia en localStorage); la UI común en `components/spoilers/` | kebab-case |
+| `lib/spoilers/` | Escudo antispoilers: franquicias protegidas (biblioteca + relaciones de la caché de visita) e historias cross-medium (cadenas unidas por ADAPTATION/SOURCE: el reparto visto en el anime cuenta como conocido en el manga; lo que solo sale en obras no consumidas es late debut), comparación de progreso, líneas de stats sensibles, late debuts, ajustes y reveals (sesión / franquicia en localStorage); la UI común en `components/spoilers/` | kebab-case |
 | `lib/shared/{text,collections,state}/` | Utilidades puras por familia | kebab-case |
 | `lib/i18n-dom/` | Re-traducción en cliente de los marcadores `data-i18n*` y el script inline de `<head>` que resuelve el idioma antes de pintar (lo monta `components/i18n/LocaleBootstrap.astro`) | kebab-case |
 | `i18n/` | `en.ts` es la fuente de verdad (idioma de referencia; fallback en runtime); `runtime.ts` (`getT`) para cliente, `index.ts` para `.astro` | — |
@@ -89,8 +90,10 @@ Reglas: `lib/` no importa React ni nada de `components/`; nada de nombres genér
 | `platform_scanning/`, `igdb/` | Escaneo de Steam/Epic/GOG/EA/Xbox/ROMs (juegos multidisco y `.m3u` en `multi_disc.rs`; fusión de entradas antiguas por disco en `rom_disc_merge.rs`); cliente y caché de IGDB |
 | `game_pause/` | Menú de pausa con mando (Select/Back + Start 1,5 s): XInput, suspender/reanudar el emulador de la sesión (`game_sessions.rs`), Continuar / Guardar estado / Salir |
 | `saves/` | Gestor de partidas de emuladores: carpeta central, tabla por emulador (redirect RetroArch / mirror), historial, sync con Drive (ver `docs/SAVES.md`) |
+| `plugins/` | Plugins (`docs/PLUGINS.md`): manifest, instalación segura de zips, permisos, ajustes (DPAPI), almacenamiento y `plugin_http_fetch` con lista de hosts |
 | `deep_link.rs` | Esquema `metadea://` (validación de rutas, foco de ventana) |
 | `company_catalog/` | Páginas de compañía (`/company?id=igdb:…`, `anilist-studio:…`, `tmdb-company:…`, `tmdb-network:…`, `comicvine:…`): IGDB/AniList/TMDB con las claves del usuario, caché `company_cache` (TTL 7 días) y fallback al catálogo local (`media_by_company`) |
+| `sakuga/` | Clips de Sakugabooru (Moebooru, sin clave): resolución de etiquetas de animador/serie confirmadas con `tag.json` (`tags.rs`), `post.xml` paginado con total (`posts.rs`), token bucket ~1 req/s con ráfagas de 3 (`rate_limit.rs`); caché `sakuga_http_cache` (etiquetas 30 días, posts y negativos 7) y `sakuga_resolutions`. Frontend: `lib/sakuga/`, `components/sakuga/` |
 | `anime_filler/` | Relleno de anime desde AnimeFillerList.com (HTML, sin API): índice semanal, episodios por serie (en emisión: semanal; terminada: solo manual), 1 petición/s, backoff de un día ante 403/429; tablas `filler_*` |
 | `<dominio>.rs` | Un archivo por dominio de comandos (`user_library`, `media_catalog`, `characters`, `backup`, …) |
 

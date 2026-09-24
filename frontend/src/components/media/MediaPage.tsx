@@ -51,6 +51,10 @@ import { FillerAttribution } from './media-page/FillerAttribution';
 import { absoluteFromCanonProgress, completionEpisode, effectiveProgress, nextCanonEpisode, skipsFiller } from '../../lib/anime/filler';
 import { SpoilerShield } from '../spoilers/SpoilerShield';
 import { useHydrated } from '../shared/hooks/useHydrated';
+import { PluginReadTab } from '../plugins/PluginReadTab';
+import { PluginWorkExtras } from '../plugins/PluginWorkExtras';
+import { usePluginWorkContext } from '../plugins/hooks/usePluginWorkContext';
+import { getLibraryEntry } from '../../lib/tauri/library';
 
 
 // ── MediaPage ──────────────────────────────────────────────────────────────
@@ -160,6 +164,9 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
     applyDeleted,
     rollback,
   } = useLibraryEntry(currentId, data?.type);
+  // Plugins: the work as plugins see it, and whether an enabled source
+  // serves this type (components/plugins).
+  const plugins = usePluginWorkContext(previewMode ? undefined : data);
   // AnimeFillerList badges and the entry's filler info (lib/anime/filler.ts);
   // "Watched with filler" is set in the entry editor.
   const filler = useEpisodeFiller({ currentId, previewMode, data, episodeOffset });
@@ -750,6 +757,19 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
           onPlayTheme={setPlayingTheme}
           spoilers={spoilers}
           filler={fillerSection}
+          readTab={plugins.work && plugins.hasSources ? {
+            label: getT().plugins.read_tab,
+            content: (
+              <PluginReadTab
+                work={plugins.work}
+                title={data.titleMain}
+                cover={displayCover}
+                totalCount={data.totalCount && data.totalCount > 0 ? data.totalCount : null}
+                libraryEntry={libEntry}
+                onProgressSaved={() => { getLibraryEntry(currentId).then(saved => { if (saved) applySaved(saved); }).catch(() => {}); }}
+              />
+            ),
+          } : undefined}
         />
 
         <MediaStatsColumn
@@ -763,6 +783,8 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
           }}
         />
       </div>
+
+      {plugins.work && <PluginWorkExtras work={plugins.work} />}
 
       {/* Personajes + Usuarios — side by side, Usuarios pinned to the same
           width as the Datos column above (.media-body's 0.9fr share) since

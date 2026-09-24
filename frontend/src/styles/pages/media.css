@@ -5,3 +5,6 @@
 @import './media/preview.css';
 @import './media/company-links.css';
 @import './media/editor.css';
+/* Plugin "Read" tab (opens the shared reader) and plugin actions/panels. */
+@import './local/base/reader.css';
+@import '../components/plugins.css';

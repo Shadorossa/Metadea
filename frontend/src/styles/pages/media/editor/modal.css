@@ -326,8 +326,11 @@
   color: var(--color-error-strong);
 }
 
+/* Favourite on top, AniList import / platinum under it — a narrow column
+   instead of a row, so the header fields keep their width. */
 .me-header-right {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 0.4rem;
 }

@@ -158,6 +158,10 @@ pub const SAVES_OPEN_FOLDER: &str = "E_SAVES_OPEN_FOLDER";
 pub const FILLER_DB: &str = "E_FILLER_DB";
 pub const FILLER_INVALID_LINK: &str = "E_FILLER_INVALID_LINK";
 
+// Sakuga clips (src/sakuga): the local Sakugabooru cache could not be read
+// or written.
+pub const SAKUGA_DB: &str = "E_SAKUGA_DB";
+
 // Player clips (src/player/clip): ENCODING_UNSUPPORTED is a libmpv built
 // without encoding (`o`); NO_SOURCE a stream or nothing playing.
 pub const CLIP_ENCODING_UNSUPPORTED: &str = "E_CLIP_ENCODING_UNSUPPORTED";
@@ -183,6 +187,32 @@ pub const IGDB_KEYS_MISSING: &str = "E_IGDB_KEYS_MISSING";
 pub const IGDB_AUTH: &str = "E_IGDB_AUTH";
 pub const IGDB_NETWORK: &str = "E_IGDB_NETWORK";
 pub const METADATA_DB_BUSY: &str = "E_METADATA_DB_BUSY";
+
+// Plugins (src/plugins, docs/PLUGINS.md). PACKAGE_INVALID is an unreadable
+// zip, a missing manifest or an unsafe entry path; INSTALL_EXPIRED a consent
+// prompt answered after its staged package was cleaned up; CONSENT_REQUIRED a
+// package asking for permissions the user has not granted; HOST_NOT_ALLOWED a
+// plugin request outside its granted hosts (or plain http to a public host).
+pub const PLUGIN_MANIFEST_INVALID: &str = "E_PLUGIN_MANIFEST_INVALID";
+pub const PLUGIN_API_UNSUPPORTED: &str = "E_PLUGIN_API_UNSUPPORTED";
+pub const PLUGIN_PACKAGE_INVALID: &str = "E_PLUGIN_PACKAGE_INVALID";
+pub const PLUGIN_PACKAGE_TOO_LARGE: &str = "E_PLUGIN_PACKAGE_TOO_LARGE";
+pub const PLUGIN_IO: &str = "E_PLUGIN_IO";
+pub const PLUGIN_NOT_FOUND: &str = "E_PLUGIN_NOT_FOUND";
+pub const PLUGIN_DB: &str = "E_PLUGIN_DB";
+pub const PLUGIN_INSTALL_EXPIRED: &str = "E_PLUGIN_INSTALL_EXPIRED";
+pub const PLUGIN_URL_INVALID: &str = "E_PLUGIN_URL_INVALID";
+pub const PLUGIN_DOWNLOAD: &str = "E_PLUGIN_DOWNLOAD";
+pub const PLUGIN_DISABLED: &str = "E_PLUGIN_DISABLED";
+pub const PLUGIN_CONSENT_REQUIRED: &str = "E_PLUGIN_CONSENT_REQUIRED";
+pub const PLUGIN_OPEN_FOLDER: &str = "E_PLUGIN_OPEN_FOLDER";
+pub const PLUGIN_SETTINGS_INVALID: &str = "E_PLUGIN_SETTINGS_INVALID";
+pub const PLUGIN_STORAGE_LIMIT: &str = "E_PLUGIN_STORAGE_LIMIT";
+pub const PLUGIN_HTTP_REQUEST_INVALID: &str = "E_PLUGIN_HTTP_REQUEST_INVALID";
+pub const PLUGIN_HOST_NOT_ALLOWED: &str = "E_PLUGIN_HOST_NOT_ALLOWED";
+pub const PLUGIN_HTTP_NETWORK: &str = "E_PLUGIN_HTTP_NETWORK";
+pub const PLUGIN_HTTP_TIMEOUT: &str = "E_PLUGIN_HTTP_TIMEOUT";
+pub const PLUGIN_HTTP_TOO_LARGE: &str = "E_PLUGIN_HTTP_TOO_LARGE";
 
 /// Every code above, for the parity tests below (the TS side parses the
 /// consts themselves — see lib/errors/error-codes.test.ts).
@@ -286,6 +316,7 @@ pub const ALL: &[&str] = &[
     SAVES_OPEN_FOLDER,
     FILLER_DB,
     FILLER_INVALID_LINK,
+    SAKUGA_DB,
     CLIP_ENCODING_UNSUPPORTED,
     CLIP_ENCODE_FAILED,
     CLIP_BUSY,
@@ -300,6 +331,26 @@ pub const ALL: &[&str] = &[
     IGDB_AUTH,
     IGDB_NETWORK,
     METADATA_DB_BUSY,
+    PLUGIN_MANIFEST_INVALID,
+    PLUGIN_API_UNSUPPORTED,
+    PLUGIN_PACKAGE_INVALID,
+    PLUGIN_PACKAGE_TOO_LARGE,
+    PLUGIN_IO,
+    PLUGIN_NOT_FOUND,
+    PLUGIN_DB,
+    PLUGIN_INSTALL_EXPIRED,
+    PLUGIN_URL_INVALID,
+    PLUGIN_DOWNLOAD,
+    PLUGIN_DISABLED,
+    PLUGIN_CONSENT_REQUIRED,
+    PLUGIN_OPEN_FOLDER,
+    PLUGIN_SETTINGS_INVALID,
+    PLUGIN_STORAGE_LIMIT,
+    PLUGIN_HTTP_REQUEST_INVALID,
+    PLUGIN_HOST_NOT_ALLOWED,
+    PLUGIN_HTTP_NETWORK,
+    PLUGIN_HTTP_TIMEOUT,
+    PLUGIN_HTTP_TOO_LARGE,
 ];
 
 /// `"E_CODE: detail"` — the detail is technical (an io/zip/reqwest error),

@@ -378,7 +378,7 @@ export const guideFr: Translations['guide'] = {
         s1: "Rien à installer : le lecteur (libmpv) est fourni avec Metadea.",
         s2: "Choisissez les commandes : par-dessus la vidéo, ou dans une barre fixe sous la vidéo.",
         s3: "Appuyez sur « Lire » sur un épisode dans Play. Le reste de la saison est mis en file d'attente ; appuyez sur Q pour voir la file.",
-        s4: "Utilisez les menus pour changer de piste audio, de sous-titres et de vitesse (0,5× à 2×).",
+        s4: "Utilisez les menus pour changer de piste audio, de sous-titres et de vitesse (0,25× à 1× : plus lent, jamais plus rapide).",
         s5: "À 80 %, l'épisode est marqué comme vu : le statut, la progression et AniList sont mis à jour. Une notification vous permet d'annuler.",
         s6: "Fermez avant 80 % et le prochain « Lire » reprend à la seconde près.",
       },
@@ -395,7 +395,7 @@ export const guideFr: Translations['guide'] = {
       steps: {
         s1: "Espace met en pause ; les flèches avancent ou reculent de 5 s (30 s avec Maj) et règlent le volume.",
         s2: "N et P (ou Ctrl+→ et Ctrl+←) passent à l'épisode suivant ou précédent.",
-        s3: ", et . avancent image par image ; [ et ] changent la vitesse.",
+        s3: ", et . avancent image par image ; [ ralentit la lecture ; D active ou désactive le mode nuit (dialogues clairs).",
         s4: "Les touches numériques sautent à 10 %, 20 %… de la vidéo.",
       },
       tips: {

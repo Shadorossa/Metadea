@@ -18,6 +18,7 @@ import { attributeUrl } from '../../lib/character/character-page-urls';
 import { interpolate } from '../../lib/shared/text/interpolate';
 import { CreatorWorkState, creatorWorkClass } from '../shared/CreatorWorkState';
 import { CareerTimeline, type CareerTimelineItem } from '../shared/CareerTimeline';
+import { useTimelineYears } from '../shared/hooks/useTimelineYears';
 import { CreatorViewSwitch, useCreatorWorksView } from '../shared/CreatorViewSwitch';
 import type { LibrarySnapshot } from '../shared/hooks/useLibrarySnapshot';
 
@@ -83,7 +84,9 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
     return { state, progress };
   };
 
-  const timelineItems = useMemo<CareerTimelineItem[]>(() => (view === 'timeline' ? shown.map(work => {
+  // Both views stay mounted in one stacked cell (the inactive one hidden),
+  // so switching never changes the section's size.
+  const timelineItems = useMemo<CareerTimelineItem[]>(() => shown.map(work => {
     const row = snapshot?.libraryById.get(work.external_id);
     const state = snapshot ? workLibraryState(row) : null;
     return {
@@ -98,7 +101,7 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
       flag: work.unreleased ? t.unreleased : work.is_extra ? t.extra : null,
       unreleased: work.unreleased,
     };
-  }) : []), [view, shown, snapshot, t]);
+  }), [shown, snapshot, t]);
 
   const update = (patch: Partial<CompanyWorkFilters>) => {
     setVisible(PAGE_SIZE);
@@ -115,6 +118,7 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
     observer.observe(node);
     return () => observer.disconnect();
   }, [view, visible, shown.length]);
+  const datedTimelineItems = useTimelineYears(timelineItems);
 
   return (
     <section className="company-works" aria-labelledby="company-works-heading">
@@ -153,6 +157,7 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
             )}
           </div>
         )}
+        <CreatorViewSwitch view={view} onChange={setView} strings={tc} />
       </div>
 
       <div className="company-filters">
@@ -181,19 +186,14 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
             <span>{tc.masterpieces_only}</span>
           </label>
         )}
-        <div className="company-filters-end">
-          <CreatorViewSwitch view={view} onChange={setView} strings={tc} />
-        </div>
       </div>
 
       {shown.length === 0 && !loadingMore && (
         <p className="company-empty">{works.length === 0 ? t.no_works : t.empty_filtered}</p>
       )}
 
-      {view === 'timeline'
-        ? shown.length > 0 && <CareerTimeline items={timelineItems} strings={tc} />
-        : (
-          <>
+      <div className="creator-works-stack">
+        <div className={`creator-works-pane${view === 'grid' ? '' : ' creator-works-pane--inactive'}`} inert={view !== 'grid'}>
             <div className="company-works-grid">
               {shown.slice(0, visible).map(work => {
                 const { state, progress } = stateAndProgress(work.external_id);
@@ -211,8 +211,11 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
               })}
             </div>
             <div ref={sentinelRef} className="company-works-sentinel" aria-hidden="true" />
-          </>
-        )}
+        </div>
+        <div className={`creator-works-pane${view === 'timeline' ? '' : ' creator-works-pane--inactive'}`} inert={view !== 'timeline'}>
+          {shown.length > 0 && <CareerTimeline items={datedTimelineItems} strings={tc} />}
+        </div>
+      </div>
       {loadingMore && (
         <p className="company-loading-more" role="status"><span className="spinner company-spinner" aria-hidden="true" /> {t.loading_more}</p>
       )}

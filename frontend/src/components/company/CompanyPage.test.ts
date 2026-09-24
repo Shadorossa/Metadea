@@ -138,7 +138,9 @@ describe('CompanyWorks masterpieces', () => {
   it('offers the masterpieces filter once a work is scored 8+', () => {
     expect(renderWorks(null)).toContain('>Masterpieces only<');
     expect(renderWorks(null, PAGE.works.map(w => ({ ...w, score: null })))).not.toContain('Masterpieces only');
-    expect(renderWorks(null)).toContain('>Grid<');
+    // Grid / Timeline are icon buttons named by their labels.
+    expect(renderWorks(null)).toContain('aria-label="Grid"');
+    expect(renderWorks(null)).toContain('aria-label="Timeline"');
   });
 });
 
@@ -148,9 +150,8 @@ describe('CareerTimeline', () => {
   });
   const items = [item('game:1', 1994, 7), item('game:2', 2011, 9.1, 'completed'), item('game:3', 2015, 8), item('game:4', null, null)];
 
-  it('renders year columns, decade separators, the undated bucket and the summary line', () => {
+  it('renders year columns, decade separators and the undated bucket', () => {
     const html = renderToStaticMarkup(createElement(CareerTimeline, { items, strings: tc }));
-    expect(html).toContain('Active 1994–2015 · 2 masterpieces · peak decade: 2010s');
     expect(html).toContain('>1990s<');
     expect(html).toContain('>2010s<');
     expect(html).toContain('>Undated<');

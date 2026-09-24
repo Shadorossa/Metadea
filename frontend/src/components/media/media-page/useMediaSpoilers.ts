@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { MediaEpisode } from '../../../lib/tauri';
 import type { MediaPageData } from '../../../lib/media/types';
 import type { SagaEntry } from '../../../lib/anilist/saga';
-import { chainToRelations, type SpoilerRelation } from '../../../lib/spoilers/spoiler-franchises';
+import { chainToRelations, isStoryLinkRelationType, type SpoilerRelation } from '../../../lib/spoilers/spoiler-franchises';
 import { lateDebutCastIds } from '../../../lib/spoilers/spoiler-late-debut';
 import { loadKnownCastIds } from '../../../lib/spoilers/spoiler-data';
 import { spoilerItemKey } from '../../../lib/spoilers/spoiler-reveals';
@@ -37,14 +37,20 @@ interface Params {
 
 const NOTHING_HIDDEN = new Set<string>();
 
+function isSpoilerChainRelation(relationType: string): boolean {
+  return isSequelRelationType(relationType) || isStoryLinkRelationType(relationType);
+}
+
 export function useMediaSpoilers({ currentId, previewMode, data, animeSeasonChain, episodes }: Params): MediaSpoilers {
-  // The page's own PREQUEL/SEQUEL rows and season chain may be newer than
-  // the shared cache (a first visit saves them as it loads).
+  // The page's own PREQUEL/SEQUEL and adaptation (SOURCE/ADAPTATION) rows
+  // and season chain may be newer than the shared cache (a first visit
+  // saves them as it loads) — the adaptation rows tie a manga page nobody
+  // added to the library to the anime seasons the user watched.
   const pageData = data && data.externalId === currentId ? data : null;
   const extraRelations = useMemo<SpoilerRelation[]>(() => {
     const rows: SpoilerRelation[] = [];
     for (const relation of pageData?.relations ?? []) {
-      if (!relation.relatedExternalId || !relation.relationType || !isSequelRelationType(relation.relationType)) continue;
+      if (!relation.relatedExternalId || !relation.relationType || !isSpoilerChainRelation(relation.relationType)) continue;
       rows.push({ media_external_id: currentId, related_media_external_id: relation.relatedExternalId, relation_type: relation.relationType });
     }
     rows.push(...chainToRelations(animeSeasonChain.map(entry => entry.externalId)));
@@ -58,8 +64,9 @@ export function useMediaSpoilers({ currentId, previewMode, data, animeSeasonChai
     [evaluator, episodes, currentId],
   );
 
-  // Late-debut cast: only for a page the user has not started, compared
-  // with the cast lists (local rows) of the works they did start.
+  // Late-debut cast: only for a page the user has not consumed (in the
+  // library or not), compared with the cast lists (local rows) of the works
+  // of its story they did consume — the watched anime seasons on a manga page.
   const comparisonWorks = evaluator && currentId ? evaluator.castComparisonWorks(currentId) : null;
   const comparisonKey = comparisonWorks?.join('|') ?? '';
   const [knownCast, setKnownCast] = useState<{ key: string; ids: Set<string> | null } | null>(null);

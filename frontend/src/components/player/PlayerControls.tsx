@@ -1,5 +1,5 @@
 import {
-  AudioLines, Camera, Captions, Scissors, Gauge, ListVideo, Maximize, Minimize, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward, Volume1,
+  AudioLines, Camera, Captions, Scissors, Gauge, ListVideo, Maximize, Minimize, Moon, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward, Volume1,
   Volume2, VolumeX,
 } from 'lucide-react';
 import type { Translations } from '../../i18n/index';
@@ -13,6 +13,7 @@ import {
 import { PlayerClipPanel } from './PlayerClipPanel';
 import { PlayerMenu, type PlayerMenuItem } from './PlayerMenu';
 import type { ClipMode } from './hooks/useClipMode';
+import type { PlayerNightMode } from './hooks/usePlayerNightMode';
 import { PlayerSeekBar } from './PlayerSeekBar';
 import { applySpeed, MAX_VOLUME, SPEED_OPTIONS } from './player-actions';
 
@@ -39,6 +40,8 @@ interface Props {
   seekPreview?: boolean;
   // Clip mode behind the scissors button (useClipMode); absent = no button.
   clip?: ClipMode;
+  // Night mode / clear dialogue (usePlayerNightMode); absent = no button.
+  nightMode?: PlayerNightMode;
 }
 
 function swallow(promise: Promise<unknown>) {
@@ -92,7 +95,7 @@ function trackItems(status: PlayerStatus, kind: 'audio' | 'sub', t: Translations
 
 export function PlayerControls({
   status, segments = [], t, isFullscreen, onToggleFullscreen, menu, onMenuChange, queueOpen, onToggleQueue,
-  hasTrackMemory = false, onManualTrack, onResetTrackMemory, seekPreview = true, clip,
+  hasTrackMemory = false, onManualTrack, onResetTrackMemory, seekPreview = true, clip, nightMode,
 }: Props) {
   const clipTrimming = clip?.phase === 'trimming';
   const clipActive = clipTrimming || clip?.phase === 'choosing';
@@ -146,6 +149,12 @@ export function PlayerControls({
         {status.sub_delay_secs !== 0 && (
           <span className="player-controls__badge">{t.sub_delay.replace('{delay}', formatSignedSeconds(status.sub_delay_secs))}</span>
         )}
+        {nightMode?.active && (
+          <span className="player-controls__badge player-controls__badge--night" role="status">
+            <Moon size={12} aria-hidden="true" />
+            {t.night_mode_pill}
+          </span>
+        )}
         <span className="player-controls__spacer" />
         <div className="player-volume">
           <button type="button" className="player-icon-btn" onClick={() => swallow(playerSetMute(!status.muted))} aria-label={status.muted ? t.unmute : t.mute} title={status.muted ? t.unmute : t.mute}>
@@ -173,6 +182,19 @@ export function PlayerControls({
           </button>
           {menu === 'speed' && <PlayerMenu title={t.speed} items={speedItems} emptyLabel="" onClose={closeMenu} />}
         </div>
+        {nightMode && (
+          <button
+            type="button"
+            className={`player-icon-btn${nightMode.enabled && !nightMode.unavailable ? ' player-icon-btn--active' : ''}`}
+            onClick={nightMode.toggle}
+            disabled={nightMode.unavailable}
+            aria-pressed={nightMode.enabled && !nightMode.unavailable}
+            aria-label={nightMode.unavailable ? t.night_mode_unavailable : t.night_mode}
+            title={nightMode.unavailable ? t.night_mode_unavailable : t.night_mode}
+          >
+            <Moon size={18} />
+          </button>
+        )}
         <div className="player-controls__menu-anchor">
           <button type="button" className="player-icon-btn" onClick={() => toggleMenu('audio')} aria-haspopup="menu" aria-expanded={menu === 'audio'} aria-label={t.audio_tracks} title={t.audio_tracks}>
             <AudioLines size={18} />

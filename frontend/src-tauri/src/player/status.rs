@@ -72,6 +72,10 @@ impl Default for PlayerStatus {
     }
 }
 
+/// Playback may be slowed down but never sped up past 1× (owner's call).
+pub const MAX_PLAYBACK_SPEED: f64 = 1.0;
+pub const MIN_PLAYBACK_SPEED: f64 = 0.25;
+
 /// Every property the engine observes, with the format it asks mpv for.
 /// `track-list` and `chapter-list` are node properties; asking for them as
 /// a string yields JSON.

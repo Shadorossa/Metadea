@@ -408,6 +408,9 @@ const t = useTranslations(lang);
         // A game launched from Metadea keeps its presence across pages: the
         // Rust session registry is the source (lib/local/game-session-state).
         import('../lib/local/game-session-state').then(m => m.initGameSessionPresence()).catch(() => {});
+        // Plugin `events` (library/progress/session): idempotent, and plugin
+        // workers only start for plugins that subscribe (lib/plugins).
+        import('../lib/plugins/event-bridge').then(m => m.initPluginEventBridge()).catch(() => {});
 
         // metadea:// links (lib/deep-link/) — idempotent, so re-running this
         // handler after a page swap never stacks a second listener.

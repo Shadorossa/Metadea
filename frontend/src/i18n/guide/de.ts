@@ -378,7 +378,7 @@ export const guideDe: Translations['guide'] = {
         s1: "Nichts zu installieren: Der Player (libmpv) wird mit Metadea mitgeliefert.",
         s2: "Wähle die Steuerung: über dem Video eingeblendet oder in einer festen Leiste unter dem Video.",
         s3: "Drücke in Play bei einer Folge auf „Abspielen“. Der Rest der Staffel wird in die Warteschlange gestellt; mit Q siehst du die Warteschlange.",
-        s4: "Über die Menüs wechselst du Tonspur, Untertitel und Geschwindigkeit (0,5× bis 2×).",
+        s4: "Über die Menüs wechselst du Tonspur, Untertitel und Geschwindigkeit (0,25× bis 1×: langsamer, nie schneller).",
         s5: "Bei 80 % wird die Folge als gesehen markiert: Status, Fortschritt und AniList werden aktualisiert. Ein Hinweis erlaubt dir, das rückgängig zu machen.",
         s6: "Schließt du vor 80 %, setzt das nächste „Abspielen“ auf die Sekunde genau fort.",
       },
@@ -395,7 +395,7 @@ export const guideDe: Translations['guide'] = {
       steps: {
         s1: "Leertaste pausiert; die Pfeiltasten spulen 5 s (30 s mit Umschalt) und ändern die Lautstärke.",
         s2: "N und P (oder Strg+→ und Strg+←) springen zur nächsten oder vorherigen Folge.",
-        s3: ", und . gehen Bild für Bild; [ und ] ändern die Geschwindigkeit.",
+        s3: ", und . gehen Bild für Bild; [ verlangsamt die Wiedergabe; D schaltet den Nachtmodus (klare Dialoge) ein oder aus.",
         s4: "Die Zifferntasten springen zu 10 %, 20 %… des Videos.",
       },
       tips: {

@@ -68,6 +68,15 @@ export const playerSetTrack = (kind: PlayerTrackKind, id: number | null) => runP
 export const playerSetVolume = (volume: number) => runPlayer('player_set_volume', { volume });
 export const playerSetMute = (muted: boolean) => runPlayer('player_set_mute', { muted });
 export const playerSetSpeed = (speed: number) => runPlayer('player_set_speed', { speed });
+// Night mode / clear dialogue (src-tauri/src/player/night_mode.rs): what
+// ended up active — the full chain, the dynaudnorm-only fallback, nothing
+// yet (no audio track), nothing at all (the build lacks the filters) or off.
+export type NightModeLevel = 'off' | 'full' | 'basic' | 'pending' | 'unavailable';
+
+export async function playerSetNightMode(enabled: boolean): Promise<NightModeLevel> {
+  if (!isTauri()) return 'off';
+  return invokePlayer<NightModeLevel>('player_set_night_mode', { enabled });
+}
 export const playerSetSubDelay = (seconds: number) => runPlayer('player_set_sub_delay', { seconds });
 // mpv `frame-back-step` / `frame-step` — pauses and moves one frame.
 export const playerFrameStep = (direction: 'back' | 'forward') => runPlayer('player_frame_step', { direction });

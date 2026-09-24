@@ -13,8 +13,9 @@ use super::error::PlayerError;
 use super::event_loop::{run_event_thread, StatusSink};
 use super::libmpv_ffi::{LibMpv, MpvClient};
 use super::mpv_api::MpvApi;
+use super::night_mode::{apply_night_mode, NightModeLevel};
 use super::screenshot_names::{available_screenshot_path, episode_label_for_index, screenshot_file_name, screenshot_timecode};
-use super::status::{PlayerStatus, StatusTracker, OBSERVED_PROPERTIES};
+use super::status::{PlayerStatus, StatusTracker, MAX_PLAYBACK_SPEED, MIN_PLAYBACK_SPEED, OBSERVED_PROPERTIES};
 use super::video_host::VideoHost;
 
 #[derive(Debug, Clone, Serialize)]
@@ -109,6 +110,8 @@ pub struct PlayerEngine {
     pub video_rect: Option<(i32, i32, i32, i32)>,
     /// The main-window event hook is installed once per process.
     pub main_hooks_installed: bool,
+    /// Last night-mode level applied to this client (night_mode.rs).
+    night_mode: Mutex<NightModeLevel>,
 }
 
 #[derive(Default)]
@@ -314,8 +317,18 @@ impl PlayerEngine {
         self.client()?.set_property("mute", if muted { "yes" } else { "no" })
     }
 
+    /// Slower is allowed, faster than 1× never is.
     pub fn set_speed(&self, speed: f64) -> Result<(), PlayerError> {
-        self.client()?.set_property("speed", &format!("{:.3}", speed.clamp(0.1, 4.0)))
+        self.client()?.set_property("speed", &format!("{:.3}", speed.clamp(MIN_PLAYBACK_SPEED, MAX_PLAYBACK_SPEED)))
+    }
+
+    /// Night mode / clear dialogue on or off, live (night_mode.rs); returns
+    /// the level that ended up active.
+    pub fn set_night_mode(&self, enabled: bool) -> Result<NightModeLevel, PlayerError> {
+        let client = self.client()?;
+        let mut current = self.night_mode.lock().map_err(|_| PlayerError::mpv("night mode lock poisoned"))?;
+        *current = apply_night_mode(client.as_ref(), enabled, *current);
+        Ok(*current)
     }
 
     pub fn set_sub_delay(&self, seconds: f64) -> Result<(), PlayerError> {
@@ -439,6 +452,9 @@ impl PlayerEngine {
         self.session = None;
         self.capture_dir = None;
         self.video_rect = None;
+        if let Ok(mut night_mode) = self.night_mode.lock() {
+            *night_mode = NightModeLevel::Off;
+        }
         if let Ok(mut status) = self.status.lock() {
             *status = PlayerStatus::default();
         }

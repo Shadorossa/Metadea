@@ -12,6 +12,7 @@ import { toMediumCover } from '../media/small-cover';
 import { setGamePresence, clearGamePresence, getGamePresence, type GamePresence } from './discord-presence';
 import { emulatorNameFromExe, platformDisplayName } from './game-rich-presence';
 import { startAchievementRefresh, stopAchievementRefresh } from './game-achievement-refresh';
+import { emitSessionEnded } from '../plugins/host-events';
 
 export function presenceFromSession(session: ActiveGameSession): GamePresence {
   const cover = session.cover_url && session.cover_url.startsWith('http') ? toMediumCover(session.cover_url) : undefined;
@@ -74,7 +75,8 @@ export function initGameSessionPresence(): void {
   listenGameSessionsChanged(applyGameSessions).catch(() => {
     initialized = false;
   });
-  listenGameSessionEnded(({ recorded }) => {
+  listenGameSessionEnded(({ external_id, recorded }) => {
+    emitSessionEnded({ externalId: external_id, kind: 'play' });
     // Same event saveLibraryEntry fires: every library view re-reads.
     if (recorded) window.dispatchEvent(new CustomEvent('refresh-profile-library'));
   }).catch(() => {});

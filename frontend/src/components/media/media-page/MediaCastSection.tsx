@@ -1,13 +1,16 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { Translations } from '../../../i18n/index';
+import { getT } from '../../../i18n/runtime';
 import type { FavoriteCustomImage } from '../../../lib/tauri';
 import type { MediaPageData } from '../../../lib/media/types';
 import { Pagination } from '../Pagination';
 import { CharacterCard } from './MediaPageCards';
 import { SectionTabs } from './MediaPageControls';
 import type { MediaSpoilers } from './useMediaSpoilers';
+import { SakugaMediaTab } from '../../sakuga/SakugaMediaTab';
+import { useCachedSakugaArtists, useSakugaSeries } from '../../sakuga/hooks/useSakugaSeries';
 
-export type CharTab = 'characters' | 'staff';
+export type CharTab = 'characters' | 'staff' | 'sakuga';
 
 const CHARACTER_PAGE_SIZE = 12;
 
@@ -48,7 +51,20 @@ export function MediaCastSection({
   };
 
   const hasStaff = !!(data.staff && data.staff.length > 0);
-  const activeCharList = sortCharactersByRole(charTab === 'staff' ? (data.staff ?? []) : data.characters);
+  // Sakuga (anime only): shown when the series has a Sakugabooru tag with
+  // posts; the staff tab badges animators whose tag is already cached.
+  const sakugaSeries = useSakugaSeries(data);
+  const showSakuga = !!sakugaSeries;
+  const activeTab: CharTab = charTab === 'sakuga' && !showSakuga ? 'characters' : charTab;
+  const staffIds = (data.staff ?? []).map(member => member.id ?? '').filter(Boolean);
+  const sakugaArtists = useCachedSakugaArtists(staffIds, data.type === 'anime' && activeTab === 'staff');
+  const ts = getT().sakuga;
+  const activeCharList = sortCharactersByRole(activeTab === 'staff' ? (data.staff ?? []) : data.characters);
+  const tabs = [
+    { key: 'characters', label: tm.section_characters, active: activeTab === 'characters', onClick: () => { setCharTab('characters'); setCharacterPage(1); } },
+    ...(hasStaff ? [{ key: 'staff', label: tm.section_staff, active: activeTab === 'staff', onClick: () => { setCharTab('staff'); setCharacterPage(1); } }] : []),
+    ...(showSakuga ? [{ key: 'sakuga', label: ts.tab, active: activeTab === 'sakuga', onClick: () => { setCharTab('sakuga'); setCharacterPage(1); } }] : []),
+  ];
 
   return (
             <div className={`media-chars-section${!showUsers ? ' media-chars-section--full' : ''}`}>
@@ -59,12 +75,13 @@ export function MediaCastSection({
                     provider actually returned staff data (AniList/TMDB). */}
                 <SectionTabs
                   fallbackLabel={tm.section_characters}
-                  tabs={hasStaff ? [
-                    { key: 'characters', label: tm.section_characters, active: charTab === 'characters', onClick: () => { setCharTab('characters'); setCharacterPage(1); } },
-                    { key: 'staff', label: tm.section_staff, active: charTab === 'staff', onClick: () => { setCharTab('staff'); setCharacterPage(1); } },
-                  ] : []}
+                  tabs={tabs.length > 1 ? tabs : []}
                 />
               </div>
+              {activeTab === 'sakuga' && sakugaSeries ? (
+                <SakugaMediaTab seriesTag={sakugaSeries} staff={data.staff ?? []} t={ts} />
+              ) : (
+              <>
               <div className="media-chars-grid">
                 {activeCharList
                   .slice((characterPage - 1) * CHARACTER_PAGE_SIZE, characterPage * CHARACTER_PAGE_SIZE)
@@ -72,9 +89,12 @@ export function MediaCastSection({
                     <CharacterCard
                       key={i}
                       character={c}
-                      charTab={charTab}
+                      charTab={activeTab === 'staff' ? 'staff' : 'characters'}
                       customImagesMap={customImagesMap}
-                      onRevealSpoiler={charTab === 'characters' && spoilers?.isCastMemberHidden(c.id)
+                      badge={activeTab === 'staff' && c.id && sakugaArtists[c.id]
+                        ? <span className="sakuga-badge" title={ts.badge_title}>▶ {ts.badge}</span>
+                        : undefined}
+                      onRevealSpoiler={activeTab === 'characters' && spoilers?.isCastMemberHidden(c.id)
                         ? () => spoilers.revealCastMember(c.id ?? '')
                         : undefined}
                     />
@@ -86,6 +106,8 @@ export function MediaCastSection({
                   totalPages={Math.ceil(activeCharList.length / CHARACTER_PAGE_SIZE)}
                   onChange={setCharacterPage}
                 />
+              )}
+              </>
               )}
             </div>
   );

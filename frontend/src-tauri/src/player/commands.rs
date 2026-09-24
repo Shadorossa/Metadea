@@ -10,6 +10,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use super::engine::{OpenRequest, PlayerEngineState, PlayerSessionInfo, ScreenshotSaved};
 use super::error::PlayerError;
+use super::night_mode::NightModeLevel;
 use super::event_loop::StatusSink;
 use super::screenshot_names::sanitize_capture_folder_name;
 use super::status::PlayerStatus;
@@ -244,6 +245,14 @@ pub fn player_set_mute(state: State<'_, PlayerEngineState>, muted: bool) -> Resu
 #[tauri::command]
 pub fn player_set_speed(state: State<'_, PlayerEngineState>, speed: f64) -> Result<(), PlayerError> {
     with_engine(&state, |engine| engine.set_speed(speed))
+}
+
+/// Night mode / clear dialogue (the `@night` audio filter chain), applied
+/// live. Returns the resulting level: `full`, `basic` (fallback chain),
+/// `pending` (no audio track yet), `unavailable` (build lacks the filters) or `off`.
+#[tauri::command]
+pub fn player_set_night_mode(state: State<'_, PlayerEngineState>, enabled: bool) -> Result<NightModeLevel, PlayerError> {
+    with_engine(&state, |engine| engine.set_night_mode(enabled))
 }
 
 #[tauri::command]

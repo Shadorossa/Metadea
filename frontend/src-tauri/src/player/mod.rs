@@ -13,6 +13,7 @@
 // - video_host:     the native HWND mpv draws into (Windows) / no-op elsewhere
 // - window:         the overlay window + keeping surface/overlay aligned to the
 //                   video rect the player modal reports inside the main window
+// - night_mode:     the labelled `af` chain behind night mode / clear dialogue
 // - commands:       the #[tauri::command] surface the frontend invokes
 // - clip:           instant MP4/GIF clips on a headless encoding handle,
 //                   copied to the clipboard as a file (CF_HDROP)
@@ -29,6 +30,7 @@ mod error;
 mod event_loop;
 mod libmpv_ffi;
 mod mpv_api;
+mod night_mode;
 mod screenshot_names;
 mod status;
 mod thumbnails;

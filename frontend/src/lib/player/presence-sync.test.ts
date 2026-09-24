@@ -14,7 +14,9 @@ describe('computePresenceTimestamps', () => {
   });
 
   it('stretches by playback speed', () => {
-    expect(computePresenceTimestamps(NOW, 60, 1500, 2)).toEqual({ startTime: NOW - 30, endTime: NOW + 720 });
+    expect(computePresenceTimestamps(NOW, 60, 1500, 0.5)).toEqual({ startTime: NOW - 120, endTime: NOW + 2880 });
+    // Never faster than 1×: a stray higher value keeps real-time maths.
+    expect(computePresenceTimestamps(NOW, 60, 1500, 2)).toEqual({ startTime: NOW - 60, endTime: NOW + 1440 });
     expect(computePresenceTimestamps(NOW, 60, 1500, 0)).toEqual({ startTime: NOW - 60, endTime: NOW + 1440 });
   });
 

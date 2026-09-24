@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
 import { wrapAssetUrl, type FavoriteCustomImage } from '../../../lib/tauri';
 import type { EventMatch } from '../../../lib/search/providers/apisports';
@@ -120,9 +120,11 @@ interface CharacterCardProps {
   /** Set while the spoiler shield blurs this character (a late debut:
    *  absent from every work the user has started). */
   onRevealSpoiler?: () => void;
+  /** Small marker under the name (the staff tab's "▶ Sakuga"). */
+  badge?: ReactNode;
 }
 
-export const CharacterCard = memo(function CharacterCard({ character: c, charTab, customImagesMap, onRevealSpoiler }: CharacterCardProps) {
+export const CharacterCard = memo(function CharacterCard({ character: c, charTab, customImagesMap, onRevealSpoiler, badge }: CharacterCardProps) {
   const hrefId = c.hrefId || c.id;
   const href = hrefId
     ? (charTab === 'staff' ? `/author?id=${encodeURIComponent(hrefId)}` : `/character?id=${encodeURIComponent(hrefId)}`)
@@ -143,6 +145,7 @@ export const CharacterCard = memo(function CharacterCard({ character: c, charTab
         <div className="media-char-info">
           {c.role && <span className="media-char-role">{c.role}</span>}
           <span className="media-char-name">{c.name}</span>
+          {badge}
         </div>
       </div>
       {onRevealSpoiler && displayImg && (

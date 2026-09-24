@@ -20,10 +20,13 @@ import { workLibraryState, workProgressRatio, type CreatorWorkRef } from '../../
 import { CreatorCompletionBar } from '../shared/CreatorCompletionBar';
 import { CreatorWorkState, creatorWorkClass } from '../shared/CreatorWorkState';
 import { CareerTimeline, type CareerTimelineItem } from '../shared/CareerTimeline';
+import { useTimelineYears } from '../shared/hooks/useTimelineYears';
 import { CreatorViewSwitch, useCreatorWorksView } from '../shared/CreatorViewSwitch';
 import { isMasterpiece } from '../../lib/media/career-timeline';
 import { useLibrarySnapshot, type LibrarySnapshot } from '../shared/hooks/useLibrarySnapshot';
 import { useHydrated } from '../shared/hooks/useHydrated';
+import { SakugaCreatorSection } from '../sakuga/SakugaCreatorSection';
+import { PrevNextPagination } from '../shared/PrevNextPagination';
 
 type AuthorPageStrings = Pick<Translations, 'author_page' | 'character' | 'creator_completion'>;
 
@@ -97,7 +100,8 @@ function authorTimelineItems(works: readonly AuthorWorkCard[], snapshot: Library
 
 // 4 rows x .media-relations-grid's own 4 columns (media.css) per page —
 // same paginated pattern as the character page's Apariciones. The
-// Grid | Timeline switch and "Masterpieces only" sit in a row of their own.
+// Grid | Timeline icons sit at the end of the title line; "Masterpieces
+// only" gets a row of its own.
 function AuthorWorks({ works: allWorks, t, tp, snapshot, tc }: {
   works: AuthorWorkCard[];
   t: Translations['author_page'];
@@ -113,10 +117,10 @@ function AuthorWorks({ works: allWorks, t, tp, snapshot, tc }: {
     () => (masterpiecesOnly && anyMasterpiece ? allWorks.filter(w => isMasterpiece(w.score)) : allWorks),
     [allWorks, masterpiecesOnly, anyMasterpiece],
   );
-  const timelineItems = useMemo(
-    () => (view === 'timeline' ? authorTimelineItems(works, snapshot, t) : []),
-    [view, works, snapshot, t],
-  );
+  // Both views stay mounted in one stacked cell (the inactive one hidden),
+  // so switching never changes the section's size.
+  const timelineItems = useMemo(() => authorTimelineItems(works, snapshot, t), [works, snapshot, t]);
+  const datedTimelineItems = useTimelineYears(timelineItems);
   const totalPages = Math.ceil(works.length / AUTHOR_WORKS_PER_PAGE);
   const currentPage = Math.min(page, totalPages || 1);
   const start = (currentPage - 1) * AUTHOR_WORKS_PER_PAGE;
@@ -127,42 +131,32 @@ function AuthorWorks({ works: allWorks, t, tp, snapshot, tc }: {
       <div className="media-section-header-row">
         <p className="section-label">{t.works}</p>
         <div className="media-section-header-line"></div>
+        <CreatorViewSwitch view={view} onChange={setView} strings={tc} />
       </div>
-      <div className="author-works-toolbar">
-        {anyMasterpiece && (
+      {anyMasterpiece && (
+        <div className="author-works-toolbar">
           <label className="author-works-toggle">
             <input type="checkbox" checked={masterpiecesOnly} onChange={e => { setMasterpiecesOnly(e.target.checked); setPage(1); }} />
             <span>{tc.masterpieces_only}</span>
           </label>
-        )}
-        <CreatorViewSwitch view={view} onChange={setView} strings={tc} />
-      </div>
-      {view === 'timeline' && <CareerTimeline items={timelineItems} strings={tc} />}
-      <div className="media-relations-grid" id="author-works-grid" style={view === 'timeline' ? { display: 'none' } : undefined}>
-        {slice.map(work => <WorkCard key={work.url} work={work} snapshot={snapshot} tc={tc} t={t} />)}
-      </div>
-
-      <div
-        id="author-works-pagination"
-        style={{
-          display: view === 'grid' && totalPages > 1 ? 'flex' : 'none',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '1.5rem',
-          marginTop: '2rem',
-          borderTop: '1px solid var(--border-color)',
-          paddingTop: '1.5rem',
-        }}
-      >
-        <button className="btn btn--sm btn--secondary" id="btn-prev-works" style={{ minWidth: '100px' }} disabled={currentPage === 1} onClick={() => { if (currentPage > 1) setPage(currentPage - 1); }}>
-          {tp.pagination_prev}
-        </button>
-        <span id="txt-works-page" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-          {tp.pagination_page.replace('{page}', String(currentPage)).replace('{total}', String(totalPages || 1))}
-        </span>
-        <button className="btn btn--sm btn--secondary" id="btn-next-works" style={{ minWidth: '100px' }} disabled={currentPage >= totalPages} onClick={() => { if (currentPage < totalPages) setPage(currentPage + 1); }}>
-          {tp.pagination_next}
-        </button>
+        </div>
+      )}
+      <div className="creator-works-stack">
+        <div className={`creator-works-pane${view === 'grid' ? '' : ' creator-works-pane--inactive'}`} inert={view !== 'grid'}>
+          <div className="media-relations-grid" id="author-works-grid">
+            {slice.map(work => <WorkCard key={work.url} work={work} snapshot={snapshot} tc={tc} t={t} />)}
+          </div>
+          <PrevNextPagination
+            page={currentPage}
+            totalPages={totalPages}
+            onChange={setPage}
+            strings={{ prev: tp.pagination_prev, next: tp.pagination_next, page: tp.pagination_page }}
+            ids={{ root: 'author-works-pagination', prev: 'btn-prev-works', next: 'btn-next-works', label: 'txt-works-page' }}
+          />
+        </div>
+        <div className={`creator-works-pane${view === 'timeline' ? '' : ' creator-works-pane--inactive'}`} inert={view !== 'timeline'}>
+          <CareerTimeline items={datedTimelineItems} strings={tc} />
+        </div>
       </div>
     </div>
   );
@@ -217,6 +211,9 @@ export default function AuthorPage({ i18n: staticStrings }: Props) {
 
   const { data } = state;
   const hasStats = !!(data.birthDate || data.deathDate);
+  // Sakuga clips: AniList people credited on at least one anime.
+  const pageId = new URLSearchParams(window.location.search).get('id') ?? '';
+  const sakugaStaffId = pageId.startsWith('person:a') && completionWorks.some(work => work.type === 'anime') ? pageId : null;
 
   return (
     <div id="author-content" style={{ display: 'block' }}>
@@ -259,6 +256,16 @@ export default function AuthorPage({ i18n: staticStrings }: Props) {
           </div>
 
           <AuthorWorks works={data.works} t={t} tp={tc} snapshot={snapshot} tc={tcc} />
+
+          {/* Below Biography and Works, spanning both. */}
+          {sakugaStaffId && (
+            <SakugaCreatorSection
+              staffId={sakugaStaffId}
+              names={[data.name, ...data.aliases]}
+              t={getT().sakuga}
+              pagination={{ prev: tc.pagination_prev, next: tc.pagination_next, page: tc.pagination_page }}
+            />
+          )}
         </div>
 
         <div className="media-col-stats character-hero-stats" id="author-stats-card" style={{ display: hasStats ? 'block' : 'none' }}>

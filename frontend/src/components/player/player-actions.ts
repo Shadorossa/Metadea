@@ -4,13 +4,15 @@
 
 import { clampSpeed, SEEK_END_MARGIN_SECONDS, type PlayerKeyAction } from '../../lib/player/keymap';
 import type { PlayerStatus } from '../../lib/player/player-status';
+import { toggleNightMode } from '../../lib/player/night-mode';
 import { markManualCycle } from '../../lib/player/track-memory';
 import {
   playerCycleTrack, playerFrameStep, playerNext, playerPrev, playerScreenshot, playerSeek, playerSetFullscreen, playerSetMute,
   playerSetSpeed, playerSetSubDelay, playerSetVolume, playerStopClose, playerTogglePause,
 } from '../../lib/tauri/player';
 
-export const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+// Slower only: nothing above 1× is offered (lib/player/keymap SPEED_MAX).
+export const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1] as const;
 export const MAX_VOLUME = 130;
 
 export interface PlayerActionContext {
@@ -87,6 +89,11 @@ export function runPlayerAction(action: PlayerKeyAction, context: PlayerActionCo
     case 'speed_delta':
       swallow(playerSetSpeed(clampSpeed(status.speed + action.delta)));
       break;
+    case 'toggle_night_mode':
+      // Only the preference flips here: the controls surface applies it
+      // (usePlayerNightMode), whichever window the key landed in.
+      toggleNightMode();
+      break;
     case 'cycle_track':
       // A hand-picked track: remembered for the series (track-memory).
       markManualCycle(action.kind);
@@ -105,5 +112,5 @@ export function runPlayerAction(action: PlayerKeyAction, context: PlayerActionCo
 }
 
 export function applySpeed(speed: number) {
-  swallow(playerSetSpeed(speed));
+  swallow(playerSetSpeed(clampSpeed(speed)));
 }

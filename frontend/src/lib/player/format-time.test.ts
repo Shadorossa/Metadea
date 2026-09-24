@@ -26,8 +26,8 @@ describe('small formatters', () => {
     expect(formatSignedSeconds(-0.26)).toBe('-0.3s');
     expect(formatSignedSeconds(0)).toBe('0.0s');
     expect(formatSpeed(1)).toBe('1×');
-    expect(formatSpeed(1.5)).toBe('1.5×');
-    expect(formatSpeed(1.25)).toBe('1.25×');
+    expect(formatSpeed(0.5)).toBe('0.5×');
+    expect(formatSpeed(0.75)).toBe('0.75×');
   });
 
   it('turns capture timecodes into clock text', () => {

@@ -8,8 +8,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use super::mpv_api::{EndFileReason, MpvApi, MpvEvent};
-use super::status::{PlayerStatus, StatusChange, StatusTracker};
+use super::mpv_api::{EndFileReason, MpvApi, MpvEvent, PropertyValue};
+use super::status::{PlayerStatus, StatusChange, StatusTracker, MAX_PLAYBACK_SPEED};
 
 /// Minimum gap between two position-only status emissions (≤ 4/s).
 pub const STATUS_THROTTLE: Duration = Duration::from_millis(250);
@@ -32,6 +32,8 @@ pub enum Outgoing {
     /// The one-shot `start` offset has been consumed: seek there if mpv
     /// ignored it, then clear it so the next queued file starts from zero.
     ClearStartOffset,
+    /// mpv reported a speed above 1× (never set by us): put it back to 1×.
+    ClampSpeed,
     Exit,
 }
 
@@ -71,6 +73,9 @@ impl EventLoopState {
                 }
             }
             MpvEvent::PropertyChange { name, value } => {
+                if name == "speed" && matches!(value, PropertyValue::Double(speed) if speed > MAX_PLAYBACK_SPEED + 1e-6) {
+                    out.push(Outgoing::ClampSpeed);
+                }
                 let change = self.tracker.apply(&name, &value);
                 if name == "playlist-pos" {
                     let index = self.tracker.status.playlist_index;
@@ -157,6 +162,9 @@ pub fn run_event_thread(
                     }
                     let _ = client.set_property("start", "none");
                 }
+                Outgoing::ClampSpeed => {
+                    let _ = client.set_property("speed", &format!("{MAX_PLAYBACK_SPEED:.3}"));
+                }
                 Outgoing::Exit => exit = true,
             }
         }
@@ -169,7 +177,6 @@ pub fn run_event_thread(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::player::mpv_api::PropertyValue;
 
     fn prop(name: &str, value: PropertyValue) -> MpvEvent {
         MpvEvent::PropertyChange { name: name.into(), value }
@@ -214,6 +221,15 @@ mod tests {
         failing.arm_start_offset();
         let out = failing.handle(MpvEvent::EndFile(EndFileReason::Error), now);
         assert_eq!(out, vec![Outgoing::ClearStartOffset, Outgoing::LoadFailed]);
+    }
+
+    #[test]
+    fn a_speed_above_one_is_clamped_back() {
+        let mut state = EventLoopState::default();
+        let now = Instant::now();
+        assert!(state.handle(prop("speed", PropertyValue::Double(1.5)), now).contains(&Outgoing::ClampSpeed));
+        assert!(!state.handle(prop("speed", PropertyValue::Double(1.0)), now).contains(&Outgoing::ClampSpeed));
+        assert!(!state.handle(prop("speed", PropertyValue::Double(0.5)), now).contains(&Outgoing::ClampSpeed));
     }
 
     #[test]

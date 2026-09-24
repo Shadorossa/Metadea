@@ -140,6 +140,13 @@ body.player-overlay-body {
   color: var(--player-fg);
 }
 
+.player-controls__badge--night {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
 .player-controls__menu-anchor {
   position: relative;
 }

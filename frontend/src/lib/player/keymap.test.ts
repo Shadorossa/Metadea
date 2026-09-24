@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   resolvePlayerKeyAction, isPlayerHandledKey, SEEK_STEP_SECONDS, SEEK_LARGE_STEP_SECONDS, VOLUME_STEP, SUB_DELAY_STEP_SECONDS,
-  PLAYER_KEY_BINDINGS, SPEED_STEP, clampSpeed, CLIP_KEY_BINDINGS, clipKeyConflicts,
+  PLAYER_KEY_BINDINGS, SPEED_STEP, clampSpeed, CLIP_KEY_BINDINGS, clipKeyConflicts, bindingAction,
 } from './keymap';
 
 describe('resolvePlayerKeyAction', () => {
@@ -39,7 +39,11 @@ describe('resolvePlayerKeyAction', () => {
     expect(resolvePlayerKeyAction({ key: ',' })).toEqual({ type: 'frame_step', direction: 'back' });
     expect(resolvePlayerKeyAction({ key: '.' })).toEqual({ type: 'frame_step', direction: 'forward' });
     expect(resolvePlayerKeyAction({ key: '[' })).toEqual({ type: 'speed_delta', delta: -SPEED_STEP });
-    expect(resolvePlayerKeyAction({ key: ']' })).toEqual({ type: 'speed_delta', delta: SPEED_STEP });
+    // No speed up: ] and > do nothing outside clip mode.
+    expect(resolvePlayerKeyAction({ key: ']' })).toBeNull();
+    expect(resolvePlayerKeyAction({ key: '>' })).toBeNull();
+    expect(resolvePlayerKeyAction({ key: 'd' })).toEqual({ type: 'toggle_night_mode' });
+    expect(resolvePlayerKeyAction({ key: 'D' })).toEqual({ type: 'toggle_night_mode' });
     expect(resolvePlayerKeyAction({ key: 'c' })).toEqual({ type: 'cycle_track', kind: 'sub' });
     expect(resolvePlayerKeyAction({ key: 'a' })).toEqual({ type: 'cycle_track', kind: 'audio' });
     expect(resolvePlayerKeyAction({ key: '0' })).toEqual({ type: 'seek_fraction', fraction: 0 });
@@ -51,11 +55,19 @@ describe('resolvePlayerKeyAction', () => {
     expect(resolvePlayerKeyAction({ key: '[', shiftKey: true })).toEqual({ type: 'speed_delta', delta: -SPEED_STEP });
   });
 
-  it('clamps the speed to 0.25–4 in quarter steps', () => {
-    expect(clampSpeed(1 + SPEED_STEP)).toBe(1.25);
+  it('clamps the speed to 0.25–1: slower is fine, faster never', () => {
+    expect(clampSpeed(1 + SPEED_STEP)).toBe(1);
+    expect(clampSpeed(2)).toBe(1);
+    expect(clampSpeed(0.75 + SPEED_STEP)).toBe(1);
     expect(clampSpeed(0.25 - SPEED_STEP)).toBe(0.25);
-    expect(clampSpeed(4 + SPEED_STEP)).toBe(4);
     expect(clampSpeed(0.1 + 0.2)).toBe(0.3);
+  });
+
+  it('never binds a key that raises the speed', () => {
+    for (const binding of PLAYER_KEY_BINDINGS) {
+      const action = bindingAction(binding, typeof binding.keys === 'string' ? binding.keys : binding.keys[0]);
+      if (action.type === 'speed_delta') expect(action.delta).toBeLessThan(0);
+    }
   });
 
   it('binding ids are unique and every binding carries an i18n description', () => {
@@ -69,8 +81,8 @@ describe('resolvePlayerKeyAction', () => {
 });
 
 describe('clip mode keys', () => {
-  it('only shadow the speed keys, and only while clip mode is on', () => {
-    expect(clipKeyConflicts().sort()).toEqual(['player.speed_down', 'player.speed_up']);
+  it('only shadow speed down, and only while clip mode is on', () => {
+    expect(clipKeyConflicts()).toEqual(['player.speed_down']);
   });
 
   it('use unique ids and combos', () => {

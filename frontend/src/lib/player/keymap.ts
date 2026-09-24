@@ -20,6 +20,7 @@ export type PlayerKeyAction =
   | { type: 'skip_segment' }
   | { type: 'frame_step'; direction: 'back' | 'forward' }
   | { type: 'speed_delta'; delta: number }
+  | { type: 'toggle_night_mode' }
   | { type: 'cycle_track'; kind: 'sub' | 'audio' }
   | { type: 'seek_fraction'; fraction: number }
   | { type: 'seek_start' }
@@ -34,7 +35,8 @@ export const VOLUME_STEP = 5;
 export const SUB_DELAY_STEP_SECONDS = 0.1;
 export const SPEED_STEP = 0.25;
 export const SPEED_MIN = 0.25;
-export const SPEED_MAX = 4;
+/** Playback may be slowed down, never sped up past 1× (the engine caps it too). */
+export const SPEED_MAX = 1;
 /** `end` lands this far before the end so the file does not finish at once. */
 export const SEEK_END_MARGIN_SECONDS = 5;
 
@@ -76,8 +78,8 @@ export const PLAYER_KEY_BINDINGS: readonly PlayerKeyBinding[] = [
   { id: 'player.frame_back', keys: ',', description: 'shortcuts.player_frame_back', action: { type: 'frame_step', direction: 'back' } },
   { id: 'player.frame_forward', keys: '.', description: 'shortcuts.player_frame_forward', action: { type: 'frame_step', direction: 'forward' } },
   { id: 'player.speed_down', keys: '[', description: 'shortcuts.player_speed_down', action: { type: 'speed_delta', delta: -SPEED_STEP } },
-  { id: 'player.speed_up', keys: ']', description: 'shortcuts.player_speed_up', action: { type: 'speed_delta', delta: SPEED_STEP } },
   { id: 'player.cycle_subtitles', keys: 'c', description: 'shortcuts.player_cycle_subtitles', action: { type: 'cycle_track', kind: 'sub' } },
+  { id: 'player.toggle_night_mode', keys: 'd', description: 'shortcuts.player_toggle_night_mode', action: { type: 'toggle_night_mode' } },
   { id: 'player.cycle_audio', keys: 'a', description: 'shortcuts.player_cycle_audio', action: { type: 'cycle_track', kind: 'audio' } },
   { id: 'player.seek_percent', keys: DIGIT_KEYS, description: 'shortcuts.player_seek_percent', action: key => ({ type: 'seek_fraction', fraction: Number(key) / 10 }) },
   { id: 'player.seek_start', keys: 'home', description: 'shortcuts.player_seek_start', action: { type: 'seek_start' } },
@@ -86,8 +88,8 @@ export const PLAYER_KEY_BINDINGS: readonly PlayerKeyBinding[] = [
 
 // Clip mode (scissors button): registered as a second `player`-context
 // registration only while clip mode is on, so — being the latest in the
-// same context — `[`/`]` shadow speed down/up just for that time and give
-// them back when clip mode ends. Enter is free in the player table: it
+// same context — `[` shadows speed down just for that time and gives it
+// back when clip mode ends (`]` is free: there is no speed up). Enter is free in the player table: it
 // confirms the trim, then exports from the chooser. Esc cancels through the
 // player's Escape ladder (dismissOverlays), not here.
 export type ClipKeyAction = 'set_start' | 'set_end' | 'confirm';

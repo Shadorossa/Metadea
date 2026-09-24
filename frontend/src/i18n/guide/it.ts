@@ -377,7 +377,7 @@ export const guideIt: Translations['guide'] = {
         s1: "Non c'è niente da installare: il lettore (libmpv) è incluso in Metadea.",
         s2: "Scegli i controlli: sovrapposti al video o in una barra fissa sotto il video.",
         s3: "Premi «Riproduci» su un episodio in Play. Il resto della stagione va in coda; premi Q per vedere la coda.",
-        s4: "Usa i menu per cambiare traccia audio, sottotitoli e velocità (da 0,5× a 2×).",
+        s4: "Usa i menu per cambiare traccia audio, sottotitoli e velocità (da 0,25× a 1×: più lento, mai più veloce).",
         s5: "All'80 % l'episodio viene segnato come visto: stato, progressi e AniList si aggiornano. Un avviso ti permette di annullare.",
         s6: "Se chiudi prima dell'80 %, il prossimo «Riproduci» riprende esattamente dal secondo in cui eri.",
       },
@@ -394,7 +394,7 @@ export const guideIt: Translations['guide'] = {
       steps: {
         s1: "Spazio mette in pausa; le frecce spostano di 5 s (30 s con Maiusc) e cambiano il volume.",
         s2: "N e P (oppure Ctrl+→ e Ctrl+←) passano all'episodio successivo o precedente.",
-        s3: ", e . avanzano fotogramma per fotogramma; [ e ] cambiano la velocità.",
+        s3: ", e . avanzano fotogramma per fotogramma; [ rallenta la riproduzione; D attiva o disattiva la modalità notte (dialoghi chiari).",
         s4: "I tasti numerici saltano al 10 %, 20 %… del video.",
       },
       tips: {

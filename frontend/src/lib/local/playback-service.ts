@@ -35,6 +35,7 @@ import { syncToAniList, isAniListType } from '../media/anilist-sync';
 import { toMediumCover } from '../media/small-cover';
 import { setPlaybackPresence, clearPlaybackPresence } from './discord-presence';
 import { createExternalStore } from '../shared/state/external-store';
+import { emitSessionEnded } from '../plugins/host-events';
 
 export interface PlaybackQueueItem {
   episodeNumber: number;
@@ -329,6 +330,7 @@ function persistStopPosition(episodeNumber: number, time: number, length: number
 }
 
 function finishSession() {
+  if (state) emitSessionEnded({ externalId: state.externalId, kind: 'watch' });
   endedSignal = null;
   lastPresence = null;
   clearPlaybackPresence();

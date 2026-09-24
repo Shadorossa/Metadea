@@ -378,7 +378,7 @@ export const guideEn = {
         s1: "Nothing to install: the player (libmpv) comes with Metadea.",
         s2: "Choose the controls: overlaid on the video, or in a fixed bar under the video.",
         s3: "Press “Play” on an episode in Play. The rest of the season is queued; press Q to see the queue.",
-        s4: "Use the menus to change audio track, subtitles and speed (0.5× to 2×).",
+        s4: "Use the menus to change audio track, subtitles and speed (0.25× to 1×: slower, never faster).",
         s5: "At 80 % the episode is marked as watched: status, progress and AniList update. A notice lets you undo it.",
         s6: "Close before 80 % and the next “Play” resumes at the exact second.",
       },
@@ -395,7 +395,7 @@ export const guideEn = {
       steps: {
         s1: "Space pauses; the arrows seek 5 s (30 s with Shift) and change the volume.",
         s2: "N and P (or Ctrl+→ and Ctrl+←) move to the next or previous episode.",
-        s3: ", and . move frame by frame; [ and ] change the speed.",
+        s3: ", and . move frame by frame; [ slows playback down; D turns night mode (clear dialogue) on or off.",
         s4: "Number keys jump to 10 %, 20 %… of the video.",
       },
       tips: {

@@ -5,8 +5,6 @@ import {
   groupTimeline,
   isMasterpiece,
   layoutTimeline,
-  timelineSummary,
-  timelineSummaryParts,
   visibleColumns,
   type PositionedColumn,
 } from '../../lib/media/career-timeline';
@@ -114,13 +112,12 @@ function TimelineColumnView({ column, rows, strings }: {
 
 // Horizontal career timeline for the company and author pages: one column
 // per year with works (lib/media/career-timeline.ts), decade separators,
-// masterpiece halos. Scrolls by drag, wheel, the arrow buttons and the
+// masterpiece halos. Scrolls by drag, wheel and the
 // keyboard; only the columns near the viewport are rendered, at fixed
 // positions, so a big catalogue neither lags nor shifts.
 export function CareerTimeline({ items, strings }: Props) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ left: 0, width: DEFAULT_VIEWPORT });
-  const [edges, setEdges] = useState({ atStart: true, atEnd: false });
   const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
 
@@ -130,10 +127,6 @@ export function CareerTimeline({ items, strings }: Props) {
     }),
     [items],
   );
-  const summary = useMemo(() => timelineSummaryParts(
-    timelineSummary(items, item => (item.unreleased ? null : item.year), item => item.score),
-    strings,
-  ), [items, strings]);
 
   const trackWidth = layout.totalWidth + EDGE_PAD * 2;
   const trackHeight = TOP_PAD + layout.rows * ROW_HEIGHT + AXIS_HEIGHT;
@@ -145,9 +138,6 @@ export function CareerTimeline({ items, strings }: Props) {
     setViewport(prev => (prev.left === node.scrollLeft && prev.width === node.clientWidth
       ? prev
       : { left: node.scrollLeft, width: node.clientWidth }));
-    const atStart = node.scrollLeft <= 1;
-    const atEnd = node.scrollLeft + node.clientWidth >= node.scrollWidth - 1;
-    setEdges(prev => (prev.atStart === atStart && prev.atEnd === atEnd ? prev : { atStart, atEnd }));
   }, []);
 
   // Viewport size + scroll position, batched per frame.
@@ -246,13 +236,6 @@ export function CareerTimeline({ items, strings }: Props) {
 
   return (
     <div className="career-timeline">
-      <div className="career-timeline-bar">
-        {summary.length > 0 && <p className="career-timeline-summary">{summary.join(' · ')}</p>}
-        <div className="career-timeline-nav">
-          <button type="button" className="career-timeline-arrow" onClick={() => scrollByPage(-1)} disabled={edges.atStart} aria-label={strings.timeline_prev} title={strings.timeline_prev}>‹</button>
-          <button type="button" className="career-timeline-arrow" onClick={() => scrollByPage(1)} disabled={edges.atEnd} aria-label={strings.timeline_next} title={strings.timeline_next}>›</button>
-        </div>
-      </div>
       <div
         ref={scrollerRef}
         className="career-timeline-scroller"

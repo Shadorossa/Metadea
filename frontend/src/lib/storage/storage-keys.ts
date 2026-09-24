@@ -116,6 +116,8 @@ export const STORAGE_KEYS = {
   playerTrackMemory: 'metadea_player_track_memory',
   // Clip chooser's last answer, the next export's default (lib/player/clip-choice.ts).
   playerClipLastChoice: 'metadea_player_clip_last_choice',
+  // Night mode / clear dialogue on or off ('on' | 'off', default off; lib/player/night-mode.ts).
+  playerNightMode: 'metadea_player_night_mode',
   // Interface scale (lib/ui-scale/): the Settings › Preferences choice
   // ('auto' when missing), the zoom applied to the main window (the player
   // overlay copies it) and, in sessionStorage, the zoom of this webview.

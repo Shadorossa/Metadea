@@ -22,7 +22,27 @@ export const isTauri = (): boolean => {
 // Polling briefly instead of deciding off one synchronous check fixes that
 // without meaningfully affecting real browser (non-Tauri) usage, where this
 // just resolves "false" a few hundred ms later than before.
-export async function waitForTauriBridge(timeoutMs = 1500, intervalMs = 50): Promise<boolean> {
+/** True on the packaged app's own origin (tauri.localhost / tauri://), where
+ *  the bridge WILL attach — only its timing is unknown. */
+export function isPackagedAppOrigin(loc: Pick<Location, 'protocol' | 'hostname'> | undefined =
+  typeof location === 'undefined' ? undefined : location): boolean {
+  if (!loc) return false;
+  return loc.protocol === 'tauri:' || loc.hostname === 'tauri.localhost';
+}
+
+// 1.5 s was too short after an auto-update relaunch (cold WebView2, an
+// antivirus scan of the new binary, new migrations): pages decided "not in
+// Tauri" and stayed empty until F5. On the app's own origin the bridge is
+// certain to come, so wait for it much longer; elsewhere (a plain browser on
+// the dev server) keep the short wait.
+export const PACKAGED_BRIDGE_TIMEOUT_MS = 20_000;
+export const BROWSER_BRIDGE_TIMEOUT_MS = 1500;
+
+export function defaultBridgeTimeout(): number {
+  return isPackagedAppOrigin() ? PACKAGED_BRIDGE_TIMEOUT_MS : BROWSER_BRIDGE_TIMEOUT_MS;
+}
+
+export async function waitForTauriBridge(timeoutMs = defaultBridgeTimeout(), intervalMs = 50): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (!isTauri()) {
     if (Date.now() >= deadline) return false;
@@ -46,7 +66,9 @@ function getDbReadyPromise(): Promise<void> {
     // the bug this promise was patched for. Falling through after a timeout
     // just means a caller hits its own normal error handling instead of
     // hanging silently.
-    setTimeout(() => resolveDbReady?.(), 5000);
+    // Longer than the packaged app's bridge wait, so a slow cold start
+    // can't release commands before init_database has had its chance.
+    setTimeout(() => resolveDbReady?.(), PACKAGED_BRIDGE_TIMEOUT_MS + 5000);
   }
   return dbReadyPromise;
 }

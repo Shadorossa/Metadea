@@ -9,7 +9,7 @@ each binding lives.
 | Media page | `components/media/MediaPage.tsx` (`page`, gated by `noOverlayOpen`) | `media.open_editor`, `media.propose`, `media.copy_link`, `media.toggle_favorite`, `media.progress_increment/decrement`, `media.rate` (one binding, digits 1–9 and 0 = 10 via `lib/media/rating-digit.ts`), `media.play_theme` |
 | PR editor | `components/media/PrEditorModal.tsx` (`modal`, `enabled: sessionActive`) | `pr_editor.submit`, `pr_editor.confirm`, `pr_editor.undo/redo`, `pr_editor.next_tab/prev_tab` |
 | Media editor | `components/media/MediaEditorModal.tsx` (`modal`) | `media_editor.save`, `media_editor.confirm`, `media_editor.undo/redo`, `media_editor.next_tab/prev_tab` |
-| Player | `lib/player/keymap.ts` `PLAYER_KEY_BINDINGS`, registered by `components/player/hooks/usePlayerKeys.ts` (`player`; Escape stays a private listener) | `player.*` — every existing key plus `ctrl+arrowleft/right`, `,`/`.`, `[`/`]`, `c`/`a`, `0-9`, `home`/`end` |
+| Player | `lib/player/keymap.ts` `PLAYER_KEY_BINDINGS`, registered by `components/player/hooks/usePlayerKeys.ts` (`player`; Escape stays a private listener) | `player.*` — every existing key plus `ctrl+arrowleft/right`, `,`/`.`, `[` (speed down only: nothing goes above 1×), `d` (night mode), `c`/`a`, `0-9`, `home`/`end` |
 
 Undo/redo: `lib/shared/state/undo-history.ts` (bounded to 50, 500 ms coalescing of
 text edits on one field) backs `prEditorReducer` (`undo`/`redo`) and `entryReducer`
@@ -209,8 +209,8 @@ New bindings:
 | same | same | `player.next_episode` | `ctrl+arrowright` | `shortcuts.player_next_episode` | same as the existing `next` action |
 | same | same | `player.frame_back` | `,` | `shortcuts.player_frame_back` | mpv `frame-back-step` (pauses) |
 | same | same | `player.frame_forward` | `.` | `shortcuts.player_frame_forward` | mpv `frame-step` (pauses) |
-| same | same | `player.speed_down` | `[` | `shortcuts.player_speed_down` | speed − 0.25 (clamp ≥ 0.25) — existing speed setter |
-| same | same | `player.speed_up` | `]` | `shortcuts.player_speed_up` | speed + 0.25 (clamp ≤ 4) |
+| same | same | `player.speed_down` | `[` | `shortcuts.player_speed_down` | speed − 0.25 (clamp 0.25–1) — existing speed setter; there is no speed up (never above 1×) |
+| same | same | `player.toggle_night_mode` | `d` | `shortcuts.player_toggle_night_mode` | flips the night-mode preference; the controls apply it (`player_set_night_mode`) |
 | same | same | `player.cycle_subtitles` | `c` | `shortcuts.player_cycle_subtitles` | mpv `cycle sub` |
 | same | same | `player.cycle_audio` | `a` | `shortcuts.player_cycle_audio` | mpv `cycle audio` |
 | same | same | `player.seek_percent` | `['0','1','2','3','4','5','6','7','8','9']` | `shortcuts.player_seek_percent` | seek to `Number(event.key) * 10 %` of duration (`seekTo(duration * n / 10)`) |

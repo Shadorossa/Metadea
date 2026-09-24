@@ -34,6 +34,10 @@ export async function markChapterRead(
   // clearing has to target that same key or it'd leave a stale row behind
   // and clear nothing.
   readingProgressKey: number = progressNumber,
+  // 'chapters': progressNumber is a chapter number (a plugin source's
+  // chapter list), always written to `progress` and never moved backwards
+  // by re-reading an earlier chapter. Default: the file-based rule below.
+  progressUnit?: 'chapters',
 ): Promise<LibraryEntry> {
   // Same "finishing" rule as markEpisodeWatched: reaching the last
   // chapter/issue BY ACTUALLY READING IT THROUGH is what completes a work
@@ -48,12 +52,15 @@ export async function markChapterRead(
   const startedAt = libraryEntry.started_at ?? today;
   const finishedAt = finishing ? today : libraryEntry.finished_at;
 
-  const tracksVolumes = libraryEntry.type === 'manga'
+  const tracksVolumes = progressUnit !== 'chapters' && (libraryEntry.type === 'manga'
     || libraryEntry.type === 'lnovel'
-    || (libraryEntry.total_count_2 != null && libraryEntry.total_count_2 > 0);
+    || (libraryEntry.total_count_2 != null && libraryEntry.total_count_2 > 0));
+  const chapterProgress = progressUnit === 'chapters'
+    ? Math.max(libraryEntry.progress ?? 0, progressNumber)
+    : progressNumber;
   const saved = await saveLibraryEntry({
     ...libraryEntry,
-    progress: tracksVolumes ? (libraryEntry.progress ?? 0) : progressNumber,
+    progress: tracksVolumes ? (libraryEntry.progress ?? 0) : chapterProgress,
     progress_2: tracksVolumes ? progressNumber : (libraryEntry.progress_2 ?? 0),
     status: nextStatus,
     started_at: startedAt,
@@ -69,7 +76,7 @@ export async function markChapterRead(
     syncToAniList({
       externalId, type: libraryEntry.type, status: nextStatus ?? '',
       rating: libraryEntry.rating ?? 0,
-      progress: tracksVolumes ? (libraryEntry.progress ?? 0) : progressNumber,
+      progress: tracksVolumes ? (libraryEntry.progress ?? 0) : chapterProgress,
       progressVolumes: tracksVolumes ? progressNumber : (libraryEntry.progress_2 ?? 0),
       startedAt: startedAt ?? '', finishedAt: finishedAt ?? '',
       notes: libraryEntry.notes ?? '',

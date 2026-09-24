@@ -19,6 +19,8 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 ### Added
 
 - **Big Picture:** PS5-style skin (Settings › Appearance), inspired by the PS5ish Playnite theme.
+- **Plugins:** Plugin system: install plugins from file or URL; sources for reading, media-page actions and panels, events (docs/PLUGINS.md)
+- Sakuga: every clip per animator from Sakugabooru, sorted by votes, on anime and creator pages
 
 ## [0.7.2] - 2026-09-24
 

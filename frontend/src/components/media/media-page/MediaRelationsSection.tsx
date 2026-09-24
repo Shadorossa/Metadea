@@ -14,7 +14,7 @@ import { EpisodeCard, MatchCard, RelationCard, ThemeCardItem } from './MediaPage
 import { SectionTabs } from './MediaPageControls';
 import type { MediaSpoilers } from './useMediaSpoilers';
 
-export type RelationsTab = 'related' | 'recommended' | 'editions' | 'episodes' | 'matches' | 'seasons' | 'themes';
+export type RelationsTab = 'related' | 'recommended' | 'editions' | 'episodes' | 'matches' | 'seasons' | 'themes' | 'read';
 
 // .media-relations-grid is a fixed 4-column grid — 3 rows worth per page.
 export const EPISODE_PAGE_SIZE = 12;
@@ -44,6 +44,8 @@ interface Props {
   spoilers?: MediaSpoilers;
   /** AnimeFillerList data for the episodes tab (absent: no badges). */
   filler?: { view: EpisodeFillerView; footer: ReactNode };
+  /** Plugin sources' "Read" tab (components/plugins/PluginReadTab); absent: no tab. */
+  readTab?: { label: string; content: ReactNode };
 }
 
 export function MediaRelationsSection({
@@ -69,6 +71,7 @@ export function MediaRelationsSection({
   onPlayTheme,
   spoilers,
   filler,
+  readTab,
 }: Props) {
   const isComicOrHasIssues = data.type === 'comic' || (Array.isArray(data.relations) && data.relations.some(r => r.relationType === 'ISSUE'));
   const editionsLabel = isComicOrHasIssues ? tm.relations.ISSUE : tm.relations.EDITIONS;
@@ -99,7 +102,7 @@ export function MediaRelationsSection({
   const ggDeals = GGDEALS_MEDIA_TYPES.includes(data.type) && data.titleMain
     ? { url: ggDealsLink({ title: data.titleMain, storeLinks }), label: tm.ggdeals_link }
     : undefined;
-  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasMatches || hasSeasonsTab || hasThemes;
+  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasMatches || hasSeasonsTab || hasThemes || !!readTab;
   const visibleRelations = relationsTab === 'recommended'
     ? recommendedRelations
     : relationsTab === 'editions'
@@ -125,13 +128,16 @@ export function MediaRelationsSection({
                 ...(hasEpisodes ? [{ key: 'episodes', label: tm.stat_episodes, active: relationsTab === 'episodes', onClick: () => { setRelationsTab('episodes'); setRelationPage(1); } }] : []),
                 ...(hasMatches ? [{ key: 'matches', label: tm.stat_matches, active: relationsTab === 'matches', onClick: () => { setRelationsTab('matches'); setRelationPage(1); } }] : []),
                 ...(hasThemes ? [{ key: 'themes', label: tm.section_themes, active: relationsTab === 'themes', onClick: () => { setRelationsTab('themes'); setRelationPage(1); } }] : []),
+                ...(readTab ? [{ key: 'read', label: readTab.label, active: relationsTab === 'read', onClick: () => { setRelationsTab('read'); setRelationPage(1); } }] : []),
               ] : []}
             />
             {(storeLinks.length > 0 || ggDeals) && (
               <MediaStoreLinks links={storeLinks} ggDeals={ggDeals} />
             )}
           </div>
-          {relationsTab === 'themes' ? (
+          {relationsTab === 'read' && readTab ? (
+            readTab.content
+          ) : relationsTab === 'themes' ? (
             themes.length > 0 && (
               <>
                 <div className="media-relations-grid">

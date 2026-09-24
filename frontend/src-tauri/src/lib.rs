@@ -44,6 +44,7 @@ mod media_relations;
 mod media_themes;
 mod migrations;
 mod platform_scanning;
+mod plugins;
 mod player;
 mod proposal_bundle;
 mod reading_progress;
@@ -53,6 +54,7 @@ mod retro_achievements;
 mod rom_disc_merge;
 mod rom_rename;
 mod saves;
+mod sakuga;
 mod sagas;
 mod share_image;
 mod story_arcs;
@@ -154,6 +156,7 @@ pub fn run() {
             app.manage(discord);
             deep_link::install(app.handle());
             google_drive::start_scheduler(app.handle().clone());
+            plugins::clean_staging(app.handle());
 
             if let Some(window) = app.get_webview_window("main") {
                 if let Some(icon) = app.default_window_icon() {
@@ -407,6 +410,11 @@ pub fn run() {
             anime_filler::filler_get_info,
             anime_filler::filler_set_link,
             anime_filler::filler_remove_link,
+            sakuga::sakuga_resolve_artist,
+            sakuga::sakuga_resolve_series,
+            sakuga::sakuga_cached_artists,
+            sakuga::sakuga_posts,
+            sakuga::sakuga_related_series,
             textless_covers::resolve_textless_covers,
             wallpapers::resolve_wallpapers,
             favorite_images::save_favorite_custom_image,
@@ -484,6 +492,7 @@ pub fn run() {
             player::player_set_volume,
             player::player_set_mute,
             player::player_set_speed,
+            player::player_set_night_mode,
             player::player_set_sub_delay,
             player::player_frame_step,
             player::player_cycle_track,
@@ -523,6 +532,24 @@ pub fn run() {
             ui_themes::set_active_ui_theme,
             ui_themes::open_ui_themes_folder,
             ui_themes::export_ui_theme_starter,
+            plugins::plugin_list,
+            plugins::plugin_install_from_file,
+            plugins::plugin_install_from_url,
+            plugins::plugin_install_confirm,
+            plugins::plugin_install_cancel,
+            plugins::plugin_grant_permissions,
+            plugins::plugin_set_enabled,
+            plugins::plugin_uninstall,
+            plugins::plugin_read_entry,
+            plugins::plugin_open_folder,
+            plugins::plugin_get_settings,
+            plugins::plugin_set_settings,
+            plugins::plugin_http_fetch,
+            plugins::plugin_http_download,
+            plugins::plugin_storage_get,
+            plugins::plugin_storage_set,
+            plugins::plugin_get_work_link,
+            plugins::plugin_set_work_link,
         ])
         .build(tauri::generate_context!());
     match result {

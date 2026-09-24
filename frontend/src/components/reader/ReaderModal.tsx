@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ModalShell } from '../shared/ModalShell';
 import * as pdfjsLib from 'pdfjs-dist';
 import {
-  extractComicArchive,
   readComicBinaryFile,
   getReadingProgress,
   saveReadingProgress,
@@ -12,6 +11,8 @@ import {
   wrapAssetUrl,
 } from '../../lib/tauri';
 import { markChapterRead } from '../../lib/reader/reading-service';
+import { archivePageSource } from '../../lib/reader/page-source';
+import { emitSessionEnded } from '../../lib/plugins/host-events';
 import { PdfCanvasPage, getOrQueuePdfRender, type PdfRenderItem } from './PdfCanvasPage';
 import { EpubReaderView } from './EpubReaderView';
 import { isEpubPath, type ReaderProps } from './reader-props';
@@ -60,7 +61,7 @@ function getPreloadTargetSpreads(spreads: number[][], spreadIndex: number): numb
 // One entry point for every readable file: EPUB gets its own surface,
 // everything else (images, CBZ/CBR, PDF) the spread-based reader below.
 export function ReaderModal(props: ReaderProps) {
-  return isEpubPath(props.filePath) ? <EpubReaderView {...props} /> : <ComicReaderModal {...props} />;
+  return isEpubPath(props.filePath) && !props.pageSource ? <EpubReaderView {...props} /> : <ComicReaderModal {...props} />;
 }
 
 function ComicReaderModal({
@@ -75,6 +76,8 @@ function ComicReaderModal({
   onClose,
   onStandBy,
   onProgressSaved,
+  pageSource,
+  progressUnit,
 }: ReaderProps) {
   const t = getT().reader;
   const { isClosing, close: handleClose } = useClosingTransition(onClose);
@@ -113,7 +116,14 @@ function ComicReaderModal({
     : `${(currentSpread[0] ?? 0) + 1} / ${pages.length}`;
 
   const isBookOrNovel = libraryEntry?.type === 'lnovel' || libraryEntry?.type === 'book';
-  const isPdf = useMemo(() => filePath.toLowerCase().endsWith('.pdf'), [filePath]);
+  const isPdf = useMemo(() => !pageSource && filePath.toLowerCase().endsWith('.pdf'), [filePath, pageSource]);
+  // Local archives/folders by default; a plugin chapter brings its own.
+  const source = useMemo(() => pageSource ?? archivePageSource(filePath), [pageSource, filePath]);
+  // Sources with resolvePage: displayable URL per page index, filled around
+  // the current spread (and pruned outside it) by the preload effect below.
+  const [resolvedPages, setResolvedPages] = useState<Record<number, string>>({});
+  const resolvingRef = useRef<Set<number>>(new Set());
+  const pageUrl = (index: number): string => source.resolvePage ? (resolvedPages[index] ?? '') : wrapAssetUrl(pages[index]);
   const [pdfDoc, setPdfDoc] = useState<any | null>(null);
   const pdfDocRef = useRef<any | null>(null);
 
@@ -191,20 +201,22 @@ function ComicReaderModal({
       };
     }
 
-    extractComicArchive(filePath)
-      .then(async res => {
+    setResolvedPages({});
+    resolvingRef.current.clear();
+    source.listPages()
+      .then(async list => {
         if (cancelled) return;
-        if (!res.pages.length) {
+        if (!list.length) {
           setErrorMsg(getT().reader.archive_no_pages);
           setLoadState('error');
           return;
         }
-        setPages(res.pages);
+        setPages(list);
 
         const progress = await getReadingProgress(externalId, episodeNumber).catch(() => null);
         if (cancelled) return;
-        const savedSpreads = buildSpreads(res.pages.length);
-        const savedPage0 = progress ? Math.min(Math.max(progress.pageNumber - 1, 0), res.pages.length - 1) : 0;
+        const savedSpreads = buildSpreads(list.length);
+        const savedPage0 = progress ? Math.min(Math.max(progress.pageNumber - 1, 0), list.length - 1) : 0;
         const resumeSpread = Math.max(0, savedSpreads.findIndex(s => s.includes(savedPage0)));
         resumedRef.current = true;
         setSpreadIndex(resumeSpread);
@@ -221,7 +233,7 @@ function ComicReaderModal({
       });
 
     return () => { cancelled = true; };
-  }, [filePath, externalId, episodeNumber, isPdf]);
+  }, [filePath, externalId, episodeNumber, isPdf, source]);
 
   useEffect(() => {
     if (loadState !== 'ready' || !resumedRef.current || currentSpread.length === 0) return;
@@ -230,7 +242,7 @@ function ComicReaderModal({
     if (currentSpread.includes(pages.length - 1) && !markedRef.current) {
       markedRef.current = true;
       const finishNumber = isSingleTomo && totalCount ? totalCount : episodeNumber;
-      markChapterRead(externalId, libraryEntry, finishNumber, totalCount, episodeNumber)
+      markChapterRead(externalId, libraryEntry, finishNumber, totalCount, episodeNumber, progressUnit)
         .then(onProgressSaved)
         .catch(err => console.error('Failed to mark chapter read', err));
     }
@@ -284,6 +296,36 @@ function ComicReaderModal({
   useEffect(() => {
     if (loadState !== 'ready' || isPdf) return;
     const targetSpreads = getPreloadTargetSpreads(spreads, spreadIndex);
+    const resolvePage = source.resolvePage;
+    if (resolvePage) {
+      for (const spread of targetSpreads) {
+        for (const pageIdx of spread) {
+          if (resolvingRef.current.has(pageIdx)) continue;
+          resolvingRef.current.add(pageIdx);
+          resolvePage(pages[pageIdx])
+            .then(url => setResolvedPages(prev => ({ ...prev, [pageIdx]: url })))
+            .catch(err => {
+              resolvingRef.current.delete(pageIdx);
+              console.warn('Reader page failed to load', err);
+            });
+        }
+      }
+      // Keep a window of decoded pages; the source re-fetches (or serves
+      // from its own cache) whatever scrolls back in.
+      const keep = new Set<number>();
+      for (let si = spreadIndex - 4; si <= spreadIndex + 8; si++) spreads[si]?.forEach(p => keep.add(p));
+      setResolvedPages(prev => {
+        const stale = Object.keys(prev).map(Number).filter(p => !keep.has(p));
+        if (stale.length === 0) return prev;
+        const next = { ...prev };
+        for (const p of stale) {
+          delete next[p];
+          resolvingRef.current.delete(p);
+        }
+        return next;
+      });
+      return;
+    }
     for (const spread of targetSpreads) {
       for (const pageIdx of spread) {
         const url = wrapAssetUrl(pages[pageIdx]);
@@ -296,7 +338,7 @@ function ComicReaderModal({
         }
       }
     }
-  }, [spreadIndex, loadState, spreads, pages, isPdf]);
+  }, [spreadIndex, loadState, spreads, pages, isPdf, source]);
 
   // Unix seconds the session opened — Discord's elapsed counter; page turns
   // must not reset it.
@@ -317,8 +359,11 @@ function ComicReaderModal({
   }, [loadState, pageLabel, title, cover, externalId]);
 
   useEffect(() => {
-    return () => { clearReadingPresence(); };
-  }, []);
+    return () => {
+      clearReadingPresence();
+      emitSessionEnded({ externalId, kind: 'read' });
+    };
+  }, [externalId]);
 
   const handleStandBy = () => {
     onStandBy?.(spreadIndex, spreads.length, pages.length);
@@ -489,8 +534,8 @@ function ComicReaderModal({
                 ) : (
                   <img
                     key={idx}
-                    className="comic-reader-page"
-                    src={wrapAssetUrl(pages[idx])}
+                    className={`comic-reader-page${pageUrl(idx) ? '' : ' comic-reader-page--pending'}`}
+                    src={pageUrl(idx) || undefined}
                     alt={t.page_alt.replace('{page}', String(idx + 1))}
                     draggable={false}
                     decoding="sync"
@@ -502,7 +547,7 @@ function ComicReaderModal({
                         x: Math.min(e.clientX, window.innerWidth - 220),
                         y: Math.min(e.clientY, window.innerHeight - 200),
                         pageNumber: idx + 1,
-                        pagePath: pages[idx],
+                        pagePath: source.resolvePage ? pageUrl(idx) : pages[idx],
                       });
                     }}
                   />
