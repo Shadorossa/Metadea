@@ -1,0 +1,30 @@
+{
+  "character": {
+    "external_id": "character:cs:821935",
+    "name": "Walter Sullivan",
+    "biography": "<b>Full Name::</b> Walter Sullivan<br>\n<b>Gender::</b> Male<br>\n<b>Age::</b> 24 <small>(at suicide)</small><br>34 <small>(as a ghost)</small><br>\n<b>Occupation::</b> Pleasant River University student<br>\n<b>Status::</b> Determinant<br>\n<b>Debut::</b> <i>Silent Hill 4: The Room</i><br>\n<b>Also In::</b> <i>Silent Hill 2</i> <small>(mentioned)</small><br><i>Silent Hill: Book of Memories</i><br><i>Silent Hill 2</i> <small>(2024)</small> <small>(mentioned)</small><br>\n<br>\n<p>Walter Sullivan is the main antagonist of Silent Hill 4: The Room. He was an infamous serial killer, killing at least nineteen people (including two children), and a religious fanatic, courtesy of the Order's beliefs being imposed upon him as a child. Attempting to fulfill a macabre ritual called the 21 Sacraments, his life's goal was to cleanse the world of its sins.</p>\n<p>As a young boy, Walter considered the apartment room he was born in to be his \"mother\". In reality, both his mother and father had abandoned him at birth.</p>\n<p>The Otherworld explored throughout the game, as well as the monsters which inhabit it, were created by Walter. They symbolize his past, fears and views of society.</p>\n<p>During the game, four Walters appear. One is a little boy which is merely a manifestation. One is an adult man who wanders the Otherworld. One is a crucified corpse in a sealed-off room in reality. The final \"Walter\" is said to be the \"Conjurer\" and has Walter's spiritual essence.</p>\n<p>Throughout his childhood, Walter was indoctrinated with the strict teachings of the Order. Because the cult adopted him, Walter held the cult in high regard and strongly believed in its teachings.</p>\n<p>Walter shared many similarities to Claudia Wolf. Walter felt that humanity and society were evil, corrupt, despicable, and full of suffering. He was a firm believer in Paradise, a new world untainted by human evil, pain, or suffering.</p>\n<p>Walter's fear, hatred, and animosity towards humanity and the world seemed to manifest itself into monsters such as the Gum Heads (misandry) and Patients (misogyny), and his Otherworld was filled with macabre and disfigured human-like dolls and corpses.</p>\n<p>Walter held a strong desire to be reunited with his mother, whom he never knew. His desire to reunite with his mother was so strong that Walter was willing to murder 21 people in order to rebirth God and unleash Paradise, where he could, presumably, be with her again. Walter believed he needed to purify humanity's sins by killing people so that a new world, Paradise, could come into being, and apparently help him be reunited with his mother in Paradise. Walter was willing to murder his victims for the \"greater good\"; to him, 21 sacrifices would be nothing compared to humanity's billions that would be \"saved\" in return.</p>",
+    "image_url": "https://metadea.metadea.workers.dev/images/character/character:cs:821935.webp?v=4f2da92d9c325abb0efc424fedaca35144623da1d9f3f4363fe4969b7fbbb105"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:481",
+      "relation_type": "BACKGROUND"
+    },
+    {
+      "media_external_id": "game:483",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:222341",
+      "relation_type": "BACKGROUND"
+    }
+  ],
+  "merged_character_external_ids": [],
+  "actors": [
+    {
+      "external_id": "person:a160767",
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
