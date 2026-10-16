@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatRelativeTime, groupSaves, parseHistoryKeep, slotLabel } from './save-format';
+import { formatRelativeTime, groupSaves, parseHistoryKeep } from './save-format';
 import type { SaveEntry } from '../tauri/saves';
 
 const NOW = Date.UTC(2026, 8, 23, 12, 0, 0);
@@ -18,14 +18,6 @@ describe('save-format', () => {
     expect(formatRelativeTime(NOW - 3 * 3600_000, NOW, 'en')).toBe('3 hours ago');
     expect(formatRelativeTime(NOW - 24 * 3600_000, NOW, 'en')).toBe('yesterday');
     expect(formatRelativeTime(NOW - 400 * 24 * 3600_000, NOW, 'en')).toBe('last year');
-  });
-
-  it('names slots', () => {
-    const labels = { slot: 'Slot {slot}', slot_auto: 'Auto', slot_resume: 'Resume' };
-    expect(slotLabel('3', labels)).toBe('Slot 3');
-    expect(slotLabel('auto', labels)).toBe('Auto');
-    expect(slotLabel('resume', labels)).toBe('Resume');
-    expect(slotLabel(null, labels)).toBeNull();
   });
 
   it('clamps the history size like the backend', () => {

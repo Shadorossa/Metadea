@@ -705,16 +705,15 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
             empty: <RetroAchievementsEmpty state={retro} />,
           } : undefined}
           emulator={isRom ? { platformId: launchTarget.rom_platform!, romPath: launchTarget.install_path!, title: displayTitle } : undefined}
+          savesTab={isRom && launchTarget.rom_platform && launchTarget.install_path ? (
+            <GameSavesSection
+              key={`saves:${contentKey}`}
+              platformId={launchTarget.rom_platform}
+              romPath={launchTarget.install_path}
+              title={displayTitle}
+            />
+          ) : undefined}
         />
-
-        {isRom && launchTarget.rom_platform && launchTarget.install_path && (
-          <GameSavesSection
-            key={`saves:${contentKey}`}
-            platformId={launchTarget.rom_platform}
-            romPath={launchTarget.install_path}
-            title={displayTitle}
-          />
-        )}
       </div>
     </>
   );

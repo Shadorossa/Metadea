@@ -17,6 +17,7 @@ interface MediaScreenshotsSectionProps {
   workName: string;
   achievements: { unlocked: number; total: number; list: SteamAchievement[] } | null;
   achievementsLoading: boolean;
+  savesTab?: React.ReactNode;
   // Achievements tab for a source other than Steam (RetroAchievements):
   // the same list shape, grid, cells and loading state, plus that source's
   // own controls in the tabs row and its own message when there is no list.
@@ -35,15 +36,16 @@ interface MediaScreenshotsSectionProps {
   emulator?: { platformId: string; romPath: string; title?: string };
 }
 
-export function MediaScreenshotsSection({ appId, workName, achievements, achievementsLoading, achievementsTab, emulator }: MediaScreenshotsSectionProps) {
+export function MediaScreenshotsSection({ appId, workName, achievements, achievementsLoading, achievementsTab, savesTab, emulator }: MediaScreenshotsSectionProps) {
   const t = getT();
   const hasAchievementsTab = !!appId || !!achievementsTab;
+  const hasTabs = hasAchievementsTab || !!savesTab;
   const achievementsIconAppId = appId ?? achievementsTab?.iconAppId ?? '';
   const emulatorPlatformId = emulator?.platformId;
   const emulatorRomPath = emulator?.romPath;
   // Everything below starts over for each work this section is shown for.
   const workKey = `${appId}\n${workName}\n${emulatorRomPath ?? ''}`;
-  const [activeTab, setActiveTab] = useKeyedState<'screenshots' | 'achievements'>(workKey, 'screenshots');
+  const [activeTab, setActiveTab] = useKeyedState<'screenshots' | 'achievements' | 'saves'>(workKey, 'screenshots');
   const [screenshots, setScreenshots] = useKeyedState<LocalScreenshot[]>(workKey, NO_SCREENSHOTS);
   const screenshotsGridRef = useRef<HTMLDivElement>(null);
   const achievementsGridRef = useRef<HTMLDivElement>(null);
@@ -223,8 +225,8 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
   );
 
   return (
-    <section className="local-steam-media" ref={sectionRef}>
-      {hasAchievementsTab ? <div className="local-steam-media-tabs" role="group" aria-label={`${t.local.screenshots} / ${t.local.stat_achievements}`}>
+    <section className={`local-steam-media${activeTab === 'saves' ? ' local-steam-media--saves-active' : ''}`} ref={sectionRef}>
+      {hasTabs ? <div className="local-steam-media-tabs" role="group" aria-label={[t.local.screenshots, hasAchievementsTab ? t.local.stat_achievements : null, savesTab ? t.saves.section_title : null].filter(Boolean).join(' / ')}>
         <button
           type="button"
           className={`local-steam-media-tab${activeTab === 'screenshots' ? ' active' : ''}`}
@@ -234,7 +236,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
           <span>{t.local.screenshots}</span>
           <span className="local-steam-media-count">{loading ? '…' : screenshots.length}</span>
         </button>
-        <button
+        {hasAchievementsTab && <button
           type="button"
           className={`local-steam-media-tab${activeTab === 'achievements' ? ' active' : ''}`}
           aria-pressed={activeTab === 'achievements'}
@@ -244,7 +246,15 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
           <span className="local-steam-media-count">
             {achievementsLoading ? '…' : achievements ? `${achievements.unlocked}/${achievements.total}` : '0'}
           </span>
-        </button>
+        </button>}
+        {savesTab && <button
+          type="button"
+          className={`local-steam-media-tab${activeTab === 'saves' ? ' active' : ''}`}
+          aria-pressed={activeTab === 'saves'}
+          onClick={() => { setActiveTab('saves'); setPreviewIndex(null); }}
+        >
+          <span>{t.saves.section_title}</span>
+        </button>}
         {activeTab === 'screenshots' && screenshotFilter}
         {activeTab === 'achievements' && achievementsTab?.controls}
       </div> : (
@@ -288,7 +298,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
             </p>
           )}
         </div>
-      ) : hasAchievementsTab ? (
+      ) : activeTab === 'achievements' && hasAchievementsTab ? (
         <div className={`local-steam-media-panel${achievementsLoading ? ' local-steam-media-panel--reserved' : ''}`} role="tabpanel">
           {achievementsLoading ? (
             <p className="local-steam-screenshots-empty">{t.local.steam_achievements_loading}</p>
@@ -305,6 +315,8 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
             achievementsTab?.empty ?? <p className="local-steam-screenshots-empty">{t.local.steam_achievements_empty}</p>
           )}
         </div>
+      ) : activeTab === 'saves' && savesTab ? (
+        <div className="local-steam-media-panel" role="tabpanel">{savesTab}</div>
       ) : null}
 
       {shownScreenshot && activeTab === 'screenshots' && (

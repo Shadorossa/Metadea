@@ -25,20 +25,6 @@ export function formatAbsoluteTime(timestampMs: number, locale: string): string 
   return new Date(timestampMs).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-export interface SlotLabels {
-  slot: string;
-  slot_auto: string;
-  slot_resume: string;
-}
-
-/** "Slot 3", "Auto", "Resume", or null when the name encodes no slot. */
-export function slotLabel(slot: string | null, labels: SlotLabels): string | null {
-  if (slot === null || slot === '') return null;
-  if (slot === 'auto') return labels.slot_auto;
-  if (slot === 'resume') return labels.slot_resume;
-  return labels.slot.replace('{slot}', slot);
-}
-
 export const HISTORY_KEEP_MIN = 1;
 export const HISTORY_KEEP_MAX = 50;
 export const HISTORY_KEEP_DEFAULT = 5;

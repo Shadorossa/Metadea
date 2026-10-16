@@ -5,7 +5,7 @@ import { getLocaleCode } from '../../../lib/shared/text/format-date';
 import { interpolate } from '../../../lib/shared/text/interpolate';
 import { formatAppError } from '../../../lib/errors/format-error';
 import { formatBytes } from '../../../lib/backup/backup-settings';
-import { formatAbsoluteTime, formatRelativeTime, groupSaves, slotLabel } from '../../../lib/local/save-format';
+import { formatAbsoluteTime, formatRelativeTime, groupSaves } from '../../../lib/local/save-format';
 import {
   archiveSave, listGameSaves, onSavesChanged, openSavesFolder, restoreSaveVersion, setSaveLabel, syncSavesNow,
   type GameSaves, type SaveEntry, type SaveGameRef,
@@ -20,6 +20,14 @@ interface GameSavesSectionProps {
 type Status = { text: string; tone: 'info' | 'error' } | null;
 
 const currentTime = () => Date.now();
+
+function formatVersionDate(timestampMs: number) {
+  const date = new Date(timestampMs);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}/${month}/'${year}`;
+}
 
 function IconFolder() {
   return (
@@ -123,9 +131,13 @@ function SaveRow({ entry, now, driveSync, busy, onLabel, onRestore, onArchive }:
 }) {
   const t = getT();
   const locale = getLocaleCode();
-  const slot = entry.kind === 'state' ? slotLabel(entry.slot, t.saves) : null;
+  const [selectedVersionId, setSelectedVersionId] = useState('');
+  const slot = entry.kind === 'state' ? `#${entry.slot && /^\d+$/.test(entry.slot) ? entry.slot : '1'}` : null;
   return (
     <li className="game-saves-row">
+      <time className="game-saves-date" dateTime={new Date(entry.modifiedMs).toISOString()} title={formatAbsoluteTime(entry.modifiedMs, locale)}>
+        {formatRelativeTime(entry.modifiedMs, now, locale)}
+      </time>
       <div className="game-saves-thumb" aria-hidden="true">
         {entry.thumbnail
           ? <img className="cover-image-fill" src={entry.thumbnail} alt="" loading="lazy" decoding="async" />
@@ -133,21 +145,12 @@ function SaveRow({ entry, now, driveSync, busy, onLabel, onRestore, onArchive }:
       </div>
       <div className="game-saves-main">
         <div className="game-saves-chips">
-          <span className={`game-saves-chip game-saves-chip--${entry.kind}`}>
-            {entry.kind === 'battery' ? t.saves.kind_battery : t.saves.kind_state}
-            {slot ? ` · ${slot}` : ''}
-          </span>
+          {slot && <span className="game-saves-slot">{slot}</span>}
           {entry.shared && <span className="game-saves-chip">{t.saves.shared_card}</span>}
           {entry.isFolder && <span className="game-saves-chip">{t.saves.folder_save}</span>}
           <span className="game-saves-name" title={entry.name}>{entry.name}</span>
         </div>
         <SaveLabel entry={entry} onSave={onLabel} />
-      </div>
-      <div className="game-saves-meta">
-        <time dateTime={new Date(entry.modifiedMs).toISOString()} title={formatAbsoluteTime(entry.modifiedMs, locale)}>
-          {formatRelativeTime(entry.modifiedMs, now, locale)}
-        </time>
-        <span>{formatBytes(entry.size)}</span>
       </div>
       <div className="game-saves-actions">
         {driveSync && (
@@ -161,28 +164,36 @@ function SaveRow({ entry, now, driveSync, busy, onLabel, onRestore, onArchive }:
           </span>
         )}
         {entry.versions.length > 0 && (
-          <select
-            className="game-saves-versions"
-            aria-label={t.saves.versions}
-            title={t.saves.versions}
-            value=""
-            disabled={busy}
-            onChange={event => {
-              const version = entry.versions.find(candidate => candidate.id === event.target.value);
-              if (version) onRestore(version.id, version.modifiedMs);
-            }}
-          >
-            <option value="">{t.saves.versions}</option>
-            {entry.versions.map(version => (
-              <option key={version.id} value={version.id}>
-                {`${formatAbsoluteTime(version.modifiedMs, locale)} · ${formatBytes(version.size)}`}
-              </option>
-            ))}
-          </select>
+          <div className="game-saves-versions-control">
+            {!selectedVersionId && <IconState />}
+            <select
+              className={`game-saves-versions${selectedVersionId ? '' : ' game-saves-versions--placeholder'}`}
+              aria-label={t.saves.versions}
+              title={t.saves.versions}
+              value={selectedVersionId}
+              disabled={busy}
+              onChange={event => {
+                const versionId = event.target.value;
+                setSelectedVersionId(versionId);
+                const version = entry.versions.find(candidate => candidate.id === versionId);
+                if (version) onRestore(version.id, version.modifiedMs);
+              }}
+            >
+              <option value="" hidden>{t.saves.versions}</option>
+              {entry.versions.map(version => (
+                <option key={version.id} value={version.id}>
+                  {formatVersionDate(version.modifiedMs)}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
-        <button type="button" className="game-saves-icon-btn" onClick={onArchive} disabled={busy} title={t.saves.archive} aria-label={t.saves.archive}>
-          <IconArchive />
-        </button>
+        <div className="game-saves-archive-group">
+          <button type="button" className="game-saves-icon-btn" onClick={onArchive} disabled={busy} title={t.saves.archive} aria-label={t.saves.archive}>
+            <IconArchive />
+          </button>
+          <span className="game-saves-size">{formatBytes(entry.size)}</span>
+        </div>
       </div>
     </li>
   );
@@ -266,11 +277,6 @@ export function GameSavesSection({ platformId, romPath, title }: GameSavesSectio
   const entries = saves?.entries ?? [];
   const { battery, states } = groupSaves(entries);
   const emulator = saves?.emulator ?? '';
-  const strategyHint = saves?.strategy === 'redirect'
-    ? interpolate(t.saves.strategy_redirect, { emulator })
-    : saves?.strategy === 'mirror'
-      ? interpolate(t.saves.strategy_mirror, { emulator })
-      : null;
 
   const renderRows = (list: SaveEntry[]) => (
     <ul className="game-saves-list">
@@ -294,10 +300,16 @@ export function GameSavesSection({ platformId, romPath, title }: GameSavesSectio
     body = <p className="local-steam-screenshots-empty">{t.saves.loading}</p>;
   } else if (entries.length > 0) {
     body = (
-      <>
-        {battery.length > 0 && renderRows(battery)}
-        {states.length > 0 && renderRows(states)}
-      </>
+      <div className="game-saves-groups">
+        <div className="game-saves-group">
+          <h4 className="game-saves-group-title">{t.saves.kind_battery} (.sav)</h4>
+          {battery.length > 0 ? renderRows(battery) : <p className="game-saves-group-empty">—</p>}
+        </div>
+        <div className="game-saves-group">
+          <h4 className="game-saves-group-title">{t.saves.kind_state} (.ml1)</h4>
+          {states.length > 0 ? renderRows(states) : <p className="game-saves-group-empty">—</p>}
+        </div>
+      </div>
     );
   } else if (saves && !saves.emulator) {
     body = <p className="local-steam-screenshots-empty">{t.saves.empty_no_emulator}</p>;
@@ -313,25 +325,21 @@ export function GameSavesSection({ platformId, romPath, title }: GameSavesSectio
   }
 
   return (
-    <section className="game-saves" aria-labelledby="game-saves-title">
-      <div className="game-saves-heading">
-        <p className="local-steam-media-title" id="game-saves-title">{t.saves.section_title}</p>
-        <div className="game-saves-toolbar">
-          {saves?.driveSync && (
-            <button type="button" className="game-saves-text-btn" onClick={onSync} disabled={busy}>
-              <IconCloud synced />
-              <span>{t.saves.sync_now}</span>
-            </button>
-          )}
-          <button type="button" className="game-saves-icon-btn" onClick={() => { void run(() => openSavesFolder(game)); }} title={t.saves.open_folder} aria-label={t.saves.open_folder}>
-            <IconFolder />
+    <section className="game-saves" aria-label={t.saves.section_title}>
+      <div className="game-saves-toolbar">
+        {saves?.driveSync && (
+          <button type="button" className="game-saves-text-btn" onClick={onSync} disabled={busy}>
+            <IconCloud synced />
+            <span>{t.saves.sync_now}</span>
           </button>
-          <button type="button" className="game-saves-icon-btn" onClick={() => { void load(); }} disabled={busy} title={t.saves.refresh} aria-label={t.saves.refresh}>
-            <IconRefresh />
-          </button>
-        </div>
+        )}
+        <button type="button" className="game-saves-icon-btn" onClick={() => { void run(() => openSavesFolder(game)); }} title={t.saves.open_folder} aria-label={t.saves.open_folder}>
+          <IconFolder />
+        </button>
+        <button type="button" className="game-saves-icon-btn" onClick={() => { void load(); }} disabled={busy} title={t.saves.refresh} aria-label={t.saves.refresh}>
+          <IconRefresh />
+        </button>
       </div>
-      {strategyHint && entries.length > 0 && <p className="game-saves-hint">{strategyHint}</p>}
       {body}
       {status && (
         <p className={`game-saves-status${status.tone === 'error' ? ' game-saves-status--error' : ''}`} role={status.tone === 'error' ? 'alert' : 'status'}>
