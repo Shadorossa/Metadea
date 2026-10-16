@@ -12,6 +12,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { wrapAssetUrl } from '../../lib/tauri';
 import { getT } from '../../i18n/runtime';
 import { ModalShell } from './ModalShell';
+import { IconTrash } from '../local/ui/icons';
 
 // Fallback bounds while the image's natural size hasn't loaded yet.
 const DEFAULT_MIN_ZOOM = 100;
@@ -188,7 +189,8 @@ function ImageCropModal({ opts, onResolve }: Props) {
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (!imageUrl) return;
     e.preventDefault();
-    const step = Math.max(10, Math.round((zoomMax - zoomMin) * 0.04));
+    const normalStep = Math.max(10, Math.round((zoomMax - zoomMin) * 0.04));
+    const step = e.ctrlKey ? Math.max(1, Math.round(normalStep / 10)) : normalStep;
     const delta = e.deltaY < 0 ? step : -step;
     hasCustomBgSizeRef.current = true;
     setBgSize(prev => clamp(prev + delta, zoomMin, zoomMax));
@@ -275,70 +277,77 @@ function ImageCropModal({ opts, onResolve }: Props) {
             setImageUrl(value);
           }}
         />
-        <div
-          ref={viewportRef}
-          className={`img-crop-viewport${isDraggingFile ? ' img-crop-viewport--drag-over' : ''}`}
-          style={{ aspectRatio: String(aspectRatio) }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={stopDrag}
-          onPointerCancel={stopDrag}
-          onWheel={handleWheel}
-          onDragOver={e => { e.preventDefault(); setIsDraggingFile(true); }}
-          onDragLeave={() => setIsDraggingFile(false)}
-          onDrop={e => {
-            e.preventDefault();
-            setIsDraggingFile(false);
-            const file = e.dataTransfer.files?.[0];
-            if (file) { loadDroppedFile(file); return; }
-            loadDroppedUrl(e.dataTransfer);
-          }}
-        >
-          <img
-            className="img-crop-preview"
-            alt=""
-            src={imageUrl ? wrapAssetUrl(imageUrl) : undefined}
-            style={imageUrl ? {
-              visibility: 'visible',
-              width: `${bgSize}%`,
-              left: `${posX}%`,
-              top: `${posY}%`,
-              transform: `translate(-${posX}%, -${posY}%)`,
-            } : { visibility: 'hidden' }}
-          />
-          {!imageUrl && <div className="img-crop-empty">{t.empty_hint}</div>}
-        </div>
-        <label className="img-crop-zoom-label">
-          Zoom
-          <input
-            type="range"
-            className="img-crop-zoom"
-            min={zoomMin}
-            max={zoomMax}
-            value={bgSize}
-            onChange={e => {
-              hasCustomBgSizeRef.current = true;
-              setBgSize(Number(e.target.value));
+        <div className="img-crop-preview-row">
+          <div
+            ref={viewportRef}
+            className={`img-crop-viewport${isDraggingFile ? ' img-crop-viewport--drag-over' : ''}`}
+            style={{ aspectRatio: String(aspectRatio) }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={stopDrag}
+            onPointerCancel={stopDrag}
+            onWheel={handleWheel}
+            onDragOver={e => { e.preventDefault(); setIsDraggingFile(true); }}
+            onDragLeave={() => setIsDraggingFile(false)}
+            onDrop={e => {
+              e.preventDefault();
+              setIsDraggingFile(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) { loadDroppedFile(file); return; }
+              loadDroppedUrl(e.dataTransfer);
             }}
-          />
-        </label>
+          >
+            <img
+              className="img-crop-preview"
+              alt=""
+              src={imageUrl ? wrapAssetUrl(imageUrl) : undefined}
+              style={imageUrl ? {
+                visibility: 'visible',
+                width: `${bgSize}%`,
+                left: `${posX}%`,
+                top: `${posY}%`,
+                transform: `translate(-${posX}%, -${posY}%)`,
+              } : { visibility: 'hidden' }}
+            />
+            {!imageUrl && <div className="img-crop-empty">{t.empty_hint}</div>}
+          </div>
+          <div className="img-crop-wheel-hint" aria-label={t.wheel_zoom}>
+            <span className="img-crop-wheel-hint-wheel">
+              <span className="img-crop-wheel-hint-icons">
+                <svg className="img-crop-wheel-hint-direction" viewBox="4 0 8 24" aria-hidden="true">
+                  <path d="M8 3v18M4 7l4-4 4 4M4 17l4 4 4-4" />
+                </svg>
+                <svg className="img-crop-wheel-hint-mouse" viewBox="4 0 16 24" aria-hidden="true">
+                  <path d="M12 3a6 6 0 0 0-6 6v6a6 6 0 0 0 12 0V9a6 6 0 0 0-6-6Z" />
+                  <rect className="img-crop-wheel-hint-scroll" x="11" y="5" width="2" height="4" rx="1" />
+                </svg>
+              </span>
+              <span className="img-crop-wheel-hint-label">zoom</span>
+              <span className="img-crop-wheel-hint-fine">{t.wheel_zoom_fine}</span>
+            </span>
+          </div>
+        </div>
         <div className="img-crop-actions">
           {opts.removeLabel
-            ? <button type="button" className="list-btn list-btn--ghost" onClick={() => close({ action: 'removed' })}>{opts.removeLabel}</button>
-            : <span />}
-          <div className="img-crop-actions-right">
-            <button type="button" className="list-btn list-btn--ghost" onClick={() => close({ action: 'cancelled' })}>{t.cancel}</button>
-            <button
-              type="button"
-              className="list-btn list-btn--primary"
-              onClick={async () => {
-                if (!imageUrl) { urlInputRef.current?.focus(); return; }
-                close(await buildCroppedResult());
-              }}
-            >
-              {opts.saveLabel ?? t.save}
-            </button>
-          </div>
+            ? <button
+                type="button"
+                className="list-btn list-btn--ghost img-crop-remove-btn"
+                title={opts.removeLabel}
+                aria-label={opts.removeLabel}
+                onClick={() => close({ action: 'removed' })}
+              ><IconTrash size={16} /></button>
+            : null}
+          <button type="button" className="list-btn list-btn--ghost" onClick={() => close({ action: 'cancelled' })}>{t.cancel}</button>
+          <button
+            type="button"
+            className="list-btn list-btn--primary"
+            onClick={async () => {
+              if (!imageUrl) { urlInputRef.current?.focus(); return; }
+              close(await buildCroppedResult());
+            }}
+          >
+            {opts.saveLabel ?? t.save}
+          </button>
         </div>
     </ModalShell>
   );

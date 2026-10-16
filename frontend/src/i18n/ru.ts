@@ -1396,6 +1396,8 @@ export const ru: Translations = {
   image_crop: {
     url_placeholder: "URL изображения...",
     empty_hint: "Вставь URL изображения выше или перетащи файл сюда",
+    wheel_zoom: "Используйте колесо мыши для масштабирования",
+    wheel_zoom_fine: "Ctrl: медленный зум",
     cancel: "Отмена",
     save: "Сохранить",
   },

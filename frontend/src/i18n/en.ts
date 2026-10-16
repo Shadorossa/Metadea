@@ -1395,6 +1395,8 @@ export const en = {
   image_crop: {
     url_placeholder: "Image URL...",
     empty_hint: "Paste an image URL above or drag a file here",
+    wheel_zoom: "Use the mouse wheel to zoom",
+    wheel_zoom_fine: "Ctrl: slower zoom",
     cancel: "Cancel",
     save: "Save",
   },

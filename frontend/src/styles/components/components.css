@@ -386,7 +386,7 @@ img[data-textless='poster'] {
   border-radius: var(--radius-md);
   padding: 1.25rem;
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
@@ -411,15 +411,95 @@ img[data-textless='poster'] {
 
 .img-crop-viewport {
   position: relative;
-  width: 100%;
+  flex: 0 1 300px;
+  min-width: 0;
+  width: 300px;
   max-width: 300px;
-  margin: 0 auto;
+  margin: 0;
   border-radius: var(--radius-sm);
   overflow: hidden;
   border: 1px solid var(--border-color);
   background: rgba(255, 255, 255, 0.03);
   cursor: grab;
   touch-action: none;
+}
+
+.img-crop-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.img-crop-wheel-hint {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  color: var(--text-dim);
+  font-size: 0.65rem;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: break-word;
+}
+
+.img-crop-wheel-hint-wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.img-crop-wheel-hint-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.img-crop-wheel-hint-direction {
+  display: block;
+  width: 8px;
+  height: 20px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.img-crop-wheel-hint-mouse {
+  display: block;
+  width: 12px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.img-crop-wheel-hint-scroll {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+
+.img-crop-wheel-hint-label {
+  display: block;
+  line-height: 1;
+}
+
+.img-crop-wheel-hint-fine {
+  display: block;
+  max-width: 56px;
+  font-size: 0.52rem;
+  line-height: 1.1;
 }
 
 .img-crop-viewport.dragging {
@@ -459,30 +539,22 @@ img[data-textless='poster'] {
   pointer-events: none;
 }
 
-.img-crop-zoom-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  font-weight: 600;
-}
-
-.img-crop-zoom {
-  width: 100%;
-}
-
 .img-crop-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
-.img-crop-actions-right {
-  display: flex;
-  gap: 0.5rem;
+.img-crop-remove-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: auto;
 }
 
 /* ── Tags Input ──────────────────────────────────────────────────────────── */

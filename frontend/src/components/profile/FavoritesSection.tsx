@@ -55,11 +55,12 @@ function resolveFavCardDisplay(
 // Everything inside the card except the sortable wrapper div — shared
 // between the live grid card (real drag listeners) and the DragOverlay
 // clone (a plain floating visual, no listeners of its own).
-function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, onRemove, onEditImage }: {
+function FavCardBody({ item, idx, display, isCrowned, showCrown, readOnly, onToggleCrown, onRemove, onEditImage }: {
   item: FavItem;
   idx: number;
   display: FavCardDisplay;
   isCrowned: boolean;
+  showCrown: boolean;
   readOnly: boolean;
   onToggleCrown: (id: string) => void;
   onRemove: (id: string, type: string) => void;
@@ -75,29 +76,31 @@ function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, o
       {!readOnly && (
         <div className="fav-card-icons">
           <div className="fav-card-icons-row">
-            {item.type !== 'character' && (
-              <button
-                type="button"
-                className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
-                title={p.favorites_multimedia}
-                onClick={e => { e.stopPropagation(); onToggleCrown(item.external_id); }}
-              >
-                <Crown size={13} strokeWidth={2} color={isCrowned ? '#fbbf24' : 'currentColor'} fill={isCrowned ? '#fbbf24' : 'none'} />
-              </button>
-            )}
             <button
               type="button"
               className="fav-remove-btn"
               title={p.favorites_remove}
+              aria-label={p.favorites_remove}
               onClick={e => { e.stopPropagation(); e.preventDefault(); onRemove(item.external_id, item.type); }}
             >
               <IconX size={11} strokeWidth={2.5} />
             </button>
           </div>
+          {showCrown && item.type !== 'character' && (
+            <button
+              type="button"
+              className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
+              title={p.favorites_multimedia}
+              onClick={e => { e.stopPropagation(); onToggleCrown(item.external_id); }}
+            >
+              <Crown size={13} strokeWidth={2} color={isCrowned ? '#fbbf24' : 'currentColor'} fill={isCrowned ? '#fbbf24' : 'none'} />
+            </button>
+          )}
           <button
             type="button"
             className="fav-edit-image-btn"
             title={getT().character.edit_image}
+            aria-label={getT().character.edit_image}
             onClick={e => { e.stopPropagation(); e.preventDefault(); onEditImage(item); }}
           >
             <ImageIcon size={12} strokeWidth={2} />
@@ -105,22 +108,24 @@ function FavCardBody({ item, idx, display, isCrowned, readOnly, onToggleCrown, o
         </div>
       )}
 
-      {customImg ? (
-        <div
-          className="fav-cover-wrap fav-cover-wrap--custom"
-          style={{
-            backgroundImage: `url('${wrapAssetUrl(customImg.image_url)}')`,
-            backgroundSize: `${customImg.bg_size}% auto`,
-            backgroundPosition: `${customImg.pos_x}% ${customImg.pos_y}%`,
-          }}
-        />
-      ) : rawCover ? (
-        <img className="fav-cover" src={wrapAssetUrl(rawCover)} alt={title} loading="lazy" decoding="async" draggable={false} />
-      ) : (
-        <div className="fav-no-cover"><span>{title.slice(0, 2).toUpperCase()}</span></div>
-      )}
-      <div className="fav-overlay">
-        <span className="fav-title">{title}</span>
+      <div className="fav-card-visual">
+        {customImg ? (
+          <div
+            className="fav-cover-wrap fav-cover-wrap--custom"
+            style={{
+              backgroundImage: `url('${wrapAssetUrl(customImg.image_url)}')`,
+              backgroundSize: `${customImg.bg_size}% auto`,
+              backgroundPosition: `${customImg.pos_x}% ${customImg.pos_y}%`,
+            }}
+          />
+        ) : rawCover ? (
+          <img className="fav-cover" src={wrapAssetUrl(rawCover)} alt={title} loading="lazy" decoding="async" draggable={false} />
+        ) : (
+          <div className="fav-no-cover"><span>{title.slice(0, 2).toUpperCase()}</span></div>
+        )}
+        <div className="fav-overlay">
+          <span className="fav-title">{title}</span>
+        </div>
       </div>
     </>
   );
@@ -135,13 +140,14 @@ interface FavCardProps {
   reorderModeActive: boolean;
   readOnly: boolean;
   isCrowned: boolean;
+  showCrown: boolean;
   onToggleCrown: (id: string) => void;
   onRemove: (id: string, type: string) => void;
   onEditImage: (item: FavItem) => void;
 }
 
 const MemoizedFavCard = memo(function FavCard({
-  item, idx, catalogMap, characterMap, customImageMap, reorderModeActive, readOnly, isCrowned,
+  item, idx, catalogMap, characterMap, customImageMap, reorderModeActive, readOnly, isCrowned, showCrown,
   onToggleCrown, onRemove, onEditImage,
 }: FavCardProps) {
   // PointerSensor's own activation distance (see FavoritesSection's
@@ -169,7 +175,7 @@ const MemoizedFavCard = memo(function FavCard({
       {...listeners}
     >
       <FavCardBody
-        item={item} idx={idx} display={display} isCrowned={isCrowned} readOnly={readOnly}
+        item={item} idx={idx} display={display} isCrowned={isCrowned} showCrown={showCrown} readOnly={readOnly}
         onToggleCrown={onToggleCrown} onRemove={onRemove} onEditImage={onEditImage}
       />
     </div>
@@ -336,6 +342,14 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
 
   const removeFavorite = async (id: string, type: string) => {
     const next: FavData = { ...favData };
+    if (activeCatKey === 'multimedia') {
+      // Multimedia is an independent cross-type list. Removing an item here
+      // must leave its per-type favorite flag and list untouched.
+      next.multimedia = (favData.multimedia || []).filter(x => x !== id);
+      await persistFavData(next);
+      return;
+    }
+
     if (type === 'character') {
       next.character = (favData.character || []).filter(x => x !== id);
     } else {
@@ -455,6 +469,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
                       reorderModeActive={reorderModeActive}
                       readOnly={Boolean(readOnly)}
                       isCrowned={isCrowned && activeCatKey !== 'multimedia'}
+                      showCrown={activeCatKey !== 'multimedia'}
                       onToggleCrown={toggleCrown}
                       onRemove={removeFavorite}
                       onEditImage={editImage}
@@ -471,6 +486,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
                     idx={catItems.findIndex(i => i.external_id === activeDragItem.external_id)}
                     display={resolveFavCardDisplay(activeDragItem, catalogMap, characterMap, customImageMap)}
                     isCrowned={Boolean(favData.multimedia?.includes(activeDragItem.external_id)) && activeCatKey !== 'multimedia'}
+                    showCrown={activeCatKey !== 'multimedia'}
                     readOnly={Boolean(readOnly)}
                     onToggleCrown={toggleCrown}
                     onRemove={removeFavorite}

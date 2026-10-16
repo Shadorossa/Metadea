@@ -1396,6 +1396,8 @@ export const ja: Translations = {
   image_crop: {
     url_placeholder: "画像のURL...",
     empty_hint: "上に画像のURLを貼り付けるか、ファイルをここにドラッグしてください",
+    wheel_zoom: "マウスホイールでズーム",
+    wheel_zoom_fine: "Ctrl: ゆっくりズーム",
     cancel: "キャンセル",
     save: "保存",
   },

@@ -1134,7 +1134,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .char-avatar-edit-btn,
-[data-theme="newspaper-dark"] .fav-edit-image-btn {
+[data-theme="newspaper-dark"] .fav-edit-image-btn,
+[data-theme="newspaper-dark"] .fav-remove-btn {
   border-radius: 0px;
   background: #1c1a17 !important;
   border: 1px solid var(--border-color);
@@ -1144,7 +1145,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .char-avatar-edit-btn:hover,
-[data-theme="newspaper-dark"] .fav-edit-image-btn:hover {
+[data-theme="newspaper-dark"] .fav-edit-image-btn:hover,
+[data-theme="newspaper-dark"] .fav-remove-btn:hover {
   background: #282521 !important;
   border-color: var(--accent);
   color: var(--accent) !important;
@@ -1394,6 +1396,20 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   border-radius: 0 !important;
 }
 
+
+/* The copy-link hover tooltip uses the same printed label treatment. */
+[data-theme="newspaper-dark"] .profile-web-link-btn[data-tooltip]::after {
+  border: 3px double var(--border-color) !important;
+  border-radius: 0 !important;
+  background: var(--bg-elevated) !important;
+  color: var(--text-main) !important;
+  box-shadow: none !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
 
 /* "Link copied" popup (profile headers' "Copy web profile link",
    user-profile.css): a printed notice — square double rule, serif, no glow. */

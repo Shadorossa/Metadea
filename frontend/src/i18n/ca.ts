@@ -1396,6 +1396,8 @@ export const ca: Translations = {
   image_crop: {
     url_placeholder: "URL de la imatge...",
     empty_hint: "Enganxa una URL d'imatge a dalt o arrossega un fitxer aquí",
+    wheel_zoom: "Fes servir la roda del ratolí per fer zoom",
+    wheel_zoom_fine: "Ctrl: zoom lent",
     cancel: "Cancel·lar",
     save: "Desa",
   },

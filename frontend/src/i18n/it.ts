@@ -1396,6 +1396,8 @@ export const it: Translations = {
   image_crop: {
     url_placeholder: "URL dell'immagine...",
     empty_hint: "Incolla un URL immagine sopra o trascina qui un file",
+    wheel_zoom: "Usa la rotellina del mouse per ingrandire",
+    wheel_zoom_fine: "Ctrl: zoom più lento",
     cancel: "Annulla",
     save: "Salva",
   },
