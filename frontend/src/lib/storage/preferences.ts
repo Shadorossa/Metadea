@@ -198,23 +198,45 @@ export function setTextlessCoversEnabled(enabled: boolean): void {
   window.dispatchEvent(new Event(TEXTLESS_COVERS_CHANGED_EVENT));
 }
 
-/** Which works get clean covers: everything eligible, only films/series
- *  (TMDB) or only games/visual novels (IGDB). */
+/** Which eligible cover types use a clean version. Legacy string values are
+ *  accepted so existing installations keep their saved selection. */
 export type TextlessCoverScope = 'all' | 'screen' | 'games';
-const TEXTLESS_COVER_SCOPES: readonly TextlessCoverScope[] = ['all', 'screen', 'games'];
+export type TextlessCoverType = 'movie' | 'series' | 'games';
+export type TextlessCoverSelection = Record<TextlessCoverType, boolean>;
+export type TextlessCoverScopeSetting = TextlessCoverScope | TextlessCoverSelection;
 
-export function getTextlessCoverScope(): TextlessCoverScope {
-  if (typeof localStorage === 'undefined') return 'all';
+const ALL_TEXTLESS_COVER_TYPES: TextlessCoverSelection = { movie: true, series: true, games: true };
+
+function selectionFromLegacyScope(scope: TextlessCoverScope): TextlessCoverSelection {
+  if (scope === 'screen') return { movie: true, series: true, games: false };
+  if (scope === 'games') return { movie: false, series: false, games: true };
+  return { ...ALL_TEXTLESS_COVER_TYPES };
+}
+
+function isTextlessCoverSelection(value: unknown): value is TextlessCoverSelection {
+  if (!value || typeof value !== 'object') return false;
+  const selection = value as Record<string, unknown>;
+  return ['movie', 'series', 'games'].every(type => typeof selection[type] === 'boolean');
+}
+
+export function getTextlessCoverSelection(): TextlessCoverSelection {
+  if (typeof localStorage === 'undefined') return { ...ALL_TEXTLESS_COVER_TYPES };
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.textlessCoverScope);
-    return TEXTLESS_COVER_SCOPES.find(scope => scope === stored) ?? 'all';
+    if (!stored) return { ...ALL_TEXTLESS_COVER_TYPES };
+    try {
+      const parsed: unknown = JSON.parse(stored);
+      if (isTextlessCoverSelection(parsed)) return parsed;
+    } catch { /* Legacy string preference. */ }
+    if (stored === 'screen' || stored === 'games') return selectionFromLegacyScope(stored);
+    return { ...ALL_TEXTLESS_COVER_TYPES };
   } catch {
-    return 'all';
+    return { ...ALL_TEXTLESS_COVER_TYPES };
   }
 }
 
-export function setTextlessCoverScope(scope: TextlessCoverScope): void {
-  localStorage.setItem(STORAGE_KEYS.textlessCoverScope, scope);
+export function setTextlessCoverSelection(selection: TextlessCoverSelection): void {
+  localStorage.setItem(STORAGE_KEYS.textlessCoverScope, JSON.stringify(selection));
   window.dispatchEvent(new Event(TEXTLESS_COVERS_CHANGED_EVENT));
 }
 

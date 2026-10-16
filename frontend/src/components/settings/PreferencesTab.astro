@@ -1,5 +1,5 @@
 ---
-import { ICON_STAR, ICON_RATING_FACES } from "../../lib/dom/icon-strings";
+import { ICON_STAR, ICON_RATING_FACES, typeIconMap } from "../../lib/dom/icon-strings";
 import type { Translations } from "../../i18n/index";
 import { LOCALES } from "../../i18n/index";
 import { KeyboardShortcutsSection } from "./KeyboardShortcutsSection";
@@ -9,6 +9,7 @@ interface Props {
   t: Translations;
 }
 const { t } = Astro.props;
+const COVER_TYPE_ICONS = typeIconMap(16);
 
 const LANGUAGE_NAMES: Record<string, string> = {
   es: 'Español', en: 'English', de: 'Deutsch', ja: '日本語',
@@ -224,44 +225,56 @@ const LANGUAGE_NAMES: Record<string, string> = {
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
         </div>
-        <div class="prefs-row prefs-row--sub">
-          <label class="settings-checkbox-label">
-            <input type="checkbox" id="unify-seasons-highest-rated-cover" class="settings-checkbox" />
-            <span class="checkbox-label-text" data-i18n="settings.unify_seasons_highest_rated_cover">{t.settings.unify_seasons_highest_rated_cover}</span>
-          </label>
-          <button type="button" class="settings-help-btn" data-i18n-title="settings.unify_seasons_highest_rated_cover_hint" title={t.settings.unify_seasons_highest_rated_cover_hint}>
+        <div class="prefs-cover-group">
+          <h4 class="prefs-cover-group-title" data-i18n="settings.cover_options_title">{t.settings.cover_options_title}</h4>
+          <div class="prefs-list">
+            <div class="prefs-row">
+              <label class="settings-checkbox-label">
+                <input type="checkbox" id="unify-seasons-highest-rated-cover" class="settings-checkbox" />
+                <span class="checkbox-label-text" data-i18n="settings.unify_seasons_highest_rated_cover">{t.settings.unify_seasons_highest_rated_cover}</span>
+              </label>
+              <button type="button" class="settings-help-btn" data-i18n-title="settings.unify_seasons_highest_rated_cover_hint" title={t.settings.unify_seasons_highest_rated_cover_hint}>
+                <span class="info-indicator" aria-hidden="true">i</span>
+              </button>
+            </div>
+            <div class="prefs-row">
+              <label class="settings-checkbox-label">
+                <input type="checkbox" id="completed-manga-issue-cover" class="settings-checkbox" />
+                <span class="checkbox-label-text" data-i18n="settings.completed_manga_issue_cover">{t.settings.completed_manga_issue_cover}</span>
+              </label>
+              <button type="button" class="settings-help-btn" data-i18n-title="settings.completed_manga_issue_cover_hint" title={t.settings.completed_manga_issue_cover_hint}>
+                <span class="info-indicator" aria-hidden="true">i</span>
+              </button>
+            </div>
+            <div class="prefs-row prefs-row--wrap">
+              <label class="settings-checkbox-label">
+                <input type="checkbox" id="prefer-textless-covers" class="settings-checkbox" />
+                <span class="checkbox-label-text" data-i18n="settings.prefer_textless_covers">{t.settings.prefer_textless_covers}</span>
+              </label>
+              <button type="button" class="settings-help-btn" data-i18n-title="settings.prefer_textless_covers_hint" title={t.settings.prefer_textless_covers_hint}>
+                <span class="info-indicator" aria-hidden="true">i</span>
+              </button>
+              <div class="textless-cover-scope" role="group" data-i18n-aria-label="settings.textless_covers_scope" aria-label={t.settings.textless_covers_scope}>
+                <button type="button" class="textless-cover-scope-btn" data-textless-cover-scope="movie" data-i18n-title="search.types.movie" title={t.search.types.movie} data-i18n-aria-label="search.types.movie" aria-label={t.search.types.movie} aria-pressed="true">
+                  <span aria-hidden="true" set:html={COVER_TYPE_ICONS.movie} />
+                </button>
+                <button type="button" class="textless-cover-scope-btn" data-textless-cover-scope="series" data-i18n-title="search.types.series" title={t.search.types.series} data-i18n-aria-label="search.types.series" aria-label={t.search.types.series} aria-pressed="true">
+                  <span aria-hidden="true" set:html={COVER_TYPE_ICONS.series} />
+                </button>
+                <button type="button" class="textless-cover-scope-btn" data-textless-cover-scope="games" data-i18n-title="search.types.game" title={t.search.types.game} data-i18n-aria-label="search.types.game" aria-label={t.search.types.game} aria-pressed="true">
+                  <span aria-hidden="true" set:html={COVER_TYPE_ICONS.game} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="prefs-row prefs-row--action">
+          <button type="button" id="clear-all-notes-btn" class="settings-danger-btn" data-i18n="settings.clear_notes_btn">
+            {t.settings.clear_notes_btn}
+          </button>
+          <button type="button" class="settings-help-btn" data-i18n-title="settings.clear_notes_hint" title={t.settings.clear_notes_hint}>
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
-        </div>
-        <div class="prefs-row">
-          <label class="settings-checkbox-label">
-            <input type="checkbox" id="completed-manga-issue-cover" class="settings-checkbox" />
-            <span class="checkbox-label-text" data-i18n="settings.completed_manga_issue_cover">{t.settings.completed_manga_issue_cover}</span>
-          </label>
-          <button type="button" class="settings-help-btn" data-i18n-title="settings.completed_manga_issue_cover_hint" title={t.settings.completed_manga_issue_cover_hint}>
-            <span class="info-indicator" aria-hidden="true">i</span>
-          </button>
-        </div>
-        <div class="prefs-row">
-          <label class="settings-checkbox-label">
-            <input type="checkbox" id="prefer-textless-covers" class="settings-checkbox" />
-            <span class="checkbox-label-text" data-i18n="settings.prefer_textless_covers">{t.settings.prefer_textless_covers}</span>
-          </label>
-          <button type="button" class="settings-help-btn" data-i18n-title="settings.prefer_textless_covers_hint" title={t.settings.prefer_textless_covers_hint}>
-            <span class="info-indicator" aria-hidden="true">i</span>
-          </button>
-        </div>
-        <div class="prefs-row prefs-row--sub">
-          <select
-            id="textless-covers-scope"
-            class="settings-inline-select prefs-row-end"
-            data-i18n-aria-label="settings.textless_covers_scope"
-            aria-label={t.settings.textless_covers_scope}
-          >
-            <option value="all" data-i18n="settings.textless_covers_scope_all">{t.settings.textless_covers_scope_all}</option>
-            <option value="screen" data-i18n="settings.textless_covers_scope_screen">{t.settings.textless_covers_scope_screen}</option>
-            <option value="games" data-i18n="settings.textless_covers_scope_games">{t.settings.textless_covers_scope_games}</option>
-          </select>
         </div>
       </div>
     </div>
@@ -289,17 +302,8 @@ const LANGUAGE_NAMES: Record<string, string> = {
           <button type="button" class="settings-help-btn" data-i18n-title="spoilers.settings_enabled_hint" title={t.spoilers.settings_enabled_hint}>
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
-          <select
-            id="spoiler-shield-level"
-            class="settings-inline-select prefs-row-end"
-            data-i18n-aria-label="spoilers.settings_level"
-            aria-label={t.spoilers.settings_level}
-          >
-            <option value="normal" data-i18n="spoilers.settings_level_normal">{t.spoilers.settings_level_normal}</option>
-            <option value="strict" data-i18n="spoilers.settings_level_strict">{t.spoilers.settings_level_strict}</option>
-          </select>
         </div>
-        <div class="prefs-row prefs-row--sub">
+        <div class="prefs-row prefs-row--spoiler-options">
           <label class="settings-checkbox-label">
             <input type="checkbox" id="spoiler-shield-hide-covers" class="settings-checkbox" />
             <span class="checkbox-label-text" data-i18n="spoilers.settings_covers">{t.spoilers.settings_covers}</span>
@@ -307,14 +311,10 @@ const LANGUAGE_NAMES: Record<string, string> = {
           <button type="button" class="settings-help-btn" data-i18n-title="spoilers.settings_covers_hint" title={t.spoilers.settings_covers_hint}>
             <span class="info-indicator" aria-hidden="true">i</span>
           </button>
-        </div>
-        <div class="prefs-row prefs-row--action">
-          <button type="button" id="clear-all-notes-btn" class="settings-danger-btn" data-i18n="settings.clear_notes_btn">
-            {t.settings.clear_notes_btn}
-          </button>
-          <button type="button" class="settings-help-btn" data-i18n-title="settings.clear_notes_hint" title={t.settings.clear_notes_hint}>
-            <span class="info-indicator" aria-hidden="true">i</span>
-          </button>
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="spoiler-shield-level" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="spoilers.settings_level_strict">{t.spoilers.settings_level_strict}</span>
+          </label>
         </div>
       </div>
     </div>
@@ -352,9 +352,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
             <button type="button" class="settings-help-btn" data-i18n-title="big_picture.settings_pause_combo_hint" title={t.big_picture.settings_pause_combo_hint}>
               <span class="info-indicator" aria-hidden="true">i</span>
             </button>
-          </div>
-          <div class="prefs-row prefs-row--sub">
-            <kbd class="settings-combo-keys" data-i18n="big_picture.settings_pause_combo_keys">{t.big_picture.settings_pause_combo_keys}</kbd>
+            <kbd class="settings-combo-keys prefs-row-end" data-i18n="big_picture.settings_pause_combo_keys">{t.big_picture.settings_pause_combo_keys}</kbd>
           </div>
         </div>
       </div>

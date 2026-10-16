@@ -14,10 +14,10 @@
 import { readCoverPreferences, getCoverPreference, type CoverPreferences } from './cover-preferences';
 import { toMediumCover, toSmallCover } from './small-cover';
 import {
-  getTextlessCoverScope,
+  getTextlessCoverSelection,
   isTextlessCoversEnabled,
   TEXTLESS_COVERS_CHANGED_EVENT,
-  type TextlessCoverScope,
+  type TextlessCoverScopeSetting,
 } from '../storage/preferences';
 import { resolveTextlessCovers, type TextlessCoverKind, type TextlessCoverRow } from '../tauri/textless-covers';
 
@@ -41,11 +41,17 @@ export function isTextlessEligibleId(externalId: string | null | undefined): ext
   return !!externalId && ELIGIBLE_ID_RE.test(externalId);
 }
 
-/** Whether the user's scope setting covers this work (films/series vs games/VNs). */
-export function textlessScopeAllows(scope: TextlessCoverScope, externalId: string): boolean {
-  if (scope === 'screen') return /^(?:movie|series):/.test(externalId);
-  if (scope === 'games') return /^(?:game|vnovel):/.test(externalId);
-  return true;
+/** Whether the user's selected media-type icons cover this work. */
+export function textlessScopeAllows(scope: TextlessCoverScopeSetting, externalId: string): boolean {
+  if (typeof scope === 'string') {
+    if (scope === 'screen') return /^(?:movie|series):/.test(externalId);
+    if (scope === 'games') return /^(?:game|vnovel):/.test(externalId);
+    return true;
+  }
+  if (/^movie:/.test(externalId)) return scope.movie;
+  if (/^series:/.test(externalId)) return scope.series;
+  if (/^(?:game|vnovel):/.test(externalId)) return scope.games;
+  return false;
 }
 
 /** Pure precedence: a manual cover is never replaced (the card's own src
@@ -94,6 +100,12 @@ export function textlessOf(snapshot: TextlessSnapshot): TextlessCover | null {
 /** Ids per IPC call (the Rust side caps a call at 200). */
 const IDS_PER_CALL = 100;
 
+function sameTextlessCoverScope(a: TextlessCoverScopeSetting | null, b: TextlessCoverScopeSetting | null): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a === 'string' || typeof b === 'string') return false;
+  return a.movie === b.movie && a.series === b.series && a.games === b.games;
+}
+
 export interface TextlessCoverStore {
   snapshot: (externalId: string) => TextlessSnapshot;
   /** Queue an id for the next batch (one IPC call per render pass). No-op
@@ -112,7 +124,7 @@ export function createTextlessCoverStore(deps: {
   resolve: (externalIds: string[]) => Promise<TextlessCoverRow[]>;
   readEnabled: () => boolean;
   /** Which works the setting applies to (default: all eligible ones). */
-  readScope?: () => TextlessCoverScope;
+  readScope?: () => TextlessCoverScopeSetting;
   readManual: () => CoverPreferences;
   schedule?: (flush: () => void) => void;
 }): TextlessCoverStore {
@@ -122,8 +134,8 @@ export function createTextlessCoverStore(deps: {
   const inFlight = new Set<string>();
   const listeners = new Set<() => void>();
   let enabled: boolean | null = null;
-  let scope: TextlessCoverScope | null = null;
-  const readScope = deps.readScope ?? ((): TextlessCoverScope => 'all');
+  let scope: TextlessCoverScopeSetting | null = null;
+  const readScope = deps.readScope ?? ((): TextlessCoverScopeSetting => 'all');
   let manual: CoverPreferences | null = null;
   let flushScheduled = false;
 
@@ -177,7 +189,7 @@ export function createTextlessCoverStore(deps: {
     refreshEnabled() {
       const next = deps.readEnabled();
       const nextScope = readScope();
-      if (next === enabled && nextScope === scope) return;
+      if (next === enabled && sameTextlessCoverScope(nextScope, scope)) return;
       enabled = next;
       scope = nextScope;
       notify();
@@ -196,7 +208,7 @@ export function createTextlessCoverStore(deps: {
 export const textlessCoverStore = createTextlessCoverStore({
   resolve: resolveTextlessCovers,
   readEnabled: isTextlessCoversEnabled,
-  readScope: getTextlessCoverScope,
+  readScope: getTextlessCoverSelection,
   readManual: readCoverPreferences,
 });
 

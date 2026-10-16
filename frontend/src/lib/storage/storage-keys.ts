@@ -60,8 +60,8 @@ export const STORAGE_KEYS = {
   // Settings > Preferences > Library: show textless covers where one exists
   // (lib/media/textless-covers.ts). Display-only.
   preferTextlessCovers: 'metadea_prefer_textless_covers',
-  // Which works that setting applies to: 'all' | 'screen' (films + series) |
-  // 'games' (games + visual novels). Missing = 'all'.
+  // Selected clean-cover types: a JSON object with movie, series and games
+  // booleans. Legacy 'all'/'screen'/'games' values are migrated on read.
   textlessCoverScope: 'metadea_textless_cover_scope',
   mediaCoverPreferences: 'metadea_media_cover_preferences',
   libraryReleaseNotifications: 'metadea_library_release_notifications',

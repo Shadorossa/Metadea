@@ -1192,6 +1192,47 @@
   cursor: default;
 }
 
+.textless-cover-scope {
+  display: flex;
+  gap: 0.2rem;
+  margin-left: auto;
+}
+
+.textless-cover-scope-btn {
+  display: grid;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.textless-cover-scope-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+}
+
+.textless-cover-scope-btn:hover:not(:disabled),
+.textless-cover-scope-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--text-main);
+}
+
+.textless-cover-scope-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.textless-cover-scope-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* ── Preferencias (PreferencesTab.astro) ──────────────────────────────────
    Compact cards in an auto-fit grid; inside each card, one-line rows of
    checkbox + label + "i" help button, with an optional control pushed to the
@@ -1260,6 +1301,24 @@
   gap: 0.1rem;
 }
 
+.prefs-cover-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-left: calc(18px + 0.6rem);
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--border-color);
+}
+
+.prefs-cover-group-title {
+  margin: 0 0 0 calc(-18px - 0.6rem - 0.75rem);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .prefs-row {
   display: flex;
   align-items: center;
@@ -1305,7 +1364,16 @@
   padding-left: calc(18px + 0.6rem);
 }
 
+.prefs-row--spoiler-options {
+  flex-wrap: wrap;
+  gap: 0.5rem 0.8rem;
+  margin-left: calc(18px + 0.6rem);
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--border-color);
+}
+
 .prefs-row--sub:has(:disabled),
+.prefs-row--spoiler-options:has(:disabled),
 .prefs-sub:has(:disabled) {
   opacity: 0.5;
 }

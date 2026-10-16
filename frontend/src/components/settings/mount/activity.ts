@@ -9,9 +9,9 @@ import {
   setCompletedMangaIssueCoverEnabled,
   isTextlessCoversEnabled,
   setTextlessCoversEnabled,
-  getTextlessCoverScope,
-  setTextlessCoverScope,
-  type TextlessCoverScope,
+  getTextlessCoverSelection,
+  setTextlessCoverSelection,
+  type TextlessCoverType,
 } from '../../../lib/storage/preferences';
 import { byId } from '../../../lib/dom/dom';
 import { clearAllRatings } from '../../../lib/tauri/library';
@@ -53,20 +53,32 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
   }
 
   const textlessCoversCheckbox = byId<HTMLInputElement>('prefer-textless-covers');
-  const textlessScopeSelect = byId<HTMLSelectElement>('textless-covers-scope');
-  if (textlessScopeSelect) {
-    textlessScopeSelect.value = getTextlessCoverScope();
-    textlessScopeSelect.addEventListener('change', () => {
-      setTextlessCoverScope(textlessScopeSelect.value as TextlessCoverScope);
+  const textlessScopeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-textless-cover-scope]'));
+  const syncTextlessScope = () => {
+    const scope = getTextlessCoverSelection();
+    for (const button of textlessScopeButtons) {
+      const type = button.dataset.textlessCoverScope as TextlessCoverType | undefined;
+      if (!type) continue;
+      button.setAttribute('aria-pressed', String(scope[type]));
+      button.disabled = !textlessCoversCheckbox?.checked;
+    }
+  };
+  if (textlessCoversCheckbox) {
+    textlessCoversCheckbox.checked = isTextlessCoversEnabled();
+    syncTextlessScope();
+    textlessCoversCheckbox.addEventListener('change', () => {
+      setTextlessCoversEnabled(textlessCoversCheckbox.checked);
+      syncTextlessScope();
       showToast();
     });
   }
-  if (textlessCoversCheckbox) {
-    textlessCoversCheckbox.checked = isTextlessCoversEnabled();
-    if (textlessScopeSelect) textlessScopeSelect.disabled = !textlessCoversCheckbox.checked;
-    textlessCoversCheckbox.addEventListener('change', () => {
-      setTextlessCoversEnabled(textlessCoversCheckbox.checked);
-      if (textlessScopeSelect) textlessScopeSelect.disabled = !textlessCoversCheckbox.checked;
+  for (const button of textlessScopeButtons) {
+    button.addEventListener('click', () => {
+      const type = button.dataset.textlessCoverScope as TextlessCoverType | undefined;
+      if (!type) return;
+      const scope = getTextlessCoverSelection();
+      setTextlessCoverSelection({ ...scope, [type]: !scope[type] });
+      syncTextlessScope();
       showToast();
     });
   }
@@ -83,7 +95,7 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
   initClearAllRatings(showToast);
 }
 
-// "Eliminar todas las notas" (Contenido) — clears every work's own rating
+// "Eliminar calificaciones" (Biblioteca) — clears every work's own rating
 // score. Irreversible and affects the whole library at once, so the confirm
 // button starts disabled and only becomes clickable after a fixed 5s delay
 // (also shown as a countdown, so the wait itself doesn't just look broken/
