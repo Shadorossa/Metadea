@@ -192,9 +192,10 @@ export function HomeRail() {
 
   // The next episode after a finished one is still ahead of the user: its
   // title and still stay hidden while its work is under the shield. An
-  // episode stopped halfway was already seen up to there.
+  // episode from a built-in player session is the one the user is watching,
+  // even when playback was stopped at the very beginning (position 0).
   const continueSpoiler = (current: ContinueCardData): ContinueEpisodeSpoiler | undefined => {
-    if (current.positionSeconds > 0) return undefined;
+    if (current.positionSeconds > 0 || current.durationSeconds !== null || current.framePath) return undefined;
     const key = spoilerItemKey.continueEpisode(current.externalId, current.episodeNumber);
     const hidden = !!evaluator && !isRevealed(key)
       && evaluator.isEpisodeHidden({ external_id: current.externalId, episode_number: current.episodeNumber }, current.externalId, new Map());

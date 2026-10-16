@@ -528,18 +528,22 @@ export function CharacterPrEditorModal() {
           <nav className="pr-editor-sidebar" aria-label={t.sections_label}>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')} title="General" aria-label="General">
               <Settings size={18} strokeWidth={1.8} />
+              <span className="pr-editor-tab-label" aria-hidden="true">General</span>
               {characteristicsChanged(draft.characteristics, baseline.characteristics) && <span className="pr-editor-tab-changed-dot" />}
             </button>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'appearances' ? ' active' : ''}`} onClick={() => setActiveTab('appearances')} title={t.appearances_tab} aria-label={t.appearances_tab}>
               <BookOpen size={18} strokeWidth={1.8} />
+              <span className="pr-editor-tab-label" aria-hidden="true">Appear.</span>
               {appearancesChanged(draft.appearances, baseline.appearances) && <span className="pr-editor-tab-changed-dot" />}
             </button>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'merges' ? ' active' : ''}`} onClick={() => setActiveTab('merges')} title={t.merge_section} aria-label={t.merge_section}>
               <GitMerge size={18} strokeWidth={1.8} />
+              <span className="pr-editor-tab-label" aria-hidden="true">Merge</span>
               {mergedCharactersChanged(baseline, draft) && <span className="pr-editor-tab-changed-dot" />}
             </button>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'voices' ? ' active' : ''}`} onClick={() => setActiveTab('voices')} title={t.voice_actors} aria-label={t.voice_actors}>
               <Mic size={18} strokeWidth={1.8} />
+              <span className="pr-editor-tab-label" aria-hidden="true">Voices</span>
               {voiceActorsChanged(draft.voiceActors, baseline.voiceActors) && <span className="pr-editor-tab-changed-dot" />}
             </button>
           </nav>

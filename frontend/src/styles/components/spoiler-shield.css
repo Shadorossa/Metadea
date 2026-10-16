@@ -1,7 +1,7 @@
 /* Spoiler shield (components/spoilers/SpoilerShield.tsx): one look for every
    hidden thing — the same dark pill as the biography's .spoiler spans
    (styles/pages/character.css), a strong blur underneath, and a
-   "Spoiler · Reveal" chip reachable by keyboard. */
+   "Spoiler" chip reachable by keyboard. */
 
 .spoiler-shield {
   position: relative;
@@ -66,6 +66,20 @@ img.spoiler-blur,
   font-size: 0.66rem;
 }
 
+/* Inline spoiler labels reuse the standard chip's appearance and behavior
+   while staying in normal text flow beside the stat value. */
+.spoiler-shield-chip--inline {
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: auto;
+  max-width: 100%;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.72rem;
+  transform: none;
+  vertical-align: middle;
+}
+
 /* Relation cards keep the spoiler control attached to the right edge. The
    eye stays compact until the control is hovered or receives keyboard focus. */
 .spoiler-shield-chip--edge-reveal.spoiler-shield-chip--edge {
@@ -125,10 +139,6 @@ img.spoiler-blur,
   text-overflow: ellipsis;
 }
 
-.spoiler-shield-chip-action {
-  color: var(--accent);
-}
-
 .spoiler-shield-chip:hover {
   background: color-mix(in srgb, var(--text-muted) 34%, var(--bg-primary));
   border-color: var(--accent-border);
@@ -170,17 +180,26 @@ img.spoiler-blur,
 }
 
 .spoiler-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 300;
+  box-sizing: border-box;
+  width: min(48rem, calc(100vw - 2rem));
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem 0.6rem;
-  margin: 0 0 1rem;
+  margin: 0;
   padding: 0.55rem 0.8rem;
   border: 1px solid var(--accent-border);
   border-radius: var(--radius-md, 10px);
-  background: var(--accent-soft);
+  /* Use the page's solid surface so content behind this fixed notice never
+     shows through, including in glass and sci-fi themes. */
+  background: var(--bg-primary);
   color: var(--text-main);
   font-size: 0.8rem;
+  transform: translateX(-50%);
 }
 
 .spoiler-banner-icon {
@@ -204,9 +223,9 @@ img.spoiler-blur,
 }
 
 .spoiler-banner-btn {
-  padding: 0.2rem 0.65rem;
-  border: 1px solid var(--accent-border);
-  border-radius: 999px;
+  padding: 0.2rem 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--accent);
   font-size: 0.74rem;
@@ -214,30 +233,15 @@ img.spoiler-blur,
   cursor: pointer;
 }
 
+.spoiler-banner-btn::before {
+  content: "|";
+  margin-right: 0.5rem;
+  color: var(--border-color);
+  font-weight: 400;
+}
+
 .spoiler-banner-btn:hover {
-  background: var(--accent-soft);
+  color: var(--text-main);
 }
 
-.spoiler-banner-btn--secondary {
-  border-color: var(--border-color);
-  color: var(--text-muted);
-}
 
-/* The pill with its own words, when the hidden text is not rendered at all
-   (stat values, a next episode's title). */
-.spoiler-shield-inline--labelled,
-.spoiler-shield-inline--labelled * {
-  color: var(--text-main) !important;
-}
-
-.spoiler-shield-inline--labelled {
-  padding: 0.05rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  user-select: none;
-}
-
-.spoiler-shield-inline--labelled .spoiler-shield-chip-action {
-  color: var(--accent) !important;
-}

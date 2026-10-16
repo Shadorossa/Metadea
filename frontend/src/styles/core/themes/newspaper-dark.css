@@ -640,6 +640,14 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   color: var(--accent);
 }
 
+[data-theme="newspaper-dark"] .char-edit-btn-header .char-edit-btn-icon {
+  color: var(--text-main) !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
 /* Ensure card titles and UI links never have unwanted text underlines */
 [data-theme="newspaper-dark"] a,
 [data-theme="newspaper-dark"] a:visited,
@@ -1381,6 +1389,10 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   opacity: 0.5;
 }
 
+/* Spoiler reveal control follows Newspaper Dark's square-corner styling. */
+[data-theme="newspaper-dark"] .spoiler-shield-chip {
+  border-radius: 0 !important;
+}
 
 
 /* "Link copied" popup (profile headers' "Copy web profile link",

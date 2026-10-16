@@ -50,7 +50,6 @@ export function CharacterPageView({ t, data, avatarUrl, isFavorite, reaction, on
                 franchiseName={spoiler.franchiseName}
                 note={spoiler.lateDebutNote}
                 onRevealPage={spoiler.revealPage}
-                onRevealFranchise={spoiler.revealFranchise}
               />
             )}
           </CharacterHeroRightCol>
@@ -76,7 +75,7 @@ export function CharacterPageView({ t, data, avatarUrl, isFavorite, reaction, on
         {/* Always shown so the edit button stays reachable even without data or voice actors. */}
         <div className="media-col-stats character-hero-stats" id="char-stats-card" style={{ display: 'flex' }}>
           <button type="button" className="btn btn--sm btn--secondary char-edit-btn-header" id="char-edit-btn-header" title={t.edit_tooltip} aria-label={t.edit_button} onClick={onEdit}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            <svg className="char-edit-btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
           </button>
           <div className="media-section-header-row">
             <p className="section-label">{t.details}</p>

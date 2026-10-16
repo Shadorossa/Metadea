@@ -22,11 +22,10 @@ export interface CharacterSpoilerView {
   revealImage: () => void;
   revealBiography: () => void;
   revealPage: () => void;
-  revealFranchise: () => void;
 }
 
 export function useCharacterSpoilers(data: CharacterPageData | null): CharacterSpoilerView | null {
-  const { evaluator, pending, isRevealed, reveal, revealFranchise } = useSpoilerShield();
+  const { evaluator, pending, isRevealed, reveal } = useSpoilerShield();
   const appearanceKey = data?.appearances.map(a => a.mediaId).join('|') ?? '';
   const shield = useMemo(
     () => (evaluator && appearanceKey ? evaluator.characterShield(appearanceKey.split('|')) : null),
@@ -47,7 +46,6 @@ export function useCharacterSpoilers(data: CharacterPageData | null): CharacterS
       revealImage: () => {},
       revealBiography: () => {},
       revealPage: () => {},
-      revealFranchise: () => {},
     };
   }
   if (!shield || isRevealed(spoilerItemKey.characterPage(id))) return null;
@@ -68,6 +66,5 @@ export function useCharacterSpoilers(data: CharacterPageData | null): CharacterS
     revealImage: () => reveal(spoilerItemKey.characterImage(id)),
     revealBiography: () => reveal(spoilerItemKey.characterBiography(id)),
     revealPage: () => reveal(spoilerItemKey.characterPage(id)),
-    revealFranchise: () => revealFranchise(shield.franchise),
   };
 }

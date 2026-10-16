@@ -1,6 +1,6 @@
 // The spoiler shield's visual pieces, one look everywhere (styles/components/
 // spoiler-shield.css, matching the biography's `.spoiler` spans): a blurred
-// block with a "Spoiler · Reveal" chip, the chip alone for cards that blur
+// block with a "Spoiler" chip, the chip alone for cards that blur
 // their own images, an inline blurred span, and the character page banner.
 // Hidden content is aria-hidden and inert, so neither screen readers nor the
 // keyboard reach it before it is revealed.
@@ -23,16 +23,18 @@ function onActivationKey(event: KeyboardEvent, onReveal: () => void) {
 
 interface ChipProps {
   onReveal: () => void;
-  /** Text before "· Reveal"; "Spoiler" by default. */
+  /** Chip text; "Spoiler" by default. */
   label?: string;
   /** `span` inside cards that are themselves links (no button in an <a>). */
   element?: 'button' | 'span';
   className?: string;
   /** Eye control that reveals its label on hover/focus. */
   edgeReveal?: boolean;
+  /** Inline placement for value chips that share the same spoiler styling. */
+  inline?: boolean;
 }
 
-export function SpoilerChip({ onReveal, label, element = 'button', className, edgeReveal = false }: ChipProps) {
+export function SpoilerChip({ onReveal, label, element = 'button', className, edgeReveal = false, inline = false }: ChipProps) {
   const t = getT().spoilers;
   const content = (
     <>
@@ -45,15 +47,11 @@ export function SpoilerChip({ onReveal, label, element = 'button', className, ed
           <span className="spoiler-shield-chip-label">{label ?? t.chip}</span>
         </>
       ) : (
-        <>
-          <span className="spoiler-shield-chip-label">{label ?? t.chip}</span>
-          <span aria-hidden="true"> · </span>
-          <span className="spoiler-shield-chip-action">{t.reveal}</span>
-        </>
+        <span className="spoiler-shield-chip-label">{label ?? t.chip}</span>
       )}
     </>
   );
-  const classes = `spoiler-shield-chip${edgeReveal ? ' spoiler-shield-chip--edge-reveal' : ''}${className ? ` ${className}` : ''}`;
+  const classes = `spoiler-shield-chip${edgeReveal ? ' spoiler-shield-chip--edge-reveal' : ''}${inline ? ' spoiler-shield-chip--inline' : ''}${className ? ` ${className}` : ''}`;
   if (element === 'span') {
     return (
       <span
@@ -99,24 +97,23 @@ export function SpoilerShield({ hidden, onReveal, label, className, children }: 
 
 /** A word or line (a stat value, an episode title) hidden in place, as the
  *  biography's `.spoiler` pill. Without children the pill reads
- *  "Spoiler · Reveal" and the hidden text is not in the DOM at all. */
+ *  "Spoiler" and the hidden text is not in the DOM at all. */
 export function SpoilerInline({ hidden, onReveal, children }: { hidden: boolean; onReveal: () => void; children?: ReactNode }) {
-  const t = getT().spoilers;
   if (!hidden) return <>{children}</>;
-  const labelled = children === undefined;
+  if (children === undefined) return <SpoilerChip onReveal={onReveal} element="span" inline />;
+
+  const t = getT().spoilers;
   return (
     <span
       role="button"
       tabIndex={0}
-      className={`spoiler-shield-inline${labelled ? ' spoiler-shield-inline--labelled' : ''}`}
+      className="spoiler-shield-inline"
       aria-label={t.chip_aria}
       title={t.chip_aria}
       onClick={event => activate(event, onReveal)}
       onKeyDown={event => onActivationKey(event, onReveal)}
     >
-      {labelled
-        ? <>{t.chip}<span aria-hidden="true"> · </span><span className="spoiler-shield-chip-action">{t.reveal}</span></>
-        : <span aria-hidden="true">{children}</span>}
+      <span aria-hidden="true">{children}</span>
     </span>
   );
 }
@@ -126,13 +123,12 @@ interface BannerProps {
   /** "Appears in <work>" for a late-debut character. */
   note?: string | null;
   onRevealPage: () => void;
-  onRevealFranchise: () => void;
 }
 
-export function SpoilerBanner({ franchiseName, note, onRevealPage, onRevealFranchise }: BannerProps) {
+export function SpoilerBanner({ franchiseName, note, onRevealPage }: BannerProps) {
   const t: SpoilerStrings = getT().spoilers;
   return (
-    <div className="spoiler-banner" role="note">
+    <div className="spoiler-banner" role="status" aria-live="polite">
       <svg className="spoiler-banner-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       </svg>
@@ -142,9 +138,6 @@ export function SpoilerBanner({ franchiseName, note, onRevealPage, onRevealFranc
       </span>
       <span className="spoiler-banner-actions">
         <button type="button" className="spoiler-banner-btn" onClick={onRevealPage}>{t.reveal}</button>
-        <button type="button" className="spoiler-banner-btn spoiler-banner-btn--secondary" onClick={onRevealFranchise}>
-          {interpolate(t.banner_reveal_franchise, { franchise: franchiseName })}
-        </button>
       </span>
     </div>
   );

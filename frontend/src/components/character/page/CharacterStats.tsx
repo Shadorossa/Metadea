@@ -26,13 +26,14 @@ interface StatSpoiler {
 function CharacterStatItem({ label, items, t, spoiler }: { label: string; items: string[]; t: CharacterStrings; spoiler?: StatSpoiler }) {
   const [index, setIndex] = useState(0);
   const isCarousel = items.length > 1;
+  const isHeight = label === t.stat_height;
   const step = (delta: number) => setIndex(i => (i + delta + items.length) % items.length);
 
   return (
     <div className="media-stat-item">
       <div className="media-stat-main-row">
         <span className="media-stat-label">{label}</span>
-        <div className={`media-stat-value${spoiler?.pending ? ' spoiler-shield-pending' : ''}`}>
+        <div className={`media-stat-value${spoiler?.pending ? ' spoiler-shield-pending' : ''}${isHeight ? ' media-stat-value--height' : ''}`}>
           {spoiler?.hidden ? (
             // Status, fate, affiliations... of a followed franchise: the
             // label stays, the value waits for a click.
@@ -44,7 +45,7 @@ function CharacterStatItem({ label, items, t, spoiler }: { label: string; items:
                 {items.map((val, idx) => (
                   <div
                     key={idx}
-                    className={`media-stat-carousel-item ${idx === index ? 'active' : ''}`}
+                    className={`media-stat-carousel-item${isHeight ? ' media-stat-carousel-item--height' : ''} ${idx === index ? 'active' : ''}`}
                     style={idx === index ? undefined : { display: 'none' }}
                     title={stripTags(val)}
                   >

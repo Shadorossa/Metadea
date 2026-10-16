@@ -430,11 +430,16 @@ function installYieldRules(): void {
     if (started) pause();
   });
   // Any other unmuted media element starting (the theme overlay's <video>,
-  // an embedded trailer...) pauses the jukebox. Hover previews are muted
-  // and so never trigger this.
+  // an embedded trailer...) pauses the jukebox. Theme-card hover previews
+  // are always silent and must not pause it during media-page navigation.
   document.addEventListener('play', event => {
     const target = event.target;
-    if (target instanceof HTMLMediaElement && target !== audio && !target.muted) pause();
+    if (
+      target instanceof HTMLMediaElement
+      && target !== audio
+      && !target.matches('.media-theme-preview-video')
+      && !target.muted
+    ) pause();
   }, true);
   document.addEventListener('astro:after-swap', observeThemeOverlay);
   observeThemeOverlay();

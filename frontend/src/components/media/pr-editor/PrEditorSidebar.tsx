@@ -18,6 +18,19 @@ const RELATIONS_SUBTAB_ICONS: Record<RelationsSubtab, LucideIcon> = {
   contains: List,
 };
 
+const RELATIONS_SUBTAB_LABELS: Record<RelationsSubtab, string> = {
+  saga: 'Saga',
+  relations: 'Links',
+  recommendations: 'Recs',
+  bundled: 'Bundle',
+  arcs: 'Arcs',
+  issues: 'Issues',
+  episodes: 'Episodes',
+  themes: 'Themes',
+  'bundle-children': 'Children',
+  contains: 'Contains',
+};
+
 interface Props {
   pe: Translations['pr_editor'];
   activeTab: PrEditorTab;
@@ -42,6 +55,7 @@ export function PrEditorSidebar({ pe, activeTab, relationsSubtab, relationsSubta
         aria-current={activeTab === 'general' ? 'page' : undefined}
       >
         <Settings size={18} aria-hidden="true" />
+        <span className="pr-editor-tab-label" aria-hidden="true">General</span>
       </button>
       <button
         type="button"
@@ -52,6 +66,7 @@ export function PrEditorSidebar({ pe, activeTab, relationsSubtab, relationsSubta
         aria-current={activeTab === 'cast' ? 'page' : undefined}
       >
         <Users size={18} aria-hidden="true" />
+        <span className="pr-editor-tab-label" aria-hidden="true">Cast</span>
         {charactersChanged && <span className="pr-editor-tab-changed-dot" />}
       </button>
       <div className="pr-editor-sidebar-divider" />
@@ -70,6 +85,7 @@ export function PrEditorSidebar({ pe, activeTab, relationsSubtab, relationsSubta
               aria-current={isActive ? 'page' : undefined}
             >
               <Icon size={18} aria-hidden="true" />
+              <span className="pr-editor-tab-label" aria-hidden="true">{RELATIONS_SUBTAB_LABELS[tab.id]}</span>
             </button>
           </React.Fragment>
         );

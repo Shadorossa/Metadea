@@ -615,6 +615,16 @@
   margin-top: 0.04rem;
 }
 
+.media-stat-value--height {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.media-stat-value--height .media-stat-val-sub {
+  margin-top: 0;
+}
+
 .media-stat-carousel-item .media-stat-val-main,
 .media-stat-carousel-item .media-stat-val-sub {
   white-space: nowrap;
@@ -622,6 +632,18 @@
   text-overflow: ellipsis;
   text-align: center;
   width: 100%;
+}
+
+.media-stat-carousel-item--height .media-stat-val-main,
+.media-stat-carousel-item--height .media-stat-val-sub {
+  display: inline;
+  width: auto;
+  text-align: center;
+}
+
+.media-stat-carousel-item--height .media-stat-val-sub {
+  margin-top: 0;
+  margin-left: 0.3rem;
 }
 
 .media-stat-value .media-stat-val-main,

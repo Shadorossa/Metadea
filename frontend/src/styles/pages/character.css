@@ -67,6 +67,17 @@
   justify-content: center;
 }
 
+.char-edit-btn-icon {
+  display: block;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--text-main);
+  stroke: currentColor;
+  visibility: visible;
+  opacity: 1;
+}
+
 @media (max-width: 900px) {
   .character-grid {
     grid-template-columns: 1fr;
@@ -404,6 +415,6 @@
 /* Spoiler shield banner (components/spoilers/SpoilerShield.tsx) under the
    character's names. */
 .character-hero-right-col .spoiler-banner {
-  margin: 1rem 0 0;
+  margin: 0;
   text-align: left;
 }
