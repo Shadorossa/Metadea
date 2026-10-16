@@ -51,6 +51,7 @@ interface Props {
 export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourney, overrideRelations, readOnly }: Props = {}) {
   const t = getT();
   const p = t.profile;
+  const [hoveredScoreLabel, setHoveredScoreLabel] = useState<string | null>(null);
   const [data, setData] = useState<StatsData | null>(
     overrideItems ? { items: overrideItems, catalogMap: overrideCatalogMap ?? new Map(), system: getActiveRatingSystem(), journey: overrideJourney ?? [], relations: overrideRelations ?? [] } : null
   );
@@ -124,10 +125,39 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
   const maxGenreCount = topGenres.length > 0 ? topGenres[0][1] : 1;
 
   const scoreDist = computeScoreDistribution(ratedItems, system);
-  const maxScoreCount = Math.max(...scoreDist.map(s => s.count), 1);
+  const scoreDonutColors = ['#b59acb', '#987fae', '#806994', '#b5a2c7', '#d0bd8d', '#ad8d54', '#8ca9bb', '#7194a8', '#d19c77', '#b87769'];
+  const scoreDonutRadius = 48;
+  const scoreDonutCircumference = 2 * Math.PI * scoreDonutRadius;
+  const scoreDonutTotal = scoreDist.reduce((sum, score) => sum + score.count, 0);
+  let scoreDonutOffset = 0;
+  const scoreDonutSegments = scoreDist.map((score, index) => {
+    const length = scoreDonutTotal > 0 ? (score.count / scoreDonutTotal) * scoreDonutCircumference : 0;
+    const segment = { ...score, color: scoreDonutColors[index % scoreDonutColors.length], length, offset: scoreDonutOffset };
+    scoreDonutOffset += length;
+    return segment;
+  });
+  const hoveredScore = scoreDonutSegments.find(segment => segment.label === hoveredScoreLabel);
 
   const yearEntries = computeCompletedByYear(items, currentYear, catalogMap);
+  const yearChartWidth = 1000;
+  const yearChartHeight = 220;
+  const yearChartPaddingX = 28;
+  const yearChartTop = 30;
+  const yearChartBottom = 174;
   const maxYearCount = Math.max(...yearEntries.map(y => y.count), 1);
+  const yearChartPoints = yearEntries.map((entry, index) => {
+    const x = yearEntries.length <= 1
+      ? yearChartWidth / 2
+      : yearChartPaddingX + (index * (yearChartWidth - yearChartPaddingX * 2)) / (yearEntries.length - 1);
+    const y = yearChartBottom - (entry.count / maxYearCount) * (yearChartBottom - yearChartTop);
+    return { ...entry, x, y };
+  });
+  const yearChartPath = yearChartPoints.reduce((path, point, index) => {
+    if (index === 0) return `M ${point.x} ${point.y}`;
+    const previous = yearChartPoints[index - 1];
+    const midpointX = (previous.x + point.x) / 2;
+    return `${path} C ${midpointX} ${previous.y}, ${midpointX} ${point.y}, ${point.x} ${point.y}`;
+  }, '');
 
   const maxHours = byType.length > 0 ? Math.max(...byType.map(t => t.hours)) : 1;
 
@@ -229,30 +259,60 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
           {ratedItems.length > 0 && (
             <div className="stats-block-custom">
               <h3 className="stats-block-title">{p.stats_score_dist}</h3>
-              <div className="stats-histogram">
-                {scoreDist.map(s => (
-                  <div className="stats-hist-row" key={s.label}>
-                    <span className="stats-hist-label">{s.label}</span>
-                    <progress className="stats-hist-bar-outer stats-hist-bar-outer--score" value={s.count} max={maxScoreCount} />
-                    <span className="stats-hist-count">{s.count}</span>
-                  </div>
-                ))}
+              <div className="stats-score-donut-layout" onMouseLeave={() => setHoveredScoreLabel(null)}>
+                <svg className="stats-score-donut" viewBox="0 0 120 120" role="img" aria-label={p.stats_score_dist}>
+                  <circle className="stats-score-donut-track" cx="60" cy="60" r={scoreDonutRadius} />
+                  <g transform="rotate(-90 60 60)">
+                    {scoreDonutSegments.map(segment => (
+                      <circle
+                        className={`stats-score-donut-segment${hoveredScoreLabel === segment.label ? ' is-active' : ''}`}
+                        key={segment.label}
+                        cx="60"
+                        cy="60"
+                        r={scoreDonutRadius}
+                        stroke={segment.color}
+                        strokeDasharray={`${segment.length} ${scoreDonutCircumference - segment.length}`}
+                        strokeDashoffset={-segment.offset}
+                        tabIndex={0}
+                        role="img"
+                        aria-label={`${segment.count} obras con puntuación ${segment.label}`}
+                        onMouseEnter={() => setHoveredScoreLabel(segment.label)}
+                        onFocus={() => setHoveredScoreLabel(segment.label)}
+                        onBlur={() => setHoveredScoreLabel(null)}
+                      />
+                    ))}
+                  </g>
+                  <text className="stats-score-donut-total" x="60" y={hoveredScore ? '57' : '64'} textAnchor="middle">
+                    {hoveredScore ? hoveredScore.count : scoreDonutTotal}
+                  </text>
+                  {hoveredScore && (
+                    <text className="stats-score-donut-detail" x="60" y="76" textAnchor="middle">
+                      {`puntuación ${hoveredScore.label}`}
+                    </text>
+                  )}
+                </svg>
               </div>
             </div>
           )}
 
           {yearEntries.length > 0 && (
-            <div className="stats-block-custom">
+            <div className="stats-block-custom stats-block-custom--year-chart">
               <h3 className="stats-block-title">{p.stats_by_year}</h3>
-              <div className="stats-histogram">
-                {yearEntries.map(y => (
-                  <div className="stats-hist-row" key={y.year}>
-                    <span className="stats-hist-label">{y.year}</span>
-                    <progress className="stats-hist-bar-outer stats-hist-bar-outer--year" value={y.count} max={maxYearCount} />
-                    <span className="stats-hist-count">{y.count}</span>
-                  </div>
+              <svg
+                className="stats-year-chart"
+                viewBox={`0 0 ${yearChartWidth} ${yearChartHeight}`}
+                role="img"
+                aria-label={p.stats_by_year}
+              >
+                <path className="stats-year-chart-line" d={yearChartPath} />
+                {yearChartPoints.map(point => (
+                  <g key={point.year}>
+                    <text className="stats-year-chart-count" x={point.x} y={Math.max(point.y - 14, 14)} textAnchor="middle">{point.count}</text>
+                    <circle className="stats-year-chart-point" cx={point.x} cy={point.y} r="4" />
+                    <text className="stats-year-chart-label" x={point.x} y="207" textAnchor="middle">{point.year}</text>
+                  </g>
                 ))}
-              </div>
+              </svg>
             </div>
           )}
 

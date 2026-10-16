@@ -43,6 +43,8 @@
   padding: clamp(0.75rem, 1.5vw, 1.25rem);
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  text-align: center;
   gap: clamp(0.25rem, 0.6vw, 0.5rem);
   min-width: 0;
   box-sizing: border-box;
@@ -51,6 +53,7 @@
 .stats-card-header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: clamp(0.2rem, 0.6vw, 0.4rem);
 }
 
@@ -253,6 +256,10 @@
   min-width: 0;
 }
 
+.stats-block-custom--year-chart {
+  grid-column: 1 / -1;
+}
+
 /* KPI card sub-label */
 .stats-card-sub {
   font-size: clamp(0.55rem, 0.9vw, 0.65rem);
@@ -261,6 +268,7 @@
   letter-spacing: 0.02em;
   line-height: 1;
   margin-top: clamp(0.15rem, 0.4vw, 0.25rem);
+  text-align: center;
 }
 
 .stats-time-bars {
@@ -398,40 +406,34 @@
 }
 
 /* Backlog estimate card ("how long to clear your backlog") */
-.stats-backlog-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: clamp(0.5rem, 1vw, 0.75rem);
-  flex-wrap: wrap;
-}
-
-.stats-backlog-scope {
+.stats-backlog-hours-control {
   display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--border-color);
-  border-radius: 99px;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.stats-backlog-scope-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: auto;
+  flex: 0 0 auto;
   color: var(--text-dim);
-  font: inherit;
-  font-size: clamp(0.55rem, 0.9vw, 0.65rem);
+  font-size: clamp(0.55rem, 0.9vw, 0.7rem);
   font-weight: 700;
-  padding: 0.2rem 0.6rem;
-  border-radius: 99px;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 
-.stats-backlog-scope-btn.active {
-  background: var(--accent);
-  color: var(--bg-card);
+.stats-backlog-hours-control input {
+  appearance: textfield;
+  width: 3.2rem;
+  padding: 0.2rem 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  font: inherit;
+  text-align: center;
+}
+
+.stats-backlog-hours-control input::-webkit-inner-spin-button,
+.stats-backlog-hours-control input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 
 .stats-backlog-headline {
@@ -439,6 +441,21 @@
   font-size: clamp(0.8rem, 1.4vw, 1rem);
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+.stats-backlog-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(0.5rem, 1vw, 0.75rem);
+  flex-wrap: wrap;
+  margin-top: clamp(0.5rem, 1vw, 0.75rem);
+}
+
+.stats-backlog-summary-row .stats-backlog-headline {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
 }
 
 .stats-backlog-headline strong {
@@ -452,17 +469,20 @@
   white-space: nowrap;
 }
 
-.stats-backlog-pace,
-.stats-backlog-hint,
 .stats-backlog-empty {
   margin: clamp(0.25rem, 0.6vw, 0.4rem) 0 0;
   font-size: clamp(0.6rem, 1vw, 0.75rem);
   color: var(--text-dim);
 }
 
+.stats-backlog-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .stats-backlog-table {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.7fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
+  width: 100%;
   row-gap: clamp(0.3rem, 0.8vw, 0.5rem);
   margin-top: clamp(0.5rem, 1vw, 0.75rem);
   font-size: clamp(0.6rem, 1vw, 0.75rem);
@@ -474,9 +494,6 @@
 
 .stats-backlog-row > span {
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--text-main);
   font-weight: 700;
 }
@@ -487,10 +504,26 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: clamp(0.5rem, 0.85vw, 0.6rem);
+  text-align: center;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.stats-backlog-row--head > span:first-child {
+  text-align: left;
 }
 
 .stats-backlog-type {
   color: var(--text-muted) !important;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: clamp(0.5rem, 0.85vw, 0.6rem);
+}
+
+.stats-backlog-cell {
+  text-align: center;
+  white-space: nowrap;
 }
 
 .stats-backlog-flag {

@@ -67,6 +67,19 @@
 
 .stats-hist-bar-outer--year::-webkit-progress-value {
   background: color-mix(in srgb, var(--accent) 50%, #a78bfa);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.stats-hist-bar-outer--year::-moz-progress-bar {
+  background: color-mix(in srgb, var(--accent) 50%, #a78bfa);
+}
+
+.stats-hist-bar-outer--year {
+  height: 4px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .stats-hist-count {
@@ -75,6 +88,95 @@
   width: clamp(18px, 2.5vw, 24px);
   text-align: right;
   flex-shrink: 0;
+}
+
+.stats-year-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 0.35rem;
+  overflow: visible;
+}
+
+.stats-year-chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.stats-year-chart-point {
+  fill: var(--accent);
+  stroke: var(--bg-card);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.stats-year-chart-count,
+.stats-year-chart-label {
+  fill: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stats-year-chart-label {
+  fill: var(--text-dim);
+}
+
+.stats-score-donut-layout {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.stats-score-donut {
+  display: block;
+  width: min(100%, 220px);
+  overflow: visible;
+  outline: none !important;
+}
+
+.stats-score-donut-track,
+.stats-score-donut-segment {
+  fill: none;
+  stroke-width: 15;
+}
+
+.stats-score-donut-track {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.stats-score-donut-segment {
+  stroke-linecap: butt;
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 180ms ease, filter 180ms ease;
+  outline: none !important;
+}
+
+.stats-score-donut-segment:hover,
+.stats-score-donut-segment.is-active,
+.stats-score-donut-segment:focus-visible {
+  transform: scale(1.14);
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.45));
+}
+
+.stats-score-donut-total {
+  fill: var(--text-main);
+  font-family: inherit;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.stats-score-donut-detail {
+  fill: var(--text-muted);
+  font-family: inherit;
+  font-size: 7px;
+  font-weight: 600;
 }
 
 /* Favorite custom-image editor styling now lives in the shared, page-agnostic
@@ -89,6 +191,7 @@
   .lists-grid {
     grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
   }
+
 }
 
 .list-detail-actions {

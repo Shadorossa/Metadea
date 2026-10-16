@@ -311,16 +311,19 @@ export function computeTypeBreakdown(items: Items, catalogMap: Map<string, Catal
   const byTypeMap = new Map<string, { count: number; minutes: number }>();
 
   for (const type of ALL_MEDIA_TYPES) {
+    if (type === 'character') continue;
     byTypeMap.set(type, { count: 0, minutes: 0 });
   }
 
   for (const item of nonEditionItems) {
+    if (item.type === 'character') continue;
     const val = byTypeMap.get(item.type) || { count: 0, minutes: 0 };
     val.count++;
     byTypeMap.set(item.type, val);
   }
 
   for (const item of items) {
+    if (item.type === 'character') continue;
     const val = byTypeMap.get(item.type) || { count: 0, minutes: 0 };
     val.minutes += getItemMinutes(item, catalogMap);
     byTypeMap.set(item.type, val);

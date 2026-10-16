@@ -19,7 +19,7 @@ import { resolveListItemDisplay, sortListItems, type ListSortMode } from '../../
 import { MediaSearchPopup } from '../../search-popups/MediaSearchPopup';
 import { CharacterSearchPopup } from '../../search-popups/CharacterSearchPopup';
 import { EpisodeSearchPopup, type EpisodeSearchResult } from '../../search-popups/EpisodeSearchPopup';
-import { IconTrash } from '../../local/ui/icons';
+import { IconAll, IconCharacter, IconSeries, IconTrash } from '../../local/ui/icons';
 import type { SearchResult as ApiSearchResult } from '../../../lib/search';
 import { ListItemCardBody, SortableListItemCard } from './ListItemCard';
 import { useInlineEdit } from './useInlineEdit';
@@ -108,6 +108,11 @@ export function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDel
   );
   const isCharacters = listType === 'characters';
   const isEpisodes = listType === 'episodes';
+  const currentTypeLabel = isCharacters
+    ? p.lists_type_characters
+    : isEpisodes
+      ? (p.lists_type_episodes || 'Episodios')
+      : p.lists_type_media;
   const canChangeType = listItems.length === 0;
 
   // Settings dropdown — flip/shift keep it inside the viewport (it used to
@@ -392,14 +397,15 @@ export function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDel
                           className={`list-settings-type-btn${typeMenuOpen ? ' list-settings-type-btn--active' : ''}${!canChangeType ? ' list-settings-type-btn--disabled' : ''}`}
                           {...getTypeReferenceProps({ onClick: () => { if (canChangeType) setTypeMenuOpen(o => !o); } })}
                           disabled={!canChangeType}
-                          title={!canChangeType ? p.lists_type_locked_hint : undefined}
+                          title={canChangeType ? currentTypeLabel : `${currentTypeLabel} — ${p.lists_type_locked_hint}`}
+                          aria-label={currentTypeLabel}
                         >
-                          <span className="list-settings-type-label">
-                            {listType === 'characters'
-                              ? p.lists_type_characters
-                              : listType === 'episodes'
-                                ? (p.lists_type_episodes || 'Episodios')
-                                : p.lists_type_media}
+                          <span className="list-settings-type-label" aria-hidden="true">
+                            {isCharacters
+                              ? <IconCharacter size={17} strokeWidth={1.8} />
+                              : isEpisodes
+                                ? <IconSeries size={17} strokeWidth={1.8} />
+                                : <IconAll size={17} strokeWidth={1.8} />}
                           </span>
                           <svg className="list-settings-type-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="6 9 12 15 18 9" />
@@ -423,6 +429,8 @@ export function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDel
                                 type="button"
                                 tabIndex={typeActiveIndex === idx ? 0 : -1}
                                 className={`list-settings-type-option${listType === opt.id ? ' list-settings-type-option--active' : ''}`}
+                                title={opt.label}
+                                aria-label={opt.label}
                                 {...getTypeItemProps({
                                   onClick: () => {
                                     handleSetListType(opt.id);
@@ -430,7 +438,13 @@ export function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDel
                                   },
                                 })}
                               >
-                                <span className="list-settings-type-option-text">{opt.label}</span>
+                                <span className="list-settings-type-option-icon" aria-hidden="true">
+                                  {opt.id === 'media'
+                                    ? <IconAll size={18} strokeWidth={1.8} />
+                                    : opt.id === 'characters'
+                                      ? <IconCharacter size={18} strokeWidth={1.8} />
+                                      : <IconSeries size={18} strokeWidth={1.8} />}
+                                </span>
                                 {listType === opt.id && (
                                   <svg className="list-settings-type-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="20 6 9 17 4 12" />
