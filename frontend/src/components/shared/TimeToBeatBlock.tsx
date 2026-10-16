@@ -88,14 +88,16 @@ export function TimeToBeatBlock({ externalId, title, releaseYear, playedMinutes,
 
   return (
     <div className={`ttb-block ttb-block--${variant}`}>
-      <div className="ttb-header">
-        <span className="ttb-title">{t.title}</span>
-        <span className="ttb-source" title={tooltip}>
-          {ttb.source === 'igdb'
-            ? <img src="/API/IGDB_logo.png" alt={source} className="ttb-source-logo" />
-            : <span className="ttb-source-text">{source}</span>}
-        </span>
-      </div>
+      {variant === 'local' && (
+        <div className="ttb-header">
+          <span className="ttb-title">{t.title}</span>
+          <span className="ttb-source" title={tooltip}>
+            {ttb.source === 'igdb'
+              ? <img src="/API/IGDB_logo.png" alt={source} className="ttb-source-logo" />
+              : <span className="ttb-source-text">{source}</span>}
+          </span>
+        </div>
+      )}
       <div className="ttb-pills" title={tooltip}>
         {pills.map(pill => (
           <span key={pill.kind} className={`ttb-pill ttb-pill--${pill.kind}`}>
@@ -110,7 +112,7 @@ export function TimeToBeatBlock({ externalId, title, releaseYear, playedMinutes,
           </span>
         )}
       </div>
-      {progress && (
+      {progress && variant === 'local' && (
         <div className={`ttb-progress${progress.done ? ' ttb-progress--done' : ''}`}>
           <div className="ttb-progress-text">
             <span>
