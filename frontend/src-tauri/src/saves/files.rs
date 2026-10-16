@@ -256,9 +256,20 @@ pub fn rotate_into_history(game_dir: &Path, rel: &str, keep: u32) -> io::Result<
     if !current.exists() {
         return Ok(None);
     }
+    let taken_at = newest_mtime(&current).unwrap_or_else(SystemTime::now);
+    rotate_into_history_at(game_dir, rel, keep, taken_at)
+}
+
+/// Moves the central copy of `rel` into history using an explicit timestamp.
+/// Used when restoring a version so the replaced current copy remains the
+/// newest retained backup even when its original modification time is older.
+pub fn rotate_into_history_at(game_dir: &Path, rel: &str, keep: u32, taken_at: SystemTime) -> io::Result<Option<PathBuf>> {
+    let current = game_dir.join(layout::safe_relative(rel).map_err(io::Error::other)?);
+    if !current.exists() {
+        return Ok(None);
+    }
     let dir = history_dir(game_dir, rel).ok_or_else(|| io::Error::other("bad save path"))?;
     fs::create_dir_all(&dir)?;
-    let taken_at = newest_mtime(&current).unwrap_or_else(SystemTime::now);
     let version_dir = free_path(&dir, &layout::stamp(taken_at));
     fs::create_dir_all(&version_dir)?;
     let name = current.file_name().ok_or_else(|| io::Error::other("bad save path"))?;

@@ -453,13 +453,13 @@ pub async fn saves_restore_version(app_handle: tauri::AppHandle, game: GameRef, 
         let (dir, _, rel) = resolve_entry(&root, &identity, &id)?;
         let chosen = files::history_versions(&dir, &rel).into_iter().find(|candidate| candidate.id == version).ok_or(error_codes::SAVES_NOT_FOUND)?;
         let current = dir.join(layout::safe_relative(&rel)?);
-        // The version is copied (it stays in history); the current copy
-        // becomes a version itself. Marked as just written, so the next
-        // launch puts it back into the emulator's folder.
+        // The selected version is copied (it stays in history) under the
+        // current save's filename. Back up the current copy with a fresh
+        // timestamp so history pruning cannot discard it as an old version.
         let staging = dir.join(format!(".restore-{}", layout::short_hash(&format!("{rel}/{version}"), 8)));
         let staged = staging.join(current.file_name().unwrap_or_default());
         files::copy_unit(&chosen.path, &staged).map_err(io_error)?;
-        files::rotate_into_history(&dir, &rel, settings.history_keep).map_err(io_error)?;
+        files::rotate_into_history_at(&dir, &rel, settings.history_keep, SystemTime::now()).map_err(io_error)?;
         let moved = std::fs::rename(&staged, &current).map_err(io_error);
         let _ = std::fs::remove_dir_all(&staging);
         moved?;

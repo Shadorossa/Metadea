@@ -26,7 +26,7 @@
   background: var(--bg-primary);
 }
 
-.local-steam-media--saves-active .game-saves-icon-btn {
+.local-steam-media--saves-active .game-saves-toolbar .game-saves-icon-btn {
   border: 0;
 }
 
