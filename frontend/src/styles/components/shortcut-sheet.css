@@ -177,8 +177,7 @@
 }
 
 /* Settings › Keyboard shortcuts (KeyboardShortcutsSection.tsx) */
-/* Pre-hydration placeholder for KeyboardShortcutsSection: roughly the height
-   of the hint + global bindings list, so nothing jumps on mount. */
+/* Pre-hydration placeholder for KeyboardShortcutsSection to limit layout shift. */
 .settings-shortcuts-pending {
   min-height: 12.5rem;
 }

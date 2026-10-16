@@ -80,7 +80,11 @@ export function parseAnimeAudio(raw: unknown): AnimeAudioPreference {
 }
 
 export function parseFallbackSubtitles(raw: unknown): FallbackSubtitles {
-  return raw === 'none' ? 'none' : DEFAULT_TRACK_PREFERENCES.fallbackSubtitles;
+  if (raw === 'none') return 'none';
+  const language = raw === 'english' ? 'en' : raw;
+  return typeof language === 'string' && (SUBTITLE_LANGUAGE_OPTIONS as readonly string[]).includes(language)
+    ? language as FallbackSubtitles
+    : DEFAULT_TRACK_PREFERENCES.fallbackSubtitles;
 }
 
 export function parseSubtitleLanguage(raw: unknown): string {
@@ -96,7 +100,7 @@ export function parseTrackPreferences(raw: string | null | undefined): TrackPref
     if (parsed && typeof parsed === 'object') value = parsed as Record<string, unknown>;
   } catch { /* corrupt value: defaults */ }
   return {
-    smart: value.smart !== false,
+    smart: true,
     animeAudio: parseAnimeAudio(value.animeAudio),
     subtitleLanguage: parseSubtitleLanguage(value.subtitleLanguage),
     fallbackSubtitles: parseFallbackSubtitles(value.fallbackSubtitles),

@@ -57,7 +57,13 @@ export function useActiveShortcuts(): ActiveShortcut[] {
   return useMemo(() => listActiveShortcuts(), [version]);
 }
 
-export function ShortcutList({ shortcuts }: { shortcuts: readonly ActiveShortcut[] }) {
+export function ShortcutList({
+  shortcuts,
+  hideGlobalTitle = false,
+}: {
+  shortcuts: readonly ActiveShortcut[];
+  hideGlobalTitle?: boolean;
+}) {
   const t = getT();
   const groups = SHORTCUT_CONTEXTS
     .map(context => ({ context, items: shortcuts.filter(s => s.context === context) }))
@@ -71,7 +77,9 @@ export function ShortcutList({ shortcuts }: { shortcuts: readonly ActiveShortcut
     <div className="shortcut-list">
       {groups.map(group => (
         <section className="shortcut-group" key={group.context}>
-          <h4 className="shortcut-group-title">{t.shortcuts[CONTEXT_LABEL_KEY[group.context]]}</h4>
+          {!(hideGlobalTitle && group.context === 'global') && (
+            <h4 className="shortcut-group-title">{t.shortcuts[CONTEXT_LABEL_KEY[group.context]]}</h4>
+          )}
           <ul className="shortcut-rows">
             {group.items.map(item => (
               <li className={`shortcut-row${item.enabled ? '' : ' shortcut-row--disabled'}`} key={`${group.context}:${item.id}`}>

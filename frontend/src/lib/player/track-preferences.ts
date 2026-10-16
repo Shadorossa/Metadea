@@ -6,8 +6,8 @@
 // Rules, with L = the preferred language (Settings › Player, default: the
 // app language):
 // - Anime (`anime:` ids): Japanese audio (setting: Japanese / my language /
-//   file default) with full-dialogue L subtitles, falling back to English
-//   (setting) and then to the file's own choice. No Japanese audio: L audio
+//   file default) with full-dialogue L subtitles, falling back to the
+//   configured language and then to the file's own choice. No Japanese audio: L audio
 //   with L signs/forced subtitles if any, else subtitles off.
 // - Everything else: L audio if present, else the file default. Audio in L
 //   means subtitles off (except L signs/forced); otherwise L subtitles,
@@ -18,7 +18,7 @@
 import type { PlayerTrack } from './player-status';
 
 export type AnimeAudioPreference = 'japanese' | 'preferred' | 'default';
-export type FallbackSubtitles = 'english' | 'none';
+export type FallbackSubtitles = 'none' | 'en' | 'es' | 'ca' | 'de' | 'fr' | 'it' | 'ja' | 'ru';
 /** 'app' follows the UI language; anything else is a language code. */
 export type SubtitleLanguagePreference = 'app' | string;
 
@@ -33,7 +33,7 @@ export const DEFAULT_TRACK_PREFERENCES: TrackPreferences = {
   smart: true,
   animeAudio: 'japanese',
   subtitleLanguage: 'app',
-  fallbackSubtitles: 'english',
+  fallbackSubtitles: 'en',
 };
 
 /** What the user picked by hand, remembered per series. */
@@ -180,10 +180,8 @@ function subtitlesFor(
   const dialogue = pickDialogueSub(tracks, preferred);
   if (dialogue) return dialogue.id;
   if (fallback === 'none') return null;
-  if (preferred !== 'en') {
-    const english = pickDialogueSub(tracks, 'en');
-    if (english) return english.id;
-  }
+  const backup = pickDialogueSub(tracks, fallback);
+  if (backup) return backup.id;
   return undefined;
 }
 

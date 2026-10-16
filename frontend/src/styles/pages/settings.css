@@ -1238,8 +1238,8 @@
    checkbox + label + "i" help button, with an optional control pushed to the
    row's right edge (.prefs-row-end). Sub-options (.prefs-row--sub/.prefs-sub)
    sit indented under their parent toggle and dim while the mount script keeps
-   them disabled. The player card spans the grid with its own auto-fit
-   columns of groups. The keyboard shortcuts section below keeps its own look. */
+   them disabled. The player and keyboard shortcuts share a row when space
+   allows, while the player keeps its own auto-fit columns of groups. */
 #panel-preferences {
   container: prefs / inline-size;
 }
@@ -1277,6 +1277,18 @@
 
 .prefs-card--wide {
   grid-column: 1 / -1;
+}
+
+.prefs-player-shortcuts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+@container prefs (max-width: 800px) {
+  .prefs-player-shortcuts { grid-template-columns: minmax(0, 1fr); }
 }
 
 #panel-preferences .prefs-card .settings-section-title,
@@ -1388,8 +1400,9 @@
 
 .prefs-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: 0.75rem 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 0.75rem 1.5rem;
+  max-width: 1320px;
 }
 
 .prefs-field {
@@ -1417,17 +1430,28 @@
   column-gap: 1rem;
 }
 
+.prefs-track-language-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.prefs-track-language {
+  min-width: 0;
+}
+
+.prefs-track-language .settings-inline-select {
+  width: 100%;
+  max-width: 100%;
+}
+
 .prefs-options .settings-checkbox-label {
   padding: 0.2rem 0;
 }
 
 .prefs-options + .prefs-row {
   margin-top: 0.3rem;
-}
-
-/* The shortcuts section's own divider: the panel gap already spaces it. */
-#panel-preferences > .settings-divider {
-  margin-top: 0.5rem;
 }
 
 .settings-checkbox-label {

@@ -408,10 +408,11 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
     <!-- Reproductor (built-in libmpv player): controls mode, opening/ending skip,
          seek thumbnails and smart tracks. Stored in lib/player/player-settings.ts; wired by
-         mount/player-preferences.ts, which also disables [data-smart-tracks-option]. -->
-    <div class="settings-section prefs-card prefs-card--wide" id="player-preferences-section" data-onboarding-part="player">
-      <h3 class="settings-section-title" data-i18n="player.window_title">{t.player.window_title}</h3>
-      <div class="prefs-columns">
+         mount/player-preferences.ts. -->
+    <div class="prefs-player-shortcuts prefs-card--wide">
+      <div class="settings-section prefs-card" id="player-preferences-section" data-onboarding-part="player">
+        <h3 class="settings-section-title" data-i18n="player.window_title">{t.player.window_title}</h3>
+        <div class="prefs-columns">
         <div class="prefs-field">
           <div class="prefs-row">
             <span class="prefs-field-title" data-i18n="player.settings_controls_title">{t.player.settings_controls_title}</span>
@@ -419,7 +420,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
               <span class="info-indicator" aria-hidden="true">i</span>
             </button>
           </div>
-          <div class="prefs-options">
+          <div class="prefs-options prefs-options--inline">
             <label class="settings-checkbox-label">
               <input type="radio" name="player-controls-mode" value="overlay" class="settings-checkbox" />
               <span class="checkbox-label-text" data-i18n="player.settings_controls_overlay">{t.player.settings_controls_overlay}</span>
@@ -464,44 +465,33 @@ const LANGUAGE_NAMES: Record<string, string> = {
         </div>
 
         <div class="prefs-field">
-          <div class="prefs-row">
-            <label class="settings-checkbox-label">
-              <input type="checkbox" id="player-smart-tracks" class="settings-checkbox" />
-              <span class="checkbox-label-text" data-i18n="player.settings_tracks_smart">{t.player.settings_tracks_smart}</span>
-            </label>
-            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_smart_hint" title={t.player.settings_tracks_smart_hint}>
-              <span class="info-indicator" aria-hidden="true">i</span>
-            </button>
-          </div>
-          <div class="prefs-row prefs-row--sub prefs-row--wrap" data-smart-tracks-option>
-            <label class="prefs-row-label" for="player-sub-language" data-i18n="player.settings_tracks_sub_language">{t.player.settings_tracks_sub_language}</label>
-            <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_sub_language_hint" title={t.player.settings_tracks_sub_language_hint}>
-              <span class="info-indicator" aria-hidden="true">i</span>
-            </button>
-            <select id="player-sub-language" class="settings-inline-select prefs-row-end">
-              <option value="app" data-i18n="player.settings_tracks_sub_language_app">{t.player.settings_tracks_sub_language_app}</option>
-              {LOCALES.map(code => <option value={code}>{LANGUAGE_NAMES[code] ?? code}</option>)}
-            </select>
-          </div>
-          <div class="prefs-sub" data-smart-tracks-option>
-            <div class="prefs-row">
-              <span class="prefs-field-title" data-i18n="player.settings_tracks_fallback">{t.player.settings_tracks_fallback}</span>
-              <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_fallback_hint" title={t.player.settings_tracks_fallback_hint}>
-                <span class="info-indicator" aria-hidden="true">i</span>
-              </button>
+          <div class="prefs-track-language-pair">
+            <div class="prefs-track-language">
+              <div class="prefs-row">
+                <label class="prefs-row-label" for="player-sub-language" data-i18n="player.settings_tracks_sub_language">{t.player.settings_tracks_sub_language}</label>
+                <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_sub_language_hint" title={t.player.settings_tracks_sub_language_hint}>
+                  <span class="info-indicator" aria-hidden="true">i</span>
+                </button>
+              </div>
+              <select id="player-sub-language" class="settings-inline-select">
+                <option value="app" data-i18n="player.settings_tracks_sub_language_app">{t.player.settings_tracks_sub_language_app}</option>
+                {LOCALES.map(code => <option value={code}>{LANGUAGE_NAMES[code] ?? code}</option>)}
+              </select>
             </div>
-            <div class="prefs-options prefs-options--inline">
-              <label class="settings-checkbox-label">
-                <input type="radio" name="player-sub-fallback" value="english" class="settings-checkbox" />
-                <span class="checkbox-label-text" data-i18n="player.settings_tracks_fallback_english">{t.player.settings_tracks_fallback_english}</span>
-              </label>
-              <label class="settings-checkbox-label">
-                <input type="radio" name="player-sub-fallback" value="none" class="settings-checkbox" />
-                <span class="checkbox-label-text" data-i18n="player.settings_tracks_fallback_none">{t.player.settings_tracks_fallback_none}</span>
-              </label>
+            <div class="prefs-track-language">
+              <div class="prefs-row">
+                <label class="prefs-row-label" for="player-sub-fallback" data-i18n="player.settings_tracks_fallback">{t.player.settings_tracks_fallback}</label>
+                <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_fallback_hint" title={t.player.settings_tracks_fallback_hint}>
+                  <span class="info-indicator" aria-hidden="true">i</span>
+                </button>
+              </div>
+              <select id="player-sub-fallback" class="settings-inline-select">
+                <option value="none" data-i18n="player.settings_tracks_fallback_none">{t.player.settings_tracks_fallback_none}</option>
+                {LOCALES.map(code => <option value={code} selected={code === 'en'}>{LANGUAGE_NAMES[code] ?? code}</option>)}
+              </select>
             </div>
           </div>
-          <div class="prefs-sub" data-smart-tracks-option>
+          <div class="prefs-sub">
             <div class="prefs-row">
               <span class="prefs-field-title" data-i18n="player.settings_tracks_anime_audio">{t.player.settings_tracks_anime_audio}</span>
               <button type="button" class="settings-help-btn" data-i18n-title="player.settings_tracks_anime_audio_hint" title={t.player.settings_tracks_anime_audio_hint}>
@@ -524,17 +514,14 @@ const LANGUAGE_NAMES: Record<string, string> = {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Atajos de teclado (solo lectura por ahora) -->
-  <div class="settings-divider">
-    <div class="settings-section">
-      <h3 class="settings-section-title" data-i18n="shortcuts.settings_section_title">
-        {t.shortcuts.settings_section_title}
-      </h3>
-      <KeyboardShortcutsSection client:load />
+      <div class="settings-section prefs-card">
+        <h3 class="settings-section-title" data-i18n="shortcuts.settings_section_title">
+          {t.shortcuts.settings_section_title}
+        </h3>
+        <KeyboardShortcutsSection client:load />
+      </div>
     </div>
   </div>
 </div>

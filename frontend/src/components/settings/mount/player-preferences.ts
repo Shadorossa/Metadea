@@ -34,26 +34,17 @@ export function initPlayerPreferences(): void {
   // Seek-bar thumbnails and smart track selection (lib/player/track-preferences.ts).
   bindCheckbox(section, 'player-seek-thumbnails', getSeekThumbnailsEnabled(), setSeekThumbnailsEnabled);
   const tracks = getTrackPreferences();
-  bindCheckbox(section, 'player-smart-tracks', tracks.smart, smart => setTrackPreferences({ smart }));
   bindRadioGroup(section, 'player-anime-audio', tracks.animeAudio, parseAnimeAudio, animeAudio => setTrackPreferences({ animeAudio }));
-  bindRadioGroup(section, 'player-sub-fallback', tracks.fallbackSubtitles, parseFallbackSubtitles,
-    fallbackSubtitles => setTrackPreferences({ fallbackSubtitles }));
   const language = section.querySelector<HTMLSelectElement>('#player-sub-language');
   if (language) {
     language.value = tracks.subtitleLanguage;
     language.addEventListener('change', () => setTrackPreferences({ subtitleLanguage: parseSubtitleLanguage(language.value) }));
   }
-  syncSmartTrackOptions(section);
-  section.querySelector<HTMLInputElement>('#player-smart-tracks')
-    ?.addEventListener('change', () => syncSmartTrackOptions(section));
-}
-
-/** Language, fallback and anime-audio only apply with smart tracks on (track-preferences.ts). */
-function syncSmartTrackOptions(section: HTMLElement): void {
-  const smart = section.querySelector<HTMLInputElement>('#player-smart-tracks');
-  if (!smart) return;
-  section.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-smart-tracks-option] :is(input, select)')
-    .forEach(control => { control.disabled = !smart.checked; });
+  const fallback = section.querySelector<HTMLSelectElement>('#player-sub-fallback');
+  if (fallback) {
+    fallback.value = tracks.fallbackSubtitles;
+    fallback.addEventListener('change', () => setTrackPreferences({ fallbackSubtitles: parseFallbackSubtitles(fallback.value) }));
+  }
 }
 
 function bindCheckbox(section: HTMLElement, id: string, current: boolean, persist: (value: boolean) => void): void {
