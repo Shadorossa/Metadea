@@ -103,6 +103,13 @@
   overflow: hidden;
 }
 
+/* Keep the screenshot/achievement tabs closer to the game description;
+   this overrides the media section's standalone top spacing only here. */
+.local-game-detail-summary + .local-steam-media {
+  margin-top: 0;
+  padding-top: 0;
+}
+
 /* Keeps the title, play/edit/catalog buttons (and stats, for games) always
  * reachable while scrolling a long summary/achievements list below - only
  * the banner (which can be very tall) is allowed to scroll out of view. */

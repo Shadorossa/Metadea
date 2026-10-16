@@ -681,19 +681,6 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           </p>
         </div>
         {displaySummary && <p className="local-game-detail-summary">{displaySummary}</p>}
-        {relationsExternalId && (
-          <TimeToBeatBlock
-            externalId={relationsExternalId}
-            title={displayTitle}
-            releaseYear={catalogReleaseMs !== null ? new Date(catalogReleaseMs).getUTCFullYear() : undefined}
-            playedMinutes={(!isExe && launchTarget.rom_platform) || launchTarget.playtime_minutes === undefined || launchTarget.playtime_minutes === null
-              ? (romLibraryEntry?.minutes_spent || (romLibraryEntry?.progress ? romLibraryEntry.progress * 60 : undefined))
-              : launchTarget.playtime_minutes}
-            t={t.time_to_beat}
-            variant="local"
-          />
-        )}
-
         <MediaScreenshotsSection
           key={`${contentKey}:${displayTitle}`}
           appId={launchTarget.launcher === 'steam' ? launchTarget.app_id : undefined}
@@ -707,6 +694,19 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           } : undefined}
           emulator={isRom ? { platformId: launchTarget.rom_platform!, romPath: launchTarget.install_path!, title: displayTitle } : undefined}
         />
+
+        {relationsExternalId && (
+          <TimeToBeatBlock
+            externalId={relationsExternalId}
+            title={displayTitle}
+            releaseYear={catalogReleaseMs !== null ? new Date(catalogReleaseMs).getUTCFullYear() : undefined}
+            playedMinutes={(!isExe && launchTarget.rom_platform) || launchTarget.playtime_minutes === undefined || launchTarget.playtime_minutes === null
+              ? (romLibraryEntry?.minutes_spent || (romLibraryEntry?.progress ? romLibraryEntry.progress * 60 : undefined))
+              : launchTarget.playtime_minutes}
+            t={t.time_to_beat}
+            variant="local"
+          />
+        )}
 
         {isRom && launchTarget.rom_platform && launchTarget.install_path && (
           <GameSavesSection

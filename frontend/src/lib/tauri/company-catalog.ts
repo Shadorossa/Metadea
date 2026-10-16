@@ -9,8 +9,12 @@ export interface CompanyWork {
   /** Same scheme as search results: `game:1942`, `anime:21`, `movie:603`. */
   external_id: string;
   title: string;
+  /** Parent work title, used to label season-format entries. */
+  parent_title?: string | null;
   cover_url: string | null;
   year: number | null;
+  /** Full release date (`YYYY-MM-DD`) when the provider supplies it. */
+  release_date?: string | null;
   media_type: string;
   roles: CompanyRole[];
   /** DLC / bundle / pack / mod / update. */
@@ -22,7 +26,7 @@ export interface CompanyWork {
   score?: number | null;
   /** AniList isAdult (lib/search/exclusion-filters.ts). */
   is_adult?: boolean;
-  /** Local catalog format on pages rebuilt from it (DLC, REMASTER...). */
+  /** Catalog format, such as DLC, SEASON, or REMASTER. */
   format?: string | null;
 }
 

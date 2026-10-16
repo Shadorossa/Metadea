@@ -10,8 +10,11 @@ use serde::{Deserialize, Serialize};
 pub struct CompanyWork {
     pub external_id: String,
     pub title: String,
+    pub parent_title: Option<String>,
     pub cover_url: Option<String>,
     pub year: Option<i32>,
+    /// Full release date in YYYY-MM-DD format when the provider supplies it.
+    pub release_date: Option<String>,
     pub media_type: String,
     /// `developer` | `publisher` | `studio` | `producer` | `production` | `network`.
     pub roles: Vec<String>,
@@ -26,8 +29,7 @@ pub struct CompanyWork {
     /// AniList's isAdult: hidden unless the user shows adult content, like
     /// search does (lib/search/exclusion-filters.ts).
     pub is_adult: bool,
-    /// The local catalog's format (`DLC`, `REMASTER`...) on pages rebuilt
-    /// from it, for the same exclusions search applies to local rows.
+    /// The catalog format (`DLC`, `SEASON`, `REMASTER`...) when available.
     pub format: Option<String>,
 }
 
@@ -100,7 +102,7 @@ pub struct CachedCompany {
 pub struct CompanyPagePayload {
     pub page: CompanyPage,
     pub fetched_at: i64,
-    /// Older than the TTL: render it, then refresh in the background.
+    /// Older than the TTL or missing current date fields: render, then refresh in the background.
     pub stale: bool,
     /// Every work the provider has is in `page.works`.
     pub complete: bool,

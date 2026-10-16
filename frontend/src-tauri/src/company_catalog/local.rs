@@ -18,7 +18,18 @@ pub(super) fn local_company_page(conn: &Connection, provider_id: &str, provider:
 
     let mut stmt = conn.prepare(
         "SELECT mc.media_external_id, mc.role, m.type, m.title_main, m.cover_url, m.release_year, m.status,
-                m.score_global, m.format
+                m.score_global, m.format,
+                COALESCE(
+                  (SELECT parent.title_main
+                     FROM media_relations relation
+                     JOIN media_catalog parent ON parent.external_id = relation.related_media_external_id
+                    WHERE relation.media_external_id = m.external_id AND relation.relation_type = 'PART_OF'
+                    LIMIT 1),
+                  (SELECT parent.title_main
+                     FROM media_catalog parent
+                    WHERE parent.external_id = m.parent_id
+                    LIMIT 1)
+                )
          FROM media_by_company mc
          LEFT JOIN media_catalog m ON m.external_id = mc.media_external_id
          WHERE mc.company_external_id = ?1",
@@ -34,21 +45,24 @@ pub(super) fn local_company_page(conn: &Connection, provider_id: &str, provider:
             row.get::<_, Option<String>>(6)?,
             row.get::<_, Option<f64>>(7)?,
             row.get::<_, Option<String>>(8)?,
+            row.get::<_, Option<String>>(9)?,
         ))
     })?;
 
     let mut works = Vec::new();
     for row in rows {
-        let (external_id, stored_role, media_type, title, cover_url, year, status, score, format) = row?;
+        let (external_id, stored_role, media_type, title, cover_url, year, status, score, format, parent_title) = row?;
         let Some(role) = provider.local_role(&stored_role) else { continue };
         let media_type = media_type
             .filter(|t| !t.is_empty())
             .unwrap_or_else(|| external_id.split(':').next().unwrap_or_default().to_string());
         merge_works(&mut works, vec![CompanyWork {
             title: title.filter(|t| !t.is_empty()).unwrap_or_else(|| external_id.clone()),
+            parent_title: parent_title.filter(|t| !t.is_empty()),
             external_id,
             cover_url,
             year,
+            release_date: None,
             media_type,
             roles: vec![role.to_string()],
             is_extra: false,

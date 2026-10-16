@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Boxes, Eye } from 'lucide-react';
 import type { Translations } from '../../i18n/index';
+import { getLangCode } from '../../i18n/runtime';
 import type { CompanyWork } from '../../lib/tauri/company-catalog';
 import {
-  availableTypes,
   companyInitials,
   filterAndSortWorks,
   hasExtras,
-  hasMasterpieces,
   hasRoleSplit,
   type CompanyRoleFilter,
   type CompanyWorkFilters,
@@ -15,7 +15,6 @@ import {
 import { workLibraryState, workProgressRatio, type WorkLibraryState } from '../../lib/media/creator-completion';
 import { toMediumCover } from '../../lib/media/small-cover';
 import { attributeUrl } from '../../lib/character/character-page-urls';
-import { interpolate } from '../../lib/shared/text/interpolate';
 import { CreatorWorkState, creatorWorkClass } from '../shared/CreatorWorkState';
 import { CareerTimeline, type CareerTimelineItem } from '../shared/CareerTimeline';
 import { useTimelineYears } from '../shared/hooks/useTimelineYears';
@@ -30,52 +29,101 @@ interface Props {
   loadingMore: boolean;
   t: Translations['company_page'];
   tc: Translations['creator_completion'];
-  types: Translations['search']['types'];
 }
 
 // Cards rendered per step of the infinite scroll.
 const PAGE_SIZE = 48;
 
-function WorkCard({ work, state, progress, t, tc, typeLabel }: {
+function formatReleaseDate(work: CompanyWork): string | null {
+  if (work.release_date) {
+    const date = new Date(work.release_date + 'T00:00:00Z');
+    if (!Number.isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat(getLangCode(), {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }).format(date);
+    }
+  }
+  return work.year == null ? null : String(work.year);
+}
+
+function seasonTitle(work: CompanyWork, parentTitle: string): string {
+  const prefix = work.title.slice(0, parentTitle.length);
+  if (prefix.toLocaleLowerCase() !== parentTitle.toLocaleLowerCase()) return work.title;
+  const remainder = work.title.slice(parentTitle.length).replace(/^\s*[:\-–—]\s*/, '');
+  return remainder || work.title;
+}
+
+function splitSeasonName(title: string): { name: string; label: string | null } {
+  const match = /^season\s+(\d+)\s*(?:[-–—:]\s*(.+))?$/i.exec(title.trim());
+  if (!match) return { name: title, label: null };
+  return { name: match[2]?.trim() ?? '', label: `Season ${match[1]}` };
+}
+
+function WorkCard({ work, state, progress, t, tc }: {
   work: CompanyWork;
   state: WorkLibraryState | null;
   progress: number | null;
   t: Translations['company_page'];
   tc: Translations['creator_completion'];
-  typeLabel: string;
 }) {
   const cover = attributeUrl(toMediumCover(work.cover_url));
+  const releaseDate = formatReleaseDate(work);
+  const titlePrefix = work.title.split(':', 1)[0].trim();
+  const inferredParentTitle = titlePrefix.length < work.title.length ? titlePrefix : null;
+  const isSeason = work.format?.toUpperCase() === 'SEASON' || /:\s*season\b/i.test(work.title);
+  const seasonParentTitle = isSeason
+    ? work.parent_title || inferredParentTitle
+    : null;
+  const seasonName = seasonParentTitle ? seasonTitle(work, seasonParentTitle) : work.title;
+  const { name: seasonDisplayName, label: seasonLabel } = seasonParentTitle
+    ? splitSeasonName(seasonName)
+    : { name: seasonName, label: null };
+  const accessibleTitle = [seasonParentTitle, seasonDisplayName, seasonLabel].filter(Boolean).join(' ') || work.title;
   return (
-    <a href={`/media?id=${work.external_id}`} className={`company-work-card${creatorWorkClass(state)}`}>
+    <a
+      href={`/media?id=${work.external_id}`}
+      className={`company-work-card${creatorWorkClass(state)}`}
+      aria-label={accessibleTitle}
+    >
       <div className="company-work-cover">
         {cover
           ? <img src={cover} alt="" loading="lazy" />
           : <span className="company-work-cover-placeholder" aria-hidden="true">{companyInitials(work.title)}</span>}
         {(work.unreleased || work.is_extra) && (
-          <span className="company-work-flag">{work.unreleased ? t.unreleased : t.extra}</span>
+          <span className={`company-work-flag${work.is_extra && !work.unreleased ? ' company-work-flag--extra' : ''}`}>
+            {work.unreleased ? t.unreleased : t.extra}
+          </span>
         )}
         <CreatorWorkState state={state} progress={progress} strings={tc} />
+        <span className="company-work-title-overlay" aria-hidden="true">
+          {seasonParentTitle ? (
+            <>
+              <span className="company-work-title-parent">{seasonParentTitle}</span>
+              {seasonDisplayName && <span>{seasonDisplayName}</span>}
+              {seasonLabel && <span className="company-work-season-label">{seasonLabel}</span>}
+            </>
+          ) : work.title}
+        </span>
       </div>
-      <span className="company-work-title">{work.title}</span>
-      <span className="company-work-meta">{[work.year, typeLabel].filter(Boolean).join(' · ')}</span>
+      {releaseDate && <span className="company-work-meta">{releaseDate}</span>}
     </a>
   );
 }
 
-export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadingMore, t, tc, types }: Props) {
+export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadingMore, t, tc }: Props) {
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [view, setView] = useCreatorWorksView('company');
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const typeLabels = types as Record<string, string>;
 
   const shown = useMemo(() => {
     const stateOf = (id: string): WorkLibraryState => (snapshot ? workLibraryState(snapshot.libraryById.get(id)) : 'missing');
     return filterAndSortWorks(works, filters, stateOf);
   }, [works, filters, snapshot]);
-  const typeOptions = useMemo(() => availableTypes(works), [works]);
   const showRoleFilter = useMemo(() => hasRoleSplit(works), [works]);
   const showExtrasToggle = useMemo(() => hasExtras(works), [works]);
-  const showMasterpieceToggle = useMemo(() => hasMasterpieces(works), [works]);
 
   const stateAndProgress = (id: string) => {
     const row = snapshot?.libraryById.get(id);
@@ -121,71 +169,66 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
   const datedTimelineItems = useTimelineYears(timelineItems);
 
   return (
-    <section className="company-works" aria-labelledby="company-works-heading">
+    <section className="company-works" aria-label={t.works}>
       <div className="media-section-header-row company-works-header">
-        <p className="section-label" id="company-works-heading">
-          {t.works} <span className="company-works-count">{interpolate(t.works_count, { count: shown.length })}</span>
-        </p>
+        <div className="company-filters">
+          <button
+            type="button"
+            className={`company-filter-toggle${filters.onlyMissing ? ' active' : ''}`}
+            aria-label={t.only_missing}
+            aria-pressed={filters.onlyMissing}
+            title={t.only_missing}
+            onClick={() => update({ onlyMissing: !filters.onlyMissing })}
+          >
+            <Eye size={16} aria-hidden="true" />
+          </button>
+          {showExtrasToggle && (
+            <button
+              type="button"
+              className={`company-filter-toggle${filters.includeExtras ? ' active' : ''}`}
+              aria-label={t.include_extras}
+              aria-pressed={filters.includeExtras}
+              title={t.include_extras}
+              onClick={() => update({ includeExtras: !filters.includeExtras })}
+            >
+              <Boxes size={16} aria-hidden="true" />
+            </button>
+          )}
+        </div>
         <div className="media-section-header-line"></div>
         {(showRoleFilter || view === 'grid') && (
           <div className="company-header-controls">
             {showRoleFilter && (
-              <select
-                className="input-dark company-select company-select--compact"
-                aria-label={t.filter_role}
-                title={t.filter_role}
-                value={filters.role}
-                onChange={e => update({ role: e.target.value as CompanyRoleFilter })}
-              >
-                <option value="all">{t.role_all}</option>
-                <option value="developed">{t.role_developed}</option>
-                <option value="published">{t.role_published}</option>
-              </select>
+              <label className="company-sort-control">
+                <span>{t.filter_role}</span>
+                <select
+                  className="company-sort-select"
+                  value={filters.role}
+                  onChange={e => update({ role: e.target.value as CompanyRoleFilter })}
+                >
+                  <option value="all">{t.role_all}</option>
+                  <option value="developed">{t.role_developed}</option>
+                  <option value="published">{t.role_published}</option>
+                </select>
+              </label>
             )}
             {view === 'grid' && (
-              <select
-                className="input-dark company-select company-select--compact"
-                aria-label={t.sort}
-                title={t.sort}
-                value={filters.sort}
-                onChange={e => update({ sort: e.target.value as CompanyWorkSort })}
-              >
-                <option value="year">{t.sort_year}</option>
-                <option value="title">{t.sort_title}</option>
-                <option value="status">{t.sort_status}</option>
-              </select>
+              <label className="company-sort-control">
+                <span>{t.sort}</span>
+                <select
+                  className="company-sort-select"
+                  value={filters.sort}
+                  onChange={e => update({ sort: e.target.value as CompanyWorkSort })}
+                >
+                  <option value="year">{t.sort_year}</option>
+                  <option value="title">{t.sort_title}</option>
+                  <option value="status">{t.sort_status}</option>
+                </select>
+              </label>
             )}
           </div>
         )}
         <CreatorViewSwitch view={view} onChange={setView} strings={tc} />
-      </div>
-
-      <div className="company-filters">
-        {typeOptions.length > 1 && (
-          <label className="company-filter">
-            <span>{t.filter_type}</span>
-            <select className="input-dark company-select" value={filters.type} onChange={e => update({ type: e.target.value })}>
-              <option value="all">{t.type_all}</option>
-              {typeOptions.map(type => <option key={type} value={type}>{typeLabels[type] ?? type}</option>)}
-            </select>
-          </label>
-        )}
-        <label className="company-filter company-filter--check">
-          <input type="checkbox" checked={filters.onlyMissing} onChange={e => update({ onlyMissing: e.target.checked })} />
-          <span>{t.only_missing}</span>
-        </label>
-        {showExtrasToggle && (
-          <label className="company-filter company-filter--check">
-            <input type="checkbox" checked={filters.includeExtras} onChange={e => update({ includeExtras: e.target.checked })} />
-            <span>{t.include_extras}</span>
-          </label>
-        )}
-        {showMasterpieceToggle && (
-          <label className="company-filter company-filter--check">
-            <input type="checkbox" checked={filters.masterpiecesOnly} onChange={e => update({ masterpiecesOnly: e.target.checked })} />
-            <span>{tc.masterpieces_only}</span>
-          </label>
-        )}
       </div>
 
       {shown.length === 0 && !loadingMore && (
@@ -205,7 +248,6 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
                     progress={progress}
                     t={t}
                     tc={tc}
-                    typeLabel={typeLabels[work.media_type] ?? work.media_type}
                   />
                 );
               })}

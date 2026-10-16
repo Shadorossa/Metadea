@@ -56,11 +56,26 @@ pub(super) fn parse_studio(provider_id: &str, body: &Value) -> Option<StudioPage
             let kind = media_type(node);
             let title = node["title"]["english"].as_str().or_else(|| node["title"]["romaji"].as_str())?;
             let role = if edge["isMainStudio"].as_bool().unwrap_or(false) { "studio" } else { "producer" };
+            let start_date = &node["startDate"];
+            let release_date = match (
+                start_date["year"].as_i64(),
+                start_date["month"].as_u64(),
+                start_date["day"].as_u64(),
+            ) {
+                (Some(year), Some(month), Some(day))
+                    if (1..=12).contains(&month) && (1..=31).contains(&day) =>
+                {
+                    Some(format!("{year:04}-{month:02}-{day:02}"))
+                }
+                _ => None,
+            };
             Some(CompanyWork {
                 external_id: format!("{kind}:{id}"),
                 title: title.to_string(),
+                parent_title: None,
                 cover_url: node["coverImage"]["large"].as_str().map(str::to_string),
-                year: node["startDate"]["year"].as_i64().map(|y| y as i32),
+                year: start_date["year"].as_i64().map(|y| y as i32),
+                release_date,
                 media_type: kind.to_string(),
                 roles: vec![role.to_string()],
                 is_extra: false,

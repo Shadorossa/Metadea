@@ -65,7 +65,7 @@ function renderHeader(page: CompanyPageData, withSnapshot: LibrarySnapshot | nul
 function renderWorks(withSnapshot: LibrarySnapshot | null, works = PAGE.works) {
   return renderToStaticMarkup(createElement(CompanyWorks, {
     works, filters: DEFAULT_COMPANY_WORK_FILTERS, onFiltersChange: () => {}, snapshot: withSnapshot,
-    loadingMore: false, t: en.company_page, tc, types: en.search.types,
+    loadingMore: false, t: en.company_page, tc,
   }));
 }
 

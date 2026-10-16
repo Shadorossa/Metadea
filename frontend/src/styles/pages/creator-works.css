@@ -154,7 +154,7 @@
 .creator-works-pane > .career-timeline > .career-timeline-scroller {
   display: flex;
   flex: 1 1 auto;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .creator-works-pane > .career-timeline .career-timeline-track {

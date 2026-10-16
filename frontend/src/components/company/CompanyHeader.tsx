@@ -43,51 +43,66 @@ export function CompanyHeader({ page, t, children }: Props) {
     <header className="company-header">
       {/* Logos are mostly transparent PNGs: shown bare, no tile. The
           initials tile is only the fallback. */}
-      {logo
-        ? <img className="company-logo-img" src={logo} alt={interpolate(t.logo_alt, { name: page.name })} onError={() => setLogoFailed(true)} />
-        : <div className="company-logo" aria-hidden="true"><span className="company-logo-initials">{companyInitials(page.name)}</span></div>}
+      <div className="company-brand-column">
+        {logo
+          ? <img className="company-logo-img" src={logo} alt={interpolate(t.logo_alt, { name: page.name })} onError={() => setLogoFailed(true)} />
+          : <div className="company-logo" aria-hidden="true"><span className="company-logo-initials">{companyInitials(page.name)}</span></div>}
+      </div>
 
       <div className="company-header-body">
-        <h1 className="media-title-main company-name">{page.name}</h1>
-        {page.roles.length > 0 && (
-          <div className="company-roles">
-            {page.roles.map(role => <span key={role} className="company-role-badge">{t.roles[role]}</span>)}
-          </div>
-        )}
-        {meta.length > 0 && <p className="company-meta">{meta.join(' · ')}</p>}
-
-        {description && (
-          <div className="company-description">
-            <p className={`company-description-text${collapsible && !expanded ? ' company-description-text--collapsed' : ''}`}>
-              {description}
-            </p>
-            {collapsible && (
-              <button type="button" className="company-description-toggle" aria-expanded={expanded} onClick={() => setExpanded(v => !v)}>
-                {expanded ? t.show_less : t.show_more}
-              </button>
+        <div className="company-title-row">
+          <h1 className="media-title-main company-name">{page.name}</h1>
+          {page.roles.length > 0 && (
+            <div className="company-roles">
+              {page.roles.map(role => <span key={role} className="company-role-badge">{t.roles[role]}</span>)}
+            </div>
+          )}
+          {sourceLink && (
+            <div className="company-source-link">
+              <MediaSourceLink source={sourceLink.source} sourceUrl={sourceLink.url} />
+            </div>
+          )}
+        </div>
+        {(meta.length > 0 || websites.length > 0) && (
+          <div className="company-meta-row">
+            {meta.length > 0 && <p className="company-meta">{meta.join(' · ')}</p>}
+            {websites.length > 0 && (
+              <div className="company-links">
+                {websites.map(url => (
+                  <a
+                    key={url}
+                    href={url}
+                    className="company-link"
+                    title={t.website}
+                    onClick={event => { event.preventDefault(); openExternalUrl(url).catch(console.error); }}
+                  >
+                    <Globe size={13} aria-hidden="true" />
+                    {websiteLabel(url)}
+                  </a>
+                ))}
+              </div>
             )}
           </div>
         )}
 
-        {(websites.length > 0 || sourceLink) && (
-          <div className="company-links">
-            {sourceLink && <MediaSourceLink source={sourceLink.source} sourceUrl={sourceLink.url} />}
-            {websites.map(url => (
-              <a
-                key={url}
-                href={url}
-                className="company-link"
-                title={t.website}
-                onClick={event => { event.preventDefault(); openExternalUrl(url).catch(console.error); }}
-              >
-                <Globe size={13} aria-hidden="true" />
-                {websiteLabel(url)}
-              </a>
-            ))}
+        {(description || children) && (
+          <div className="company-description-row">
+            {description && (
+              <div className="company-description">
+                <p className={`company-description-text${collapsible && !expanded ? ' company-description-text--collapsed' : ''}`}>
+                  {description}
+                </p>
+                {collapsible && (
+                  <button type="button" className="company-description-toggle" aria-expanded={expanded} onClick={() => setExpanded(v => !v)}>
+                    {expanded ? t.show_less : t.show_more}
+                  </button>
+                )}
+              </div>
+            )}
+            {children && <div className="company-completion">{children}</div>}
           </div>
         )}
 
-        {children}
       </div>
     </header>
   );

@@ -55,6 +55,10 @@ fn year_of_unix(ts: i64) -> Option<i32> {
     chrono::DateTime::from_timestamp(ts, 0).map(|d| d.year())
 }
 
+fn date_of_unix(ts: i64) -> Option<String> {
+    chrono::DateTime::from_timestamp(ts, 0).map(|d| d.format("%Y-%m-%d").to_string())
+}
+
 fn ids_of(value: &Value) -> Vec<u64> {
     value.as_array().map(|a| a.iter().filter_map(Value::as_u64).collect()).unwrap_or_default()
 }
@@ -101,7 +105,7 @@ pub(super) fn games_multiquery(batch: &[PendingGame]) -> String {
         .map(|(i, chunk)| {
             let ids = chunk.iter().map(|(id, _, _)| id.to_string()).collect::<Vec<_>>().join(",");
             format!(
-                "query games \"g{i}\" {{ fields name,cover.image_id,first_release_date,category,game_type,status,version_parent,version_title,total_rating,rating,genres.id; where id = ({ids}); limit {IDS_PER_QUERY}; }};"
+                "query games \"g{i}\" {{ fields name,cover.image_id,first_release_date,category,game_type,status,parent_game.name,version_parent,version_title,total_rating,rating,genres.id; where id = ({ids}); limit {IDS_PER_QUERY}; }};"
             )
         })
         .collect::<Vec<_>>()
@@ -134,8 +138,10 @@ pub(super) fn parse_games(response: &Value, batch: &[PendingGame], now_unix: i64
             works.push(CompanyWork {
                 external_id: format!("{}:{id}", if is_vn { "vnovel" } else { "game" }),
                 title: title.to_string(),
+                parent_title: game["parent_game"]["name"].as_str().map(str::to_string),
                 cover_url: game["cover"]["image_id"].as_str().map(|c| format!("{IGDB_IMAGE_COVER_BIG}/{c}.jpg")),
                 year: release.and_then(year_of_unix),
+                release_date: release.and_then(date_of_unix),
                 media_type: if is_vn { "vnovel".into() } else { "game".into() },
                 roles,
                 is_extra: verdict == PlainSearchVerdict::Extra,
@@ -145,7 +151,7 @@ pub(super) fn parse_games(response: &Value, batch: &[PendingGame], now_unix: i64
                 } || status.is_some_and(|s| NEVER_RELEASED_STATUSES.contains(&s)),
                 score: score_from_100(game["total_rating"].as_f64().or_else(|| game["rating"].as_f64())),
                 is_adult: false,
-                format: None,
+                format: (game["game_type"].as_u64() == Some(7)).then(|| "SEASON".to_string()),
             });
         }
     }

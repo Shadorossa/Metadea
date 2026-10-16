@@ -87,7 +87,6 @@ export default function CompanyPage({ i18n: staticStrings }: Props) {
         loadingMore={state.loadingMore}
         t={t}
         tc={i18n.creator_completion}
-        types={i18n.types}
       />
     </div>
   );

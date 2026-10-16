@@ -74,9 +74,11 @@ pub(crate) fn write_cached(conn: &Connection, provider_id: &str, cached: &Cached
 }
 
 fn payload(cached: CachedCompany, fetched_at: i64, now: i64) -> CompanyPagePayload {
+    let missing_igdb_release_dates = cached.page.source == "igdb"
+        && cached.page.works.iter().any(|work| work.year.is_some() && work.release_date.is_none());
     CompanyPagePayload {
         complete: cached.cursor.is_done(),
-        stale: !cache_is_fresh(fetched_at, now),
+        stale: !cache_is_fresh(fetched_at, now) || missing_igdb_release_dates,
         page: cached.page,
         fetched_at,
     }

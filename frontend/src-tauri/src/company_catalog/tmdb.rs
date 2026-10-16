@@ -121,8 +121,10 @@ pub(super) fn parse_discover(body: &Value, media_type: &str, role: &str, today: 
             Some(CompanyWork {
                 external_id: format!("{media_type}:{id}"),
                 title: title.to_string(),
+                parent_title: None,
                 cover_url: row["poster_path"].as_str().map(|p| format!("{POSTER_BASE}{p}")),
                 year: date.get(..4).and_then(|y| y.parse().ok()),
+                release_date: (!date.is_empty()).then(|| date.to_string()),
                 media_type: media_type.to_string(),
                 roles: vec![role.to_string()],
                 is_extra: false,
