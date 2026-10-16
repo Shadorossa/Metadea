@@ -28,18 +28,32 @@ interface ChipProps {
   /** `span` inside cards that are themselves links (no button in an <a>). */
   element?: 'button' | 'span';
   className?: string;
+  /** Eye control that reveals its label on hover/focus. */
+  edgeReveal?: boolean;
 }
 
-export function SpoilerChip({ onReveal, label, element = 'button', className }: ChipProps) {
+export function SpoilerChip({ onReveal, label, element = 'button', className, edgeReveal = false }: ChipProps) {
   const t = getT().spoilers;
   const content = (
     <>
-      <span className="spoiler-shield-chip-label">{label ?? t.chip}</span>
-      <span aria-hidden="true"> · </span>
-      <span className="spoiler-shield-chip-action">{t.reveal}</span>
+      {edgeReveal ? (
+        <>
+          <svg className="spoiler-shield-chip-eye" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span className="spoiler-shield-chip-label">{label ?? t.chip}</span>
+        </>
+      ) : (
+        <>
+          <span className="spoiler-shield-chip-label">{label ?? t.chip}</span>
+          <span aria-hidden="true"> · </span>
+          <span className="spoiler-shield-chip-action">{t.reveal}</span>
+        </>
+      )}
     </>
   );
-  const classes = `spoiler-shield-chip${className ? ` ${className}` : ''}`;
+  const classes = `spoiler-shield-chip${edgeReveal ? ' spoiler-shield-chip--edge-reveal' : ''}${className ? ` ${className}` : ''}`;
   if (element === 'span') {
     return (
       <span

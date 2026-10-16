@@ -148,7 +148,15 @@ export function HomeRail() {
       const catalogMap = new Map(catalog.map(row => [row.external_id, row]));
       const entries = new Map(items.map(item => [item.external_id, item]));
       // Filler map: loaded with the home data (library-data-cache).
-      const picked = pickLastWatched(sources, (id, finished) => {
+      const notCompleted = <T extends { external_id: string }>(rows: T[]) =>
+        rows.filter(item => entries.get(item.external_id)?.status !== 'completed');
+      const resumableSources = {
+        ...sources,
+        resume: notCompleted(sources.resume),
+        history: notCompleted(sources.history),
+        frames: notCompleted(sources.frames),
+      };
+      const picked = pickLastWatched(resumableSources, (id, finished) => {
         const info = getLoadedFillerInfo(id);
         const total = catalogMap.get(id)?.total_count;
         return skipsFiller(entries.get(id), info, total)

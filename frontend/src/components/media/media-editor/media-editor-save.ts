@@ -5,6 +5,7 @@ import { saveLibraryEntry, writeMonthlyHistory, syncFavorites } from '../../../l
 import type { LibraryEntry } from '../../../lib/tauri';
 import { createDefaultLog, type LogState } from '../../../lib/media/editor/library-log-state';
 import type { SagaEntry } from '../../../lib/anilist/saga';
+import { clampDateMax, localTodayDate } from './media-editor-helpers';
 
 export interface SaveMediaEditorLogsParams {
   logs: Record<string, LogState>;
@@ -23,7 +24,11 @@ export async function saveMediaEditorLogs({
   // Editing a version's own page IS the intent to link it to its base -
   // don't require the user to have clicked through the Log tab switcher
   // for that link to actually get persisted.
-  let logsToSave = logs;
+  const today = localTodayDate();
+  let logsToSave = Object.fromEntries(Object.entries(logs).map(([id, log]) => [
+    id,
+    { ...log, finishedAt: clampDateMax(log.finishedAt, today) },
+  ]));
   if (externalId !== baseId) {
     const baseLog = logsToSave[baseId] || createDefaultLog();
     const linkedIds = baseLog.selectedVersion ? baseLog.selectedVersion.split(',') : [];

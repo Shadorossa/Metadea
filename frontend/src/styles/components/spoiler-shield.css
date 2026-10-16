@@ -66,6 +66,47 @@ img.spoiler-blur,
   font-size: 0.66rem;
 }
 
+/* Relation cards keep the spoiler control attached to the right edge. The
+   eye stays compact until the control is hovered or receives keyboard focus. */
+.spoiler-shield-chip--edge-reveal.spoiler-shield-chip--edge {
+  top: 50%;
+  right: 0;
+  left: auto;
+  transform: translateY(-50%);
+  box-sizing: border-box;
+  justify-content: flex-start;
+  width: 2.15rem;
+  height: 2.15rem;
+  max-width: calc(100% - 0.5rem);
+  padding: 0 0.55rem;
+  overflow: hidden;
+  border-radius: 999px 0 0 999px;
+  font-size: 0.68rem;
+  transition: width 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.spoiler-shield-chip-eye {
+  flex: 0 0 15px;
+}
+
+.spoiler-shield-chip--edge-reveal .spoiler-shield-chip-label {
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 0.2s ease, opacity 0.15s ease;
+}
+
+.spoiler-shield-chip--edge-reveal:hover,
+.spoiler-shield-chip--edge-reveal:focus-visible {
+  width: 5.4rem;
+}
+
+.spoiler-shield-chip--edge-reveal:hover .spoiler-shield-chip-label,
+.spoiler-shield-chip--edge-reveal:focus-visible .spoiler-shield-chip-label {
+  max-width: 3.2rem;
+  margin-left: 0.35rem;
+  opacity: 1;
+}
+
 /* Episode cards: bottom-right and square like the card itself — the top-right
    corner holds the "#N" ribbon. */
 .spoiler-shield-chip--episode {

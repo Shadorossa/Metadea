@@ -2,7 +2,7 @@ import React from 'react';
 import type { Translations } from '../../../i18n/index';
 import { type LogState, type EntryAction } from '../../../lib/media/editor/library-log-state';
 import { HeaderField } from './MediaEditorFields';
-import { MIN_DATE_YEAR, clampDateMinYear, clampNotBefore } from './media-editor-helpers';
+import { MIN_DATE_YEAR, clampDateMax, clampDateMinYear, clampNotBefore, localTodayDate } from './media-editor-helpers';
 
 export function MediaEditorDateFields({
   te, isMovie, isGeneralTab, isUpcoming, startedAt, finishedAt,
@@ -20,12 +20,14 @@ export function MediaEditorDateFields({
   totalCount2: number | null | undefined;
   dispatchEntry: (action: EntryAction) => void;
 }) {
+  const today = localTodayDate();
   return (
     <>
       {isMovie ? (
       <HeaderField label={te.view_date}>
         <input type="date" className="me-header-field-input me-header-field-input--date"
           min={`${MIN_DATE_YEAR}-01-01`}
+          max={today}
           value={startedAt || finishedAt}
           onChange={e => {
             const val = e.target.value;
@@ -38,7 +40,7 @@ export function MediaEditorDateFields({
             dispatchEntry({ type: 'UPDATE_LOG', updates });
           }}
           onBlur={e => {
-            const val = clampDateMinYear(e.target.value);
+            const val = clampDateMax(clampDateMinYear(e.target.value), today);
             if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: val, finishedAt: val } });
           }} />
       </HeaderField>
@@ -62,6 +64,7 @@ export function MediaEditorDateFields({
         <HeaderField label={te.ended}>
           <input type="date" className="me-header-field-input me-header-field-input--date"
             min={startedAt || `${MIN_DATE_YEAR}-01-01`}
+            max={today}
             disabled={isGeneralTab}
             value={isGeneralTab ? generalEndDate : finishedAt}
             onChange={e => {
@@ -75,7 +78,7 @@ export function MediaEditorDateFields({
               dispatchEntry({ type: 'UPDATE_LOG', updates });
             }}
             onBlur={e => {
-              const val = clampNotBefore(clampDateMinYear(e.target.value), startedAt);
+              const val = clampDateMax(clampNotBefore(clampDateMinYear(e.target.value), startedAt), today);
               if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { finishedAt: val } });
             }} />
         </HeaderField>

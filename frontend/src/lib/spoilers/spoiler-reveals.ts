@@ -1,8 +1,8 @@
 // What the user chose to see despite the shield.
 //
 // - A single item ("Spoiler · Reveal" on one episode, arc, stat line...) is
-//   remembered for the session only: sessionStorage, so it survives page
-//   navigation but not an app restart.
+//   remembered in memory only, so it survives client-side navigation but is
+//   hidden again after a full page reload.
 // - A whole franchise ("I don't care about spoilers for this saga") is
 //   remembered for good: localStorage, as the franchise's member ids. Any
 //   member matching counts, so a season added to the chain later is still
@@ -19,8 +19,7 @@ import { createExternalStore, type ExternalStore } from '../shared/state/externa
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
-// Upper bounds so a long-lived storage entry can't grow without limit.
-const MAX_SESSION_ITEMS = 2000;
+// Upper bound so a long-lived storage entry can't grow without limit.
 const MAX_FRANCHISE_IDS = 5000;
 
 function readIdList(storage: StorageLike | null, key: string): string[] {
@@ -56,9 +55,9 @@ export interface SpoilerReveals {
   revealFranchise: (memberIds: Iterable<string>) => void;
 }
 
-export function createSpoilerReveals(session: StorageLike | null, local: StorageLike | null): SpoilerReveals {
+export function createSpoilerReveals(local: StorageLike | null): SpoilerReveals {
   const store = createExternalStore<SpoilerRevealState>({
-    items: new Set(readIdList(session, STORAGE_KEYS.spoilerSessionReveals)),
+    items: new Set(),
     franchiseIds: new Set(readIdList(local, STORAGE_KEYS.spoilerFranchiseReveals)),
   });
 
@@ -69,7 +68,6 @@ export function createSpoilerReveals(session: StorageLike | null, local: Storage
       const current = store.get();
       if (current.items.has(key)) return;
       const items = new Set(current.items).add(key);
-      writeIdList(session, STORAGE_KEYS.spoilerSessionReveals, [...items], MAX_SESSION_ITEMS);
       store.set({ ...current, items });
     },
     isFranchiseRevealed: memberIds => {
@@ -101,7 +99,7 @@ let singleton: SpoilerReveals | null = null;
 
 /** The app-wide instance (module state, shared by every island on the page). */
 export function getSpoilerReveals(): SpoilerReveals {
-  if (!singleton) singleton = createSpoilerReveals(browserStorage('session'), browserStorage('local'));
+  if (!singleton) singleton = createSpoilerReveals(browserStorage('local'));
   return singleton;
 }
 

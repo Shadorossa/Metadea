@@ -100,14 +100,12 @@ export const STORAGE_KEYS = {
   // `:comic` / `:epub`).
   readerEink: 'metadea_reader_eink',
   // Spoiler shield (lib/spoilers/): the Settings > Preferences toggles
-  // (missing = on / normal / covers off), the franchises the user revealed
-  // for good (member ids, localStorage) and the single items revealed for
-  // this session only (sessionStorage).
+  // (missing = on / normal / covers off) and franchises the user revealed
+  // for good (member ids, localStorage). Single-item reveals are memory-only.
   spoilerShieldEnabled: 'metadea_spoiler_shield_enabled',
   spoilerShieldLevel: 'metadea_spoiler_shield_level',
   spoilerShieldHideCovers: 'metadea_spoiler_shield_hide_covers',
   spoilerFranchiseReveals: 'metadea_spoiler_franchise_reveals',
-  spoilerSessionReveals: 'metadea_spoiler_session_reveals',
   // Built-in player (lib/player/player-settings.ts): seek-bar hover thumbnails
   // on/off, the smart track selection preferences (one JSON blob) and the
   // per-series manual track choices (lib/player/track-memory.ts).

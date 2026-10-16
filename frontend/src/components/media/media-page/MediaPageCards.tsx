@@ -99,7 +99,7 @@ export const RelationCard = memo(function RelationCard({ relation, changeKind, o
         </div>
       </div>
       {onRevealCover && cover && (
-        <SpoilerChip onReveal={onRevealCover} element={relation.url ? 'span' : 'button'} className="spoiler-shield-chip--corner" />
+        <SpoilerChip onReveal={onRevealCover} element={relation.url ? 'span' : 'button'} edgeReveal className="spoiler-shield-chip--edge" />
       )}
     </Wrapper>
   );

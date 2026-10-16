@@ -42,6 +42,16 @@ export function clampDateMinYear(value: string): string {
   return Number(year) < MIN_DATE_YEAR ? `${MIN_DATE_YEAR}-${month}-${day}` : value;
 }
 
+/** YYYY-MM-DD in the user's local timezone, suitable for native date inputs. */
+export function localTodayDate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+export function clampDateMax(value: string, ceiling: string): string {
+  return value && ceiling && value > ceiling ? ceiling : value;
+}
+
 // ISO YYYY-MM-DD strings compare correctly lexicographically.
 export function clampNotBefore(value: string, floor: string): string {
   return value && floor && value < floor ? floor : value;

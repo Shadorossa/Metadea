@@ -26,7 +26,7 @@ import { loadSagaChain } from '../../lib/media/saga/saga-loader';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import { stripSeasonSuffix, seriesSeasonExternalId } from '../../lib/media/mappers/mapper-utils';
 import { getCoverPreference } from '../../lib/media/cover-preferences';
-import { getProgressConfig } from './media-editor/media-editor-helpers';
+import { clampDateMax, getProgressConfig, localTodayDate } from './media-editor/media-editor-helpers';
 import { HeaderField, HoursField, NumberField } from './media-editor/MediaEditorFields';
 import {
   fetchMonthMediaInfo, fetchCoverCandidates, fetchAnimeSeasonChainLogs,
@@ -342,10 +342,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   const handleSave = useCallback(async () => {
     dispatchUi({ type: 'SET_SAVING', value: true });
     try {
+      const safeActiveLog = {
+        ...activeLog,
+        finishedAt: clampDateMax(activeLog.finishedAt, localTodayDate()),
+      };
       const primarySaved = await saveMediaEditorLogs({
         logs: entry.logs,
         monthlyHistory: entry.monthlyHistory,
-        activeLog,
+        activeLog: safeActiveLog,
         externalId,
         baseId,
         type: data.type,
@@ -372,7 +376,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           progress:        activeLog.progress,
           progressVolumes: activeLog.progressCount2,
           startedAt:       activeLog.startedAt,
-          finishedAt:      activeLog.finishedAt,
+          finishedAt:      safeActiveLog.finishedAt,
           notes:           activeLog.notes,
           repeat:          activeLog.reconsumptionCount,
           reconsuming:     activeLog.reconsuming,
