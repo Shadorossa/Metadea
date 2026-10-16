@@ -137,7 +137,7 @@ export interface ModalShellProps {
   stopPanelPropagation?: boolean;
 }
 
-let previousBodyOverflow = '';
+let previousRootOverflowY = '';
 
 export function ModalShell({
   open = true,
@@ -172,15 +172,15 @@ export function ModalShell({
     const token = tokenRef.current;
     modalStack.push(token);
     if (modalStack.size === 1) {
-      previousBodyOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
+      previousRootOverflowY = document.documentElement.style.overflowY;
+      document.documentElement.style.overflowY = 'hidden';
     }
     const previouslyFocused = document.activeElement;
     const panel = panelRef.current;
-    if (panel) (getFocusable<HTMLElement>(panel)[0] ?? panel).focus();
+    if (panel) (getFocusable<HTMLElement>(panel)[0] ?? panel).focus({ preventScroll: true });
     return () => {
       modalStack.remove(token);
-      if (modalStack.size === 0) document.body.style.overflow = previousBodyOverflow;
+      if (modalStack.size === 0) document.documentElement.style.overflowY = previousRootOverflowY;
       if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) previouslyFocused.focus();
     };
   }, [live]);
