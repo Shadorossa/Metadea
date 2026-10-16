@@ -1291,10 +1291,8 @@
 }
 
 /* ── Right rail: "Continue watching" + "Airing today" (HomeRail.tsx) ──────
-   .home-content-grid keeps its own width (max 1560px); the rail only takes
-   the gutter to its right when the viewport has one, sticky under the
-   navbar. Narrower viewports stack it below the grid as two cards, so the
-   main column and the anniversary/"Recent activity" column never shrink. */
+   On wide screens it expands into the space beside the main grid instead
+   of staying a narrow 300px rail. Narrower viewports stack it below. */
 .home-layout {
   display: flex;
   flex-direction: column;
@@ -1328,7 +1326,9 @@
   }
 
   .home-rail {
-    flex: 0 0 clamp(260px, calc(100vw - 1560px - 5rem), 300px);
+    flex: 1 1 0;
+    min-width: 280px;
+    max-width: none;
     grid-template-columns: 1fr;
     margin-top: clamp(0.5rem, 1vw, 1rem);
     position: sticky;

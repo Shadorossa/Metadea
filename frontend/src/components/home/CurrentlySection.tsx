@@ -145,8 +145,8 @@ export function CurrentlySection() {
   }, []);
 
   // Quick +/- shortcut on each cover so bumping progress doesn't require
-  // opening the profile editor — not offered for games (group.type ===
-  // 'game'), which don't track a chapter/episode-style progress number.
+  // opening the profile editor — not offered for games or visual novels,
+  // which don't track a chapter/episode-style progress number.
   // Updates local state immediately, then persists + AniList-syncs in the
   // background (same convention as LocalMediaDetailPanel's markWatched).
   // `previous` is the groups snapshot from before the optimistic update: if
@@ -281,7 +281,7 @@ export function CurrentlySection() {
                       />
                     : <div className="home-currently-cover home-currently-cover--empty" />}
                 </a>
-                {live && group.type !== 'game' && (
+                {live && group.type !== 'game' && group.type !== 'vnovel' && (
                   <div className="home-currently-progress">
                     <button
                       type="button"
