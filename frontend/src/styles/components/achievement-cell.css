@@ -1,0 +1,116 @@
+.local-game-detail-achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 52px);
+  gap: 0.5rem;
+}
+
+.local-game-detail-ach-cell {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  overflow: visible;
+  flex-shrink: 0;
+  filter: grayscale(1) brightness(0.5);
+  transition: filter 0.15s;
+  cursor: default;
+}
+
+.local-game-detail-ach-cell.achieved,
+.local-game-detail-ach-cell:hover {
+  filter: none;
+}
+
+.local-game-detail-ach-cell:hover {
+  z-index: 10;
+}
+
+.local-game-detail-ach-cell.legacy,
+.local-game-detail-ach-cell.legacy:hover {
+  opacity: 0.58;
+  filter: grayscale(0.35) brightness(0.78);
+}
+
+.local-game-detail-ach-spoiler-label {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  z-index: 1;
+  padding: 2px 3px;
+  color: var(--accent);
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  font-size: 0.48rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.local-game-detail-ach-img {
+  display: block;
+  width: 52px;
+  height: 52px;
+  max-width: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.local-game-detail-ach-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+}
+
+.local-game-detail-ach-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 180px;
+  max-width: 260px;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.local-game-detail-ach-tooltip--portal {
+  position: fixed;
+  z-index: 1000;
+  transform: translateY(-100%);
+}
+
+.local-game-detail-ach-tooltip-name {
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.local-game-detail-ach-tooltip-desc {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.local-game-detail-ach-tooltip-date {
+  margin-top: 0.15rem;
+  color: var(--accent);
+  font-size: 0.68rem;
+}
+
+.local-game-detail-ach-tooltip-spoiler {
+  align-self: flex-start;
+  padding: 0.1rem 0.3rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

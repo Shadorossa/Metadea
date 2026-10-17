@@ -3,7 +3,7 @@ import { useHydrated } from '../shared/hooks/useHydrated';
 import type { Translations } from '../../i18n/index';
 import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'motion/react';
-import { deleteLibraryEntry, type LocalGame, type CatalogEntryLike } from '../../lib/tauri';
+import { deleteLibraryEntry, getMediaRelationsForIds, getSagaNames, type LocalGame, type CatalogEntryLike, type DbMediaRelation } from '../../lib/tauri';
 import { beginLocalVisit, endLocalVisit } from '../../lib/local/local-read-cache';
 import { runMetadataFetch, cancelMetadataFetch, outcomeNeedsAttention, selectPendingMetadataGames, type MetadataFetchOutcome } from '../../lib/local/metadata-fetch';
 import { showToast } from '../../lib/dom/toast';
@@ -34,7 +34,9 @@ import { useShortcuts } from '../shared/hooks/useShortcuts';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameDetailPanel }  from './details/GameDetailPanel';
-import { collapseSteamLegacyPairs, findSteamLegacyVariant } from '../../lib/local/steam-legacy';
+import { collapseSteamLegacyPairs, findSteamLegacyVariant, steamLegacyVariantLabel } from '../../lib/local/steam-legacy';
+import { reconstructSagaOrder } from '../../lib/media/saga/saga-grouping';
+import { compareByReleaseDate } from '../../lib/media/mappers/mapper-utils';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { DetailPanelShell } from './details/DetailPanelShell';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
@@ -304,6 +306,53 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
     return map;
   }, [mediaRaw, pickedNames]);
 
+  // Load saga labels and the direct prequel/sequel edges for catalog works
+  // represented in the scanned game list. The local library bundle only
+  // includes edges touching manually tracked works, while Steam can expose
+  // linked games that are not in the user's library list yet.
+  const linkedGameIds = React.useMemo(() => Array.from(new Set(
+    (Array.isArray(games) ? games : []).flatMap(game =>
+      candidateExternalIdsForGame(game, pathCache).filter(id => catalogMapById.has(id)),
+    ),
+  )), [games, pathCache, catalogMapById]);
+  const [gameSagaData, setGameSagaData] = React.useState<{
+    idsKey: string;
+    names: Record<string, string>;
+    relations: DbMediaRelation[];
+  }>({ idsKey: '', names: {}, relations: [] });
+  React.useEffect(() => {
+    let active = true;
+    const idsKey = linkedGameIds.join('\u0000');
+    if (!linkedGameIds.length) {
+      setGameSagaData({ idsKey, names: {}, relations: [] });
+      return () => { active = false; };
+    }
+    Promise.all([
+      getSagaNames(linkedGameIds).catch(() => ({} as Record<string, string>)),
+      getMediaRelationsForIds(linkedGameIds, ['RECOMMENDATION']).catch(() => [] as DbMediaRelation[]),
+    ]).then(([names, relations]) => {
+      if (active) setGameSagaData({ idsKey, names, relations });
+    });
+    return () => { active = false; };
+  }, [linkedGameIds]);
+  const isSteamRemakePair = React.useCallback((current: LocalGame, secondary: LocalGame) => {
+    const currentIds = candidateExternalIdsForGame(current, pathCache).filter(id => catalogMapById.has(id));
+    const secondaryIds = candidateExternalIdsForGame(secondary, pathCache).filter(id => catalogMapById.has(id));
+    if ([...currentIds, ...secondaryIds].some(id => catalogMapById.get(id)?.format?.toUpperCase() === 'REMAKE')) return true;
+
+    const ids = new Set(currentIds);
+    const otherIds = new Set(secondaryIds);
+    const currentKey = linkedGameIds.join('\u0000');
+    const relations = gameSagaData.idsKey === currentKey
+      ? [...(mediaRaw?.relations ?? []), ...gameSagaData.relations]
+      : mediaRaw?.relations ?? [];
+    return relations.some(relation => {
+      if (relation.relation_type.toUpperCase() !== 'REMAKE' || !relation.media_external_id) return false;
+      return (ids.has(relation.media_external_id) && otherIds.has(relation.related_media_external_id)) ||
+        (otherIds.has(relation.media_external_id) && ids.has(relation.related_media_external_id));
+    });
+  }, [pathCache, catalogMapById, linkedGameIds, gameSagaData, mediaRaw]);
+
   // Matches every Steam-scanned game to its real library entry — by actual
   // identity (external_id from local_game_links, or the igdb_id
   // read_metadata_index caches per app_id), same "vnovel:<id>"/"game:<id>"
@@ -350,19 +399,105 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   }, [games, mediaRaw, pathCache, catalogMapById]);
 
   // Alphabetical — scanAllGames/Steam's API return them in filesystem/API
-  // order (installed-then-uninstalled, no name ordering within either),
-  // which read as arbitrary in the grid. groupedGames below derives from
-  // this via .filter(), which preserves order, so sorting once here is
-  // enough to alphabetize every platform's own section too.
+  // order (installed-then-uninstalled, no name ordering within either).
+  // Sort saga groups alphabetically and each saga by its curated sequence;
+  // unrelated games remain alphabetized by title. groupedGames below derives
+  // from this via .filter(), which preserves the order for each platform.
   // Memoised (as is everything derived from it below): these lists used to
   // be rebuilt — sorted, grouped, name-matched — on every render of this
   // component, i.e. on every keystroke in the search box and every
   // selection change, for a grid of hundreds of cards.
-  const visibleGames = React.useMemo(() => collapseSteamLegacyPairs(Array.isArray(games) ? games : []), [games]);
-  const safeGames = React.useMemo(() => visibleGames
-    .filter(g => !isSteamVN(g))
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name)), [visibleGames, isSteamVN]);
+  const visibleGames = React.useMemo(
+    () => collapseSteamLegacyPairs(Array.isArray(games) ? games : [], isSteamRemakePair),
+    [games, isSteamRemakePair],
+  );
+  const safeGames = React.useMemo(() => {
+    const filtered = visibleGames.filter(g => !isSteamVN(g));
+    const currentKey = linkedGameIds.join('\u0000');
+    const names = gameSagaData.idsKey === currentKey ? gameSagaData.names : {};
+    const allRelations = gameSagaData.idsKey === currentKey
+      ? [...(mediaRaw?.relations ?? []), ...gameSagaData.relations]
+      : mediaRaw?.relations ?? [];
+    const idsForGame = new Map<LocalGame, string>();
+    for (const game of filtered) {
+      const id = candidateExternalIdsForGame(game, pathCache).find(candidate => catalogMapById.has(candidate));
+      if (id) idsForGame.set(game, id);
+    }
+
+    // Build connected saga groups from curated prequel/sequel relations,
+    // and merge entries sharing an explicit catalog saga name.
+    const parent = new Map<string, string>();
+    const find = (id: string): string => {
+      const p = parent.get(id);
+      if (!p) { parent.set(id, id); return id; }
+      if (p === id) return id;
+      const root = find(p);
+      parent.set(id, root);
+      return root;
+    };
+    const union = (a: string, b: string) => {
+      const ra = find(a), rb = find(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
+    for (const id of idsForGame.values()) find(id);
+    const idSet = new Set(parent.keys());
+    const sagaRelations = allRelations.filter(r =>
+      (r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL' || r.relation_type === 'PRECUELA' || r.relation_type === 'SECUELA') &&
+      !!r.media_external_id && idSet.has(r.media_external_id) && idSet.has(r.related_media_external_id),
+    );
+    for (const relation of sagaRelations) union(relation.media_external_id!, relation.related_media_external_id);
+    const idsBySagaName = new Map<string, string>();
+    for (const id of idSet) {
+      const name = names[id]?.trim();
+      if (!name) continue;
+      const key = name.toLocaleLowerCase();
+      const prior = idsBySagaName.get(key);
+      if (prior) union(prior, id);
+      else idsBySagaName.set(key, id);
+    }
+
+    const relationsByOwner = new Map<string, DbMediaRelation[]>();
+    for (const relation of allRelations) {
+      if (!relation.media_external_id) continue;
+      const owned = relationsByOwner.get(relation.media_external_id) ?? [];
+      owned.push(relation);
+      relationsByOwner.set(relation.media_external_id, owned);
+    }
+
+    const gamesByRoot = new Map<string, LocalGame[]>();
+    for (const game of filtered) {
+      const id = idsForGame.get(game);
+      const root = id ? find(id) : `standalone:${game.name.toLocaleLowerCase()}`;
+      const group = gamesByRoot.get(root) ?? [];
+      group.push(game);
+      gamesByRoot.set(root, group);
+    }
+
+    const compareTitle = (a: LocalGame, b: LocalGame) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    const groups = Array.from(gamesByRoot.values()).map(group => {
+      const ids = Array.from(new Set(group.map(game => idsForGame.get(game)).filter((id): id is string => !!id)));
+      const dateOrderedIds = ids.slice().sort((a, b) =>
+        compareByReleaseDate(catalogMapById.get(a) ?? {}, catalogMapById.get(b) ?? {}) ||
+        (catalogMapById.get(a)?.title_main ?? '').localeCompare(catalogMapById.get(b)?.title_main ?? '', undefined, { sensitivity: 'base' }),
+      );
+      const relsByIndex = dateOrderedIds.map(id => relationsByOwner.get(id) ?? []);
+      const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
+      const orderById = new Map(orderedIds.map((id, index) => [id, index]));
+      const sortedGames = group.slice().sort((a, b) => {
+        const ai = idsForGame.get(a), bi = idsForGame.get(b);
+        if (ai && bi && ai !== bi) return (orderById.get(ai) ?? Number.MAX_SAFE_INTEGER) - (orderById.get(bi) ?? Number.MAX_SAFE_INTEGER);
+        return compareTitle(a, b);
+      });
+      const sagaName = ids.map(id => names[id]?.trim()).find(Boolean);
+      const sagaLabel = sagaName ?? (orderedIds.length > 1 ? catalogMapById.get(orderedIds[0])?.title_main : undefined);
+      return { sortedGames, sagaLabel };
+    });
+    groups.sort((a, b) =>
+      (a.sagaLabel ?? a.sortedGames[0]?.name ?? '').localeCompare(b.sagaLabel ?? b.sortedGames[0]?.name ?? '', undefined, { sensitivity: 'base' }) ||
+      compareTitle(a.sortedGames[0], b.sortedGames[0]),
+    );
+    return groups.flatMap(group => group.sortedGames);
+  }, [visibleGames, isSteamVN, linkedGameIds, gameSagaData, mediaRaw, pathCache, catalogMapById]);
   const filterQuery = filterName.trim().toLowerCase();
   const filterGames = React.useCallback(<G extends { name: string }>(list: G[]): G[] =>
     filterQuery ? list.filter(g => g.name.toLowerCase().includes(filterQuery)) : list, [filterQuery]);
@@ -430,6 +565,10 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   const activePendingPool = activeCategory === 'videojuegos' ? pendingGameItems : activeCategoryItems;
   const panelSelectedItem = resolveCatalogSelection(selection, activeCategoryItems);
   const panelSelectedGame = resolveGameSelection(selection, activeSteamGamesPool);
+  const panelLegacyVariant = panelSelectedGame ? findSteamLegacyVariant(panelSelectedGame, games, isSteamRemakePair) : null;
+  const panelLegacyVariantLabel = panelSelectedGame && panelLegacyVariant
+    ? steamLegacyVariantLabel(panelSelectedGame, panelLegacyVariant, games, isSteamRemakePair)
+    : undefined;
   const panelSelectedPendingItem = resolvePendingSelection(selection, activePendingPool);
   const panelSelectedPendingLaunchGame = resolvePendingLaunchGame(selection, activeSteamGamesPool);
   const panelOpen = !!(panelSelectedItem || panelSelectedGame || panelSelectedPendingItem);
@@ -752,7 +891,8 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
                 ) : (
                   <GameDetailPanel
                     game={panelSelectedGame ?? { name: panelSelectedPendingItem!.title, launcher: 'local' }}
-                    legacyVariant={panelSelectedGame ? findSteamLegacyVariant(panelSelectedGame, games) ?? undefined : undefined}
+                    legacyVariant={panelLegacyVariant ?? undefined}
+                    legacyVariantLabel={panelLegacyVariantLabel}
                     coverCache={coverCache}
                     knownExternalId={panelSelectedGame ? undefined : panelSelectedPendingItem!.externalId}
                     fallbackCover={panelSelectedGame ? undefined : panelSelectedPendingItem!.cover}

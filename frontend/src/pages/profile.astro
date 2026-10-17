@@ -12,6 +12,7 @@ import {
   ICON_PROFILE_LIBRARY,
   ICON_PROFILE_FAVORITES,
   ICON_PROFILE_STATS,
+  ICON_PROFILE_ACHIEVEMENTS,
   ICON_PROFILE_REVIEWS,
   ICON_PROFILE_LISTS,
   ICON_PROFILE_FRIENDS,
@@ -103,6 +104,7 @@ const t    = useTranslations(lang);
       <button class="profile-tab" data-tab="library" data-tooltip={t.profile.tab_library} set:html={ICON_PROFILE_LIBRARY}></button>
       <button class="profile-tab" data-tab="favorites" data-tooltip={t.profile.favorites} set:html={ICON_PROFILE_FAVORITES}></button>
       <button class="profile-tab" data-tab="stats" data-tooltip={t.profile.tab_stats} set:html={ICON_PROFILE_STATS}></button>
+      <button class="profile-tab" data-tab="achievements" data-tooltip={t.local.stat_achievements} set:html={ICON_PROFILE_ACHIEVEMENTS}></button>
       <button class="profile-tab" data-tab="reviews" data-tooltip={t.profile.reviews} set:html={ICON_PROFILE_REVIEWS}></button>
       <button class="profile-tab" data-tab="lists" data-tooltip={t.profile.lists} set:html={ICON_PROFILE_LISTS}></button>
       <button class="profile-tab" data-tab="friends" data-tooltip={t.profile.friends} set:html={ICON_PROFILE_FRIENDS}></button>
@@ -110,7 +112,7 @@ const t    = useTranslations(lang);
         (function() {
           const params = new URLSearchParams(window.location.search);
           const hash = params.get('list') ? 'lists' : window.location.hash.replace('#', '');
-          const tabs = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists', 'friends'];
+          const tabs = ['overview', 'library', 'favorites', 'stats', 'achievements', 'reviews', 'lists', 'friends'];
           if (hash && tabs.indexOf(hash) !== -1) {
             const buttons = document.querySelectorAll('.profile-tab');
             buttons.forEach(function(btn) {
@@ -128,6 +130,7 @@ const t    = useTranslations(lang);
             library: p.tab_library,
             favorites: p.favorites,
             stats: p.tab_stats,
+            achievements: getT().local.stat_achievements,
             reviews: p.reviews,
             lists: p.lists,
             friends: p.friends,
@@ -149,6 +152,7 @@ const t    = useTranslations(lang);
       <div id="tab-pane-library" class="profile-tab-pane" hidden></div>
       <div id="tab-pane-favorites" class="profile-tab-pane" hidden></div>
       <div id="tab-pane-stats" class="profile-tab-pane" hidden></div>
+      <div id="tab-pane-achievements" class="profile-tab-pane" hidden></div>
       <div id="tab-pane-reviews" class="profile-tab-pane" hidden></div>
       <div id="tab-pane-lists" class="profile-tab-pane" hidden></div>
       <div id="tab-pane-friends" class="profile-tab-pane" hidden></div>
@@ -166,6 +170,7 @@ const t    = useTranslations(lang);
   import { renderLibrary } from '../components/profile/mount/render-library';
   import { renderFavorites } from '../components/profile/mount/render-favorites';
   import { renderStats } from '../components/profile/mount/render-stats';
+  import { renderAchievements } from '../components/profile/mount/render-achievements';
   import { renderReviews } from '../components/profile/mount/render-reviews';
   import { renderLists }   from '../components/profile/mount/render-lists';
   import { renderFriends } from '../components/profile/mount/render-friends';
@@ -187,7 +192,7 @@ const t    = useTranslations(lang);
 
   (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
 
-  const TABS = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists', 'friends'] as const;
+  const TABS = ['overview', 'library', 'favorites', 'stats', 'achievements', 'reviews', 'lists', 'friends'] as const;
   type Tab = typeof TABS[number];
 
   function getTabFromHash(): Tab {
@@ -209,6 +214,7 @@ const t    = useTranslations(lang);
       library:   document.getElementById('tab-pane-library'),
       favorites: document.getElementById('tab-pane-favorites'),
       stats:     document.getElementById('tab-pane-stats'),
+      achievements: document.getElementById('tab-pane-achievements'),
       reviews:   document.getElementById('tab-pane-reviews'),
       lists:     document.getElementById('tab-pane-lists'),
       friends:   document.getElementById('tab-pane-friends'),
@@ -381,6 +387,7 @@ const t    = useTranslations(lang);
       library:   () => renderLibrary(panes.library!),
       favorites: () => renderFavorites(panes.favorites!),
       stats:     () => renderStats(panes.stats!),
+      achievements: () => renderAchievements(panes.achievements!),
       reviews:   () => renderReviews(panes.reviews!),
       lists:     () => renderLists(panes.lists!),
       friends:   () => renderFriends(panes.friends!),

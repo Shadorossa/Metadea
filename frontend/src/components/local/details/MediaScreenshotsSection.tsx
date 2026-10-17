@@ -8,6 +8,7 @@ import {
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/runtime';
 import { AchievementCell } from './AchievementCell';
+import { mergeSteamEditionAchievements } from '../../../lib/local/steam-achievements-merge';
 
 const SCREENSHOT_ROWS_PER_PAGE = 3;
 const ACHIEVEMENT_ROWS_PER_PAGE = 3;
@@ -16,6 +17,7 @@ interface MediaScreenshotsSectionProps {
   appId?: string;
   workName: string;
   achievements: { unlocked: number; total: number; list: SteamAchievement[] } | null;
+  legacyAchievements?: { unlocked: number; total: number; list: SteamAchievement[] } | null;
   achievementsLoading: boolean;
   savesTab?: React.ReactNode;
   // Achievements tab for a source other than Steam (RetroAchievements):
@@ -36,7 +38,7 @@ interface MediaScreenshotsSectionProps {
   emulator?: { platformId: string; romPath: string; title?: string };
 }
 
-export function MediaScreenshotsSection({ appId, workName, achievements, achievementsLoading, achievementsTab, savesTab, emulator }: MediaScreenshotsSectionProps) {
+export function MediaScreenshotsSection({ appId, workName, achievements, legacyAchievements, achievementsLoading, achievementsTab, savesTab, emulator }: MediaScreenshotsSectionProps) {
   const t = getT();
   const hasAchievementsTab = !!appId || !!achievementsTab;
   const hasTabs = hasAchievementsTab || !!savesTab;
@@ -185,7 +187,10 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
   const screenshotsPerPage = screenshotColumns * SCREENSHOT_ROWS_PER_PAGE;
   const screenshotPageCount = Math.max(1, Math.ceil(filteredScreenshots.length / screenshotsPerPage));
   const visibleScreenshotsPage = Math.min(screenshotsPage, screenshotPageCount - 1);
-  const achievementList = achievements?.list ?? [];
+  const mergedAchievements = mergeSteamEditionAchievements(achievements, legacyAchievements);
+  const achievementList = mergedAchievements.list;
+  const unlockedAchievementCount = mergedAchievements.unlocked;
+  const totalAchievementCount = mergedAchievements.total;
   const achievementsPerPage = achievementColumns * ACHIEVEMENT_ROWS_PER_PAGE;
   const achievementPageCount = Math.max(1, Math.ceil(achievementList.length / achievementsPerPage));
   const visibleAchievementsPage = Math.min(achievementsPage, achievementPageCount - 1);
@@ -244,7 +249,7 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
         >
           <span>{t.local.stat_achievements}</span>
           <span className="local-steam-media-count">
-            {achievementsLoading ? '…' : achievements ? `${achievements.unlocked}/${achievements.total}` : '0'}
+            {achievementsLoading ? '…' : (achievements || legacyAchievements) ? `${unlockedAchievementCount}/${totalAchievementCount}` : '0'}
           </span>
         </button>}
         {savesTab && <button
@@ -305,8 +310,8 @@ export function MediaScreenshotsSection({ appId, workName, achievements, achieve
           ) : achievementList.length > 0 ? (
             <>
               <div className="local-game-detail-achievement-grid" ref={achievementsGridRef}>
-                {visibleAchievements.map(achievement => (
-                  <AchievementCell key={achievement.apiname} ach={achievement} appId={achievementsIconAppId} />
+                {visibleAchievements.map(({ achievement, legacy }) => (
+                  <AchievementCell key={`${legacy ? 'legacy:' : ''}${achievement.apiname}`} ach={achievement} appId={achievementsIconAppId} legacy={legacy} />
                 ))}
               </div>
               {pagination(visibleAchievementsPage, achievementPageCount, setAchievementsPage)}

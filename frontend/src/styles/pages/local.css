@@ -3,3 +3,4 @@
 @import './local/cards.css';
 @import './local/detail.css';
 @import './local/history.css';
+@import '../components/achievement-cell.css';

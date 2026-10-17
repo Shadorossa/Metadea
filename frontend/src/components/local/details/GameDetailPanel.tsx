@@ -38,11 +38,13 @@ import { toSteamAchievementsModel } from '../../../lib/retro-achievements/achiev
 import type { MediaCompany } from '../../../lib/media/types';
 import { CompanyName } from '../../media/media-page/CompanyLinks';
 import { TimeToBeatBlock } from '../../shared/TimeToBeatBlock';
+import { mergeSteamEditionAchievements } from '../../../lib/local/steam-achievements-merge';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
 interface GameDetailPanelProps {
   game:           LocalGame;
+  legacyVariantLabel?: string;
   coverCache:     CoverCache;
   // Invoked by this panel's own back/close button — owned by DetailPanelShell
   // (see LocalMediaSection/LocalLibrary), which plays the slide-out
@@ -75,7 +77,7 @@ interface GameDetailPanelProps {
   onAutoResumeHandled?: () => void;
 }
 
-export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh, onGameRelinked, knownExternalId, fallbackCover, launchOverride, legacyVariant, autoResume, onAutoResumeHandled }: GameDetailPanelProps) {
+export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh, onGameRelinked, knownExternalId, fallbackCover, launchOverride, legacyVariant, legacyVariantLabel, autoResume, onAutoResumeHandled }: GameDetailPanelProps) {
   const t = getT();
   const launchTarget = launchOverride ?? game;
   // Identifies which selection this render is actually showing — used only
@@ -93,6 +95,8 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const achievementsKey = `${launchTarget.launcher}\n${launchTarget.app_id}`;
   const [achievements,  setAchievements]  = useKeyedState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(achievementsKey, null);
   const [achievementsLoading, setAchievementsLoading] = useKeyedState(achievementsKey, isSteamGame);
+  const legacyAchievementsKey = `${legacyVariant?.launcher ?? ''}\n${legacyVariant?.app_id ?? ''}`;
+  const [legacyAchievements, setLegacyAchievements] = useKeyedState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(legacyAchievementsKey, null);
   const [showPicker,    setShowPicker]    = useState(false);
   const [, setHasLaunched] = useState(false);
   const autoResumeButtonRef = useRef<HTMLButtonElement>(null);
@@ -123,6 +127,16 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
       .finally(() => { if (!cancelled) setAchievementsLoading(false); });
     return () => { cancelled = true; };
   }, [isSteamGame, launchTarget.app_id, launchTarget.last_played, setAchievements, setAchievementsLoading]);
+
+  useEffect(() => {
+    if (!legacyVariant?.app_id) return;
+    let cancelled = false;
+    loadLocalSteamAchievements(Number(legacyVariant.app_id), res => {
+      if (!cancelled) setLegacyAchievements(res);
+    }, { lastPlayedSec: legacyVariant.last_played })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [legacyVariant?.app_id, legacyVariant?.last_played, setLegacyAchievements]);
 
   const isExe = !!launchTarget.install_path?.toLowerCase().endsWith('.exe');
   const isRom = !isExe && !!launchTarget.rom_platform && !!launchTarget.install_path;
@@ -295,7 +309,12 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   }, [romTrackingId, setRomLibraryEntry]);
   // Sessions launched from Metadea: count, average and last played.
   const playStats = useGamePlayStats(romTrackingId);
-  const lastPlayedUnix = Math.max(launchTarget.last_played ?? 0, playStats?.last_played_unix ?? 0) || undefined;
+  const playtimeValues = [launchTarget.playtime_minutes, legacyVariant?.playtime_minutes]
+    .filter((minutes): minutes is number => typeof minutes === 'number' && Number.isFinite(minutes));
+  const displayedPlaytimeMinutes = legacyVariant
+    ? (playtimeValues.length ? playtimeValues.reduce((sum, minutes) => sum + minutes, 0) : undefined)
+    : launchTarget.playtime_minutes;
+  const lastPlayedUnix = Math.max(launchTarget.last_played ?? 0, legacyVariant?.last_played ?? 0, playStats?.last_played_unix ?? 0) || undefined;
   const sessionsTitle = playStats
     ? interpolate(t.local.stat_sessions_title, {
       n: playStats.sessions_count,
@@ -438,6 +457,9 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // What the stats row, the platinum seed and the section all see.
   const shownAchievements = isSteamGame ? achievements : retroVisible ? retroAchievements : null;
   const shownAchievementsLoading = isSteamGame ? achievementsLoading : retroVisible && retro.loading && !retroProgress;
+  const displayAchievements = isSteamGame && legacyVariant && (achievements || legacyAchievements)
+    ? mergeSteamEditionAchievements(achievements, legacyAchievements)
+    : shownAchievements;
   // catalogDevelopers (this identity's own IGDB lookup) wins over
   // gameInfo.developers (launchTarget's cached info) — same "own identity"
   // reasoning as the banner/metaDots above. Only ever both populated at
@@ -475,7 +497,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         // nothing here actually writes to disk until the user clicks
         // Guardar inside the editor (MediaEditorModal's own handleSave) —
         // this only seeds the form fields.
-        const hours = launchTarget.playtime_minutes ? Math.round(launchTarget.playtime_minutes / 6) / 10 : 0;
+        const hours = displayedPlaytimeMinutes ? Math.round(displayedPlaytimeMinutes / 6) / 10 : 0;
         const isPlatinum = !!shownAchievements && shownAchievements.total > 0 && shownAchievements.unlocked === shownAchievements.total;
         let seededEntry = libraryEntry ?? undefined;
         if (!libraryEntry) {
@@ -606,7 +628,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                     <polygon points="5 3 19 12 5 21 5 3" />
                   </svg>
-                  Legacy
+                  {legacyVariantLabel ?? 'Legacy'}
                 </button>
               )}
             </div>
@@ -630,9 +652,9 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                   </svg>
                   <span>{formatPlaytime(
-                    (!isExe && launchTarget.rom_platform) || launchTarget.playtime_minutes === undefined || launchTarget.playtime_minutes === null
+                    (!isExe && launchTarget.rom_platform) || displayedPlaytimeMinutes === undefined || displayedPlaytimeMinutes === null
                       ? (romLibraryEntry?.minutes_spent ?? (romLibraryEntry?.progress ? Math.round(romLibraryEntry.progress * 60) : undefined))
-                      : launchTarget.playtime_minutes
+                      : displayedPlaytimeMinutes
                   )}</span>
                   <span className="local-game-detail-stat-label">{t.local.stat_time}</span>
                 </div>
@@ -659,7 +681,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                     <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
                     <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
                   </svg>
-                  <span>{shownAchievements ? `${shownAchievements.unlocked}/${shownAchievements.total}` : '—'}</span>
+                  <span>{displayAchievements ? `${displayAchievements.unlocked}/${displayAchievements.total}` : '—'}</span>
                   <span className="local-game-detail-stat-label">{t.local.stat_achievements}</span>
                 </div>
               </div>
@@ -701,9 +723,9 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
             externalId={relationsExternalId}
             title={displayTitle}
             releaseYear={catalogReleaseMs !== null ? new Date(catalogReleaseMs).getUTCFullYear() : undefined}
-            playedMinutes={(!isExe && launchTarget.rom_platform) || launchTarget.playtime_minutes === undefined || launchTarget.playtime_minutes === null
+            playedMinutes={(!isExe && launchTarget.rom_platform) || displayedPlaytimeMinutes === undefined || displayedPlaytimeMinutes === null
               ? (romLibraryEntry?.minutes_spent || (romLibraryEntry?.progress ? romLibraryEntry.progress * 60 : undefined))
-              : launchTarget.playtime_minutes}
+              : displayedPlaytimeMinutes}
             t={t.time_to_beat}
             variant="local"
           />
@@ -714,6 +736,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           appId={launchTarget.launcher === 'steam' ? launchTarget.app_id : undefined}
           workName={displayTitle}
           achievements={shownAchievements}
+          legacyAchievements={isSteamGame ? legacyAchievements : null}
           achievementsLoading={shownAchievementsLoading}
           achievementsTab={retroVisible ? {
             iconAppId: `ra:${retroProgress?.gameId ?? retro.link?.raGameId ?? 0}`,

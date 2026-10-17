@@ -1,0 +1,222 @@
+@import '../../components/achievement-cell.css';
+
+.profile-achievements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 0;
+}
+
+.profile-achievements-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-achievements-summary svg {
+  color: var(--accent);
+}
+
+.profile-achievements-summary strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.profile-achievement-game {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.profile-achievement-cover {
+  width: 90px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+}
+
+.profile-achievement-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-achievement-cover span {
+  font-size: 1.5rem;
+}
+
+.profile-achievement-content {
+  min-width: 0;
+  padding-bottom: 1.1rem;
+  position: relative;
+}
+
+.profile-achievement-content::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.profile-achievement-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 1.5rem;
+  margin: 0.1rem 0 0.65rem;
+}
+
+.profile-achievement-title-row h2 {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.profile-achievement-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.profile-achievement-count::before {
+  content: '';
+  width: 0.55rem;
+  height: 1px;
+  flex: 0 0 0.55rem;
+  background: var(--border-color);
+}
+
+[data-theme="newspaper-dark"] .profile-achievement-title-row h2 {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+.profile-achievement-platforms {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.profile-achievement-platform-icon {
+  display: inline-block;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  background-color: var(--text-on-accent);
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.profile-achievement-platform-icon--steam {
+  -webkit-mask-image: url('/platforms/steam_logo.png');
+  mask-image: url('/platforms/steam_logo.png');
+}
+
+.profile-achievement-platform-icon--retro {
+  -webkit-mask-image: url('/platforms/Retroachivements.png');
+  mask-image: url('/platforms/Retroachivements.png');
+}
+
+.profile-achievement-source + .profile-achievement-source {
+  margin-top: 0.8rem;
+}
+
+.profile-achievement-source-heading {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 0.3rem;
+  color: var(--text-dim);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-achievement-source-heading span:last-child {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.profile-achievement-icons {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.profile-achievement-page-button {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.profile-achievement-page-button:hover,
+.profile-achievement-page-button:focus-visible {
+  color: var(--text-main);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.profile-achievement-icons .local-game-detail-ach-cell,
+.profile-achievement-icons .local-game-detail-ach-img {
+  width: 38px;
+  height: 38px;
+}
+
+.profile-achievement-icons .local-game-detail-ach-img {
+  max-width: 38px;
+}
+
+@media (max-width: 600px) {
+  .profile-achievement-game {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .profile-achievement-cover {
+    width: 76px;
+  }
+
+  .profile-achievement-icons .local-game-detail-ach-cell,
+  .profile-achievement-icons .local-game-detail-ach-img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .profile-achievement-icons .local-game-detail-ach-img {
+    max-width: 32px;
+  }
+}
+

@@ -114,16 +114,11 @@ export function TimeToBeatBlock({ externalId, title, releaseYear, playedMinutes,
       </div>
       {progress && variant === 'local' && (
         <div className={`ttb-progress${progress.done ? ' ttb-progress--done' : ''}`}>
-          <div className="ttb-progress-text">
-            <span>
-              {t.progress
-                .replace('{played}', formatBeatHours(progress.playedMinutes, t.hours, locale))
-                .replace('{total}', formatBeatHours(progress.targetMinutes, t.hours, locale))}
-            </span>
-            <span className="ttb-progress-remaining">
-              {progress.done ? t.done : t.remaining.replace('{time}', formatBeatHours(progress.remainingMinutes, t.hours, locale))}
-            </span>
-          </div>
+          <span className="ttb-progress-played">
+            {formatBeatHours(progress.playedMinutes, t.hours, locale).replace(/\s*h$/, 'h')}
+            {' / ~'}
+            {formatBeatHours(progress.targetMinutes, t.hours, locale).replace(/\s*h$/, 'h')}
+          </span>
           <div
             className="ttb-progress-bar"
             role="progressbar"
@@ -133,6 +128,9 @@ export function TimeToBeatBlock({ externalId, title, releaseYear, playedMinutes,
           >
             <div className="ttb-progress-fill" style={{ width: `${progress.ratio * 100}%` }} />
           </div>
+          <span className="ttb-progress-remaining">
+            {progress.done ? t.done : t.remaining.replace('{time}', formatBeatHours(progress.remainingMinutes, t.hours, locale))}
+          </span>
         </div>
       )}
     </div>

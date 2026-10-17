@@ -6,6 +6,7 @@ import { formatDateShort } from '../../../lib/shared/text/format-date';
 
 interface AchievementCellProps {
   ach:   SteamAchievement;
+  legacy?: boolean;
   // Kept as the cell's identity for callers; icons come from `ach` itself.
   appId: string;
 }
@@ -21,7 +22,7 @@ function iconCandidates(ach: SteamAchievement): string[] {
   return out;
 }
 
-export function AchievementCell({ ach }: AchievementCellProps) {
+export function AchievementCell({ ach, legacy = false }: AchievementCellProps) {
   const t = getT();
   const isUnachievedSpoiler = !!ach.hidden && !ach.achieved;
   // Sources that failed to load, so the next candidate takes over.
@@ -59,7 +60,7 @@ export function AchievementCell({ ach }: AchievementCellProps) {
   return (
     <div
       ref={cellRef}
-      className={`local-game-detail-ach-cell${ach.achieved ? ' achieved' : ''}${isUnachievedSpoiler ? ' spoiler' : ''}`}
+      className={`local-game-detail-ach-cell${ach.achieved ? ' achieved' : ''}${isUnachievedSpoiler ? ' spoiler' : ''}${legacy ? ' legacy' : ''}`}
       onMouseEnter={showTooltip}
       onMouseLeave={() => setTooltipPos(null)}
     >

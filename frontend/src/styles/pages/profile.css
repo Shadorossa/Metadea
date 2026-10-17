@@ -3,4 +3,5 @@
 @import './profile/library.css';
 @import './profile/activity.css';
 @import './profile/stats.css';
+@import './profile/achievements.css';
 @import '../components/yearly-bingo.css';

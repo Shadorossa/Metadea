@@ -300,6 +300,12 @@
   z-index: 10;
 }
 
+.local-game-detail-ach-cell.legacy,
+.local-game-detail-ach-cell.legacy:hover {
+  opacity: 0.58;
+  filter: grayscale(0.35) brightness(0.78);
+}
+
 .local-game-detail-ach-spoiler-label {
   position: absolute;
   top: -5px;
