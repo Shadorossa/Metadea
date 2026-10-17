@@ -11,7 +11,7 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { GameCard } from './cards/GameCard';
 import { type CoverCache } from './details/GameDetailPanel';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, defaultSortDirection, displayNameFor, sortEntries, type SortDirection, type SortMode, type StatusEntry } from '../../lib/local/catalog-game-linking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, displayNameFor, sortEntries, type StatusEntry } from '../../lib/local/catalog-game-linking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
@@ -19,6 +19,7 @@ import { VirtualCardGrid } from './ui/VirtualCardGrid';
 import { SortModeSelect } from './ui/SortModeSelect';
 import { useCachedBeatSeconds } from './hooks/useCachedBeatSeconds';
 import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
+import { useLocalSort } from './hooks/useLocalSort';
 import { LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from '../../lib/local/platforms';
 import { catalogReleaseTimestampMs } from '../../lib/media/mappers/mapper-utils';
 
@@ -263,8 +264,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // Epic, etc.), not just Steam despite the prop's name.
   // Same sort control Videojuegos gives its own launcher sections (see
   // GamesGrid) — one shared preference across every platform here too.
-  const [sortMode, setSortMode] = useState<SortMode>('alpha');
-  const [sortDirection, setSortDirection] = useState<SortDirection>(defaultSortDirection('alpha'));
+  const { mode: sortMode, direction: sortDirection, changeMode: setSortMode, toggleDirection } = useLocalSort();
   const sortsByLength = sortMode === 'shortestToBeat';
   const beatSeconds = useCachedBeatSeconds(sortsByLength, sortsByLength
     ? [...items.map(i => i.externalId), ...steamBacklog.map(g => g.external_id), ...steamPlanning.map(g => g.external_id)]
@@ -414,9 +414,9 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         <div className="local-launcher-title-controls">
                           <SortModeSelect
                             value={sortMode}
-                            onChange={mode => { setSortMode(mode); setSortDirection(defaultSortDirection(mode)); }}
+                            onChange={setSortMode}
                             direction={sortDirection}
-                            onDirectionChange={setSortDirection}
+                            onDirectionToggle={toggleDirection}
                           />
                         </div>
                       </>

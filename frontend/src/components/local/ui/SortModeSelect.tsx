@@ -6,11 +6,11 @@ import type { SortDirection, SortMode } from '../../../lib/local/catalog-game-li
 // The launcher/platform section's own sort dropdown — identical in
 // Videojuegos' grid and in the media sections' platform rows, which each
 // kept their own copy of this markup.
-export function SortModeSelect({ value, onChange, direction, onDirectionChange }: {
+export function SortModeSelect({ value, onChange, direction, onDirectionToggle }: {
   value: SortMode;
   onChange: (mode: SortMode) => void;
   direction: SortDirection;
-  onDirectionChange: (direction: SortDirection) => void;
+  onDirectionToggle: () => void;
 }) {
   const t = getT().local;
   const DirectionIcon = direction === 'descending' ? ArrowDownWideNarrow : ArrowUpWideNarrow;
@@ -19,7 +19,7 @@ export function SortModeSelect({ value, onChange, direction, onDirectionChange }
       <button
         type="button"
         className="local-sort-direction-btn"
-        onClick={() => onDirectionChange(direction === 'ascending' ? 'descending' : 'ascending')}
+        onClick={onDirectionToggle}
         title={direction === 'ascending' ? t.sort_ascending : t.sort_descending}
         aria-label={direction === 'ascending' ? t.sort_ascending : t.sort_descending}
       >

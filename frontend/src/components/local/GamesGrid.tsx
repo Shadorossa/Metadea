@@ -6,7 +6,7 @@ import { getT } from '../../i18n/runtime';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
-import { defaultSortDirection, displayNameFor, type StatusEntry, type SortDirection, type SortMode, sortEntries, entryKey, entryExternalId } from '../../lib/local/catalog-game-linking';
+import { displayNameFor, type StatusEntry, sortEntries, entryKey, entryExternalId } from '../../lib/local/catalog-game-linking';
 import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, type PlatformId } from '../../lib/local/platforms';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
@@ -17,6 +17,7 @@ import { VirtualCardGrid } from './ui/VirtualCardGrid';
 import { SortModeSelect } from './ui/SortModeSelect';
 import { useLocalDeleteMenu } from './hooks/useLocalDeleteMenu';
 import { useCachedBeatSeconds } from './hooks/useCachedBeatSeconds';
+import { useLocalSort } from './hooks/useLocalSort';
 
 // sectionStatus is the badge shown on any kind:'game' entry in this section
 // (kind:'catalog' entries carry their own item.status instead) — safe to
@@ -96,8 +97,7 @@ export function GamesGrid({
   // Nintendo, ...) rather than a separate one per platform — simpler to
   // reason about, and there's no real case for browsing one platform
   // alphabetically while another stays sorted by playtime.
-  const [sortMode, setSortMode] = useState<SortMode>('alpha');
-  const [sortDirection, setSortDirection] = useState<SortDirection>(defaultSortDirection('alpha'));
+  const { mode: sortMode, direction: sortDirection, changeMode: setSortMode, toggleDirection } = useLocalSort();
   const sortsByLength = sortMode === 'shortestToBeat';
   const beatSeconds = useCachedBeatSeconds(sortsByLength, sortsByLength
     ? [
@@ -259,9 +259,9 @@ export function GamesGrid({
                 <div className="local-launcher-title-controls">
                   <SortModeSelect
                     value={sortMode}
-                    onChange={mode => { setSortMode(mode); setSortDirection(defaultSortDirection(mode)); }}
+                    onChange={setSortMode}
                     direction={sortDirection}
-                    onDirectionChange={setSortDirection}
+                    onDirectionToggle={toggleDirection}
                   />
                   {idx === 0 && (
                     <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan}>
