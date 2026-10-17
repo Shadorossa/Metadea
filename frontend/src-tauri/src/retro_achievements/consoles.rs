@@ -4,7 +4,7 @@
 //! numbering rcheevos uses for `rc_hash` (`RC_CONSOLE_*`), so one id serves
 //! both the API calls and the hasher.
 //!
-//! `None` means RA has no achievement set for that system (3DS, Wii, Wii U,
+//! `None` means RA has no achievement set for that system (3DS, Wii U,
 //! Switch, PS3+, Xbox and later, PC) — the UI then hides the panel.
 
 /// IGDB platform id -> RA console id.
@@ -14,6 +14,7 @@ pub fn ra_console_for_igdb_platform(igdb_platform_id: i64) -> Option<u32> {
         19 => 3,   // SNES / Super Famicom
         4 => 2,    // Nintendo 64
         21 => 16,  // GameCube
+        5 => 19,   // Nintendo Wii
         20 => 18,  // Nintendo DS
         159 => 78, // Nintendo DSi
         33 => 4,   // Game Boy
@@ -64,7 +65,7 @@ pub fn ra_console_for_igdb_platform(igdb_platform_id: i64) -> Option<u32> {
         13 => 26,  // MS-DOS
         125 => 47, // PC-8800
         149 => 48, // PC-9800
-        // 3DS (37), Wii (5), Wii U (41), Switch (130), PS3 (9), PS4 (48),
+        // 3DS (37), Wii U (41), Switch (130), PS3 (9), PS4 (48),
         // Xbox 360 (12), PC (6), Amstrad CPC (122): no RA set.
         _ => return None,
     };
@@ -79,6 +80,7 @@ pub fn ra_console_for_rom_platform(rom_platform: &str) -> Option<u32> {
         "snes" | "sfc" => Some(3),
         "n64" => Some(2),
         "gamecube" | "gc" | "ngc" => Some(16),
+        "wii" => Some(19),
         "ds" | "nds" => Some(18),
         "dsi" => Some(78),
         "gb" => Some(4),
@@ -121,7 +123,7 @@ mod tests {
     #[test]
     fn igdb_ids_from_the_spec_map_to_the_expected_ra_consoles() {
         let expected = [
-            (20, Some(18)), (21, Some(16)), (7, Some(12)), (8, Some(21)), (38, Some(41)),
+            (20, Some(18)), (21, Some(16)), (5, Some(19)), (7, Some(12)), (8, Some(21)), (38, Some(41)),
             (24, Some(5)), (33, Some(4)), (22, Some(6)), (19, Some(3)), (18, Some(7)),
             (4, Some(2)), (29, Some(1)), (64, Some(11)), (35, Some(15)), (32, Some(39)),
             (23, Some(40)), (119, Some(14)), (59, Some(25)),
@@ -133,8 +135,8 @@ mod tests {
 
     #[test]
     fn systems_without_an_ra_set_map_to_none() {
-        // 3DS, Wii, Wii U, Switch, PS3, PS4, Xbox 360, PC, Amstrad CPC.
-        for igdb in [37, 5, 41, 130, 9, 48, 12, 6, 122, -1, 0] {
+        // 3DS, Wii U, Switch, PS3, PS4, Xbox 360, PC, Amstrad CPC.
+        for igdb in [37, 41, 130, 9, 48, 12, 6, 122, -1, 0] {
             assert_eq!(ra_console_for_igdb_platform(igdb), None, "igdb platform {igdb}");
         }
     }
@@ -143,10 +145,10 @@ mod tests {
     fn rom_platform_ids_match_the_igdb_mapping() {
         assert_eq!(ra_console_for_rom_platform("ds"), ra_console_for_igdb_platform(20));
         assert_eq!(ra_console_for_rom_platform("gamecube"), ra_console_for_igdb_platform(21));
+        assert_eq!(ra_console_for_rom_platform("wii"), Some(19));
         assert_eq!(ra_console_for_rom_platform("PS2"), ra_console_for_igdb_platform(8));
         assert_eq!(ra_console_for_rom_platform("psp"), Some(41));
         assert_eq!(ra_console_for_rom_platform("3ds"), None);
-        assert_eq!(ra_console_for_rom_platform("wii"), None);
         assert_eq!(ra_console_for_rom_platform("switch"), None);
         assert_eq!(ra_console_for_rom_platform(""), None);
     }

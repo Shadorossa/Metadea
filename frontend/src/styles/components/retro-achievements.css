@@ -8,6 +8,38 @@
   text-decoration: underline;
 }
 
+.ra-achievement-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.2rem;
+  margin-left: auto;
+}
+
+.local-steam-media-page-btn.ra-achievement-control-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  color: var(--text-dim);
+  background: transparent;
+  border: 0;
+}
+
+.local-steam-media-page-btn.ra-achievement-control-btn:hover:not(:disabled) {
+  color: var(--text-main);
+}
+
+.local-steam-media-page-btn.ra-achievement-control-btn--unlink {
+  color: var(--color-error);
+}
+
+.local-steam-media-page-btn.ra-achievement-control-btn--unlink:hover:not(:disabled) {
+  color: var(--color-error);
+}
+
 /* ── Manual link picker ───────────────────────────────────────────────────── */
 
 .ra-picker-overlay {

@@ -175,12 +175,32 @@ export function useRetroAchievements(target: RetroAchievementsTarget | null): Re
         raGetLink(externalId),
       ]);
       if (cancelled) return;
+      let activeLink = existing;
+      // Name-based links can hide a regional mismatch (e.g. an EU ROM shown
+      // with the US set). Re-check automatic links against the actual ROM on
+      // each visit so a previously saved fallback can be corrected by hash.
+      // Keep the existing link if hashing or the network lookup fails, and
+      // never override a deliberate manual choice.
+      if (existing && existing.matchedBy !== 'manual' && romPath && nextConsole && nextStatus.configured) {
+        try {
+          const lookup = await raLookupByHash(romPath, nextConsole);
+          if (!cancelled && lookup.gameId && (
+            existing.raGameId !== lookup.gameId
+            || existing.matchedBy !== 'hash'
+            || existing.romHash !== lookup.hash
+          )) {
+            activeLink = await raSetLink(externalId, lookup.gameId, 'hash', lookup.hash);
+          }
+        } catch {
+          // A transient lookup failure must not discard a working saved link.
+        }
+      }
       setStatus(nextStatus);
       setConsoleId(nextConsole);
-      linkRef.current = existing;
-      setLink(existing);
-      if (existing && nextStatus.configured) {
-        await loadProgress(existing.raGameId, false);
+      linkRef.current = activeLink;
+      setLink(activeLink);
+      if (activeLink && nextStatus.configured) {
+        await loadProgress(activeLink.raGameId, false);
       } else {
         setLoading(false);
       }
@@ -190,7 +210,7 @@ export function useRetroAchievements(target: RetroAchievementsTarget | null): Re
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [externalId, igdbPlatformId, romPlatform, loadProgress, setConsoleId, setLink, setLoading, setError]);
+  }, [externalId, igdbPlatformId, romPlatform, romPath, loadProgress, setConsoleId, setLink, setLoading, setError]);
 
   // First time an entry with no link shows up on a supported console with
   // RA configured: try to link it once, automatically.

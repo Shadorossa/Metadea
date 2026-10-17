@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link2, RefreshCw, Unlink2 } from 'lucide-react';
 import '../../styles/components/retro-achievements.css';
 import { RetroAchievementsLinkPicker } from './RetroAchievementsLinkPicker';
 import type { RetroAchievementsState } from './hooks/useRetroAchievements';
@@ -26,12 +27,11 @@ export function RetroAchievementsControls({ state, title }: RetroAchievementsCon
   const tier = awardTier(progress?.highestAwardKind);
   const provenance = state.progress
     ? state.progress.stale ? t.retro_achievements.state_stale
-      : state.progress.fromCache ? t.retro_achievements.state_cached
-        : null
+      : null
     : null;
 
   return (
-    <>
+    <div className="ra-achievement-controls">
       {summary && (
         <span className="local-steam-media-count">
           {summary.pointsUnlocked}/{summary.pointsTotal} {t.retro_achievements.points}
@@ -47,18 +47,18 @@ export function RetroAchievementsControls({ state, title }: RetroAchievementsCon
       {state.link?.matchedBy === 'manual' && <span className="local-steam-media-count">{t.retro_achievements.linked_manually}</span>}
       {provenance && <span className="local-steam-media-count">{provenance}</span>}
       {state.link && (
-        <button type="button" className="local-steam-media-page-btn" onClick={() => void state.refresh(true)} disabled={state.loading}>
-          {t.retro_achievements.refresh}
+        <button type="button" className="local-steam-media-page-btn ra-achievement-control-btn" onClick={() => void state.refresh(true)} disabled={state.loading} aria-label={t.retro_achievements.refresh} title={t.retro_achievements.refresh}>
+          <RefreshCw size={15} aria-hidden="true" />
         </button>
       )}
       {state.status?.configured && state.consoleId && (
-        <button type="button" className="local-steam-media-page-btn" onClick={() => setPickerOpen(true)} disabled={state.linking}>
-          {t.retro_achievements.link_manually}
+        <button type="button" className="local-steam-media-page-btn ra-achievement-control-btn" onClick={() => setPickerOpen(true)} disabled={state.linking} aria-label={t.retro_achievements.link_picker_title} title={t.retro_achievements.link_picker_title}>
+          <Link2 size={15} aria-hidden="true" />
         </button>
       )}
       {state.link && (
-        <button type="button" className="local-steam-media-page-btn" onClick={() => void state.unlink()}>
-          {t.retro_achievements.unlink}
+        <button type="button" className="local-steam-media-page-btn ra-achievement-control-btn ra-achievement-control-btn--unlink" onClick={() => void state.unlink()} aria-label={t.retro_achievements.unlink} title={t.retro_achievements.unlink}>
+          <Unlink2 size={15} aria-hidden="true" />
         </button>
       )}
       {pickerOpen && state.consoleId && (
@@ -69,7 +69,7 @@ export function RetroAchievementsControls({ state, title }: RetroAchievementsCon
           onPicked={entry => { setPickerOpen(false); void state.linkManually(entry.id); }}
         />
       )}
-    </>
+    </div>
   );
 }
 
