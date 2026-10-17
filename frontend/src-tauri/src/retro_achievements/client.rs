@@ -476,7 +476,7 @@ async fn get_text(url: &str, query: &[(&str, String)]) -> Result<String, String>
         .timeout(REQUEST_TIMEOUT)
         .send()
         .await
-        .map_err(|e| error_codes::with_detail(error_codes::RA_NETWORK, e))?;
+        .map_err(|e| error_codes::with_detail(error_codes::RA_NETWORK, e.without_url()))?;
     let status = response.status();
     if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
         return Err(error_codes::with_detail(error_codes::RA_UNAUTHORIZED, status));
@@ -484,7 +484,7 @@ async fn get_text(url: &str, query: &[(&str, String)]) -> Result<String, String>
     if !status.is_success() {
         return Err(error_codes::with_detail(error_codes::RA_API, format!("HTTP {status}")));
     }
-    response.text().await.map_err(|e| error_codes::with_detail(error_codes::RA_NETWORK, e))
+    response.text().await.map_err(|e| error_codes::with_detail(error_codes::RA_NETWORK, e.without_url()))
 }
 
 fn endpoint(name: &str) -> String {

@@ -1330,7 +1330,7 @@ export const ja: Translations = {
     color_reset_title: "デフォルトに戻す",
     env_platform_games_label: "ゲーム",
     env_platform_movies_label: "映画・ドラマ",
-    env_platform_anime_label: "アニメ・マンガ",
+    env_platform_anime_label: "AniList",
     tab_emulators: "エミュレータ",
     tab_accessibility: "アクセシビリティ",
     emulators_title: "エミュレータとプラットフォームの設定",

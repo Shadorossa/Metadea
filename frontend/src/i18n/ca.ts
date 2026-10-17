@@ -1334,7 +1334,7 @@ export const ca: Translations = {
     color_reset_title: "Restaurar per defecte",
     env_platform_games_label: "Videojocs",
     env_platform_movies_label: "Cinema i sèries",
-    env_platform_anime_label: "Anime i manga",
+    env_platform_anime_label: "AniList",
     tab_emulators: "Emuladors",
     tab_accessibility: "Accessibilitat",
     emulators_title: "Configurar emuladors i plataformes",

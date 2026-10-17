@@ -1334,7 +1334,7 @@ export const fr: Translations = {
     color_reset_title: "Restaurer par défaut",
     env_platform_games_label: "Jeux vidéo",
     env_platform_movies_label: "Films et séries",
-    env_platform_anime_label: "Anime et manga",
+    env_platform_anime_label: "AniList",
     tab_emulators: "Émulateurs",
     tab_accessibility: "Accessibilité",
     emulators_title: "Configurer les émulateurs et plateformes",

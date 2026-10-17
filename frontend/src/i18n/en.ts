@@ -1172,7 +1172,7 @@ export const en = {
     section_appearance: "Appearance",
     env_platform_games_label: "Video games",
     env_platform_movies_label: "Movies & TV",
-    env_platform_anime_label: "Anime & manga",
+    env_platform_anime_label: "AniList",
     display_name_title: "Name",
     avatar_title: "Profile picture",
     avatar_upload: "Change picture",

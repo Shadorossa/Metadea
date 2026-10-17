@@ -248,7 +248,9 @@ const { t, onboarding = false, version = '' } = Astro.props;
       <!-- Form: RetroAchievements -->
       <div class="api-platform-form-block hidden" id="api-form-retroachievements">
         <div class="env-service-header env-service-header--api">
-          <a class="settings-hint" href="https://retroachievements.org/settings" target="_blank" rel="noopener noreferrer" data-i18n="retro_achievements.settings_get_key">{t.retro_achievements.settings_get_key}</a>
+          <button type="button" class="settings-help-btn api-help-btn" data-help="retroachievements" title={t.retro_achievements.settings_platform_title} data-i18n-title="retro_achievements.settings_platform_title" aria-label={t.retro_achievements.settings_platform_title} data-i18n-aria-label="retro_achievements.settings_platform_title">
+            <span class="info-indicator" aria-hidden="true">i</span>
+          </button>
         </div>
         <div class="env-fields env-fields--row">
           <div class="env-field">
@@ -260,7 +262,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
             <input class="env-input" type="password" id="ra-api-key" placeholder="••••••••••••••••••••••••" autocomplete="off" />
           </div>
         </div>
-        <p class="settings-hint" data-i18n="retro_achievements.settings_note">{t.retro_achievements.settings_note}</p>
       </div>
 
       <!-- Form: Google OAuth client for Drive backups (src-tauri/src/google_drive; docs/BACKUPS.md) -->

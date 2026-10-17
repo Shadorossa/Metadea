@@ -221,3 +221,22 @@ const { t } = Astro.props;
     </div>
   </div>
 </div>
+
+<!-- RetroAchievements -->
+<div id="retroachievements-help-modal" class="settings-help-modal hidden">
+  <div class="settings-help-modal-overlay"></div>
+  <div class="settings-help-modal-content">
+    <div class="settings-help-modal-header">
+      <h3 data-i18n="retro_achievements.title">{t.retro_achievements.title}</h3>
+      <button class="settings-help-modal-close" data-modal="retroachievements-help-modal">&times;</button>
+    </div>
+    <div class="settings-help-modal-body">
+      <p data-i18n="retro_achievements.settings_note">{t.retro_achievements.settings_note}</p>
+      <p class="settings-help-content-spaced">
+        <a class="settings-help-link" href="https://retroachievements.org/settings" target="_blank" rel="noopener noreferrer" data-i18n="retro_achievements.settings_get_key">
+          {t.retro_achievements.settings_get_key}
+        </a>
+      </p>
+    </div>
+  </div>
+</div>

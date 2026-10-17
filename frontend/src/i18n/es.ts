@@ -1173,7 +1173,7 @@ export const es: Translations = {
     section_appearance: "Apariencia",
     env_platform_games_label: "Videojuegos",
     env_platform_movies_label: "Cine y series",
-    env_platform_anime_label: "Anime y manga",
+    env_platform_anime_label: "AniList",
     display_name_title: "Nombre",
     avatar_title: "Foto de perfil",
     avatar_upload: "Cambiar foto",

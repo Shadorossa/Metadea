@@ -1330,7 +1330,7 @@ export const ru: Translations = {
     local_routes_hint: "Локальные папки для каждого типа медиа. Используются в разделе Локальная библиотека.",
     env_platform_games_label: "Видеоигры",
     env_platform_movies_label: "Фильмы и сериалы",
-    env_platform_anime_label: "Аниме и манга",
+    env_platform_anime_label: "AniList",
     tab_emulators: "Эмуляторы",
     tab_accessibility: "Доступность",
     emulators_title: "Настройка эмуляторов и платформ",

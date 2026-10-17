@@ -1330,7 +1330,7 @@ export const it: Translations = {
     color_reset_title: "Ripristina predefinito",
     env_platform_games_label: "Videogiochi",
     env_platform_movies_label: "Film e serie TV",
-    env_platform_anime_label: "Anime e manga",
+    env_platform_anime_label: "AniList",
     tab_emulators: "Emulatori",
     tab_accessibility: "Accessibilità",
     emulators_title: "Configura emulatori e piattaforme",
