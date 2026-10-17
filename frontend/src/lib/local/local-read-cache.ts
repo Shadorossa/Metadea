@@ -103,6 +103,7 @@ export function invalidateLocalGameReads(): void {
 // rewrote them — and their disk cache (see lib/local/metadata-fetch.ts).
 export function invalidateLocalSteamAchievements(appId: number): void {
   dropSteamAchievementRows(appId);
+  notifyProfileAchievementsChanged();
 }
 
 // Every persisted Steam achievements copy read so far is due a live refresh
@@ -110,6 +111,11 @@ export function invalidateLocalSteamAchievements(appId: number): void {
 export function markLocalSteamAchievementsStale(): void {
   dropSteamAchievementRows();
   steamAchievementsForcedAfterMs = Date.now();
+  notifyProfileAchievementsChanged();
+}
+
+function notifyProfileAchievementsChanged(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('profile-achievements-changed'));
 }
 
 function dropSteamAchievementRows(appId?: number): void {

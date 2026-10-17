@@ -7,6 +7,7 @@ import {
   readMetadataIndex,
   steamGetCachedAchievements,
   steamGetOwnedGames,
+  steamLang,
   wrapAssetUrl,
   type CatalogSummary,
   type DbMediaRelation,
@@ -34,6 +35,9 @@ export interface AchievementGame {
   retro: RaGameProgress | null;
 }
 
+const ACHIEVEMENTS_CACHE_TTL_MS = 5 * 60 * 1000;
+let achievementsCache: { promise: Promise<AchievementGame[]>; expiresAt: number; language: string } | null = null;
+
 interface AchievementCandidate {
   id: string;
   externalId: string | null;
@@ -58,7 +62,32 @@ function gameSteamIds(links: string | null | undefined): number[] {
   return Number.isSafeInteger(id) && id > 0 ? [id] : [];
 }
 
-export async function loadAchievements(): Promise<AchievementGame[]> {
+export function loadAchievements(): Promise<AchievementGame[]> {
+  const language = steamLang();
+  if (achievementsCache && achievementsCache.expiresAt > Date.now() && achievementsCache.language === language) {
+    return achievementsCache.promise;
+  }
+
+  const promise = loadAchievementsUncached();
+  const entry = { promise, expiresAt: Date.now() + ACHIEVEMENTS_CACHE_TTL_MS, language };
+  achievementsCache = entry;
+  promise.catch(() => {
+    if (achievementsCache === entry) achievementsCache = null;
+  });
+  return promise;
+}
+
+function invalidateAchievementsCache() {
+  achievementsCache = null;
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('refresh-profile-library', invalidateAchievementsCache);
+  window.addEventListener('media-relations-changed', invalidateAchievementsCache);
+  window.addEventListener('profile-achievements-changed', invalidateAchievementsCache);
+}
+
+async function loadAchievementsUncached(): Promise<AchievementGame[]> {
   const { items, catalog } = await getCachedLibraryAndCatalog();
   const libraryGames = items.filter(item => item.type === 'game' || item.type === 'vnovel');
   const catalogById = new Map<string, CatalogSummary>(catalog.map(entry => [entry.external_id, entry]));
