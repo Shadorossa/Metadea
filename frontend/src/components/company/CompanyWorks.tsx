@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Boxes, Eye } from 'lucide-react';
+import { Boxes, Eye, Star } from 'lucide-react';
 import type { Translations } from '../../i18n/index';
 import { getLangCode } from '../../i18n/runtime';
 import type { CompanyWork } from '../../lib/tauri/company-catalog';
@@ -7,6 +7,7 @@ import {
   companyInitials,
   filterAndSortWorks,
   hasExtras,
+  hasMasterpieces,
   hasRoleSplit,
   type CompanyRoleFilter,
   type CompanyWorkFilters,
@@ -124,6 +125,7 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
   }, [works, filters, snapshot]);
   const showRoleFilter = useMemo(() => hasRoleSplit(works), [works]);
   const showExtrasToggle = useMemo(() => hasExtras(works), [works]);
+  const showMasterpiecesToggle = useMemo(() => hasMasterpieces(works), [works]);
 
   const stateAndProgress = (id: string) => {
     const row = snapshot?.libraryById.get(id);
@@ -194,7 +196,21 @@ export function CompanyWorks({ works, filters, onFiltersChange, snapshot, loadin
               <Boxes size={16} aria-hidden="true" />
             </button>
           )}
+          {showMasterpiecesToggle && (
+            <button
+              type="button"
+              className={`company-filter-toggle${filters.masterpiecesOnly ? ' active' : ''}`}
+              aria-label={tc.masterpieces_only}
+              aria-pressed={filters.masterpiecesOnly}
+              title={tc.masterpieces_only}
+              onClick={() => update({ masterpiecesOnly: !filters.masterpiecesOnly })}
+            >
+              <Star size={16} aria-hidden="true" />
+              <span>{tc.masterpieces_only}</span>
+            </button>
+          )}
         </div>
+        <span className="company-works-count">{t.works_count.replace('{count}', String(shown.length))}</span>
         <div className="media-section-header-line"></div>
         {(showRoleFilter || view === 'grid') && (
           <div className="company-header-controls">

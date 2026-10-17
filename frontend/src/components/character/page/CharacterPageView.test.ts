@@ -76,6 +76,7 @@ function legacyStatValueContent(raw: string): string {
 function legacyStatItemHtml(displayLabel: string, items: string[]): string {
   if (items.length === 0) return '';
   const isCarousel = items.length > 1;
+  const valueClass = displayLabel === t.stat_height ? 'media-stat-value media-stat-value--height' : 'media-stat-value';
   let valueContent: string;
   if (!isCarousel) {
     valueContent = legacyStatValueContent(items[0]);
@@ -97,7 +98,7 @@ function legacyStatItemHtml(displayLabel: string, items: string[]): string {
     <div class="media-stat-item">
       <div class="media-stat-main-row">
         <span class="media-stat-label">${escapeHtml(displayLabel)}</span>
-        <div class="media-stat-value">${valueContent}</div>
+        <div class="${valueClass}">${valueContent}</div>
       </div>
       <div class="media-stat-divider-row">
         <div class="media-stat-divider-line"></div>
@@ -196,7 +197,7 @@ function legacyContentHtml(d: CharacterPageData): string {
         </div>
 
         <div class="media-col-stats character-hero-stats" id="char-stats-card" style="display: flex;">
-        <button type="button" class="btn btn--sm btn--secondary char-edit-btn-header" id="char-edit-btn-header" title="${t.edit_tooltip}" aria-label="${t.edit_button}"><svg></svg></button>
+        <button type="button" class="btn btn--sm btn--secondary char-edit-btn-header" id="char-edit-btn-header" title="${t.edit_tooltip}" aria-label="${t.edit_button}"><svg class="char-edit-btn-icon"></svg></button>
         <div class="media-section-header-row">
           <p class="section-label">${t.details}</p>
           <div class="media-section-header-line"></div>

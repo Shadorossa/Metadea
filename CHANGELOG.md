@@ -16,6 +16,22 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-10-17
+
+### Highlights
+
+- Steam and RetroAchievements progress now appears together on player profiles.
+
+### Added
+
+- **Profile achievements:** per-game covers, unlock counts, achievement icons and shared Steam/RetroAchievements progress.
+- **Legacy editions:** compatible Steam releases are grouped automatically, with duplicate achievements counted once.
+
+### Improved
+
+- **Game lists:** achievement entries follow the same alphabetical saga ordering as Local.
+- **Game details:** playtime and completion progress are clearer, with improved achievement tooltips and controls.
+
 ## [0.7.3] - 2026-09-25
 
 ### Highlights
