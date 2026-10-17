@@ -34,6 +34,7 @@ import { useShortcuts } from '../shared/hooks/useShortcuts';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameDetailPanel }  from './details/GameDetailPanel';
+import { collapseSteamLegacyPairs, findSteamLegacyVariant } from '../../lib/local/steam-legacy';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { DetailPanelShell } from './details/DetailPanelShell';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
@@ -357,10 +358,11 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   // be rebuilt — sorted, grouped, name-matched — on every render of this
   // component, i.e. on every keystroke in the search box and every
   // selection change, for a grid of hundreds of cards.
-  const safeGames = React.useMemo(() => (Array.isArray(games) ? games : [])
+  const visibleGames = React.useMemo(() => collapseSteamLegacyPairs(Array.isArray(games) ? games : []), [games]);
+  const safeGames = React.useMemo(() => visibleGames
     .filter(g => !isSteamVN(g))
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name)), [games, isSteamVN]);
+    .sort((a, b) => a.name.localeCompare(b.name)), [visibleGames, isSteamVN]);
   const filterQuery = filterName.trim().toLowerCase();
   const filterGames = React.useCallback(<G extends { name: string }>(list: G[]): G[] =>
     filterQuery ? list.filter(g => g.name.toLowerCase().includes(filterQuery)) : list, [filterQuery]);
@@ -474,11 +476,12 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
     const seenCurrentlyGames = new Set<LocalGame>();
     return currentlyRaw.filter(e => {
       if (e.kind !== 'game') return true;
+      if (!visibleGames.includes(e.game)) return false;
       if (seenCurrentlyGames.has(e.game)) return false;
       seenCurrentlyGames.add(e.game);
       return true;
     });
-  }, [filterGames, statusBuckets.currently, buildCatalogStatusEntries]);
+  }, [filterGames, statusBuckets.currently, buildCatalogStatusEntries, visibleGames]);
   // No installed-game half here (unlike currentlyEntries above) — an
   // installed game matched to "planning" now stays in its own platform
   // section instead (see statusBuckets). buildCatalogStatusEntries can still
@@ -691,7 +694,7 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
                   covers every other category) ──────────────────────────── */
               <GamesGrid
                 gamesState={gamesState}
-                gamesCount={games.length}
+                gamesCount={visibleGames.length}
                 rootFolder={routes['videojuegos']}
                 onSetRoute={() => setRoute('videojuegos')}
                 onClearRoute={() => clearRoute('videojuegos')}
@@ -749,6 +752,7 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
                 ) : (
                   <GameDetailPanel
                     game={panelSelectedGame ?? { name: panelSelectedPendingItem!.title, launcher: 'local' }}
+                    legacyVariant={panelSelectedGame ? findSteamLegacyVariant(panelSelectedGame, games) ?? undefined : undefined}
                     coverCache={coverCache}
                     knownExternalId={panelSelectedGame ? undefined : panelSelectedPendingItem!.externalId}
                     fallbackCover={panelSelectedGame ? undefined : panelSelectedPendingItem!.cover}

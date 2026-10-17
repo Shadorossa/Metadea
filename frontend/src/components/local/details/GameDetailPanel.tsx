@@ -70,11 +70,12 @@ interface GameDetailPanelProps {
   // cover/banner) comes from this real installed game instead, while the
   // title/cover/catalog identity shown still stays the season's own.
   launchOverride?: LocalGame;
+  legacyVariant?: LocalGame;
   autoResume?: boolean;
   onAutoResumeHandled?: () => void;
 }
 
-export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh, onGameRelinked, knownExternalId, fallbackCover, launchOverride, autoResume, onAutoResumeHandled }: GameDetailPanelProps) {
+export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh, onGameRelinked, knownExternalId, fallbackCover, launchOverride, legacyVariant, autoResume, onAutoResumeHandled }: GameDetailPanelProps) {
   const t = getT();
   const launchTarget = launchOverride ?? game;
   // Identifies which selection this render is actually showing — used only
@@ -360,6 +361,34 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // treatment as canLaunch itself, instead of the button silently doing
   // nothing (launch_game's own error was only ever logged to the console).
   const emulatorMissing = !isExe && !!launchTarget.rom_platform && emulatorConfigured === false;
+
+  const launchGame = (target: LocalGame) => {
+    if (emulatorMissing) return;
+    const resolveSourceExternalId = async (): Promise<string | undefined> => {
+      if (romTrackingId) return romTrackingId;
+      if (knownExternalId) return knownExternalId;
+      if (launchTarget.external_id) return launchTarget.external_id;
+      if (target.external_id) return target.external_id;
+      if (!gameInfo?.igdb_id) return undefined;
+      for (const candidate of [gameExternalId(gameInfo.igdb_id, false), gameExternalId(gameInfo.igdb_id, true)]) {
+        if (await getLibraryEntry(candidate).catch(() => null)) return candidate;
+      }
+      return undefined;
+    };
+
+    resolveSourceExternalId().then(resolvedId => {
+      const effectiveExternalId = resolvedId ?? romTrackingId ?? knownExternalId ?? launchTarget.external_id ?? target.external_id ?? target.app_id ?? target.name;
+      launchLocalGameSession({
+        target,
+        externalId: effectiveExternalId,
+        title: displayTitle,
+        coverUrl: catalogEntry?.cover_url?.startsWith('http') ? catalogEntry.cover_url : banner,
+        discPath: target.app_id === launchTarget.app_id ? selectedDisc : undefined,
+      })
+        .then(() => setHasLaunched(true))
+        .catch(console.error);
+    });
+  };
   useEffect(() => {
     if (!autoResume) { autoResumeStartedRef.current = false; return; }
     if (autoResumeStartedRef.current) return;
@@ -548,52 +577,39 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
 
         <div className={`local-media-info-row${(prequelInfo || sequelInfo || bundleChildren.length > 0) ? ' local-media-info-row--has-neighbors' : ''}`}>
           <div className="local-media-left-col">
-            <button
-              ref={autoResumeButtonRef}
-              className="local-game-detail-play"
-              disabled={emulatorMissing || (!canLaunch && !effectiveStoreLink)}
-              title={emulatorMissing ? t.local.no_emulator_configured : (canLaunch || effectiveStoreLink ? undefined : t.local.not_installed)}
-              onClick={() => {
-                if (emulatorMissing) return;
-                if (!canLaunch) {
-                  // Nothing to launch, but it IS buyable/viewable somewhere
-                  // (a real store link, or the Nintendo eShop search
-                  // fallback — see effectiveStoreLink above) — opened the
-                  // same way regardless (steam:// or a plain https url).
-                  if (effectiveStoreLink) openExternalUrl(effectiveStoreLink.url).catch(console.error);
-                  return;
-                }
-                const resolveSourceExternalId = async (): Promise<string | undefined> => {
-                  if (romTrackingId) return romTrackingId;
-                  if (knownExternalId) return knownExternalId;
-                  if (launchTarget.external_id) return launchTarget.external_id;
-                  if (!gameInfo?.igdb_id) return undefined;
-                  for (const candidate of [gameExternalId(gameInfo.igdb_id, false), gameExternalId(gameInfo.igdb_id, true)]) {
-                    if (await getLibraryEntry(candidate).catch(() => null)) return candidate;
+            <div className={`local-game-detail-play-group${legacyVariant ? ' local-game-detail-play-group--legacy' : ''}`}>
+              <button
+                ref={autoResumeButtonRef}
+                className="local-game-detail-play local-game-detail-play--primary"
+                disabled={emulatorMissing || (!canLaunch && !effectiveStoreLink)}
+                title={emulatorMissing ? t.local.no_emulator_configured : (canLaunch || effectiveStoreLink ? undefined : t.local.not_installed)}
+                onClick={() => {
+                  if (!canLaunch) {
+                    if (effectiveStoreLink) openExternalUrl(effectiveStoreLink.url).catch(console.error);
+                    return;
                   }
-                  return undefined;
-                };
-
-                resolveSourceExternalId().then(resolvedId => {
-                  const effectiveExternalId = resolvedId ?? romTrackingId ?? knownExternalId ?? launchTarget.external_id ?? launchTarget.app_id ?? launchTarget.name;
-                  // Launch + presence + playtime session, shared with Big Picture.
-                  launchLocalGameSession({
-                    target: launchTarget,
-                    externalId: effectiveExternalId,
-                    title: displayTitle,
-                    coverUrl: catalogEntry?.cover_url?.startsWith('http') ? catalogEntry.cover_url : banner,
-                    discPath: selectedDisc,
-                  })
-                    .then(() => setHasLaunched(true))
-                    .catch(console.error);
-                });
-              }}
-            >
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-              {emulatorMissing ? t.local.no_emulator_configured : (canLaunch ? t.local.play_game : effectiveStoreLinkLabel ?? t.local.not_installed)}
-            </button>
+                  launchGame(launchTarget);
+                }}
+              >
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+                {emulatorMissing ? t.local.no_emulator_configured : (canLaunch ? t.local.play_game : effectiveStoreLinkLabel ?? t.local.not_installed)}
+              </button>
+              {legacyVariant && (
+                <button
+                  type="button"
+                  className="local-game-detail-play local-game-detail-play--legacy"
+                  onClick={() => launchGame(legacyVariant)}
+                  title={`Jugar ${legacyVariant.name}`}
+                >
+                  <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  Legacy
+                </button>
+              )}
+            </div>
 
             {isRom && launchTarget.discs && (
               <DiscSelector
