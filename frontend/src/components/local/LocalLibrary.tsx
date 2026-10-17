@@ -338,8 +338,9 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
   const isSteamRemakePair = React.useCallback((current: LocalGame, secondary: LocalGame) => {
     const currentIds = candidateExternalIdsForGame(current, pathCache).filter(id => catalogMapById.has(id));
     const secondaryIds = candidateExternalIdsForGame(secondary, pathCache).filter(id => catalogMapById.has(id));
-    if ([...currentIds, ...secondaryIds].some(id => catalogMapById.get(id)?.format?.toUpperCase() === 'REMAKE')) return true;
-
+    // A remake format describes one catalog entry; it cannot tell us that two
+    // Steam apps are separate games. Only exclude the pair when catalog
+    // relations connect their distinct catalog identities.
     const ids = new Set(currentIds);
     const otherIds = new Set(secondaryIds);
     const currentKey = linkedGameIds.join('\u0000');

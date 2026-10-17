@@ -1636,6 +1636,8 @@ export const de: Translations = {
     empty_category_media: "Sie haben keine Werke dieses Typs in der Bibliothek (sehen/lesen/spielen oder geplant)",
     add_route: "Ordnerpfad hinzufügen",
     sort_title: "Sortieren",
+    sort_ascending: "Aufsteigend",
+    sort_descending: "Absteigend",
     sort_alpha: "Alphabetisch",
     sort_last_played: "Zuletzt gespielt",
     sort_playtime: "Spielzeit",

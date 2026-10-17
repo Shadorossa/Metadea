@@ -1636,6 +1636,8 @@ export const ru: Translations = {
     empty_category_media: "У вас нет произведений этого типа в библиотеке (просмотр/чтение/игра или в планах)",
     add_route: "Добавить путь к папке",
     sort_title: "Сортировка",
+    sort_ascending: "По возрастанию",
+    sort_descending: "По убыванию",
     sort_alpha: "По алфавиту",
     sort_last_played: "Недавно запущенные",
     sort_playtime: "Время в игре",

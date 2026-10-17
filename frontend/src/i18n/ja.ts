@@ -1636,6 +1636,8 @@ export const ja: Translations = {
     diagnostics: "診断",
     add_route: "フォルダパスを追加",
     sort_title: "並び替え",
+    sort_ascending: "昇順",
+    sort_descending: "降順",
     sort_alpha: "アルファベット順",
     sort_last_played: "最近プレイした順",
     sort_playtime: "プレイ時間",

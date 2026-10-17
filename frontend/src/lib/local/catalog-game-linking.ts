@@ -140,6 +140,11 @@ export function displayNameFor(g: LocalGame, catalogMapById?: Map<string, Catalo
 // 'shortestToBeat' reads the time_to_beat cache only (see
 // useCachedBeatSeconds): works whose length was never looked up sort last.
 export type SortMode = 'alpha' | 'lastPlayed' | 'playtime' | 'shortestToBeat';
+export type SortDirection = 'ascending' | 'descending';
+
+export function defaultSortDirection(mode: SortMode): SortDirection {
+  return mode === 'lastPlayed' || mode === 'playtime' ? 'descending' : 'ascending';
+}
 
 export function entryDisplayName(entry: StatusEntry, displayNameFor: (g: LocalGame) => string | undefined): string {
   return entry.kind === 'game' ? (displayNameFor(entry.game) ?? entry.game.name) : entry.item.title;
@@ -171,20 +176,32 @@ export function sortEntries(
   mode: SortMode,
   displayNameFor: (g: LocalGame) => string | undefined,
   beatSeconds?: ReadonlyMap<string, number>,
+  direction: SortDirection = defaultSortDirection(mode),
 ): StatusEntry[] {
   const sorted = [...entries];
+  const factor = direction === 'ascending' ? 1 : -1;
   if (mode === 'shortestToBeat') {
     const lengthOf = (entry: StatusEntry) => {
       const id = entryExternalId(entry);
       return (id && beatSeconds?.get(id)) || Infinity;
     };
-    sorted.sort((a, b) => (lengthOf(a) - lengthOf(b)) || entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor)));
+    sorted.sort((a, b) => {
+      const aLength = lengthOf(a);
+      const bLength = lengthOf(b);
+      if (!Number.isFinite(aLength) || !Number.isFinite(bLength)) {
+        if (!Number.isFinite(aLength) && !Number.isFinite(bLength)) {
+          return entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor)) * factor;
+        }
+        return Number.isFinite(aLength) ? -1 : 1;
+      }
+      return ((aLength - bLength) || entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor))) * factor;
+    });
   } else if (mode === 'alpha') {
-    sorted.sort((a, b) => entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor)));
+    sorted.sort((a, b) => entryDisplayName(a, displayNameFor).localeCompare(entryDisplayName(b, displayNameFor)) * factor);
   } else if (mode === 'lastPlayed') {
-    sorted.sort((a, b) => entryLastPlayedMs(b) - entryLastPlayedMs(a));
+    sorted.sort((a, b) => (entryLastPlayedMs(a) - entryLastPlayedMs(b)) * factor);
   } else {
-    sorted.sort((a, b) => entryPlaytimeMinutes(b) - entryPlaytimeMinutes(a));
+    sorted.sort((a, b) => (entryPlaytimeMinutes(a) - entryPlaytimeMinutes(b)) * factor);
   }
   return sorted;
 }

@@ -11,7 +11,7 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { GameCard } from './cards/GameCard';
 import { type CoverCache } from './details/GameDetailPanel';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, displayNameFor, sortEntries, type SortMode, type StatusEntry } from '../../lib/local/catalog-game-linking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, defaultSortDirection, displayNameFor, sortEntries, type SortDirection, type SortMode, type StatusEntry } from '../../lib/local/catalog-game-linking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
@@ -264,6 +264,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
   // Same sort control Videojuegos gives its own launcher sections (see
   // GamesGrid) — one shared preference across every platform here too.
   const [sortMode, setSortMode] = useState<SortMode>('alpha');
+  const [sortDirection, setSortDirection] = useState<SortDirection>(defaultSortDirection('alpha'));
   const sortsByLength = sortMode === 'shortestToBeat';
   const beatSeconds = useCachedBeatSeconds(sortsByLength, sortsByLength
     ? [...items.map(i => i.externalId), ...steamBacklog.map(g => g.external_id), ...steamPlanning.map(g => g.external_id)]
@@ -308,7 +309,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
             ]
           : [];
         const merged = [...platformBacklogGames, ...additionalPlatformEntries];
-        const sorted = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById), beatSeconds);
+        const sorted = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById), beatSeconds, sortDirection);
         const entries: SectionEntry[] = sorted.map(e => e.kind === 'game'
           ? { kind: 'steam' as const, game: e.game, libraryStatus: e.libraryStatus }
           : { kind: 'catalog' as const, item: e.item, launchGame: e.launchGame }
@@ -344,7 +345,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
       }))
       .filter(s => s.entries.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, resolvedCatalogMapById, sortMode, beatSeconds]);
+  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, resolvedCatalogMapById, sortMode, sortDirection, beatSeconds]);
 
   // One bulk exists-check for every catalog card this grid is about to
   // render, instead of each LocalMediaCard racing its own get_cached_cover
@@ -411,7 +412,12 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                       <>
                         <motion.div className="local-launcher-title-rule" layout="size" transition={LAUNCHER_LINE_TRANSITION} />
                         <div className="local-launcher-title-controls">
-                          <SortModeSelect value={sortMode} onChange={setSortMode} />
+                          <SortModeSelect
+                            value={sortMode}
+                            onChange={mode => { setSortMode(mode); setSortDirection(defaultSortDirection(mode)); }}
+                            direction={sortDirection}
+                            onDirectionChange={setSortDirection}
+                          />
                         </div>
                       </>
                     ) : null}

@@ -639,6 +639,29 @@ img[data-textless='poster'] {
   background-position: right center;
 }
 
+.local-sort-control {
+  display: inline-flex;
+  align-items: center;
+}
+
+.local-sort-direction-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.local-sort-direction-btn:hover,
+.local-sort-direction-btn:focus-visible {
+  color: var(--accent);
+}
+
 .local-sort-select:hover,
 .local-sort-select:focus {
   outline: none;

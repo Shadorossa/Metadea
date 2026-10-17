@@ -6,7 +6,7 @@ import { getT } from '../../i18n/runtime';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
-import { displayNameFor, type StatusEntry, type SortMode, sortEntries, entryKey, entryExternalId } from '../../lib/local/catalog-game-linking';
+import { defaultSortDirection, displayNameFor, type StatusEntry, type SortDirection, type SortMode, sortEntries, entryKey, entryExternalId } from '../../lib/local/catalog-game-linking';
 import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, type PlatformId } from '../../lib/local/platforms';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
@@ -97,6 +97,7 @@ export function GamesGrid({
   // reason about, and there's no real case for browsing one platform
   // alphabetically while another stays sorted by playtime.
   const [sortMode, setSortMode] = useState<SortMode>('alpha');
+  const [sortDirection, setSortDirection] = useState<SortDirection>(defaultSortDirection('alpha'));
   const sortsByLength = sortMode === 'shortestToBeat';
   const beatSeconds = useCachedBeatSeconds(sortsByLength, sortsByLength
     ? [
@@ -212,7 +213,7 @@ export function GamesGrid({
             ...list.map((g): StatusEntry => ({ kind: 'game', game: g })),
             ...pendingForLauncher,
           ];
-          const sortedEntries = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById), beatSeconds);
+          const sortedEntries = sortEntries(merged, sortMode, g => displayNameFor(g, catalogMapById), beatSeconds, sortDirection);
           const totalCount = merged.length;
           return (
             <section
@@ -256,7 +257,12 @@ export function GamesGrid({
                     smoothly either way. */}
                 <motion.div className="local-launcher-title-rule" layout="size" transition={LAUNCHER_LINE_TRANSITION} />
                 <div className="local-launcher-title-controls">
-                  <SortModeSelect value={sortMode} onChange={setSortMode} />
+                  <SortModeSelect
+                    value={sortMode}
+                    onChange={mode => { setSortMode(mode); setSortDirection(defaultSortDirection(mode)); }}
+                    direction={sortDirection}
+                    onDirectionChange={setSortDirection}
+                  />
                   {idx === 0 && (
                     <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan}>
                       <IconRefresh />

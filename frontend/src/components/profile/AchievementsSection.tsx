@@ -7,6 +7,19 @@ import { toSteamAchievementsModel } from '../../lib/retro-achievements/achieveme
 import { AchievementIcons } from './AchievementIcons';
 import { loadAchievements, type AchievementGame } from '../../lib/profile/achievement-data';
 
+function AchievementCover({ game }: { game: AchievementGame }) {
+  const sources = [game.cover, ...game.coverFallbacks].filter((source, index, all) => !!source && all.indexOf(source) === index);
+  const [sourceIndex, setSourceIndex] = useState(0);
+
+  if (sourceIndex >= sources.length) return <span>🎮</span>;
+  return <img
+    src={sources[sourceIndex]}
+    alt=""
+    loading="lazy"
+    onError={() => setSourceIndex(index => index + 1)}
+  />;
+}
+
 export function AchievementsSection() {
   const t = getT();
   const [games, setGames] = useState<AchievementGame[] | null>(null);
@@ -50,7 +63,7 @@ export function AchievementsSection() {
         return (
           <article className="profile-achievement-game" key={game.id}>
             <div className="profile-achievement-cover">
-              {game.cover ? <img src={game.cover} alt="" loading="lazy" /> : <span>🎮</span>}
+              <AchievementCover game={game} />
             </div>
             <div className="profile-achievement-content">
               <div className="profile-achievement-title-row">

@@ -4,8 +4,10 @@ import {
   getSagaNames,
   raGetGameProgress,
   raGetLink,
+  readMetadataIndex,
   steamGetCachedAchievements,
   steamGetOwnedGames,
+  wrapAssetUrl,
   type CatalogSummary,
   type DbMediaRelation,
   type LocalGame,
@@ -26,6 +28,7 @@ export interface AchievementGame {
   externalId: string | null;
   title: string;
   cover: string;
+  coverFallbacks: string[];
   steam: Awaited<ReturnType<typeof steamGetCachedAchievements>>;
   legacySteam?: SteamPlayerAchievements | null;
   retro: RaGameProgress | null;
@@ -101,6 +104,18 @@ export async function loadAchievements(): Promise<AchievementGame[]> {
     };
     candidates.push(candidate);
     candidateBySteamId.set(appId, candidate);
+  }
+
+  // Local's Steam cards use the app-id keyed cover downloaded into the
+  // metadata cache. Prefer that same asset here: Steam's public library art
+  // URLs are not present for every title and can fail even when Local has a
+  // working cover on disk.
+  const metadataIndex = await readMetadataIndex().catch(() => ({} as Awaited<ReturnType<typeof readMetadataIndex>>));
+  for (const candidate of candidates) {
+    const localCoverPath = candidate.steamIds
+      .map(appId => metadataIndex[String(appId)]?.cover_path)
+      .find((coverPath): coverPath is string => !!coverPath);
+    if (localCoverPath) candidate.cover = wrapAssetUrl(localCoverPath);
   }
 
   const catalogIds = [...new Set(candidates.flatMap(candidate => candidate.externalId ? [candidate.externalId] : []))];
@@ -193,7 +208,11 @@ export async function loadAchievements(): Promise<AchievementGame[]> {
     const retro = data.retro;
     const mergedUnlocked = mergeSteamEditionAchievements(steam, legacySteam).unlocked;
     if (mergedUnlocked + (retro?.unlocked ?? 0) === 0) continue;
-    rows.push({ id: candidate.id, externalId: candidate.externalId, title: candidate.title, cover: candidate.cover, steam, legacySteam, retro });
+    const coverFallbacks = candidate.steamIds.flatMap(appId => {
+      const highResolution = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+      return [highResolution, highResolution.replace('_2x.jpg', '.jpg')];
+    }).filter((cover, index, covers) => cover !== candidate.cover && covers.indexOf(cover) === index);
+    rows.push({ id: candidate.id, externalId: candidate.externalId, title: candidate.title, cover: candidate.cover, coverFallbacks, steam, legacySteam, retro });
   }
 
   return sortAchievementGames(rows, sagaNames, sagaRelations, catalogById);
