@@ -5,13 +5,16 @@
 # with "resource path `resources\libmpv-2.dll` doesn't exist".
 #
 # Usage: powershell -File scripts/fetch-libmpv.ps1 [-Force]
-# Bump both the URL and the hash together when updating mpv.
+# Bump both the URL and the hash together when updating mpv. zhongfly prunes
+# releases after a few weeks, so a 404 here means the pin needs bumping to a
+# current mpv-dev-lgpl-x86_64 build from
+# https://github.com/zhongfly/mpv-winbuild/releases.
 param([switch]$Force)
 
 $ErrorActionPreference = 'Stop'
 
-$Url  = 'https://github.com/zhongfly/mpv-winbuild/releases/download/2026-09-22-c646756799/mpv-dev-lgpl-x86_64-20260922-git-c646756799.7z'
-$Sha256 = '55d86bb42c981e48188b7239b17928ae4b7cebe7f5a571a5c28d7903488f922c'
+$Url  = 'https://github.com/zhongfly/mpv-winbuild/releases/download/2026-10-24-703e59b0ec/mpv-dev-lgpl-x86_64-20261024-git-703e59b0ec.7z'
+$Sha256 = '3d38ea53f3f53d51d5b6090926ce27b1148ca7a32e95593e05859f92f4093668'
 
 $root = Split-Path -Parent $PSScriptRoot
 $resources = Join-Path $root 'resources'
