@@ -16,6 +16,31 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-10-24
+
+### Highlights
+
+- Profile, Local and Friends open instantly from their last state, and the jukebox keeps playing while you browse.
+
+### Improved
+
+- **Profile:** achievements and friends lists show right away and refresh in the background; stats use the full window width.
+- **Local:** Steam games appear without waiting for Steam's servers, and revisiting Local no longer rescans from scratch; ascending/descending sort order.
+- **Community catalog:** only new or changed entries are downloaded at startup.
+- **Emulators:** a warning shows when the chosen emulator can't unlock RetroAchievements.
+- **Settings:** the update and changelog buttons sit side by side.
+
+### Removed
+
+- The "Event" media type and its API-Sports integration, including their saved data.
+
+### Fixed
+
+- The jukebox stopped when changing pages and didn't advance to the next song — Cause: some links reloaded the whole page and each page load replaced the audio player.
+- Every startup reported the whole community catalog as downloaded — Cause: the sync had no record of the last version it applied.
+- Favoriting a bundle failed — Cause: the heart also tried to add the bundle to the library, which bundles can't join.
+- Uninstalled games linked to a catalog entry showed no cover or details — Cause: they were looked up only by their launcher id.
+
 ## [0.7.4] - 2026-10-17
 
 ### Highlights
