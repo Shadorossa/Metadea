@@ -24,8 +24,32 @@ if ((Test-Path $dll) -and -not $Force) {
 
 New-Item -ItemType Directory -Force $resources | Out-Null
 $archive = Join-Path ([System.IO.Path]::GetTempPath()) 'metadea-libmpv.7z'
-Write-Host "Downloading $Url"
-Invoke-WebRequest -Uri $Url -OutFile $archive
+# GitHub's release CDN occasionally drops long downloads mid-transfer ("The
+# connection was closed unexpectedly"), so retry with backoff. curl.exe (on
+# every Windows 10+ box and CI runner) is preferred over Invoke-WebRequest,
+# which is slow in Windows PowerShell 5.1 and has no retry of its own.
+$ProgressPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+$attempts = 5
+for ($i = 1; ; $i++) {
+  Write-Host "Downloading $Url (attempt $i/$attempts)"
+  try {
+    if (Test-Path $archive) { Remove-Item $archive -Force }
+    if ($curl) {
+      & $curl.Source -fsSL --connect-timeout 30 -o $archive $Url
+      if ($LASTEXITCODE -ne 0) { throw "curl exited with code $LASTEXITCODE" }
+    } else {
+      Invoke-WebRequest -Uri $Url -OutFile $archive -UseBasicParsing
+    }
+    break
+  } catch {
+    if ($i -ge $attempts) { throw }
+    $delay = [math]::Pow(2, $i)
+    Write-Warning "Download failed: $($_.Exception.Message); retrying in ${delay}s"
+    Start-Sleep -Seconds $delay
+  }
+}
 
 $actual = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
 if ($actual -ne $Sha256) {

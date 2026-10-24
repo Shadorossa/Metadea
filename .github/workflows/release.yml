@@ -54,6 +54,12 @@ jobs:
 
       # libmpv-2.dll is a bundle resource (tauri.conf.json) but git-ignored;
       # the build script refuses to run without it.
+      - name: Cache libmpv
+        uses: actions/cache@v4
+        with:
+          path: frontend/src-tauri/resources/libmpv-2.dll
+          key: libmpv-${{ hashFiles('frontend/src-tauri/scripts/fetch-libmpv.ps1') }}
+
       - name: Fetch libmpv (LGPL)
         run: powershell -File scripts/fetch-libmpv.ps1
         working-directory: frontend/src-tauri
