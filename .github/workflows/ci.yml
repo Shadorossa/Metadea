@@ -61,6 +61,12 @@ jobs:
 
       # libmpv-2.dll is a bundle resource (tauri.conf.json) but git-ignored;
       # tauri's build script fails without it, so clippy/test need it too.
+      - name: Cache libmpv
+        uses: actions/cache@v4
+        with:
+          path: frontend/src-tauri/resources/libmpv-2.dll
+          key: libmpv-${{ hashFiles('frontend/src-tauri/scripts/fetch-libmpv.ps1') }}
+
       - name: Fetch libmpv (LGPL)
         run: powershell -File scripts/fetch-libmpv.ps1
         working-directory: frontend/src-tauri

@@ -5,13 +5,16 @@
 # with "resource path `resources\libmpv-2.dll` doesn't exist".
 #
 # Usage: powershell -File scripts/fetch-libmpv.ps1 [-Force]
-# Bump both the URL and the hash together when updating mpv.
+# Bump both the URL and the hash together when updating mpv. zhongfly prunes
+# releases after a few weeks, so a 404 here means the pin needs bumping to a
+# current mpv-dev-lgpl-x86_64 build from
+# https://github.com/zhongfly/mpv-winbuild/releases.
 param([switch]$Force)
 
 $ErrorActionPreference = 'Stop'
 
-$Url  = 'https://github.com/zhongfly/mpv-winbuild/releases/download/2026-09-22-c646756799/mpv-dev-lgpl-x86_64-20260922-git-c646756799.7z'
-$Sha256 = '55d86bb42c981e48188b7239b17928ae4b7cebe7f5a571a5c28d7903488f922c'
+$Url  = 'https://github.com/zhongfly/mpv-winbuild/releases/download/2026-10-24-703e59b0ec/mpv-dev-lgpl-x86_64-20261024-git-703e59b0ec.7z'
+$Sha256 = '3d38ea53f3f53d51d5b6090926ce27b1148ca7a32e95593e05859f92f4093668'
 
 $root = Split-Path -Parent $PSScriptRoot
 $resources = Join-Path $root 'resources'
@@ -24,8 +27,32 @@ if ((Test-Path $dll) -and -not $Force) {
 
 New-Item -ItemType Directory -Force $resources | Out-Null
 $archive = Join-Path ([System.IO.Path]::GetTempPath()) 'metadea-libmpv.7z'
-Write-Host "Downloading $Url"
-Invoke-WebRequest -Uri $Url -OutFile $archive
+# GitHub's release CDN occasionally drops long downloads mid-transfer ("The
+# connection was closed unexpectedly"), so retry with backoff. curl.exe (on
+# every Windows 10+ box and CI runner) is preferred over Invoke-WebRequest,
+# which is slow in Windows PowerShell 5.1 and has no retry of its own.
+$ProgressPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+$attempts = 5
+for ($i = 1; ; $i++) {
+  Write-Host "Downloading $Url (attempt $i/$attempts)"
+  try {
+    if (Test-Path $archive) { Remove-Item $archive -Force }
+    if ($curl) {
+      & $curl.Source -fsSL --connect-timeout 30 -o $archive $Url
+      if ($LASTEXITCODE -ne 0) { throw "curl exited with code $LASTEXITCODE" }
+    } else {
+      Invoke-WebRequest -Uri $Url -OutFile $archive -UseBasicParsing
+    }
+    break
+  } catch {
+    if ($i -ge $attempts) { throw }
+    $delay = [math]::Pow(2, $i)
+    Write-Warning "Download failed: $($_.Exception.Message); retrying in ${delay}s"
+    Start-Sleep -Seconds $delay
+  }
+}
 
 $actual = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
 if ($actual -ne $Sha256) {
