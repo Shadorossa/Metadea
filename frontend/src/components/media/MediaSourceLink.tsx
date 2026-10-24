@@ -6,7 +6,6 @@ const SOURCE_LOGO: Record<string, { file?: string; label: string }> = {
   tmdb:        { file: 'Tmdb.new.logo.png', label: 'TMDB' },
   openlibrary: { file: 'Open_Library_tight_logo.png', label: 'Open Library' },
   comicvine:   { file: 'comicvine_logo.png', label: 'Comic Vine' },
-  apisports:    { label: 'API-Sports' },
 };
 
 interface Props {

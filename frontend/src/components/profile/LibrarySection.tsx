@@ -21,7 +21,7 @@ import { needsResync } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/media-page-data';
 import { isSagaComponentRelationType } from '../../lib/media/saga/saga-relation-types';
 import { createUnionFind } from '../../lib/shared/collections/union-find';
-import { groupEditions, groupBundles, refineSagaGroups, averageRating, unifyAnimeSeasons, unifyEventSeasons } from '../../lib/profile/library-grouping';
+import { groupEditions, groupBundles, refineSagaGroups, averageRating, unifyAnimeSeasons } from '../../lib/profile/library-grouping';
 import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/media/mappers/mapper-utils';
 import { STORAGE_KEYS } from '../../lib/storage/storage-keys';
 import { LibraryCard, LibraryTypeIcon } from './LibraryCard';
@@ -438,11 +438,8 @@ export function LibrarySection({
     const animeSeasonGroups = isUnifySeasonsEnabled()
       ? unifyAnimeSeasons(filtered, catalogMap, sagaRelations, sagaNames)
       : { consumedIds: new Set<string>(), groups: [] };
-    const eventSeasonGroups = isUnifySeasonsEnabled()
-      ? unifyEventSeasons(filtered, catalogMap)
-      : { consumedIds: new Set<string>(), groups: [] };
-    const seasonConsumedIds = new Set([...animeSeasonGroups.consumedIds, ...eventSeasonGroups.consumedIds]);
-    const seasonGroups = [...animeSeasonGroups.groups, ...eventSeasonGroups.groups];
+    const seasonConsumedIds = animeSeasonGroups.consumedIds;
+    const seasonGroups = animeSeasonGroups.groups;
     const unmergedFiltered = seasonConsumedIds.size > 0
       ? filtered.filter(i => !seasonConsumedIds.has(i.external_id))
       : filtered;
@@ -529,7 +526,7 @@ export function LibrarySection({
       .map(sec => {
         const suppressIds = sec.isCompletedSection ? undefined : completedIds;
         const editionGroups = groupEditions(sec.items, catalogMap, groupByEdition);
-        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: CatalogSummary; titleOverride?: string; aggregateStats?: boolean; hideGroupBadge?: boolean; mediaExternalId?: string }> = editionGroups;
+        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: CatalogSummary; titleOverride?: string; aggregateStats?: boolean; hideGroupBadge?: boolean }> = editionGroups;
         if (groupByBundle) {
           cards = groupBundles(cards, catalogMap, sagaRelations, suppressIds);
         }
@@ -541,7 +538,7 @@ export function LibrarySection({
         // status), so they skip groupEditions/groupBundles/refineSagaGroups
         // entirely instead of being reprocessed by them.
         for (const group of seasonCardsByTitle.get(sec.title) ?? []) {
-          cards.push({ item: group.item, grouped: group.grouped, titleOverride: group.titleOverride, aggregateStats: true, hideGroupBadge: true, mediaExternalId: group.mediaExternalId });
+          cards.push({ item: group.item, grouped: group.grouped, titleOverride: group.titleOverride, aggregateStats: true, hideGroupBadge: true });
         }
 
         // groupBundles/refineSagaGroups append merged cards regardless of date/rating — re-sort using the group's aggregate.
@@ -793,7 +790,7 @@ export function LibrarySection({
                 // card's identity — and any hover/flyout state — stays
                 // stable across that specific toggle instead of remounting.
                 getKey={({ item, bundleMeta }) => bundleMeta ? `bundle:${bundleMeta.external_id}` : item.external_id}
-                renderItem={({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupBadge, mediaExternalId }) => (
+                renderItem={({ item, grouped, bundleMeta, titleOverride, aggregateStats, hideGroupBadge }) => (
                   <LibraryCard
                     item={item}
                     grouped={grouped}
@@ -801,7 +798,6 @@ export function LibrarySection({
                     titleOverride={titleOverride}
                     aggregateStats={aggregateStats}
                     hideGroupingUi={hideGroupBadge}
-                    mediaExternalId={mediaExternalId}
                     catalogMap={catalogMap}
                     p={p}
                     readOnly={readOnly}

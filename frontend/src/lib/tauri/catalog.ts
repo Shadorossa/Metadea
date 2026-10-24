@@ -456,7 +456,9 @@ export async function saveAuthorProfileAndRelations(author: DbMediaAuthor, relat
 
 // Downloads the repo's shared community catalog (built from merged
 // collaborative-catalog PRs) and merges rows the user doesn't already have
-// into their local media_catalog. Returns how many new rows were imported.
+// into their local media_catalog. Returns how many local rows changed — 0
+// when the catalog is unchanged since the last sync (nothing re-downloaded
+// or re-merged).
 export async function syncCommunityCatalog(): Promise<number> {
   if (!isTauri()) return 0;
   const imported = await invoke<number>('sync_community_catalog');

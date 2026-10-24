@@ -11,7 +11,7 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { GameCard } from './cards/GameCard';
 import { type CoverCache } from './details/GameDetailPanel';
-import { buildLibraryStatusEntries, candidateExternalIdsForGame, computeBundleCompletionStatus, displayNameFor, sortEntries, type StatusEntry } from '../../lib/local/catalog-game-linking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, catalogCoverFor, computeBundleCompletionStatus, displayNameFor, sortEntries, type StatusEntry } from '../../lib/local/catalog-game-linking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconRefresh } from './ui/icons';
 import { DeleteContextMenu } from './ui/DeleteContextMenu';
@@ -439,6 +439,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                         coverCache={coverCache ?? {}}
                         onClick={onSetGameSelection}
                         displayName={displayNameFor(entry.game, catalogMapById)}
+                        catalogCover={catalogCoverFor(entry.game, catalogMapById)}
                         status={steamGameMatch.get(entry.game)?.status ?? entry.libraryStatus}
                         onRequestDelete={requestDeleteGame}
                       />

@@ -184,10 +184,6 @@ export const HOST_BUDGETS: Record<string, HostBudget> = {
   'api.themoviedb.org': { maxRequests: 40, windowMs: 10_000, label: 'TMDB' },
   // Open Library asks for at most ~1 request/s from a single client.
   'openlibrary.org': { maxRequests: 1, windowMs: 1_000, label: 'Open Library' },
-  // API-Sports' free plan is 10 requests/min (paid plans go up to 300+/min
-  // — raise this row to match the user's plan if it ever becomes a setting).
-  'v3.football.api-sports.io': { maxRequests: 10, windowMs: 60_000, label: 'API-Sports' },
-  'v1.basketball.api-sports.io': { maxRequests: 10, windowMs: 60_000, label: 'API-Sports' },
   // AnimeThemes documents 90 requests/min for its API.
   'api.animethemes.moe': { maxRequests: 60, windowMs: 60_000, label: 'AnimeThemes' },
   // The OP/ED video CDN is far stricter and undocumented: measured from one

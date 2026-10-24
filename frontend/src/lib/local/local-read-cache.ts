@@ -314,15 +314,19 @@ export function prefetchLocalSteamAchievements(appId: number): void {
 // copy as soon as it's read, then the live Steam result only if it differs
 // (or `null` when there is neither). The live fetch is skipped while the
 // persisted copy is fresh (isSteamAchievementsCacheFresh) and memoised for
-// the visit, so a reopen is a pure memory read.
+// the visit, so a reopen is a pure memory read. A caller that already read
+// the persisted copy passes it as `cached` (null = none on disk) to skip
+// the second disk read.
 export async function loadLocalSteamAchievements(
   appId: number,
   onData: (data: SteamPlayerAchievements | null) => void,
-  options: { lastPlayedSec?: number; nowMs?: number } = {},
+  options: { lastPlayedSec?: number; nowMs?: number; cached?: SteamPlayerAchievements | null } = {},
 ): Promise<void> {
   const lang = steamLang();
   const key = `${appId}\n${lang}`;
-  const cached = await readLocalSteamCachedAchievements(appId, lang).catch(() => null);
+  const cached = options.cached !== undefined
+    ? options.cached
+    : await readLocalSteamCachedAchievements(appId, lang).catch(() => null);
   if (cached) onData(cached);
   const nowMs = options.nowMs ?? Date.now();
   if (cached && isSteamAchievementsCacheFresh(cached.fetched_at, nowMs, steamAchievementsForcedAfterMs, options.lastPlayedSec)) return;

@@ -104,12 +104,6 @@ describe('applyStickyLocalFields', () => {
     applyStickyLocalFields(data, catalogEntry({ cover_url: 'https://s4.anilist.co/x/cover/medium/bx1.jpg' }));
     expect(data.cover).toBe('fresh-large.jpg');
   });
-
-  it('never lets a stored format override an API-Sports competition', () => {
-    const data = page({ externalId: 'event:apisports:football:39', type: 'event', format: 'Season' });
-    applyStickyLocalFields(data, catalogEntry({ type: 'event', format: 'League' }));
-    expect(data.format).toBe('Season');
-  });
 });
 
 describe('persistToCatalog', () => {
@@ -151,10 +145,7 @@ describe('persistToCatalog', () => {
     expect(savedEntry().total_count).toBe(24);
   });
 
-  it('forces the Season format for API-Sports competitions and auto-blocks AniList recaps', async () => {
-    await persistToCatalog(page({ externalId: 'event:apisports:basketball:12', type: 'event', format: 'League' }), null, false);
-    expect(savedEntry().format).toBe('Season');
-    vi.clearAllMocks();
+  it('auto-blocks AniList recaps', async () => {
     await persistToCatalog(page({ externalId: 'anime:1', type: 'anime', source: 'anilist', description: '(Recompilation film) of the first season.' }), null, false);
     expect(savedEntry().blocked_at).toEqual(expect.any(String));
   });

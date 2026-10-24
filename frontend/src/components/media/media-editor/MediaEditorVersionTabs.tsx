@@ -18,13 +18,11 @@ export interface MediaEditorVersionTabsProps {
   titleMain: string;
   parentGame?: { title: string; externalId: string; cover?: string };
   isUnifiedAnime: boolean;
-  isUnifiedEvent: boolean;
   isUnifiedSeries: boolean;
   isBundle: boolean;
   generalLogId: string;
   generalBaseTitle: string;
   animeSeasonChain: SagaEntry[];
-  eventSeasons: MediaSeasonInfo[];
   seriesSeasons: MediaSeasonInfo[];
   seasonMetaMap: Record<string, SeasonMeta>;
   allAvailableEditions: AvailableEdition[];
@@ -32,10 +30,10 @@ export interface MediaEditorVersionTabsProps {
 
 export function MediaEditorVersionTabs({
   te, activeLogId, logs, dispatchEntry, externalId, baseId, titleMain, parentGame,
-  isUnifiedAnime, isUnifiedEvent, isUnifiedSeries, isBundle, generalLogId, generalBaseTitle,
-  animeSeasonChain, eventSeasons, seriesSeasons, seasonMetaMap, allAvailableEditions,
+  isUnifiedAnime, isUnifiedSeries, isBundle, generalLogId, generalBaseTitle,
+  animeSeasonChain, seriesSeasons, seasonMetaMap, allAvailableEditions,
 }: MediaEditorVersionTabsProps) {
-  if (!(isUnifiedAnime || isUnifiedEvent || isUnifiedSeries || parentGame || allAvailableEditions.length > 0)) return null;
+  if (!(isUnifiedAnime || isUnifiedSeries || parentGame || allAvailableEditions.length > 0)) return null;
 
   return (
         <div className="me-versions-tabs">
@@ -65,40 +63,6 @@ export function MediaEditorVersionTabs({
                         dispatchEntry({ type: 'LOAD_LOG', id: seasonEntry.externalId, entry: createEmptyVersionEntry(seasonEntry.externalId, 'anime') });
                       }
                       dispatchEntry({ type: 'SWITCH_LOG', id: seasonEntry.externalId });
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </>
-          ) : isUnifiedEvent ? (
-            <>
-              <button
-                type="button"
-                className={`me-version-tab-btn${activeLogId === externalId ? ' active' : ''}`}
-                title={titleMain}
-                onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: externalId })}
-              >
-                {titleMain}
-              </button>
-              <span className="me-version-tab-separator">|</span>
-              {eventSeasons.map((season, index) => {
-                const seasonId = season.externalId;
-                if (!seasonId) return null;
-                const isActive = activeLogId === seasonId;
-                const label = season.name || `T${eventSeasons.length - index}`;
-                return (
-                  <button
-                    key={seasonId}
-                    type="button"
-                    className={`me-version-tab-btn${isActive ? ' active' : ''}`}
-                    title={label}
-                    onClick={() => {
-                      if (!logs[seasonId]) {
-                        dispatchEntry({ type: 'LOAD_LOG', id: seasonId, entry: createEmptyVersionEntry(seasonId, 'event') });
-                      }
-                      dispatchEntry({ type: 'SWITCH_LOG', id: seasonId });
                     }}
                   >
                     {label}

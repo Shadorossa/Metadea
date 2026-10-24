@@ -232,17 +232,20 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     nintendo: t.local.view_on_nintendo,
   };
 
-  const [catalogEntry,  setCatalogEntry]  = useKeyedState<MediaCatalogEntry | null>(`${knownExternalId}\n${gameInfo?.igdb_id}`, null);
+  const [catalogEntry,  setCatalogEntry]  = useKeyedState<MediaCatalogEntry | null>(`${knownExternalId}\n${gameInfo?.igdb_id}\n${game.external_id}`, null);
 
   // Tries both id prefixes — an IGDB game logged as a visual novel is
   // catalogued as "vnovel:<id>", not "game:<id>" (see detect_vn/is_vn), and
   // only one of the two lookups will ever actually resolve. Guessing "game:"
   // alone silently missed every VN, which is exactly what made this panel's
   // own PREQUEL/SEQUEL lookup below come up empty for e.g. Higurashi.
+  // A game with no IGDB metadata of its own (an uninstalled ghost has no
+  // app_id to key it by) still has the link the user picked: game.external_id.
+  const linkedExternalId = knownExternalId ?? (gameInfo?.igdb_id ? undefined : game.external_id ?? undefined);
   useEffect(() => {
     let cancelled = false;
-    if (knownExternalId) {
-      getLocalCatalogEntry(knownExternalId)
+    if (linkedExternalId) {
+      getLocalCatalogEntry(linkedExternalId)
         .then(entry => { if (!cancelled) setCatalogEntry(entry); })
         .catch(() => { if (!cancelled) setCatalogEntry(null); });
       return () => { cancelled = true; };
@@ -254,7 +257,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
       getLocalCatalogEntry(gameExternalId(igdbId, true)).catch(() => null),
     ]).then(([g, v]) => { if (!cancelled) setCatalogEntry(g ?? v ?? null); });
     return () => { cancelled = true; };
-  }, [gameInfo?.igdb_id, knownExternalId, setCatalogEntry]);
+  }, [gameInfo?.igdb_id, linkedExternalId, setCatalogEntry]);
 
   // Same prequel/sequel neighbor row LocalMediaDetailPanel shows for
   // anime/manga/etc. — a Steam game's real catalog identity is whatever
@@ -333,7 +336,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // LocalMediaDetailPanel's own header already reads) — checked before
   // falling all the way back to the portrait cover_url.
   const catalogBanner = firstCsvUrl(catalogEntry?.banners_csv);
-  const banner     = entry?.banner ?? catalogBanner ?? entry?.cover ?? fallbackCover ?? null;
+  const banner     = entry?.banner ?? catalogBanner ?? entry?.cover ?? fallbackCover ?? catalogEntry?.cover_url ?? null;
   // A real downloaded banner (Steam-cached, or the catalog's own
   // banners_csv art) is already a wide, header-shaped image — safe to
   // crop-cover the full width. Falling back to a portrait cover (no banner

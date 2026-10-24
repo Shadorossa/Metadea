@@ -4,7 +4,7 @@
 
 export type MediaType =
   | 'all' | 'anime' | 'manga' | 'lnovel' | 'game'
-  | 'vnovel'  | 'movie' | 'series' | 'book' | 'comic' | 'event' | 'character' | 'staff';
+  | 'vnovel'  | 'movie' | 'series' | 'book' | 'comic' | 'character' | 'staff';
 
 /**
  * Subset of media_catalog columns available from search APIs.
@@ -18,7 +18,7 @@ export interface SearchResult {
   /** Matches media_catalog.format — e.g. "TV", "OVA", "MANGA" */
   format: string;
   /** Matches media_catalog.source — which API provided this result */
-  source: 'anilist' | 'igdb' | 'tmdb' | 'openlibrary' | 'comicvine' | 'apisports';
+  source: 'anilist' | 'igdb' | 'tmdb' | 'openlibrary' | 'comicvine';
   /** Matches media_catalog.title_main — primary display title */
   titleMain: string;
   /** Matches media_catalog.title_romaji — romanised title (AniList only) */

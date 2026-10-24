@@ -2,16 +2,18 @@ import {
   getCatalogEntriesFullByIds,
   getMediaRelationsForIds,
   getSagaNames,
+  raGetCachedGameProgress,
   raGetGameProgress,
   raGetLink,
   readMetadataIndex,
   steamGetCachedAchievements,
-  steamGetOwnedGames,
   steamLang,
   wrapAssetUrl,
   type CatalogSummary,
   type DbMediaRelation,
+  type LibraryEntry,
   type LocalGame,
+  type MediaCatalogEntry,
   type RaGameProgress,
   type SteamPlayerAchievements,
 } from '../tauri';
@@ -23,6 +25,7 @@ import { findSteamLegacyVariant } from '../local/steam-legacy';
 import { mergeSteamEditionAchievements } from '../local/steam-achievements-merge';
 import { compareByReleaseDate } from '../media/mappers/mapper-utils';
 import { reconstructSagaOrder } from '../media/saga/saga-grouping';
+import { loadSteamOwnedGames, readStoredSteamOwnedGames, type OwnedSteamGame } from '../local/steam-owned-games';
 
 export interface AchievementGame {
   id: string;
@@ -35,9 +38,6 @@ export interface AchievementGame {
   retro: RaGameProgress | null;
 }
 
-const ACHIEVEMENTS_CACHE_TTL_MS = 5 * 60 * 1000;
-let achievementsCache: { promise: Promise<AchievementGame[]>; expiresAt: number; language: string } | null = null;
-
 interface AchievementCandidate {
   id: string;
   externalId: string | null;
@@ -45,6 +45,50 @@ interface AchievementCandidate {
   cover: string;
   steamIds: number[];
 }
+
+// Everything the list needs besides the owned-games list and the
+// achievements themselves: local reads only, shared by both phases.
+interface AchievementSources {
+  libraryGames: LibraryEntry[];
+  catalogById: Map<string, CatalogSummary>;
+  fullById: Map<string, MediaCatalogEntry>;
+  metadataIndex: Awaited<ReturnType<typeof readMetadataIndex>>;
+  sagaNames: Record<string, string>;
+  sagaRelations: DbMediaRelation[];
+}
+
+interface AchievementPlan {
+  candidates: AchievementCandidate[];
+  candidateByAppId: Map<number, AchievementCandidate>;
+  legacyPairByCurrent: Map<number, number>;
+  legacyAppIds: Set<number>;
+}
+
+interface LoadedAchievements {
+  steamByAppId: Map<number, SteamPlayerAchievements | null>;
+  raGameIdByExternalId: Map<string, number | null>;
+  retroByExternalId: Map<string, RaGameProgress | null>;
+}
+
+// Two phases: 'cached' paints from disk only (the persisted Steam copies,
+// RA's SQLite rows whatever their age, the stored owned-games list);
+// 'live' then refreshes what is due through the network and replaces the
+// rows. The live result is kept for ACHIEVEMENTS_LIVE_TTL_MS.
+const ACHIEVEMENTS_LIVE_TTL_MS = 5 * 60 * 1000;
+const CACHED_READ_CONCURRENCY = 8;
+const LIVE_READ_CONCURRENCY = 4;
+
+interface AchievementsCacheEntry {
+  language: string;
+  sources: Promise<AchievementSources>;
+  cached: Promise<AchievementGame[]>;
+  latest: Promise<AchievementGame[]>;
+  loaded: LoadedAchievements | null;
+  live: Promise<AchievementGame[]> | null;
+  liveExpiresAt: number;
+}
+
+let achievementsCache: AchievementsCacheEntry | null = null;
 
 function steamIdFromCatalogLinks(links: string | null | undefined): string | null {
   for (const pair of (links ?? '').split(',')) {
@@ -62,19 +106,59 @@ function gameSteamIds(links: string | null | undefined): number[] {
   return Number.isSafeInteger(id) && id > 0 ? [id] : [];
 }
 
+/** The best rows available right now: disk-only on the first call, the
+ *  live ones once refreshAchievements has resolved. */
 export function loadAchievements(): Promise<AchievementGame[]> {
-  const language = steamLang();
-  if (achievementsCache && achievementsCache.expiresAt > Date.now() && achievementsCache.language === language) {
-    return achievementsCache.promise;
-  }
+  return currentEntry().latest;
+}
 
-  const promise = loadAchievementsUncached();
-  const entry = { promise, expiresAt: Date.now() + ACHIEVEMENTS_CACHE_TTL_MS, language };
+/** Refreshes through the network what is due (stale Steam copies, expired
+ *  RA rows, the owned-games list) and resolves with the updated rows. */
+export function refreshAchievements(): Promise<AchievementGame[]> {
+  const entry = currentEntry();
+  if (entry.live && entry.liveExpiresAt > Date.now()) return entry.live;
+
+  const live = Promise.all([entry.sources, entry.cached, loadSteamOwnedGames()]).then(async ([sources, , owned]) => {
+    const plan = planCandidates(sources, owned ?? []);
+    const loaded = await readAchievementData(plan, 'live', entry.loaded);
+    entry.loaded = loaded;
+    return buildAchievementRows(sources, plan, loaded);
+  });
+  entry.live = live;
+  entry.liveExpiresAt = Date.now() + ACHIEVEMENTS_LIVE_TTL_MS;
+  live.then(
+    () => { entry.latest = live; },
+    () => { if (entry.live === live) entry.live = null; },
+  );
+  return live;
+}
+
+function currentEntry(): AchievementsCacheEntry {
+  const language = steamLang();
+  if (achievementsCache?.language === language) return achievementsCache;
+
+  const sources = readAchievementSources();
+  const entry: AchievementsCacheEntry = {
+    language,
+    sources,
+    cached: Promise.resolve([]),
+    latest: Promise.resolve([]),
+    loaded: null,
+    live: null,
+    liveExpiresAt: 0,
+  };
+  entry.cached = sources.then(async loadedSources => {
+    const plan = planCandidates(loadedSources, readStoredSteamOwnedGames() ?? []);
+    const loaded = await readAchievementData(plan, 'cached', null);
+    entry.loaded ??= loaded;
+    return buildAchievementRows(loadedSources, plan, loaded);
+  });
+  entry.latest = entry.cached;
   achievementsCache = entry;
-  promise.catch(() => {
+  entry.cached.catch(() => {
     if (achievementsCache === entry) achievementsCache = null;
   });
-  return promise;
+  return entry;
 }
 
 function invalidateAchievementsCache() {
@@ -87,13 +171,34 @@ if (typeof window !== 'undefined') {
   window.addEventListener('profile-achievements-changed', invalidateAchievementsCache);
 }
 
-async function loadAchievementsUncached(): Promise<AchievementGame[]> {
-  const { items, catalog } = await getCachedLibraryAndCatalog();
-  const libraryGames = items.filter(item => item.type === 'game' || item.type === 'vnovel');
-  const catalogById = new Map<string, CatalogSummary>(catalog.map(entry => [entry.external_id, entry]));
-  const fullRows = await getCatalogEntriesFullByIds(libraryGames.map(game => game.external_id)).catch(() => []);
-  const fullById = new Map(fullRows.map(entry => [entry.external_id, entry]));
+function isPlayedOwnedGame(owned: OwnedSteamGame): boolean {
+  return owned.playtime_forever > 0 || (owned.rtime_last_played ?? 0) > 0;
+}
 
+async function readAchievementSources(): Promise<AchievementSources> {
+  const [{ items, catalog }, metadataIndex] = await Promise.all([
+    getCachedLibraryAndCatalog(),
+    readMetadataIndex().catch(() => ({} as Awaited<ReturnType<typeof readMetadataIndex>>)),
+  ]);
+  const libraryGames = items.filter(item => item.type === 'game' || item.type === 'vnovel');
+  const catalogIds = [...new Set(libraryGames.map(game => game.external_id))];
+  const [fullRows, sagaNames, sagaRelations] = await Promise.all([
+    getCatalogEntriesFullByIds(catalogIds).catch(() => [] as MediaCatalogEntry[]),
+    getSagaNames(catalogIds).catch(() => ({} as Record<string, string>)),
+    getMediaRelationsForIds(catalogIds, ['RECOMMENDATION', 'PREQUEL', 'SEQUEL', 'PRECUELA', 'SECUELA', 'REMAKE']).catch(() => [] as DbMediaRelation[]),
+  ]);
+  return {
+    libraryGames,
+    catalogById: new Map(catalog.map(entry => [entry.external_id, entry])),
+    fullById: new Map(fullRows.map(entry => [entry.external_id, entry])),
+    metadataIndex,
+    sagaNames,
+    sagaRelations,
+  };
+}
+
+function planCandidates(sources: AchievementSources, ownedGames: OwnedSteamGame[]): AchievementPlan {
+  const { libraryGames, catalogById, fullById, metadataIndex, sagaRelations } = sources;
   const candidates: AchievementCandidate[] = libraryGames.map(game => {
     const meta = fullById.get(game.external_id);
     const catalogMeta = catalogById.get(game.external_id);
@@ -108,14 +213,13 @@ async function loadAchievementsUncached(): Promise<AchievementGame[]> {
 
   // Include Steam-owned games too: many aren't explicitly registered in the
   // Metadea catalog, so a catalog-only pass silently misses their achievements.
-  const ownedSteamGames = await steamGetOwnedGames().catch(() => null);
   const candidateBySteamId = new Map<number, AchievementCandidate>();
   const candidateByTitle = new Map(candidates.map(candidate => [normalizeGameTitle(candidate.title), candidate]));
   for (const candidate of candidates) {
     for (const steamId of candidate.steamIds) candidateBySteamId.set(steamId, candidate);
   }
-  for (const owned of ownedSteamGames?.games ?? []) {
-    if (owned.playtime_forever <= 0 && (owned.rtime_last_played ?? 0) <= 0) continue;
+  for (const owned of ownedGames) {
+    if (!isPlayedOwnedGame(owned)) continue;
     const appId = Number(owned.appid);
     if (!Number.isSafeInteger(appId) || appId <= 0) continue;
     let candidate = candidateBySteamId.get(appId) ?? candidateByTitle.get(normalizeGameTitle(owned.name));
@@ -139,7 +243,6 @@ async function loadAchievementsUncached(): Promise<AchievementGame[]> {
   // metadata cache. Prefer that same asset here: Steam's public library art
   // URLs are not present for every title and can fail even when Local has a
   // working cover on disk.
-  const metadataIndex = await readMetadataIndex().catch(() => ({} as Awaited<ReturnType<typeof readMetadataIndex>>));
   for (const candidate of candidates) {
     const localCoverPath = candidate.steamIds
       .map(appId => metadataIndex[String(appId)]?.cover_path)
@@ -147,12 +250,7 @@ async function loadAchievementsUncached(): Promise<AchievementGame[]> {
     if (localCoverPath) candidate.cover = wrapAssetUrl(localCoverPath);
   }
 
-  const catalogIds = [...new Set(candidates.flatMap(candidate => candidate.externalId ? [candidate.externalId] : []))];
-  const [sagaNames, sagaRelations] = await Promise.all([
-    getSagaNames(catalogIds).catch(() => ({} as Record<string, string>)),
-    getMediaRelationsForIds(catalogIds, ['RECOMMENDATION', 'PREQUEL', 'SEQUEL', 'PRECUELA', 'SECUELA', 'REMAKE']).catch(() => [] as DbMediaRelation[]),
-  ]);
-  const ownedByAppId = new Map((ownedSteamGames?.games ?? []).map(game => [game.appid, game]));
+  const ownedByAppId = new Map(ownedGames.map(game => [Number(game.appid), game]));
   const localSteamGames: LocalGame[] = [];
   const candidateByAppId = new Map<number, AchievementCandidate>();
   for (const candidate of candidates) {
@@ -186,27 +284,81 @@ async function loadAchievementsUncached(): Promise<AchievementGame[]> {
     legacyAppIds.add(secondaryAppId);
   }
 
-  const loadedByCandidate = new Map<string, { steam: SteamPlayerAchievements | null; legacySteam?: SteamPlayerAchievements | null; retro: RaGameProgress | null }>();
+  return { candidates, candidateByAppId, legacyPairByCurrent, legacyAppIds };
+}
+
+async function runPool(tasks: Array<() => Promise<void>>, concurrency: number): Promise<void> {
   let cursor = 0;
   const worker = async () => {
-    while (cursor < candidates.length) {
-      const candidate = candidates[cursor++];
-      const [steamResults, retroResult] = await Promise.all([
-        Promise.all(candidate.steamIds.map(async id => {
-          let result = await steamGetCachedAchievements(id).catch(() => null);
-          await loadLocalSteamAchievements(id, fresh => { if (fresh) result = fresh; }).catch(() => {});
-          return result;
-        })),
-        candidate.externalId
-          ? raGetLink(candidate.externalId).then(link => link ? raGetGameProgress(link.raGameId).then(result => result.data) : null).catch(() => null)
-          : Promise.resolve(null),
-      ]);
-      const steam = steamResults.find(result => !!result && result.total > 0 && result.list.length > 0) ?? null;
-      const retro = retroResult && retroResult.total > 0 && retroResult.achievements.length > 0 ? retroResult : null;
-      loadedByCandidate.set(candidate.id, { steam, retro });
-    }
+    while (cursor < tasks.length) await tasks[cursor++]();
   };
-  await Promise.all(Array.from({ length: Math.min(4, candidates.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(concurrency, tasks.length) }, worker));
+}
+
+// 'cached' never touches the network. 'live' starts from `previous` (the
+// copies a former phase already read) so each disk copy is read once, and
+// only goes to the network for what is due.
+async function readAchievementData(
+  plan: AchievementPlan,
+  mode: 'cached' | 'live',
+  previous: LoadedAchievements | null,
+): Promise<LoadedAchievements> {
+  const loaded: LoadedAchievements = {
+    steamByAppId: new Map(),
+    raGameIdByExternalId: new Map(),
+    retroByExternalId: new Map(),
+  };
+  const tasks: Array<() => Promise<void>> = [];
+
+  for (const appId of plan.candidateByAppId.keys()) {
+    tasks.push(async () => {
+      if (mode === 'cached') {
+        loaded.steamByAppId.set(appId, await steamGetCachedAchievements(appId).catch(() => null));
+        return;
+      }
+      const cached = previous?.steamByAppId.get(appId);
+      let result = cached ?? null;
+      await loadLocalSteamAchievements(appId, fresh => { if (fresh) result = fresh; }, { cached }).catch(() => {});
+      loaded.steamByAppId.set(appId, result);
+    });
+  }
+
+  for (const candidate of plan.candidates) {
+    const externalId = candidate.externalId;
+    if (!externalId) continue;
+    tasks.push(async () => {
+      const raGameId = previous?.raGameIdByExternalId.has(externalId)
+        ? previous.raGameIdByExternalId.get(externalId) ?? null
+        : await raGetLink(externalId).then(link => link?.raGameId ?? null).catch(() => null);
+      loaded.raGameIdByExternalId.set(externalId, raGameId);
+      if (!raGameId) {
+        loaded.retroByExternalId.set(externalId, null);
+        return;
+      }
+      const retro = mode === 'cached'
+        ? await raGetCachedGameProgress(raGameId).then(result => result?.data ?? null).catch(() => null)
+        : await raGetGameProgress(raGameId).then(result => result.data).catch(() => previous?.retroByExternalId.get(externalId) ?? null);
+      loaded.retroByExternalId.set(externalId, retro);
+    });
+  }
+
+  await runPool(tasks, mode === 'cached' ? CACHED_READ_CONCURRENCY : LIVE_READ_CONCURRENCY);
+  return loaded;
+}
+
+function buildAchievementRows(sources: AchievementSources, plan: AchievementPlan, loaded: LoadedAchievements): AchievementGame[] {
+  const { candidates, candidateByAppId, legacyPairByCurrent } = plan;
+  const legacyAppIds = new Set(plan.legacyAppIds);
+
+  const loadedByCandidate = new Map<string, { steam: SteamPlayerAchievements | null; legacySteam?: SteamPlayerAchievements | null; retro: RaGameProgress | null }>();
+  for (const candidate of candidates) {
+    const steam = candidate.steamIds
+      .map(appId => loaded.steamByAppId.get(appId) ?? null)
+      .find(result => !!result && result.total > 0 && result.list.length > 0) ?? null;
+    const retroResult = candidate.externalId ? loaded.retroByExternalId.get(candidate.externalId) ?? null : null;
+    const retro = retroResult && retroResult.total > 0 && retroResult.achievements.length > 0 ? retroResult : null;
+    loadedByCandidate.set(candidate.id, { steam, retro });
+  }
 
   for (const [currentAppId, secondaryAppId] of legacyPairByCurrent) {
     const currentCandidate = candidateByAppId.get(currentAppId);
@@ -244,11 +396,11 @@ async function loadAchievementsUncached(): Promise<AchievementGame[]> {
     rows.push({ id: candidate.id, externalId: candidate.externalId, title: candidate.title, cover: candidate.cover, coverFallbacks, steam, legacySteam, retro });
   }
 
-  return sortAchievementGames(rows, sagaNames, sagaRelations, catalogById);
+  return sortAchievementGames(rows, sources.sagaNames, sources.sagaRelations, sources.catalogById);
 }
 
 function normalizeGameTitle(title: string): string {
-  return title.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return title.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function sortAchievementGames(
@@ -331,4 +483,3 @@ function sortAchievementGames(
     (a.sorted[0]?.title.localeCompare(b.sorted[0]?.title ?? '', undefined, { sensitivity: 'base' }) ?? 0));
   return groups.flatMap(group => group.sorted);
 }
-

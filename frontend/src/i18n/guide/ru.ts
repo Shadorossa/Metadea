@@ -469,7 +469,6 @@ export const guideRu: Translations['guide'] = {
       },
       tips: {
         t1: "В Windows ключи хранятся в зашифрованном виде в базе данных Metadea.",
-        t2: "API-Sports нужен для спортивных событий — этот тип пока отключён.",
       },
     },
     anilist: {

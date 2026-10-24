@@ -98,9 +98,7 @@ export async function persistToCatalog(data: MediaPageData, existing: MediaCatal
       type: existing?.type || data.type,
       // Sticky: only the collaborative editor changes format again after
       // it's set (`||` not `??`: a legacy row can have format stored as '').
-      format: data.type === 'event' && /^event:apisports:(?:football|basketball):\d+$/.test(data.externalId)
-        ? 'Season'
-        : existing?.format || data.format || null,
+      format: existing?.format || data.format || null,
       source: data.source || 'igdb',
       ...contentFields,
       banners_csv: existing?.banners_csv || data.bannerImage || null,
@@ -160,9 +158,7 @@ export function applyStickyLocalFields(data: MediaPageData, existing: MediaCatal
   if (!existing) return;
 
   if (existing.type) data.type = existing.type;
-  if (existing.format && !(data.type === 'event' && /^event:apisports:(?:football|basketball):\d+$/.test(data.externalId))) {
-    data.format = existing.format;
-  }
+  if (existing.format) data.format = existing.format;
   if (existing.title_main) data.titleMain = existing.title_main;
   if (existing.title_romaji) data.titleRomaji = existing.title_romaji;
   if (existing.title_native) data.titleNative = existing.title_native;

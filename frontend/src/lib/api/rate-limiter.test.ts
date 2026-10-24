@@ -90,8 +90,6 @@ describe('host budgets', () => {
       'api.themoviedb.org',
       'openlibrary.org',
       'v.animethemes.moe',
-      'v1.basketball.api-sports.io',
-      'v3.football.api-sports.io',
     ]);
     expect(HOST_BUDGETS['api.themoviedb.org']).toMatchObject({ maxRequests: 40, windowMs: 10_000 });
     expect(HOST_BUDGETS['openlibrary.org']).toMatchObject({ maxRequests: 1, windowMs: 1_000 });

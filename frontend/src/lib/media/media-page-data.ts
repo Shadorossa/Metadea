@@ -3,7 +3,6 @@
 // original import path so the 20+ callers stay untouched:
 //
 //   media-page-fetch.ts       provider dispatch by external-id prefix
-//   media-page-cache.ts       session-cache hit normalization
 //   media-page-persist.ts     sticky-field reconciliation + catalog write-back
 //   media-page-local-data.ts  local-only (IPC) enrichment, hover prefetch
 //   media-page-load.ts        fetchMediaData + partial/full render staging

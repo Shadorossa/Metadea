@@ -1,13 +1,12 @@
 import { memo, useState, type ReactNode } from 'react';
 import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
 import { wrapAssetUrl, type FavoriteCustomImage } from '../../../lib/tauri';
-import type { EventMatch } from '../../../lib/search/providers/apisports';
 import type { FriendScore } from '../../../lib/anilist/friends';
 import { formatRatingHtml, type RatingSystem } from '../../../lib/media/rating-utils';
 import { openLink } from '../MediaStoreLinks';
 import { ThemePreviewCardVideo } from '../ThemePreviewCardVideo';
 import { toMediumCover } from '../../../lib/media/small-cover';
-import { formatEpisodeNumber, formatMatchDate, splitTitleAfterColon } from './media-page-format';
+import { formatEpisodeNumber, splitTitleAfterColon } from './media-page-format';
 import { SpoilerChip } from '../../spoilers/SpoilerShield';
 import { getT } from '../../../i18n/runtime';
 import { interpolate } from '../../../lib/shared/text/interpolate';
@@ -37,28 +36,6 @@ export const EpisodeCard = memo(function EpisodeCard({ ep, onRevealSpoiler, fill
         </div>
       </div>
       {onRevealSpoiler && <SpoilerChip onReveal={onRevealSpoiler} className="spoiler-shield-chip--episode" />}
-    </div>
-  );
-});
-
-export const MatchCard = memo(function MatchCard({ match }: { match: EventMatch }) {
-  const home = match.home || '-';
-  const away = match.away || '-';
-  const hasScore = match.homeScore != null && match.awayScore != null;
-  return (
-    <div className="media-relation-card media-relation-card--static media-match-card">
-      <div className="media-relation-bg-layer">
-        {match.image && <img src={match.image} alt="" loading="lazy" decoding="async" />}
-      </div>
-      <div className="media-relation-card-overlay" />
-      <span className="media-relation-type">{formatMatchDate(match.date, match.time)}</span>
-      <div className="media-relation-card-content">
-        <div className="media-relation-info">
-          <span className="media-relation-title">{home} – {away}</span>
-          <span className="media-match-score">{hasScore ? `${match.homeScore} - ${match.awayScore}` : (match.status || 'vs')}</span>
-          {match.venue && <span className="media-match-venue">{match.venue}</span>}
-        </div>
-      </div>
     </div>
   );
 });

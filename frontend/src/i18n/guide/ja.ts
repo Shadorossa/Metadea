@@ -469,7 +469,6 @@ export const guideJa: Translations['guide'] = {
       },
       tips: {
         t1: "Windowsでは、キーは暗号化されてMetadeaのデータベースに保存されます。",
-        t2: "API-Sportsはスポーツイベント用ですが、この種類は現在無効になっています。",
       },
     },
     anilist: {

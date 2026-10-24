@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatEpisodeNumber, formatThemeEpisodes, formatMatchDate, mergeSeasonThemes } from './media-page-format';
+import { formatEpisodeNumber, formatThemeEpisodes, mergeSeasonThemes } from './media-page-format';
 import type { MediaTheme } from '../../../lib/tauri';
 
 describe('formatEpisodeNumber', () => {
@@ -52,31 +52,6 @@ describe('formatThemeEpisodes', () => {
 
   it('passes through text with no numbers', () => {
     expect(formatThemeEpisodes('ED', 24)).toBe('ED');
-  });
-});
-
-describe('formatMatchDate', () => {
-  it('returns the time alone when there is no date', () => {
-    expect(formatMatchDate(null, '20:00:00')).toBe('20:00:00');
-    expect(formatMatchDate(undefined, undefined)).toBe('');
-  });
-
-  it('appends a trimmed HH:MM to a formatted date', () => {
-    const out = formatMatchDate('2026-03-09', '20:45:00');
-    expect(out).toContain('·');
-    expect(out).toContain('20:45');
-    expect(out).not.toContain('20:45:00');
-  });
-
-  it('renders the date alone when there is no time', () => {
-    const out = formatMatchDate('2026-03-09', null);
-    expect(out).not.toContain('·');
-    expect(out).toContain('2026');
-  });
-
-  it('falls back to joining the raw parts when the date cannot be parsed', () => {
-    expect(formatMatchDate('not-a-date', '20:00')).toBe('not-a-date 20:00');
-    expect(formatMatchDate('not-a-date', null)).toBe('not-a-date');
   });
 });
 

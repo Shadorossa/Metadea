@@ -1,7 +1,8 @@
 // User search + public-profile viewing + follow/unfollow — all live calls
 // (no daily-cache gate, unlike profile-sync/activity-feed) since these are
 // triggered by explicit user actions (search-as-you-type, opening a profile,
-// clicking Follow), not something to batch once a day.
+// clicking Follow), not something to batch once a day. The follow lists
+// keep a visit-scoped copy only to paint at once while the live call runs.
 import { API_URL } from '../api/urls';
 import { getAuthToken } from '../tauri';
 
@@ -147,22 +148,52 @@ export async function getPublicProfile(userId: string): Promise<PublicProfile | 
 
 // The caller's own followers/following lists — always the signed-in user,
 // not a :userId param (see the backend route's own doc comment for why).
-export async function getFollowers(): Promise<UserSearchResult[]> {
+// null = couldn't be read (signed out, offline, server error), so a cached
+// copy is kept instead of being replaced by an empty list.
+async function fetchOwnFollowList(direction: 'followers' | 'following'): Promise<UserSearchResult[] | null> {
   const headers = await authHeaders();
-  if (!headers) return [];
-  const res = await fetch(`${API_URL}/api/follows/followers`, { headers });
-  if (!res.ok) return [];
+  if (!headers) return null;
+  const res = await fetch(`${API_URL}/api/follows/${direction}`, { headers }).catch(() => null);
+  if (!res?.ok) return null;
   const { results } = await res.json() as { results: UserSearchResult[] };
   return results;
 }
 
-export async function getFollowing(): Promise<UserSearchResult[]> {
-  const headers = await authHeaders();
-  if (!headers) return [];
-  const res = await fetch(`${API_URL}/api/follows/following`, { headers });
-  if (!res.ok) return [];
-  const { results } = await res.json() as { results: UserSearchResult[] };
-  return results;
+export interface OwnFollowLists {
+  followers: UserSearchResult[];
+  following: UserSearchResult[];
+}
+
+// Kept for the whole app visit (ClientRouter keeps module state across
+// pages), so reopening the Friends tab paints the last lists at once while
+// loadOwnFollowLists refreshes them. followUser/unfollowUser keep it in step.
+let ownFollowLists: OwnFollowLists | null = null;
+let ownFollowListsPending: Promise<OwnFollowLists> | null = null;
+// Bumped by every follow change, so a refresh that started before it
+// doesn't overwrite the newer state when it lands.
+let ownFollowListsGeneration = 0;
+
+export function getCachedOwnFollowLists(): OwnFollowLists | null {
+  return ownFollowLists;
+}
+
+export function loadOwnFollowLists(): Promise<OwnFollowLists> {
+  if (ownFollowListsPending) return ownFollowListsPending;
+  const generation = ownFollowListsGeneration;
+  const pending = Promise.all([fetchOwnFollowList('followers'), fetchOwnFollowList('following')])
+    .then(([followers, following]) => {
+      const lists = {
+        followers: followers ?? ownFollowLists?.followers ?? [],
+        following: following ?? ownFollowLists?.following ?? [],
+      };
+      if (generation === ownFollowListsGeneration && followers && following) ownFollowLists = lists;
+      return generation === ownFollowListsGeneration ? lists : (ownFollowLists ?? lists);
+    })
+    .finally(() => {
+      if (ownFollowListsPending === pending) ownFollowListsPending = null;
+    });
+  ownFollowListsPending = pending;
+  return pending;
 }
 
 export interface FollowPage {
@@ -193,10 +224,44 @@ export async function getUserFollowPage(
   return res.json() as Promise<FollowPage>;
 }
 
+export interface UserFollowPages {
+  followers: FollowPage | null;
+  following: FollowPage | null;
+}
+
+// First page of each list per profile, for the same paint-then-refresh as
+// the own lists. Dropped on any follow change (someone's counts moved).
+const userFollowPages = new Map<string, UserFollowPages>();
+
+export function getCachedUserFollowPages(userId: string): UserFollowPages | null {
+  return userFollowPages.get(userId) ?? null;
+}
+
+export async function loadUserFollowPages(userId: string): Promise<UserFollowPages> {
+  const [followers, following] = await Promise.all([
+    getUserFollowPage(userId, 'followers').catch(() => null),
+    getUserFollowPage(userId, 'following').catch(() => null),
+  ]);
+  const cached = userFollowPages.get(userId);
+  const pages = { followers: followers ?? cached?.followers ?? null, following: following ?? cached?.following ?? null };
+  if (pages.followers || pages.following) userFollowPages.set(userId, pages);
+  return pages;
+}
+
+function noteFollowChange(): void {
+  ownFollowListsGeneration++;
+  userFollowPages.clear();
+}
+
 export async function followUser(userId: string): Promise<boolean> {
   const headers = await authHeaders();
   if (!headers) return false;
   const res = await fetch(`${API_URL}/api/follows/${encodeURIComponent(userId)}`, { method: 'POST', headers });
+  if (res.ok) {
+    noteFollowChange();
+    // Only the id is known here, not the card data: the next load refetches.
+    ownFollowLists = null;
+  }
   return res.ok;
 }
 
@@ -204,5 +269,11 @@ export async function unfollowUser(userId: string): Promise<boolean> {
   const headers = await authHeaders();
   if (!headers) return false;
   const res = await fetch(`${API_URL}/api/follows/${encodeURIComponent(userId)}`, { method: 'DELETE', headers });
+  if (res.ok) {
+    noteFollowChange();
+    if (ownFollowLists) {
+      ownFollowLists = { ...ownFollowLists, following: ownFollowLists.following.filter(user => user.userId !== userId) };
+    }
+  }
   return res.ok;
 }

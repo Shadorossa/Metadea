@@ -17,7 +17,6 @@ import {
   sortRelationsForDisplay, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter, mergeAndPersistRelations,
 } from './saga/media-relations';
 import { fetchMediaDataInternal } from './media-page-fetch';
-import { normalizeCachedApiSportsCompetition } from './media-page-cache';
 import { persistToCatalog, filterBlockedRelations, applyStickyLocalFields } from './media-page-persist';
 import { loadBaseEditionCharacters, getBaseEditionId, enrichLocalData, loadDbRelationsAndAuthorsCached } from './media-page-local-data';
 import { readBlockedExternalIdsCached, readCatalogEntryCached, readSyncStateCached } from './media-page-read-cache';
@@ -58,11 +57,7 @@ export async function fetchMediaData(
     return null;
   }
   const cached = getCachedMediaData(rawId);
-  const isApiSportsCompetition = /^event:apisports:(?:football|basketball):\d+$/.test(rawId);
-  if (cached && (!isApiSportsCompetition || (Array.isArray(cached.seasons) && cached.seasons.length > 0))) {
-    return normalizeCachedApiSportsCompetition(rawId, cached);
-  }
-  if (cached && isApiSportsCompetition) invalidateCachedMediaData(rawId);
+  if (cached) return cached;
 
   const data = await fetchMediaDataInternal(rawId, true);
   if (!data) {
@@ -175,13 +170,11 @@ function fetchMediaDataWithFallbackVisible(
   onError: () => void,
   isCancelled: () => boolean,
 ): void {
-  const isApiSportsCompetition = /^event:apisports:(?:football|basketball):\d+$/.test(rawId);
   const cached = getCachedMediaData(rawId);
-  if (cached && (!isApiSportsCompetition || (Array.isArray(cached.seasons) && cached.seasons.length > 0))) {
-    onFull(normalizeCachedApiSportsCompetition(rawId, cached), true, 'cache');
+  if (cached) {
+    onFull(cached, true, 'cache');
     return;
   }
-  if (cached && isApiSportsCompetition) invalidateCachedMediaData(rawId);
 
   let fullArrived = false;
   let hasLocalData = false;
@@ -202,29 +195,13 @@ function fetchMediaDataWithFallbackVisible(
           console.error("Failed to load local media relations, authors or characters", e);
         }
 
-        if (!fullArrived && !isApiSportsCompetition) {
+        if (!fullArrived) {
           onPartial(localData);
         }
       }
     })
     .catch(() => {})
     .finally(async () => {
-      // Competition seasons are provider data, not catalog columns. A local
-      // catalog hit cannot be considered complete for this container, so
-      // refresh the provider payload on each page load (the session cache
-      // above still avoids duplicate calls during its cache lifetime).
-      if (isApiSportsCompetition) {
-        fetchMediaData(rawId).then(fresh => {
-          if (!isCancelled() && fresh) onFull(fresh, true, 'live');
-          else if (!isCancelled() && localData) onFull(localData, true, 'local');
-          else if (!isCancelled()) onError();
-        }).catch(() => {
-          if (!isCancelled() && localData) onFull(localData, true, 'local');
-          else if (!isCancelled()) onError();
-        });
-        return;
-      }
-
       // Catalog data is the final answer for this render - a resync (if due) only refreshes in the background.
       if (hasLocalData && localData) {
         fullArrived = true;

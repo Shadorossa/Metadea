@@ -1,10 +1,13 @@
 // "Amigos" tab on the profile page — who follows you and who you follow
 // (your own account's lists, with unfollow), or, on someone else's profile,
 // their public followers/following (GET /api/follows/:userId/…, paged).
-import { useEffect, useState } from 'react';
+// Both paint the copy kept from the last visit to the tab at once and
+// refresh it behind; the global loader only shows on a cold first load.
+import { Fragment, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  getFollowers, getFollowing, getUserFollowPage, unfollowUser, type FollowPage, type UserSearchResult,
+  getCachedOwnFollowLists, getCachedUserFollowPages, getUserFollowPage, loadOwnFollowLists, loadUserFollowPages,
+  unfollowUser, type FollowPage, type OwnFollowLists, type UserFollowPages, type UserSearchResult,
 } from '../../lib/social/users';
 import { getT } from '../../i18n/runtime';
 import { beginGlobalLoading } from '../../lib/dom/global-loading';
@@ -25,7 +28,7 @@ function UserCard({ user, onUnfollow, unfollowLabel }: {
       <a className="friend-card-link" href={`/user?id=${encodeURIComponent(user.userId)}`}>
         <div className="friend-card-avatar-wrap">
           {user.avatarUrl
-            ? <img className="friend-card-avatar" src={user.avatarUrl} alt="" referrerPolicy="no-referrer" />
+            ? <img className="friend-card-avatar" src={user.avatarUrl} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
             : <div className="friend-card-avatar friend-card-avatar--placeholder">{(user.username[0] ?? '?').toUpperCase()}</div>}
         </div>
         <span className="friend-card-name">{user.username}</span>
@@ -49,7 +52,7 @@ function FriendsList({ users, emptyText, children }: {
   }
   return (
     <div className="friends-grid">
-      {users.map(u => <div key={u.userId}>{children(u)}</div>)}
+      {users.map(u => <Fragment key={u.userId}>{children(u)}</Fragment>)}
     </div>
   );
 }
@@ -70,27 +73,32 @@ export function FriendsSection({ readOnly, userId }: { readOnly?: boolean; userI
   return <OwnFriends />;
 }
 
+function toLoadedPages(pages: UserFollowPages): Record<Direction, LoadedPage | null> {
+  const toPage = (page: FollowPage | null): LoadedPage | null =>
+    page && { users: page.results, total: page.total, nextCursor: page.nextCursor };
+  return { followers: toPage(pages.followers), following: toPage(pages.following) };
+}
+
 function PublicFriends({ userId }: { userId: string | null }) {
   const p = getT().profile;
   const [tab, setTab] = useState<Direction>('followers');
   // undefined = still loading; a null list = the server couldn't serve it.
-  const [pages, setPages] = useState<Record<Direction, LoadedPage | null> | undefined>(userId ? undefined : { followers: null, following: null });
+  const [pages, setPages] = useState<Record<Direction, LoadedPage | null> | undefined>(() => {
+    if (!userId) return { followers: null, following: null };
+    const cached = getCachedUserFollowPages(userId);
+    return cached ? toLoadedPages(cached) : undefined;
+  });
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    const endLoading = beginGlobalLoading();
-    const toPage = (page: FollowPage | null): LoadedPage | null =>
-      page && { users: page.results, total: page.total, nextCursor: page.nextCursor };
-    Promise.all([
-      getUserFollowPage(userId, 'followers').catch(() => null),
-      getUserFollowPage(userId, 'following').catch(() => null),
-    ])
-      .then(([followers, following]) => {
-        if (!cancelled) setPages({ followers: toPage(followers), following: toPage(following) });
+    const endLoading = getCachedUserFollowPages(userId) ? null : beginGlobalLoading();
+    loadUserFollowPages(userId)
+      .then(loaded => {
+        if (!cancelled) setPages(toLoadedPages(loaded));
       })
-      .finally(endLoading);
+      .finally(() => endLoading?.());
     return () => { cancelled = true; };
   }, [userId]);
 
@@ -159,33 +167,35 @@ function PublicFriends({ userId }: { userId: string | null }) {
 function OwnFriends() {
   const p = getT().profile;
   const [tab, setTab] = useState<Direction>('followers');
-  const [followers, setFollowers] = useState<UserSearchResult[]>([]);
-  const [following, setFollowing] = useState<UserSearchResult[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [lists, setLists] = useState<OwnFollowLists | null>(getCachedOwnFollowLists);
 
   useEffect(() => {
     let cancelled = false;
-    const endLoading = beginGlobalLoading();
-    Promise.all([getFollowers(), getFollowing()])
-      .then(([followersResult, followingResult]) => {
-        if (cancelled) return;
-        setFollowers(followersResult);
-        setFollowing(followingResult);
-        setLoaded(true);
-      })
-      .finally(endLoading);
+    const endLoading = getCachedOwnFollowLists() ? null : beginGlobalLoading();
+    loadOwnFollowLists()
+      .then(loaded => { if (!cancelled) setLists(loaded); })
+      .catch(() => { if (!cancelled) setLists(current => current ?? { followers: [], following: [] }); })
+      .finally(() => endLoading?.());
     return () => { cancelled = true; };
   }, []);
 
-  const handleUnfollow = async (userId: string) => {
-    setFollowing(prev => prev.filter(u => u.userId !== userId));
-    await unfollowUser(userId).catch(() => {
-      // Failed server-side — the list already dropped it locally, but a
-      // stale re-fetch (tab revisit) would just show it again, same as any
-      // other optimistic-update rollback-by-refetch in this app.
+  // Optimistic: the card goes at once, and comes back at the same spot if
+  // the server refuses or can't be reached.
+  const handleUnfollow = async (user: UserSearchResult) => {
+    const index = lists?.following.findIndex(u => u.userId === user.userId) ?? -1;
+    setLists(prev => prev && { ...prev, following: prev.following.filter(u => u.userId !== user.userId) });
+    const ok = await unfollowUser(user.userId).catch(() => false);
+    if (ok) return;
+    setLists(prev => {
+      if (!prev || prev.following.some(u => u.userId === user.userId)) return prev;
+      const following = prev.following.slice();
+      following.splice(index < 0 ? following.length : Math.min(index, following.length), 0, user);
+      return { ...prev, following };
     });
   };
 
+  const followers = lists?.followers ?? [];
+  const following = lists?.following ?? [];
   return (
     <div className="friends-layout">
       <div className="friends-tabs">
@@ -205,7 +215,7 @@ function OwnFriends() {
         </button>
       </div>
 
-      {loaded && (
+      {lists && (
         tab === 'followers' ? (
           <FriendsList users={followers} emptyText={p.friends_empty_followers}>
             {user => <UserCard user={user} />}
@@ -216,7 +226,7 @@ function OwnFriends() {
               <UserCard
                 user={user}
                 unfollowLabel={p.friends_unfollow}
-                onUnfollow={() => handleUnfollow(user.userId)}
+                onUnfollow={() => handleUnfollow(user)}
               />
             )}
           </FriendsList>

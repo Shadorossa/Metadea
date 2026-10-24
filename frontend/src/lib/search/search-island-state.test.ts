@@ -64,24 +64,19 @@ describe('getUrlSearchParams', () => {
     expect(getUrlSearchParams()).toBeNull();
   });
 
-  it('reads query, a known type and a discipline', () => {
-    stubWindow({ search: '?q=real%20madrid&type=event&discipline=football' });
-    expect(getUrlSearchParams()).toEqual({ query: 'real madrid', mediaType: 'event', eventDiscipline: 'football' });
+  it('reads query and a known type', () => {
+    stubWindow({ search: '?q=real%20madrid&type=anime' });
+    expect(getUrlSearchParams()).toEqual({ query: 'real madrid', mediaType: 'anime' });
   });
 
-  it('falls back to "all" for an unknown type and "" for an unknown discipline', () => {
-    stubWindow({ search: '?q=x&type=podcast&discipline=tennis' });
-    expect(getUrlSearchParams()).toEqual({ query: 'x', mediaType: 'all', eventDiscipline: '' });
+  it('falls back to "all" for an unknown type', () => {
+    stubWindow({ search: '?q=x&type=podcast' });
+    expect(getUrlSearchParams()).toEqual({ query: 'x', mediaType: 'all' });
   });
 
-  it('defaults type to "all" and discipline to "" when absent', () => {
+  it('defaults type to "all" when absent', () => {
     stubWindow({ search: '?q=zelda' });
-    expect(getUrlSearchParams()).toEqual({ query: 'zelda', mediaType: 'all', eventDiscipline: '' });
-  });
-
-  it('accepts basketball as a discipline', () => {
-    stubWindow({ search: '?q=lakers&type=event&discipline=basketball' });
-    expect(getUrlSearchParams()?.eventDiscipline).toBe('basketball');
+    expect(getUrlSearchParams()).toEqual({ query: 'zelda', mediaType: 'all' });
   });
 });
 

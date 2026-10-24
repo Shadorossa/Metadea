@@ -33,6 +33,15 @@ async function readCount(source: AchievementSource, live: boolean): Promise<Achi
   return data && data.total > 0 ? { unlocked: data.unlocked, total: data.total } : null;
 }
 
+/**
+ * One live RA read when a session ends, so the Rust cache (and every view
+ * that reads it) holds what the emulator unlocked. No-op without a link.
+ */
+export async function refreshRetroProgressAfterSession(externalId: string): Promise<void> {
+  if (!externalId) return;
+  await getRetroProgressSummary(externalId, true);
+}
+
 const TICK_MS = 30_000;
 let current: { sessionId: string; timer: ReturnType<typeof setInterval> } | null = null;
 

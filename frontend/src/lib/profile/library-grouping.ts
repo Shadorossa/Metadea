@@ -449,13 +449,8 @@ export interface UnifiedSeasonGroup<T> {
   item: T;             // representative season - the card's cover and aggregated log source
   grouped: T[];         // every other season
   titleOverride?: string;
-  /** Optional catalog container opened by the card. Event leagues keep their
-   *  individual season logs, but their unified card opens the competition's
-   *  own page so its season list is available. */
-  mediaExternalId?: string;
   // The member used for status and progress. Anime chains use the latest-
-  // started active season; event leagues use the season selected as the card
-  // representative. Otherwise the normal status priority applies.
+  // started active season. Otherwise the normal status priority applies.
   statusSourceItem: T;
 }
 
@@ -547,59 +542,5 @@ export function unifyAnimeSeasons<T extends { external_id: string; status: strin
     groups.push({ item: rep, grouped: rest, titleOverride, statusSourceItem });
   }
 
-  return { consumedIds, groups };
-}
-
-/** API-Sports event-season entries have a stable sport/league/season id.
- *  When unified seasons are enabled, present owned seasons as one competition
- *  card per league, even if the user has only added one season. The individual
- *  user-list rows remain untouched. The representative is the active season
- *  when one is in progress, otherwise the latest season. */
-export function unifyEventSeasons<T extends { external_id: string; status: string | null; started_at?: string | null }>(
-  ownedItems: T[],
-  catalogMap: Map<string, CatalogSummary>,
-): { consumedIds: Set<string>; groups: Array<UnifiedSeasonGroup<T>> } {
-  const byLeague = new Map<string, T[]>();
-  for (const item of ownedItems) {
-    if (catalogMap.get(item.external_id)?.type !== 'event') continue;
-    const match = /^event:apisports:(football|basketball):(\d+):/.exec(item.external_id);
-    if (!match) continue;
-    const groupKey = `${match[1]}:${match[2]}`;
-    const leagueItems = byLeague.get(groupKey) ?? [];
-    leagueItems.push(item);
-    byLeague.set(groupKey, leagueItems);
-  }
-
-  const consumedIds = new Set<string>();
-  const groups: Array<UnifiedSeasonGroup<T>> = [];
-  for (const [leagueKey, members] of byLeague) {
-    if (members.length === 0) continue;
-    const sorted = [...members].sort((a, b) =>
-      compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
-    );
-    let statusSourceItem = latestInProgressMember(sorted);
-    if (!statusSourceItem) {
-      // The input is release-sorted oldest-to-newest, so ties retain the
-      // latest season while a more relevant list status can still win.
-      statusSourceItem = sorted[sorted.length - 1];
-      let bestPriority = SEASON_STATUS_PRIORITY[statusSourceItem.status ?? ''] ?? 5;
-      for (const member of sorted) {
-        const priority = SEASON_STATUS_PRIORITY[member.status ?? ''] ?? 5;
-        if (priority < bestPriority) { bestPriority = priority; statusSourceItem = member; }
-      }
-    }
-    const title = catalogMap.get(statusSourceItem.external_id)?.title_main?.trim();
-    const lastSeparator = title?.lastIndexOf(' - ') ?? -1;
-    const titleOverride = lastSeparator > 0 ? title!.slice(0, lastSeparator).trim() : undefined;
-    const grouped = sorted.filter(member => member.external_id !== statusSourceItem!.external_id);
-    for (const member of sorted) consumedIds.add(member.external_id);
-    groups.push({
-      item: statusSourceItem,
-      grouped,
-      titleOverride,
-      statusSourceItem,
-      mediaExternalId: `event:apisports:${leagueKey}`,
-    });
-  }
   return { consumedIds, groups };
 }

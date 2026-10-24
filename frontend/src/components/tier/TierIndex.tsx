@@ -8,6 +8,7 @@ import { getT } from '../../i18n/runtime';
 import { IconTrash } from '../local/ui/icons';
 import { ModalShell } from '../shared/ModalShell';
 import { TierListPreview } from './TierListPreview';
+import { navigateInApp } from '../../lib/shared/navigation/navigate-in-app';
 
 // /tier — the user's tier lists, most recently edited first, each with a
 // mini preview of its top rows. Create, rename, duplicate and delete here;
@@ -77,7 +78,7 @@ export default function TierIndex() {
     setCreating(true);
     try {
       const id = await createTierList(name, newType);
-      window.location.assign(editorHref(id));
+      navigateInApp(editorHref(id));
     } catch (err) {
       fail(err);
       setCreating(false);

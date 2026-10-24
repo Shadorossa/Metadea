@@ -15,6 +15,18 @@ export interface EmulatorCompany {
 export interface EmulatorDefinition {
   name: string;
   extensions: string[];
+  // Has its own RetroAchievements client: unlocks reach RA while playing.
+  retroAchievements?: boolean;
+}
+
+// Platforms with RetroAchievements sets (src-tauri/src/retro_achievements/consoles.rs).
+const RETRO_ACHIEVEMENTS_PLATFORMS = new Set(['gamecube', 'ds', 'wii', 'ps1', 'ps2', 'psp']);
+
+/** True when `emulatorName` runs a platform RA covers but never reports unlocks to RA. */
+export function emulatorLacksRetroAchievements(platformId: string, emulatorName: string): boolean {
+  if (!emulatorName || !RETRO_ACHIEVEMENTS_PLATFORMS.has(platformId)) return false;
+  const emulator = EMULATORS_DB[platformId]?.find(em => em.name === emulatorName);
+  return !!emulator && !emulator.retroAchievements;
 }
 
 export const COMPANIES: EmulatorCompany[] = [
@@ -63,14 +75,15 @@ export const COMPANIES: EmulatorCompany[] = [
 
 export const EMULATORS_DB: Record<string, EmulatorDefinition[]> = {
   gamecube: [
-    { name: 'Dolphin', extensions: ['.elf', '.dol', '.gcm', '.tgc', '.ciso', '.gcz', '.iso', '.wad', '.dff', '.rvz', '.m3u'] },
+    { name: 'Dolphin', extensions: ['.elf', '.dol', '.gcm', '.tgc', '.ciso', '.gcz', '.iso', '.wad', '.dff', '.rvz', '.m3u'], retroAchievements: true },
   ],
   ds: [
     { name: 'melonDS', extensions: ['.nds', '.zip'] },
     { name: 'DeSmuME', extensions: ['.nds', '.zip', '.7z', '.rar', '.gz'] },
+    { name: 'RetroArch', extensions: ['.nds', '.zip'], retroAchievements: true },
   ],
   wii: [
-    { name: 'Dolphin', extensions: ['.elf', '.dol', '.gcm', '.tgc', '.ciso', '.gcz', '.iso', '.wad', '.dff', '.rvz', '.m3u'] },
+    { name: 'Dolphin', extensions: ['.elf', '.dol', '.gcm', '.tgc', '.ciso', '.gcz', '.iso', '.wad', '.dff', '.rvz', '.m3u'], retroAchievements: true },
   ],
   '3ds': [
     { name: 'Citra', extensions: ['.3ds', '.3dsx', '.cci', '.zcci', '.cxi', '.elf', '.cia'] },
@@ -85,15 +98,15 @@ export const EMULATORS_DB: Record<string, EmulatorDefinition[]> = {
     { name: 'Suyu', extensions: ['.nso', '.nro', '.nca', '.xci', '.nsp'] },
   ],
   ps1: [
-    { name: 'DuckStation', extensions: ['.bin', '.img', '.exe', '.chd', '.psexe', '.m3u', '.cue', '.pbp', '.iso'] },
+    { name: 'DuckStation', extensions: ['.bin', '.img', '.exe', '.chd', '.psexe', '.m3u', '.cue', '.pbp', '.iso'], retroAchievements: true },
     { name: 'ePSXe', extensions: ['.bin', '.iso', '.img', '.pbp', '.zip', '.cue'] },
     { name: 'PCSXR-PGXP', extensions: ['.bin', '.cue', '.img', '.iso'] },
   ],
   ps2: [
-    { name: 'PCSX2', extensions: ['.bin', '.chd', '.cso', '.gz', '.img', '.iso', '.m3u', '.mdf', '.nrg'] },
+    { name: 'PCSX2', extensions: ['.bin', '.chd', '.cso', '.gz', '.img', '.iso', '.m3u', '.mdf', '.nrg'], retroAchievements: true },
   ],
   psp: [
-    { name: 'PPSSPP', extensions: ['.chd', '.cso', '.iso', '.pbp'] },
+    { name: 'PPSSPP', extensions: ['.chd', '.cso', '.iso', '.pbp'], retroAchievements: true },
   ],
   ps3: [
     { name: 'RPCS3', extensions: ['.bin', '.iso'] },

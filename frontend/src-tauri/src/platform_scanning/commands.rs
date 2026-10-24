@@ -89,7 +89,6 @@ pub async fn scan_all_games(
         seen.push((game.launcher.clone(), game_link_key(game), game.name.clone()));
     }
     crate::game_links::touch_games_seen(&conn, &seen);
-    crate::game_links::prune_stale_game_links(&conn);
 
     // Anything ever scanned before that no live source (this scan, or
     // Steam's owned-games API on the frontend) still knows about — see
@@ -111,6 +110,10 @@ pub async fn scan_all_games(
     // against every game regardless of where it came from above.
     let hidden = crate::game_links::lookup_hidden_games(&conn);
     all.retain(|g| !hidden.contains(&(g.launcher.clone(), game_link_key(g))));
+
+    // After the ghosts are back: a link stays while its game is on the grid.
+    let shown = all.iter().map(|g| (g.launcher.clone(), game_link_key(g))).collect();
+    crate::game_links::prune_stale_game_links(&conn, &shown);
 
     Ok(all)
 }

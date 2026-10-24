@@ -2,7 +2,7 @@
 // shuffle / repeat). Module-level store so the mini player survives Astro
 // page transitions; the media element and the side effects live in
 // jukebox-engine.ts, the React strip in components/jukebox/.
-import { createExternalStore } from '../shared/state/external-store';
+import { createExternalStore, type ExternalStore } from '../shared/state/external-store';
 import type { FavoriteTheme } from '../tauri/jukebox';
 
 export type RepeatMode = 'off' | 'all' | 'one';
@@ -45,7 +45,16 @@ export const INITIAL_JUKEBOX_STATE: JukeboxState = {
   overlayActive: false,
 };
 
-export const jukeboxStore = createExternalStore<JukeboxState>(INITIAL_JUKEBOX_STATE);
+// One store per window, like the audio element (jukebox-audio-host.ts): a
+// second copy of this module (dev hot reload, another chunk URL) must see
+// the queue and position of the one already playing, not an empty player.
+const STORE_GLOBAL_KEY = '__metadeaJukeboxStore';
+type StoreHost = { [STORE_GLOBAL_KEY]?: ExternalStore<JukeboxState> };
+const storeHost = globalThis as unknown as StoreHost;
+
+export const jukeboxStore: ExternalStore<JukeboxState> = typeof window === 'undefined'
+  ? createExternalStore<JukeboxState>(INITIAL_JUKEBOX_STATE)
+  : (storeHost[STORE_GLOBAL_KEY] ??= createExternalStore<JukeboxState>(INITIAL_JUKEBOX_STATE));
 
 export type Rng = () => number;
 
@@ -102,6 +111,17 @@ export function nextIndex(state: JukeboxState, reason: 'ended' | 'manual'): numb
   return null;
 }
 
+export type EndedStep = { type: 'stop' } | { type: 'replay' } | { type: 'play'; index: number };
+
+// What a theme running out leads to: the next one, the same one again
+// (repeat one, or repeat all over a single theme), or the end of the queue.
+export function stepAfterEnded(state: JukeboxState): EndedStep {
+  const target = nextIndex(state, 'ended');
+  if (target === null) return { type: 'stop' };
+  if (target === state.index) return { type: 'replay' };
+  return { type: 'play', index: target };
+}
+
 export function prevIndex(state: JukeboxState): number | null {
   if (state.queue.length === 0) return null;
   const order = playOrder(state);
@@ -120,6 +140,19 @@ export function withShuffle(state: JukeboxState, shuffle: boolean, rng: Rng = Ma
     ...state,
     shuffle,
     shuffleOrder: shuffle ? buildShuffleOrder(state.queue.length, state.index, rng) : [],
+  };
+}
+
+// Points at a theme without playing it (the one saved last session). The
+// shuffle order is rebuilt with it first, as when shuffle is switched on:
+// otherwise it sits at a random spot in an order built before it was
+// known, and the queue ends after whatever happened to follow it.
+export function withCurrentIndex(state: JukeboxState, index: number, rng: Rng = Math.random): JukeboxState {
+  return {
+    ...state,
+    index,
+    status: 'paused',
+    shuffleOrder: state.shuffle ? buildShuffleOrder(state.queue.length, index, rng) : state.shuffleOrder,
   };
 }
 

@@ -6,6 +6,7 @@ import {
   candidateExternalIdsForGame,
   sourceCatalogOf,
   findEditionPrefixMatch,
+  catalogCoverFor,
   displayNameFor,
   entryDisplayName,
   entryLastPlayedMs,
@@ -184,6 +185,12 @@ describe('display / sort helpers', () => {
     expect(displayNameFor(game('X', { external_id: 'game:9' }), byId)).toBeUndefined();
     expect(displayNameFor(game('X'), byId)).toBeUndefined();
     expect(displayNameFor(g)).toBeUndefined();
+  });
+
+  it('catalogCoverFor reads the linked catalog cover, for a ghost with no app_id too', () => {
+    const covers = new Map([['game:135400', { ...catalog('game:135400', 'Minecraft'), cover_url: 'https://img/co8fu7.jpg' }]]);
+    expect(catalogCoverFor(game('Minecraft Launcher', { external_id: 'game:135400' }), covers)).toBe('https://img/co8fu7.jpg');
+    expect(catalogCoverFor(game('Minecraft Launcher'), covers)).toBeUndefined();
   });
 
   it('entryDisplayName falls back to the scanned name', () => {

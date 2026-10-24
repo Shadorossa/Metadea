@@ -21,7 +21,6 @@ const ENV_FIELDS: Array<[keyof EnvConfig, string]> = [
   ['tmdb_api_key',       'tmdb-api-key'],
   ['anilist_client_id',  'anilist-client-id'],
   ['comicvine_api_key',  'comicvine-api-key'],
-  ['apisports_api_key',  'apisports-api-key'],
   ['ra_username',        'ra-username'],
   ['ra_api_key',         'ra-api-key'],
   ['mal_client_id',      'mal-client-id'],

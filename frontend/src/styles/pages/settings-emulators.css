@@ -609,6 +609,13 @@
     margin: 0;
   }
 
+  .emu-ra-warning {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color-error);
+  }
+
   .form-label {
     font-size: 0.85rem;
     font-weight: 500;

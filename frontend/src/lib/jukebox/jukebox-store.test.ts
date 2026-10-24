@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { FavoriteTheme } from '../tauri/jukebox';
 import {
   INITIAL_JUKEBOX_STATE, type JukeboxState,
-  buildShuffleOrder, clampVolume, currentTheme, effectiveVolume, cycleRepeat, findQueueIndex, nextIndex, prevIndex, themeKey,
-  withQueue, withShuffle,
+  buildShuffleOrder, clampVolume, currentTheme, effectiveVolume, cycleRepeat, findQueueIndex, nextIndex, prevIndex, stepAfterEnded,
+  themeKey, withCurrentIndex, withQueue, withShuffle,
 } from './jukebox-store';
 
 function fav(externalId: string, slug: string): FavoriteTheme {
@@ -73,6 +73,55 @@ describe('nextIndex', () => {
   it('recovers when the current index is not in the order', () => {
     expect(nextIndex(state({ index: 9 }), 'ended')).toBe(0);
     expect(prevIndex(state({ index: 9 }))).toBe(0);
+  });
+});
+
+describe('stepAfterEnded', () => {
+  it('plays the next theme in order, and the one after it from there', () => {
+    expect(stepAfterEnded(state({ index: 0 }))).toEqual({ type: 'play', index: 1 });
+    expect(stepAfterEnded(state({ index: 1 }))).toEqual({ type: 'play', index: 2 });
+  });
+
+  it('stops after the last theme with repeat off and wraps with repeat all', () => {
+    expect(stepAfterEnded(state({ index: 3 }))).toEqual({ type: 'stop' });
+    expect(stepAfterEnded(state({ index: 3, repeat: 'all' }))).toEqual({ type: 'play', index: 0 });
+  });
+
+  it('replays the same theme with repeat one, or repeat all over a single theme', () => {
+    expect(stepAfterEnded(state({ index: 2, repeat: 'one' }))).toEqual({ type: 'replay' });
+    expect(stepAfterEnded(state({ queue: [queue[0]], index: 0, repeat: 'all' }))).toEqual({ type: 'replay' });
+    expect(stepAfterEnded(state({ queue: [queue[0]], index: 0 }))).toEqual({ type: 'stop' });
+  });
+
+  it('follows the shuffle order', () => {
+    const shuffled = state({ index: 3, shuffle: true, shuffleOrder: [3, 1, 0, 2] });
+    expect(stepAfterEnded(shuffled)).toEqual({ type: 'play', index: 1 });
+    expect(stepAfterEnded({ ...shuffled, index: 2 })).toEqual({ type: 'stop' });
+  });
+});
+
+describe('withCurrentIndex', () => {
+  it('points at the theme paused, leaving the natural order alone', () => {
+    const next = withCurrentIndex(state({ index: null, status: 'idle' }), 2);
+    expect(next.index).toBe(2);
+    expect(next.status).toBe('paused');
+    expect(next.shuffleOrder).toEqual([]);
+  });
+
+  it('rebuilds the shuffle order with the restored theme first so the whole queue still plays', () => {
+    // Order built before the saved theme was known: 2 is last, so a natural
+    // end would stop right after it.
+    const stale = state({ index: null, shuffle: true, shuffleOrder: [0, 1, 3, 2] });
+    expect(stepAfterEnded({ ...stale, index: 2 })).toEqual({ type: 'stop' });
+    let restored = withCurrentIndex(stale, 2, zeroRng);
+    expect(restored.shuffleOrder[0]).toBe(2);
+    expect([...restored.shuffleOrder].sort()).toEqual([0, 1, 2, 3]);
+    const played = [restored.index];
+    for (let step = stepAfterEnded(restored); step.type === 'play'; step = stepAfterEnded(restored)) {
+      played.push(step.index);
+      restored = { ...restored, index: step.index };
+    }
+    expect([...played].sort()).toEqual([0, 1, 2, 3]);
   });
 });
 

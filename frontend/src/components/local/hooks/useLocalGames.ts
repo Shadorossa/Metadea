@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { debugScanInfo, type LocalGame } from '../../../lib/tauri';
 import { scanGamesWithSteam } from '../../../lib/local/steam-merge';
@@ -17,9 +17,23 @@ function withRomDisplayNames(games: LocalGame[]): LocalGame[] {
 
 export type GamesState = 'idle' | 'loading' | 'done' | 'empty';
 
+// The last scan's list, kept across Local visits (ClientRouter keeps module
+// state): a revisit shows it at once and the scan refreshes it behind,
+// instead of swapping the grid for the scanning placeholder every time.
+let lastGames: LocalGame[] | null = null;
+
+function toGameList(games: LocalGame[]): LocalGame[] {
+  return dedupeLocalGames(withRomDisplayNames(Array.isArray(games) ? games : []));
+}
+
 export function useLocalGames() {
-  const [games,     setGames]     = useState<LocalGame[]>([]);
-  const [gamesState, setGamesState] = useState<GamesState>('idle');
+  const [games,     setGames]     = useState<LocalGame[]>(() => lastGames ?? []);
+  const [gamesState, setGamesState] = useState<GamesState>(() => (lastGames ? (lastGames.length ? 'done' : 'empty') : 'idle'));
+
+  // removeGame/relinkGame edit the list in place; the kept copy follows.
+  useEffect(() => {
+    if (gamesState === 'done' || gamesState === 'empty') lastGames = games;
+  }, [games, gamesState]);
   const [scanError, setScanError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
@@ -30,15 +44,23 @@ export function useLocalGames() {
   // scan is still running (the ROM clean-up's rescan, a manual rescan)
   // must not be overwritten by the older, pre-rename result arriving last.
   const scanSeqRef = useRef(0);
+  // A plain load over a list already on screen refreshes it silently; the
+  // placeholder only shows on a first load or an explicit rescan.
   const scanWith = useCallback((force: boolean) => {
     const seq = ++scanSeqRef.current;
-    setGamesState('loading');
+    if (force || !lastGames) setGamesState('loading');
     setScanError(null);
     setDebugInfo(null);
-    scanGamesWithSteam(force)
+    const showPartial = (partial: LocalGame[]) => {
+      if (seq !== scanSeqRef.current) return;
+      const list = toGameList(partial);
+      setGames(list);
+      setGamesState(list.length === 0 ? 'empty' : 'done');
+    };
+    scanGamesWithSteam(force, showPartial)
       .then(g => {
         if (seq !== scanSeqRef.current) return;
-        const list: LocalGame[] = dedupeLocalGames(withRomDisplayNames(Array.isArray(g) ? g : []));
+        const list = toGameList(g);
         setGames(list);
         setGamesState(list.length === 0 ? 'empty' : 'done');
         // Old per-disc entries folded into their multi-disc set by this

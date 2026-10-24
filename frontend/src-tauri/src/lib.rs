@@ -36,7 +36,6 @@ mod community_sync;
 mod media_authors;
 mod media_catalog;
 mod media_episodes;
-mod media_events;
 mod home_bundle;
 mod local_bundle;
 mod media_page_bundle;
@@ -308,10 +307,6 @@ pub fn run() {
             media_episodes::save_media_episodes,
             media_episodes::delete_all_media_episodes,
             media_episodes::delete_media_episode,
-            media_events::get_api_sports_event_seasons,
-            media_events::save_api_sports_event_seasons,
-            media_events::get_api_sports_event_matches,
-            media_events::save_api_sports_event_matches,
             media_themes::get_media_themes,
             media_themes::save_media_themes,
             media_themes::save_theme_preview_frame,
@@ -448,6 +443,7 @@ pub fn run() {
             retro_achievements::ra_match_by_name,
             retro_achievements::ra_search_games,
             retro_achievements::ra_get_game_progress,
+            retro_achievements::ra_get_cached_game_progress,
             retro_achievements::ra_get_profile_progress,
             retro_achievements::ra_get_recent_unlocks,
             retro_achievements::ra_get_consoles,

@@ -6,6 +6,7 @@ import type { GitHubUserProfile } from './api';
 import { REPO_OWNER, REPO_NAME, checkRepoWriteAccess } from './ownership';
 import { setField } from '../shared/collections/object-utils';
 import { catalogFilePath } from './catalog-paths';
+import { navigateInApp } from '../shared/navigation/navigate-in-app';
 
 export interface ProposalBundle {
   media_catalog: MediaCatalogEntry;
@@ -463,7 +464,7 @@ export function openSubmittedProposal(proposal: SubmittedProposal): void {
   if (proposal.previewInNotifications && proposal.number != null) {
     const url = new URL('/notifications', window.location.origin);
     url.searchParams.set('preview', String(proposal.number));
-    window.location.assign(url.toString());
+    navigateInApp(`${url.pathname}${url.search}`);
     return;
   }
   openUrlInBrowser(proposal.url);

@@ -11,6 +11,7 @@ use rusqlite::{Connection, OptionalExtension, Result as SqlResult, Transaction};
 use crate::db::{current_schema_version, mark_migration, merge_fragmented_sagas};
 mod aniskip;
 mod anime_filler;
+mod community_sync_cursor;
 mod company_cache;
 mod continue_watching;
 mod emulator_screenshots;
@@ -19,6 +20,7 @@ mod jukebox;
 mod mal;
 mod plugins;
 mod reconsumption;
+mod remove_event_type;
 mod sakuga;
 mod social_profile_parity;
 mod tier_list_board;
@@ -67,6 +69,9 @@ pub(crate) const MIGRATIONS: &[(i64, Migration)] = &[
     (88, wallpaper_cache::migrate),
     (89, plugins::migrate),
     (90, sakuga::migrate),
+    (91, remove_event_type::migrate),
+    (92, crate::vestigial_cleanup::drop_unused_tables_and_lists),
+    (93, community_sync_cursor::migrate),
 ];
 
 pub(crate) fn run_migrations(conn: &Connection) -> SqlResult<()> {
@@ -1183,6 +1188,7 @@ fn m66(tx: &Transaction) -> SqlResult<()> {
     // separate lets a previously synced competition open without an API
     // key or network connection. matches_synced_at distinguishes a
     // successful empty season from a season never fetched yet.
+    // Dropped again by 91 (remove_event_type) when the type was removed.
     tx.execute_batch(
         "CREATE TABLE IF NOT EXISTS media_event_season (
             external_id              TEXT PRIMARY KEY,

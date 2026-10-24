@@ -468,7 +468,6 @@ export const guideCa: Translations['guide'] = {
       },
       tips: {
         t1: "A Windows, les claus es guarden xifrades a la base de dades de Metadea.",
-        t2: "API-Sports serveix per a esdeveniments esportius, un tipus que de moment està desactivat.",
       },
     },
     anilist: {

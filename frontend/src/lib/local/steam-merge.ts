@@ -1,5 +1,6 @@
-import { scanAllGames, steamGetOwnedGames, readEnvConfig, getHiddenLocalGames, type EnvConfig } from '../tauri';
-import type { LocalGame, SteamOwnedGame } from '../tauri';
+import { scanAllGames, readEnvConfig, getHiddenLocalGames, type EnvConfig, type HiddenGameKey } from '../tauri';
+import type { LocalGame } from '../tauri';
+import { loadSteamOwnedGames, readStoredSteamOwnedGames, type OwnedSteamGame } from './steam-owned-games';
 
 /**
  * Returns all local games enriched with Steam playtime.
@@ -8,8 +9,17 @@ import type { LocalGame, SteamOwnedGame } from '../tauri';
  *   - Appends uninstalled Steam games (installed = false)
  * Without API key: plain local scan.
  * `force` re-walks every launcher on the Rust side (see scanAllGames).
+ *
+ * The local scan never waits on Steam's Web API: `onPartial` gets it as
+ * soon as it is ready — merged with the stored owned-games list when there
+ * is one (lib/local/steam-owned-games.ts) — and the promise resolves with
+ * the list merged against the refreshed owned games.
  */
-export async function scanGamesWithSteam(force = false): Promise<LocalGame[]> {
+export async function scanGamesWithSteam(
+  force = false,
+  onPartial?: (games: LocalGame[]) => void,
+): Promise<LocalGame[]> {
+  const hiddenPromise = getHiddenLocalGames().catch((): HiddenGameKey[] => []);
   const [localGames, cfg] = await Promise.all([
     scanAllGames(force),
     readEnvConfig().catch((): EnvConfig => ({})),
@@ -17,21 +27,37 @@ export async function scanGamesWithSteam(force = false): Promise<LocalGame[]> {
 
   if (!cfg.steam_api_key) return localGames;
 
-  const steamData = await steamGetOwnedGames();
-  if (!steamData?.games) return localGames;
+  const ownedPromise = loadSteamOwnedGames();
+  const hidden = await hiddenPromise;
+  const stored = readStoredSteamOwnedGames();
+  onPartial?.(stored ? mergeSteamOwnedGames(localGames, stored, hidden) : localGames);
 
-  // scanAllGames() above already filters its own output against
+  const owned = await ownedPromise;
+  return owned ? mergeSteamOwnedGames(localGames, owned, hidden) : localGames;
+}
+
+// Blocklist for tools/redistributables from the Steam Web API
+const BLOCKED_APP_IDS = new Set([228980, 993090, 388080, 250820, 1113010, 1054830]);
+
+function isBlockedName(name: string): boolean {
+  const lower = name.toLowerCase();
+  return lower.includes('redistributable') ||
+         lower.includes('dedicated server') ||
+         lower.includes('steamworks') ||
+         lower.includes('steamvr');
+}
+
+export function mergeSteamOwnedGames(localGames: LocalGame[], steamGames: OwnedSteamGame[], hidden: HiddenGameKey[]): LocalGame[] {
+  // scanAllGames() already filters its own output against
   // local_hidden_games (see remove_local_game) — but the "uninstalled"
   // Steam games appended below never go through scan_all_games at all,
-  // they're built straight from this Web API response. Without checking
+  // they're built straight from the Web API list. Without checking
   // them against the same hidden set here, "Eliminar de la lista" on any
   // owned-but-uninstalled Steam game silently came right back on the very
   // next scan/reload.
-  const hidden = await getHiddenLocalGames().catch(() => []);
   const hiddenKeys = new Set(hidden.map(h => `${h.launcher}:${h.link_key}`));
   const isHidden = (g: LocalGame) => hiddenKeys.has(`${g.launcher}:${g.app_id ?? g.install_path ?? g.name}`);
 
-  const steamGames: SteamOwnedGame[] = steamData.games;
   const steamByAppId = new Map(steamGames.map(s => [String(s.appid), s]));
 
   // Build lookup by app_id for installed Steam games
@@ -53,19 +79,9 @@ export async function scanGamesWithSteam(force = false): Promise<LocalGame[]> {
     };
   });
 
-  // Blocklist for tools/redistributables from the Steam Web API
-  const blockedAppIds = new Set([228980, 993090, 388080, 250820, 1113010, 1054830]);
-  const isBlockedName = (name: string) => {
-    const lower = name.toLowerCase();
-    return lower.includes('redistributable') ||
-           lower.includes('dedicated server') ||
-           lower.includes('steamworks') ||
-           lower.includes('steamvr');
-  };
-
   // Append uninstalled Steam games
   const uninstalled: LocalGame[] = steamGames
-    .filter(s => !installedIds.has(s.appid) && !blockedAppIds.has(s.appid) && !isBlockedName(s.name))
+    .filter(s => !installedIds.has(s.appid) && !BLOCKED_APP_IDS.has(s.appid) && !isBlockedName(s.name))
     .map(s => ({
       name: s.name,
       launcher: 'steam' as const,

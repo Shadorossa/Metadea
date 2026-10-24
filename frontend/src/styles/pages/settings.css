@@ -1713,6 +1713,15 @@
   gap: 0.4rem;
 }
 
+/* "Buscar actualizaciones" and "Ver registro de cambios" side by side,
+   wrapping onto two lines only when the card is too narrow. */
+.settings-novedades-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
 .settings-novedades-card-heading {
   display: flex;
   flex-direction: column;

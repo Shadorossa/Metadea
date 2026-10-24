@@ -12,7 +12,6 @@ pub struct EnvConfig {
     pub tmdb_api_key: Option<String>,
     pub anilist_client_id: Option<String>,
     pub comicvine_api_key: Option<String>,
-    pub apisports_api_key: Option<String>,
     // RetroAchievements (src/retro_achievements reads these two rows itself).
     pub ra_username: Option<String>,
     pub ra_api_key: Option<String>,
@@ -31,7 +30,7 @@ pub(crate) fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String
     let mut stmt = conn.prepare(
         "SELECT name, value FROM app_env WHERE name IN (
             'anilist_client_id','igdb_client_id','igdb_client_secret',
-            'steam_api_key','tmdb_access_token','tmdb_api_key','comicvine_api_key','apisports_api_key',
+            'steam_api_key','tmdb_access_token','tmdb_api_key','comicvine_api_key',
             'ra_username','ra_api_key','mal_client_id','google_client_id','google_client_secret'
          )"
     ).str_err()?;
@@ -39,7 +38,6 @@ pub(crate) fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String
         anilist_client_id: None, igdb_client_id: None, igdb_client_secret: None,
         steam_api_key: None, tmdb_access_token: None, tmdb_api_key: None,
         comicvine_api_key: None,
-        apisports_api_key: None,
         ra_username: None,
         ra_api_key: None,
         mal_client_id: None,
@@ -62,7 +60,6 @@ pub(crate) fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String
             "tmdb_access_token"  => cfg.tmdb_access_token  = opt,
             "tmdb_api_key"       => cfg.tmdb_api_key       = opt,
             "comicvine_api_key"  => cfg.comicvine_api_key  = opt,
-            "apisports_api_key"  => cfg.apisports_api_key  = opt,
             "ra_username"        => cfg.ra_username        = opt,
             "ra_api_key"         => cfg.ra_api_key         = opt,
             "mal_client_id"      => cfg.mal_client_id      = opt,
@@ -99,7 +96,6 @@ pub async fn write_env_config(
         ("tmdb_access_token",  config.tmdb_access_token.as_deref().unwrap_or("")),
         ("tmdb_api_key",       config.tmdb_api_key.as_deref().unwrap_or("")),
         ("comicvine_api_key",  config.comicvine_api_key.as_deref().unwrap_or("")),
-        ("apisports_api_key",  config.apisports_api_key.as_deref().unwrap_or("")),
         ("ra_username",        config.ra_username.as_deref().unwrap_or("")),
         ("ra_api_key",         config.ra_api_key.as_deref().unwrap_or("")),
         ("mal_client_id",      config.mal_client_id.as_deref().unwrap_or("")),

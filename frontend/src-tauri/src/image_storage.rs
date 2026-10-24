@@ -10,6 +10,7 @@ use std::path::{Component, Path, PathBuf};
 
 const REFERENCE_PREFIX: &str = "metadea-image:v1:";
 const IMAGE_DIRECTORY: &str = "user_metadata/images";
+pub const STORY_ARC_NAMESPACE: &str = "story-arcs";
 
 fn parse_data_url(value: &str) -> Result<Option<(&str, Vec<u8>)>, String> {
     let Some(rest) = value.strip_prefix("data:") else { return Ok(None) };
@@ -102,8 +103,21 @@ pub fn store_image_value(data_dir: &Path, namespace: &str, owner: &str, value: &
         return Err("Image file verification failed".into());
     }
 
+    Ok(reference_string(mime, &relative))
+}
+
+fn reference_string(mime: &str, relative: &Path) -> String {
     let normalized = relative.to_string_lossy().replace('\\', "/");
-    Ok(format!("{REFERENCE_PREFIX}{mime}:{normalized}"))
+    format!("{REFERENCE_PREFIX}{mime}:{normalized}")
+}
+
+/// The value store_image_value would leave in the database for `value`,
+/// without writing anything — lets a caller tell an inline image it is about
+/// to copy in from the one migrate_inline_images already moved to disk.
+pub fn reference_for_value(namespace: &str, owner: &str, value: &str) -> Result<String, String> {
+    let Some((mime, bytes)) = parse_data_url(value)? else { return Ok(value.to_string()) };
+    let relative = relative_asset_path(namespace, owner, mime, &bytes)?;
+    Ok(reference_string(mime, &relative))
 }
 
 // A stored reference validated and located on disk: (mime, verified file
@@ -212,7 +226,7 @@ pub fn migrate_inline_images(data_dir: &Path, conn: &Connection) -> Result<usize
     for row in rows {
         let namespace = match row.table {
             "user_profile" => "profile",
-            "story_arcs" => "story-arcs",
+            "story_arcs" => STORY_ARC_NAMESPACE,
             "characters" => "characters",
             _ => continue,
         };

@@ -24,7 +24,6 @@ export const SERVICE_PLATFORM_IDS = [
   'anilist',
   'mal',
   'comicvine',
-  'apisports',
   'retroachievements',
   'google',
 ] as const;
@@ -51,7 +50,6 @@ export const SERVICE_BRAND_NAMES: Record<ServicePlatformId, string> = {
   anilist: 'AniList',
   mal: 'MyAnimeList',
   comicvine: 'Comic Vine',
-  apisports: 'API-Sports',
   retroachievements: 'RetroAchievements',
   google: 'Google Drive',
 };

@@ -33,10 +33,12 @@ interface GameCardProps {
   // dump filename) once a catalog link exists. See GamesGrid's
   // displayNameFor.
   displayName?: string;
+  // The linked catalog entry's cover, used when coverCache has none.
+  catalogCover?: string;
 }
 
-export function GameCard({ game, coverCache, onClick, status, onRequestDelete, displayName }: GameCardProps) {
-  const cover = (game.app_id ? coverCache[game.app_id]?.cover : undefined) ?? null;
+export function GameCard({ game, coverCache, onClick, status, onRequestDelete, displayName, catalogCover }: GameCardProps) {
+  const cover = (game.app_id ? coverCache[game.app_id]?.cover : undefined) ?? catalogCover ?? null;
   const badgeInfo = getStatusBadge(status);
   const steamAppId = game.launcher === 'steam' && game.app_id ? Number(game.app_id) : null;
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

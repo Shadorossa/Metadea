@@ -8,7 +8,9 @@ vi.mock('./discord-presence', () => ({
   setGamePresence: (game: GamePresence) => { presence.current = game; presence.set(game); },
   clearGamePresence: () => { presence.current = null; presence.clear(); },
 }));
-vi.mock('./game-achievement-refresh', () => ({ startAchievementRefresh: vi.fn(), stopAchievementRefresh: vi.fn() }));
+vi.mock('./game-achievement-refresh', () => ({
+  startAchievementRefresh: vi.fn(), stopAchievementRefresh: vi.fn(), refreshRetroProgressAfterSession: vi.fn(),
+}));
 vi.mock('../tauri/game-launch', () => ({
   getActiveGameSessions: vi.fn(async () => []),
   listenGameSessionsChanged: vi.fn(async () => () => {}),

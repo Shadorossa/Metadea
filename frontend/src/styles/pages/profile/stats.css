@@ -4,10 +4,22 @@
   flex-direction: column;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   width: 100%;
-  max-width: 1200px;
+  /* Same cap as the favorites tab, so wide windows aren't mostly margin. */
+  max-width: 1650px;
   margin: 0 auto;
   padding: 0.25rem 0 clamp(1.2rem, 2.5vw, 2rem);
   box-sizing: border-box;
+}
+
+/* Wide windows: break out of .profile-tab-content's side padding
+   (clamp(2rem, 8vw, 7rem), sized for text-centric tabs) down to a 2rem
+   gutter, like the favorites grid does, so the cards fill the window. */
+@media (min-width: 1100px) {
+  .stats-layout {
+    max-width: none;
+    width: calc(100% + 2 * clamp(2rem, 8vw, 7rem) - 4rem);
+    margin: 0 calc(2rem - clamp(2rem, 8vw, 7rem));
+  }
 }
 
 .stats-grid-5 {
@@ -240,9 +252,15 @@
   }
 }
 
+/* Wide: genres | score donut | year chart in one row — the chart used to
+   span its own full row, leaving the third column next to the donut empty. */
 @media (min-width: 1100px) {
   .stats-insight-trio {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .stats-insight-trio .stats-block-custom--year-chart {
+    grid-column: -2 / -1;
   }
 }
 

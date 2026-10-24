@@ -69,7 +69,6 @@ describe('buildShareLink', () => {
   it('returns null when the app could not open the link or has no title', () => {
     expect(buildShareLink({ ...BAYONETTA, title: '  ' })).toBeNull();
     expect(buildShareLink({ ...BAYONETTA, externalId: 'local:abc' })).toBeNull();
-    expect(buildShareLink({ ...BAYONETTA, externalId: 'event:apisports:football:39' })).toBeNull();
   });
 
   it('reads the fields a media page already has', () => {

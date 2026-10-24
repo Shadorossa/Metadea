@@ -83,24 +83,18 @@ export function buildAvailableEditions(
 }
 
 // Both rating slots aggregate identically: the mean of whatever seasons have
-// a rating, falling back to the competition's own row when an Event has no
-// season logs at all yet.
+// a rating.
 export function computeGeneralAverageRating(
   slot: 'rating' | 'rating2',
-  { unifiedSeasonIds, logs, isUnifiedEvent, externalId }: {
+  { unifiedSeasonIds, logs }: {
     unifiedSeasonIds: string[];
     logs: Record<string, LogState>;
-    isUnifiedEvent: boolean;
-    externalId: string;
   },
 ): number {
   const ratings = unifiedSeasonIds
     .map(id => logs[id]?.[slot])
     .filter((r): r is number => typeof r === 'number' && r > 0);
-  if (ratings.length === 0) {
-    const hasSeasonLogs = unifiedSeasonIds.some(id => !!logs[id]);
-    return isUnifiedEvent && !hasSeasonLogs ? logs[externalId]?.[slot] ?? 0 : 0;
-  }
+  if (ratings.length === 0) return 0;
   return ratings.reduce((a, b) => a + b, 0) / ratings.length;
 }
 
@@ -123,10 +117,9 @@ export function computeChainBoundaryDate(
 // "Not out yet" for whichever tab is active: a season tab answers for its own
 // season, the general tab for the work itself.
 export function computeIsUpcoming(
-  { activeAnimeSeasonEntry, activeSeriesSeasonInfo, activeEventSeasonInfo, status, releaseYear, releaseMonth, releaseDay }: {
+  { activeAnimeSeasonEntry, activeSeriesSeasonInfo, status, releaseYear, releaseMonth, releaseDay }: {
     activeAnimeSeasonEntry: SagaEntry | undefined;
     activeSeriesSeasonInfo: { airDate?: string | null } | undefined;
-    activeEventSeasonInfo: { airDate?: string | null } | undefined;
     status?: string | null;
     releaseYear?: number | null;
     releaseMonth?: number | null;
@@ -139,10 +132,6 @@ export function computeIsUpcoming(
   if (activeSeriesSeasonInfo) {
     if (!activeSeriesSeasonInfo.airDate) return false;
     const d = new Date(activeSeriesSeasonInfo.airDate);
-    return !isNaN(d.getTime()) && d.getTime() > Date.now();
-  }
-  if (activeEventSeasonInfo?.airDate) {
-    const d = new Date(activeEventSeasonInfo.airDate);
     return !isNaN(d.getTime()) && d.getTime() > Date.now();
   }
   return status === 'NOT_YET_RELEASED' || isFutureDate(releaseYear, releaseMonth, releaseDay);
@@ -158,7 +147,7 @@ export interface ActiveLogDisplay {
 // own title/cover, the current version's, or another linked edition's.
 export function computeActiveLogDisplay(
   { isGeneralTab, isUnifiedAnime, generalBaseTitle, animeSeasonChain, seasonMetaMap, activeLogId,
-    activeAnimeSeasonEntry, activeSeriesSeasonInfo, activeEventSeasonInfo, allAvailableEditions,
+    activeAnimeSeasonEntry, activeSeriesSeasonInfo, allAvailableEditions,
     baseId, baseRelation, coverPreferenceId, data }: {
     isGeneralTab: boolean;
     isUnifiedAnime: boolean;
@@ -168,7 +157,6 @@ export function computeActiveLogDisplay(
     activeLogId: string;
     activeAnimeSeasonEntry: SagaEntry | undefined;
     activeSeriesSeasonInfo: { name?: string | null; seasonNumber: number; coverUrl?: string | null; airDate?: string | null } | undefined;
-    activeEventSeasonInfo: { name?: string | null; coverUrl?: string | null; airDate?: string | null } | undefined;
     allAvailableEditions: AvailableEdition[];
     baseId: string;
     baseRelation: { title?: string; cover?: string; releaseYear?: number | null } | undefined;
@@ -205,14 +193,6 @@ export function computeActiveLogDisplay(
       title: data.parentGame?.title || baseRelation?.title || data.titleMain,
       cover: preferredCover || data.parentGame?.cover || baseRelation?.cover || data.cover,
       year: data.parentGame ? data.releaseYear : (baseRelation?.releaseYear ?? data.releaseYear),
-    };
-  }
-  if (activeEventSeasonInfo) {
-    const meta = seasonMetaMap[activeLogId];
-    return {
-      title: meta?.title || activeEventSeasonInfo.name || data.titleMain,
-      cover: meta?.cover || activeEventSeasonInfo.coverUrl || data.cover,
-      year: activeEventSeasonInfo.airDate ? new Date(activeEventSeasonInfo.airDate).getFullYear() : data.releaseYear,
     };
   }
   const found = allAvailableEditions.find(ed => ed.externalId === activeLogId);

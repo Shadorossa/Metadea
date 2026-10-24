@@ -128,6 +128,7 @@ const { t } = Astro.props;
                       <div class="supported-types" id={`extensions-display-${platform.id}`}></div>
                     </div>
                   </div>
+                  <p class="emu-ra-warning hidden" id={`ra-warning-${platform.id}`} role="note" data-i18n="settings.emulators_no_retro_achievements">{t.settings.emulators_no_retro_achievements}</p>
                 </div>
 
                 <div class="emu-editor-field launch-section">
@@ -232,7 +233,7 @@ const { t } = Astro.props;
 </div>
 
 <script>
-  import { COMPANIES, EMULATORS_DB } from '../../lib/local/emulator-catalog';
+  import { COMPANIES, EMULATORS_DB, emulatorLacksRetroAchievements } from '../../lib/local/emulator-catalog';
   import type { EmulatorConfig } from '../../lib/tauri/emulators';
 
   // Only the document-level listener REGISTRATION below needs to happen
@@ -372,6 +373,8 @@ const { t } = Astro.props;
       const supportedContainer = document.getElementById(`supported-container-${platformId}`);
       const emulators = EMULATORS_DB[platformId] || [];
       const emulator = emulators.find(em => em.name === selectedEmulator);
+      document.getElementById(`ra-warning-${platformId}`)
+        ?.classList.toggle('hidden', !emulatorLacksRetroAchievements(platformId, selectedEmulator));
 
       if (emulator && selectedEmulator) {
         // "3ds · 3dsx · cci": no dots, so more of the list fits the row.

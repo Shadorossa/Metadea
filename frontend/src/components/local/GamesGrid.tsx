@@ -6,7 +6,7 @@ import { getT } from '../../i18n/runtime';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
-import { displayNameFor, type StatusEntry, sortEntries, entryKey, entryExternalId } from '../../lib/local/catalog-game-linking';
+import { catalogCoverFor, displayNameFor, type StatusEntry, sortEntries, entryKey, entryExternalId } from '../../lib/local/catalog-game-linking';
 import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, LAUNCHER_LINE_TRANSITION, type PlatformId } from '../../lib/local/platforms';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
@@ -128,6 +128,7 @@ export function GamesGrid({
       status={status}
       onRequestDelete={requestDeleteGame}
       displayName={displayNameFor(entry.game, catalogMapById)}
+      catalogCover={catalogCoverFor(entry.game, catalogMapById)}
     />
   ) : (
     <LocalMediaCard

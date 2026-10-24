@@ -31,14 +31,6 @@ export function formatThemeEpisodes(rawEpisodes: string | null | undefined, epis
   return trimmed.replace(/\b\d+\b/g, m => String(parseInt(m, 10) + episodeOffset));
 }
 
-export function formatMatchDate(date: string | null | undefined, time: string | null | undefined): string {
-  if (!date) return time || '';
-  const parsed = new Date(`${date}T${time || '00:00:00'}`);
-  if (Number.isNaN(parsed.getTime())) return [date, time].filter(Boolean).join(' ');
-  const dateLabel = parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-  return time ? `${dateLabel} · ${time.slice(0, 5)}` : dateLabel;
-}
-
 // One OP/ED list for a unified season chain: each season's own themes in
 // chain order, the same song at the same slot kept once (first season
 // wins), then OPs before EDs and by sequence within each.

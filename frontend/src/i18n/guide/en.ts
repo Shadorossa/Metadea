@@ -469,7 +469,6 @@ export const guideEn = {
       },
       tips: {
         t1: "On Windows, keys are stored encrypted in Metadea's database.",
-        t2: "API-Sports is for sports events, a type that is disabled for now.",
       },
     },
     anilist: {

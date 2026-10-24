@@ -11,10 +11,6 @@ export const API_ENDPOINTS = {
   TMDB: 'https://api.themoviedb.org/3',
   TMDB_IMAGE: (path: string, size: string = 'w300') => `https://image.tmdb.org/t/p/${size}${path}`,
 
-  // API-Sports provides separate data products for each sport.
-  APISPORTS_FOOTBALL: 'https://v3.football.api-sports.io',
-  APISPORTS_BASKETBALL: 'https://v1.basketball.api-sports.io',
-
   // Open Library
   OPENLIBRARY: 'https://openlibrary.org',
   OPENLIBRARY_COVERS: 'https://covers.openlibrary.org/b/id',

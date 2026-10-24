@@ -469,7 +469,6 @@ export const guideEs: Translations['guide'] = {
       },
       tips: {
         t1: "En Windows, las claves se guardan cifradas en la base de datos de Metadea.",
-        t2: "API-Sports es para eventos deportivos, un tipo que de momento está desactivado.",
       },
     },
     anilist: {

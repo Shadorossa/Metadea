@@ -3,7 +3,6 @@ import { searchGames, searchGameBundles, searchGameExpandedEditions, searchGameR
 import { searchMovies, searchSeries, topRatedMovies, topRatedSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
-import { searchApiSportsEvents, type ApiSportsDiscipline } from './providers/apisports';
 import { MissingApiKeyError }          from './errors';
 import { searchCatalog, type MediaCatalogEntry, type DbMediaRelation } from '../tauri/catalog';
 import { localCatalogVerdict, readBlockedIds, readReclassifiedIds, reclassifiableIds, withoutIds } from './exclusion-filters';
@@ -25,7 +24,7 @@ import type { MediaType, SearchResult, SearchFilters, SearchPage } from './types
 // Every type folded into the "all" tab — deliberately excludes 'character',
 // which stays its own dedicated tab/result shape.
 const ALL_SEARCH_TYPES: Exclude<MediaType, 'all'>[] = [
-  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event',
+  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic',
 ];
 
 // Only the external (provider) half of a search is memoised — the local
@@ -40,10 +39,9 @@ function externalSearchKey(
   mediaType: Exclude<MediaType, 'all'>,
   searchQuery: string,
   page: number,
-  eventDiscipline?: ApiSportsDiscipline | null,
 ): string {
   const prefs = `${isAdultContentEnabled() ? 'adult' : 'safe'}:${isUnifySeasonsEnabled() ? 'unified' : 'seasons'}`;
-  return `${mediaType}:${page}:${eventDiscipline ?? ''}:${prefs}:${searchQuery.trim().toLowerCase()}`;
+  return `${mediaType}:${page}:${prefs}:${searchQuery.trim().toLowerCase()}`;
 }
 
 // A memo hit (or a shared in-flight page) is handed out as a fresh copy —
@@ -62,14 +60,13 @@ function fetchFromApi(
   searchQuery: string,
   signal: AbortSignal,
   page: number,
-  eventDiscipline?: ApiSportsDiscipline | null,
 ): Promise<SearchPage> {
   // Characters merge a local DB read and the user's custom images on top of
   // two providers — only those two are memoised (inside searchCharacters).
-  if (mediaType === 'character') return fetchFromApiUncached(mediaType, searchQuery, signal, page, eventDiscipline);
+  if (mediaType === 'character') return fetchFromApiUncached(mediaType, searchQuery, signal, page);
   return memoExternal(
-    externalSearchKey(mediaType, searchQuery, page, eventDiscipline),
-    memoSignal => fetchFromApiUncached(mediaType, searchQuery, memoSignal, page, eventDiscipline),
+    externalSearchKey(mediaType, searchQuery, page),
+    memoSignal => fetchFromApiUncached(mediaType, searchQuery, memoSignal, page),
     signal,
   );
 }
@@ -79,7 +76,6 @@ function fetchFromApiUncached(
   searchQuery: string,
   signal: AbortSignal,
   page: number,
-  eventDiscipline?: ApiSportsDiscipline | null,
 ): Promise<SearchPage> {
   switch (mediaType) {
     case 'anime':     return searchAniList(searchQuery, 'ANIME', 'anime', signal, undefined, page);
@@ -91,7 +87,6 @@ function fetchFromApiUncached(
     case 'series':    return searchSeries(searchQuery, signal, page);
     case 'book':      return searchBooks(searchQuery, signal, page);
     case 'comic':     return searchComics(searchQuery, signal, page);
-    case 'event':     return searchApiSportsEvents(searchQuery, signal, page, eventDiscipline);
     case 'character': return searchCharacters(searchQuery, signal, page);
     case 'staff':     return searchStaff(searchQuery, signal, page);
     default:          return Promise.resolve({ results: [], hasMore: false });
@@ -276,82 +271,21 @@ async function searchLocalCatalog(
   return filtered.filter((_, i) => !hasPrequelFlags[i]).map(catalogEntryToSearchResult);
 }
 
-function apiSportsCompetitionKey(result: SearchResult): string | null {
-  const match = /^event:apisports:(football|basketball):(\d+)(?::|$)/.exec(result.externalId);
-  return match ? `${match[1]}:${match[2]}` : null;
-}
-
-function competitionTitle(title: string): string {
-  return title.replace(/\s+-\s+(?:\d{4}(?:[-/]\d{2,4})?|\d{2,4}[-/]\d{2,4})$/, '').trim();
-}
-
-// Search results are a view over leagues and their seasons, not new user-list
-// records. With unified seasons enabled the provider already returns a league
-// container; collapse any locally catalogued sibling seasons into that same
-// container too.
-function mergeUnifiedEventResults(apiResults: SearchResult[], localResults: SearchResult[], hasMore: boolean): SearchPage {
-  const apiLeagueKeys = new Set(apiResults.map(apiSportsCompetitionKey).filter((key): key is string => !!key));
-  const apiIds = new Set(apiResults.map(result => result.externalId));
-  const localGroups = new Map<string, SearchResult[]>();
-  const localExtras: SearchResult[] = [];
-
-  for (const result of localResults) {
-    const key = apiSportsCompetitionKey(result);
-    if (!key) {
-      if (!apiIds.has(result.externalId)) localExtras.push(result);
-      continue;
-    }
-    const group = localGroups.get(key) ?? [];
-    group.push(result);
-    localGroups.set(key, group);
-  }
-
-  const localCompetitions = [...localGroups.entries()]
-    .filter(([key]) => !apiLeagueKeys.has(key))
-    .map(([, seasons]) => {
-      const representative = [...seasons].sort((a, b) => (b.releaseYear ?? -Infinity) - (a.releaseYear ?? -Infinity))[0];
-      const key = apiSportsCompetitionKey(representative)!;
-      const [sport, leagueId] = key.split(':');
-      return {
-        ...representative,
-        externalId: `event:apisports:${sport}:${leagueId}`,
-        format: 'Season',
-        titleMain: competitionTitle(representative.titleMain),
-        releaseYear: null,
-        releaseMonth: null,
-        releaseDay: null,
-      };
-    });
-
-  return { results: [...apiResults, ...localExtras, ...localCompetitions], hasMore };
-}
-
-// Local-catalog rows as they'd appear in the final page (already blocked-
-// filtered by search_catalog itself), handed to the caller as soon as the
-// local read settles — typically well before the providers answer — so the
-// grid can show them right away. The final page still lists them after the
-// provider hits exactly as before; the UI sorts by date/score, so what's
-// already on screen keeps its place as the rest merges in.
-function localPreview(
-  mediaType: Exclude<MediaType, 'all' | 'character' | 'staff'>,
-  localResults: SearchResult[],
-): SearchResult[] {
-  if (mediaType === 'event' && isUnifySeasonsEnabled()) {
-    return mergeUnifiedEventResults([], localResults, false).results;
-  }
-  return localResults;
-}
-
+// Local-catalog rows (already blocked-filtered by search_catalog itself) are
+// handed to the caller as soon as the local read settles — typically well
+// before the providers answer — so the grid can show them right away. The
+// final page still lists them after the provider hits exactly as before; the
+// UI sorts by date/score, so what's already on screen keeps its place as the
+// rest merges in.
 async function searchOne(
   mediaType: Exclude<MediaType, 'all'>,
   searchQuery: string,
   signal: AbortSignal,
   page: number,
-  eventDiscipline: ApiSportsDiscipline | null | undefined,
   catalogEntries: Promise<MediaCatalogEntry[]> | null,
   onLocalResults?: (results: SearchResult[]) => void,
 ): Promise<SearchPage> {
-  const apiPromise = fetchFromApi(mediaType, searchQuery, signal, page, eventDiscipline);
+  const apiPromise = fetchFromApi(mediaType, searchQuery, signal, page);
   if (mediaType === 'character' || mediaType === 'staff' || page !== 1) return apiPromise;
 
   const localPromise = searchLocalCatalog(
@@ -361,7 +295,7 @@ async function searchOne(
   if (onLocalResults) {
     localPromise.then(local => {
       if (signal.aborted || local.length === 0) return;
-      onLocalResults(localPreview(mediaType, local));
+      onLocalResults(local);
     }, () => {});
   }
 
@@ -376,14 +310,7 @@ async function searchOne(
     // local-only hit is still a valid result even if the live provider
     // couldn't be reached.
     if (localResults.length === 0) throw apiOutcome.err;
-    if (mediaType === 'event' && isUnifySeasonsEnabled()) {
-      return mergeUnifiedEventResults([], localResults, false);
-    }
     return { results: localResults, hasMore: false };
-  }
-
-  if (mediaType === 'event' && isUnifySeasonsEnabled()) {
-    return mergeUnifiedEventResults(apiOutcome.page.results, localResults, apiOutcome.page.hasMore);
   }
 
   const seen = new Set(apiOutcome.page.results.map(r => r.externalId));
@@ -407,7 +334,7 @@ async function searchAll(
   const settled = await Promise.allSettled(
     ALL_SEARCH_TYPES
       .filter(type => !isMediaTypeDisabled(type))
-      .map(type => searchOne(type, searchQuery, signal, page, undefined, catalogEntries, onLocalResults)),
+      .map(type => searchOne(type, searchQuery, signal, page, catalogEntries, onLocalResults)),
   );
 
   const results: SearchResult[] = [];
@@ -476,12 +403,11 @@ export async function search(
   mediaType: MediaType,
   signal: AbortSignal,
   page = 1,
-  eventDiscipline?: ApiSportsDiscipline | null,
   options: SearchOptions = {},
 ): Promise<SearchPage> {
   const page_ = mediaType === 'all'
     ? await searchAll(searchQuery, signal, page, options.onLocalResults)
-    : await searchOne(mediaType, searchQuery, signal, page, eventDiscipline, null, options.onLocalResults);
+    : await searchOne(mediaType, searchQuery, signal, page, null, options.onLocalResults);
   if (mediaType === 'character' || mediaType === 'staff') return page_;
   return filterReclassified(await filterBlocked(page_));
 }
@@ -524,7 +450,6 @@ function fetchTopRatedFromApi(
     case 'vnovel': return searchGames('', 'vnovel', signal, page, filters);
     case 'movie':  return topRatedMovies(signal, page, filters);
     case 'series': return topRatedSeries(signal, page, filters);
-    case 'event':  return Promise.resolve({ results: [], hasMore: false });
   }
 }
 
@@ -535,7 +460,7 @@ function fetchTopRatedFromApi(
 // only with no sort option) — those two, plus 'all' and 'character', just
 // return empty here and keep the existing empty-until-typed behavior.
 export async function topRated(mediaType: MediaType, signal: AbortSignal, page = 1, filters?: SearchFilters): Promise<SearchPage> {
-  if (mediaType === 'all' || mediaType === 'character' || mediaType === 'staff' || mediaType === 'book' || mediaType === 'comic' || mediaType === 'event') {
+  if (mediaType === 'all' || mediaType === 'character' || mediaType === 'staff' || mediaType === 'book' || mediaType === 'comic') {
     return { results: [], hasMore: false };
   }
   return filterReclassified(await filterBlocked(await fetchTopRatedFromApi(mediaType, signal, page, filters)));

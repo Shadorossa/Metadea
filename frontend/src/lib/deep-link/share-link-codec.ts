@@ -10,7 +10,7 @@
 //            external-id prefix: `g/2136` <-> `game:2136`.
 //   <id>     the rest of the external id; `:` is written `~` and any byte
 //            outside [A-Za-z0-9_-] as `.HH` (UTF-8, upper-case hex), so ids
-//            with provider prefixes (`event:apisports:football:39`) round-trip.
+//            with extra `:` segments (`comic:4050-796`) round-trip.
 //   <slug>   lowercased ASCII title + `-<year>`. Unknown year: nothing, or
 //            `-_` when the title itself ends in four digits. No usable ASCII
 //            title: `_`.
@@ -44,7 +44,6 @@ export const SHARE_TYPES = {
   f: { prefix: 'movie', label: 'Movie' },
   b: { prefix: 'book', label: 'Book' },
   c: { prefix: 'comic', label: 'Comic' },
-  e: { prefix: 'event', label: 'Event' },
 } as const;
 
 export type ShareTypeLetter = keyof typeof SHARE_TYPES;

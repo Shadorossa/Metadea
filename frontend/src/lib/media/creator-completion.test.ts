@@ -115,7 +115,7 @@ describe('creatorCompletionHeadline', () => {
   });
 
   it('falls back to the mixed headline for an unknown type', () => {
-    const r = computeCreatorCompletion([{ externalId: 'event:1', type: 'event' }], lib({ 'event:1': 'completed' }));
+    const r = computeCreatorCompletion([{ externalId: 'podcast:1', type: 'podcast' }], lib({ 'podcast:1': 'completed' }));
     expect(creatorCompletionHeadline(r, 'company', 'X', en.creator_completion)).toBe("You've completed 1 of 1 X works");
   });
 });

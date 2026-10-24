@@ -128,6 +128,12 @@ export function displayNameFor(g: LocalGame, catalogMapById?: Map<string, Catalo
   return g.external_id ? catalogMapById?.get(g.external_id)?.title_main ?? undefined : undefined;
 }
 
+// The linked catalog entry's cover: what a card shows when the game has no
+// cached art of its own (an uninstalled ghost has no app_id to key it by).
+export function catalogCoverFor(g: LocalGame, catalogMapById?: Map<string, CatalogEntryLike>): string | undefined {
+  return g.external_id ? catalogMapById?.get(g.external_id)?.cover_url ?? undefined : undefined;
+}
+
 // Shared "how a mixed installed+pendiente list gets ordered" logic -
 // "biblioteca de Steam" (kind:'game', installed) and "perfil de usuario"
 // (kind:'catalog', a library-tracked pendiente) are just two different

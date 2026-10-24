@@ -226,8 +226,9 @@ const t = useTranslations(lang);
       }
 
       // Runs once per app launch (sessionStorage gate, like the updater
-      // check) and always reports the outcome, so every start visibly
-      // confirms the community catalog from GitHub was fetched.
+      // check). The sync is incremental (see sync_community_catalog), so a
+      // launch with nothing new upstream stays silent — the toast only
+      // appears when the merge actually changed local rows.
       async function syncCommunityCatalog() {
         if (!isTauriRuntime()) return;
         if (!navigator.onLine) return;
@@ -237,12 +238,9 @@ const t = useTranslations(lang);
           const { syncCommunityCatalog: sync } = await import(/* @vite-ignore */ '../lib/tauri');
           const imported = await sync();
           localStorage.setItem(STORAGE_KEYS.communityCatalogLastSync, String(Date.now()));
-          showGlobalToast(
-            imported > 0
-              ? tm.community_catalog_synced_count.replace('{count}', String(imported))
-              : tm.community_catalog_synced,
-            2500,
-          );
+          if (imported > 0) {
+            showGlobalToast(tm.community_catalog_synced_count.replace('{count}', String(imported)), 2500);
+          }
         } catch (error) {
           console.warn('[CommunityCatalog] Sync failed:', error);
           showGlobalToast(tm.community_catalog_sync_failed, 3500);

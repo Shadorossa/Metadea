@@ -7,6 +7,7 @@ import { mergePlatformVersions } from '../../../lib/media/mappers/mapper-utils';
 import { openLink } from '../MediaStoreLinks';
 import { MediaSourceLink } from '../MediaSourceLink';
 import { TimeToBeatBlock } from '../../shared/TimeToBeatBlock';
+import { navigateInApp } from '../../../lib/shared/navigation/navigate-in-app';
 
 interface Props {
   data: MediaPageData;
@@ -45,7 +46,7 @@ export function MediaStatsColumn({ data, t: tm, ratingSystem, timeToBeat }: Prop
                             {auth.url ? (
                               <span
                                 className="media-author-name media-author-name--link"
-                                onClick={() => (auth.url!.startsWith('http') ? openLink(auth.url!) : (window.location.href = auth.url!))}
+                                onClick={() => (auth.url!.startsWith('http') ? openLink(auth.url!) : navigateInApp(auth.url!))}
                               >
                                 {auth.name}
                               </span>

@@ -54,12 +54,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
         <span class="api-platform-label" data-i18n="settings.env_platform_comics_label">{t.settings.env_platform_comics_label}</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="apisports" data-i18n-title="settings.env_platform_apisports_title" title={t.settings.env_platform_apisports_title}>
-          <img class="api-platform-logo" src="/platforms/Event_logo.png" alt="" />
-        </button>
-        <span class="api-platform-label" data-i18n="settings.env_platform_events_label">{t.settings.env_platform_events_label}</span>
-      </div>
-      <div class="api-platform-item">
         <button type="button" class="api-platform-tab-btn" data-platform="retroachievements" data-i18n-title="retro_achievements.settings_platform_title" title={t.retro_achievements.settings_platform_title}>
           <img class="api-platform-logo" src="/platforms/Retroachivements.png" alt="RetroAchievements" />
         </button>
@@ -230,21 +224,6 @@ const { t, onboarding = false, version = '' } = Astro.props;
         </div>
       </div>
 
-      <!-- Form: API-Sports -->
-      <div class="api-platform-form-block hidden" id="api-form-apisports">
-        <div class="env-service-header env-service-header--api">
-          <button type="button" class="settings-help-btn api-help-btn" data-help="apisports" title={t.settings.env_apisports_help_title} data-i18n-title="settings.env_apisports_help_title">
-            <span class="info-indicator" aria-hidden="true">i</span>
-          </button>
-        </div>
-        <div class="env-fields">
-          <div class="env-field">
-            <label class="env-label" for="apisports-api-key" data-i18n="settings.env_apisports_api_key">{t.settings.env_apisports_api_key}</label>
-            <input class="env-input" type="password" id="apisports-api-key" placeholder="API key" autocomplete="off" />
-          </div>
-        </div>
-      </div>
-
       <!-- Form: RetroAchievements -->
       <div class="api-platform-form-block hidden" id="api-form-retroachievements">
         <div class="env-service-header env-service-header--api">
@@ -325,17 +304,19 @@ const { t, onboarding = false, version = '' } = Astro.props;
               data-version={version}
             ></span>
           </div>
-          <button
-            class="btn btn--sm btn--secondary"
-            id="app-check-update-btn" data-i18n="settings.app_check_update">{t.settings.app_check_update}</button
-          >
-          <!-- Opens the "What's new" history (ChangelogLauncher in BaseLayout). -->
-          <button
-            type="button"
-            class="btn btn--sm btn--secondary"
-            data-open-changelog
-            data-i18n="changelog.view_button">{t.changelog.view_button}</button
-          >
+          <div class="settings-novedades-version-actions">
+            <button
+              class="btn btn--sm btn--secondary"
+              id="app-check-update-btn" data-i18n="settings.app_check_update">{t.settings.app_check_update}</button
+            >
+            <!-- Opens the "What's new" history (ChangelogLauncher in BaseLayout). -->
+            <button
+              type="button"
+              class="btn btn--sm btn--secondary"
+              data-open-changelog
+              data-i18n="changelog.view_button">{t.changelog.view_button}</button
+            >
+          </div>
         </div>
         <div
           id="updater-status-text"

@@ -5,8 +5,6 @@
 import { getLibraryEntry, getCatalogEntry } from '../../../lib/tauri';
 import type { LibraryEntry } from '../../../lib/tauri';
 import { igdbGetLocalizedCovers } from '../../../lib/tauri/igdb';
-import { getApiSportsEventMatches } from '../../../lib/tauri/episodes';
-import { fetchApiSportsSeasonMatches } from '../../../lib/search/providers/apisports';
 import { isSeriesSeasonSyntheticId, seriesSeasonExternalId } from '../../../lib/media/mappers/mapper-utils';
 import { parseDelimitedString } from '../../../lib/shared/text/string-utils';
 import { createEmptyVersionEntry, type EntryAction } from '../../../lib/media/editor/library-log-state';
@@ -97,32 +95,6 @@ export async function fetchAnimeSeasonChainLogs(chain: SagaEntry[]): Promise<{ i
       cover: r.cat?.cover_url || r.s.cover || undefined,
       totalCount: r.cat?.total_count ?? null,
     },
-  }));
-}
-
-export async function fetchEventSeasonLogs(seasons: MediaSeasonInfo[]): Promise<({ id: string; lib: LibraryEntry | null; meta: SeasonMeta } | null)[]> {
-  return Promise.all(seasons.map(async season => {
-    const id = season.externalId;
-    if (!id) return null;
-    const [lib, cat, matchCache] = await Promise.all([
-      getLibraryEntry(id).catch(() => null),
-      getCatalogEntry(id).catch(() => null),
-      getApiSportsEventMatches(id).catch(() => ({ syncedAt: null, matches: [] })),
-    ]);
-    const matchCount = matchCache.syncedAt
-      ? matchCache.matches.length
-      : cat?.total_count && cat.total_count > 0
-        ? cat.total_count
-        : (await fetchApiSportsSeasonMatches(id).catch(() => [])).length;
-    return {
-      id,
-      lib,
-      meta: {
-        title: cat?.title_main || season.name || id,
-        cover: cat?.cover_url || season.coverUrl || undefined,
-        totalCount: matchCount,
-      },
-    };
   }));
 }
 

@@ -282,6 +282,7 @@ pub fn emulator_rom_extensions(platform_id: &str, emulator_name: &str) -> Option
         ("gamecube" | "wii", "Dolphin") => DOLPHIN,
         ("ds", "melonDS") => &["nds", "zip"],
         ("ds", "DeSmuME") => &["nds", "zip", "7z", "rar", "gz"],
+        ("ds", "RetroArch") => &["nds", "zip"],
         ("3ds", "Citra") => &["3ds", "3dsx", "cci", "zcci", "cxi", "elf", "cia"],
         ("3ds", "Lime3DS") => &["3ds", "3dsx", "cci", "cxi", "elf", "cia"],
         ("wiiu", "Cemu") => &["wud", "wux", "rpx", "wua"],

@@ -35,7 +35,6 @@ import { ThemePlayerOverlay } from './media-page/ThemePlayerOverlay';
 import { useMediaPageData } from './media-page/useMediaPageData';
 import { useThemePlayer } from './media-page/useThemePlayer';
 import { useEpisodesAndSeasons } from './media-page/useEpisodesAndSeasons';
-import { useEventMatches } from './media-page/useEventMatches';
 import { useFriendsScores } from './media-page/useFriendsScores';
 import { useCustomImages } from './media-page/useCustomImages';
 import { useRetrySync } from './media-page/useRetrySync';
@@ -170,28 +169,6 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
   // AnimeFillerList badges and the entry's filler info (lib/anime/filler.ts);
   // "Watched with filler" is set in the entry editor.
   const filler = useEpisodeFiller({ currentId, previewMode, data, episodeOffset });
-  const isEventCompetition = data?.type === 'event'
-    && /^event:apisports:(football|basketball):\d+$/.test(currentId);
-
-  const {
-    matches,
-    eventAggregateStatus,
-    eventAggregateRating,
-    mediaInLibrary,
-    saveEventSeasonUpdates,
-  } = useEventMatches({
-    currentId,
-    previewMode,
-    dataType: data?.type,
-    dataSeasons: data?.seasons,
-    isEventCompetition,
-    unifySeasonsEnabled,
-    showEditor,
-    setData,
-    libStatus,
-    libRating,
-    inLibrary,
-  });
 
   useEffect(() => {
     syncActiveRatingSystem().then(setRatingSystem);
@@ -355,14 +332,6 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
   // nothing. saveLibraryEntry writes the same merged draft updateLocal
   // already builds, so no other field on the entry is touched.
   const handleStatusChange = useCallback(async (next: string) => {
-    if (isEventCompetition && unifySeasonsEnabled) {
-      try {
-        await saveEventSeasonUpdates({ status: next || null });
-      } catch (e) {
-        console.error('Failed to save event season status:', e);
-      }
-      return;
-    }
     const draft = updateLocal({ status: next || null });
     try {
       const saved = await saveLibraryEntry(draft);
@@ -371,20 +340,11 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
       console.error('Failed to save status:', e);
       rollback();
     }
-  }, [isEventCompetition, unifySeasonsEnabled, saveEventSeasonUpdates, updateLocal, applySaved, rollback]);
+  }, [updateLocal, applySaved, rollback]);
 
   const handleRate = useCallback(async (stars: number) => {
     const dbRating = stars * 2;
-    const currentRating = isEventCompetition && unifySeasonsEnabled ? eventAggregateRating : libRating;
-    const nextRating = currentRating === dbRating ? 0 : dbRating;
-    if (isEventCompetition && unifySeasonsEnabled) {
-      try {
-        await saveEventSeasonUpdates({ rating: nextRating || null });
-      } catch (e) {
-        console.error('Failed to save event season rating:', e);
-      }
-      return;
-    }
+    const nextRating = libRating === dbRating ? 0 : dbRating;
     const draft = updateLocal({ rating: nextRating || null });
     try {
       const saved = await saveLibraryEntry(draft);
@@ -393,7 +353,7 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
       console.error('Failed to save rating:', e);
       rollback();
     }
-  }, [isEventCompetition, unifySeasonsEnabled, eventAggregateRating, libRating, saveEventSeasonUpdates, updateLocal, applySaved, rollback]);
+  }, [libRating, updateLocal, applySaved, rollback]);
 
   // Cover heart — same quick-edit pattern as handleStatusChange/handleRate,
   // but favorite is the one field MediaEditorModal persists in two places at
@@ -402,9 +362,24 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
   // handleSubmit). The cover heart used to only do the second half, so
   // whatever elsewhere in the app treats the library entry's is_favorite
   // column as the source of truth never saw a cover-only favorite at all.
+  // A bundle is the exception: it has no library entry of its own (Rust's
+  // save_library_entry refuses format 'BUNDLE'), so only the favorites list
+  // changes. Either signal counts — the relations (see MediaHero's isBundle)
+  // or the stored format the Rust check reads.
+  const isBundle = (data?.relations ?? []).filter(r => !!r.relationType && CONTAINS_RELATION_TYPES.includes(r.relationType)).length >= 2;
+  const favoriteSkipsLibrary = isBundle || data?.format === 'BUNDLE';
   const handleToggleFavorite = useCallback(async () => {
     const next = !isFavorited;
     setIsFavorited(next);
+    if (favoriteSkipsLibrary) {
+      try {
+        await syncFavorites(dataType ?? '', currentId, next);
+      } catch (e) {
+        console.error('Failed to save favorite:', e);
+        setIsFavorited(!next);
+      }
+      return;
+    }
     const draft = updateLocal({ is_favorite: next ? 1 : 0 });
     try {
       const saved = await saveLibraryEntry(draft);
@@ -415,7 +390,7 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
       setIsFavorited(!next);
       rollback();
     }
-  }, [isFavorited, updateLocal, applySaved, rollback, currentId]);
+  }, [isFavorited, favoriteSkipsLibrary, dataType, updateLocal, applySaved, rollback, currentId]);
 
   // "Copy link" — puts the https share link of this work on the clipboard:
   // the rich preview link (share-link.ts) built from the loaded page data,
@@ -482,9 +457,8 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
   // own `modal` bindings, but keys they do not bind would otherwise fall
   // through to these (and the saga viewer / theme overlay bind nothing).
   const isBlockedEdition = !!data?.parentGame && data.format !== 'EXPANSION';
-  const isBundle = (data?.relations ?? []).filter(r => !!r.relationType && CONTAINS_RELATION_TYPES.includes(r.relationType)).length >= 2;
   const noOverlayOpen = () => !showEditor && !showSaga && !prSession.showPrEditor && !playingTheme;
-  const progressSteppable = !isEventCompetition && data?.type !== 'game' && data?.type !== 'vnovel';
+  const progressSteppable = data?.type !== 'game' && data?.type !== 'vnovel';
   useShortcuts('page', [
     { id: 'media.open_editor', keys: 'e', description: 'shortcuts.media_open_editor', when: () => noOverlayOpen() && !isBlockedEdition && !isBundle, handler: handleCoverClick },
     { id: 'media.propose', keys: 'p', description: 'shortcuts.media_propose', when: noOverlayOpen, handler: prSession.start },
@@ -689,11 +663,11 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
         titleRef={titleRef}
         displayCover={displayCover}
         showsSeasonsTab={showsSeasonsTab}
-        mediaInLibrary={mediaInLibrary}
+        mediaInLibrary={inLibrary}
         isFavorited={isFavorited}
         retryingSync={retryingSync}
-        eventAggregateStatus={eventAggregateStatus}
-        eventAggregateRating={eventAggregateRating}
+        libStatus={libStatus}
+        libRating={libRating}
         onProposeChanges={prSession.start}
         onRetrySync={handleRetrySync}
         onCopyLink={() => void handleCopyLink()}
@@ -747,10 +721,8 @@ export default function MediaPage({ i18n: staticStrings, previewData, previewMod
           setRelationPage={setRelationPage}
           episodes={episodes}
           themes={themes}
-          matches={matches}
           animeSeasonChain={animeSeasonChain}
           showsSeasonsTab={showsSeasonsTab}
-          isEventCompetition={isEventCompetition}
           hasEpisodes={hasEpisodes}
           hasThemes={hasThemes}
           displayCover={displayCover}

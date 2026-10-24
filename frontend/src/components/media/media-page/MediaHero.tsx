@@ -8,6 +8,7 @@ import { StarRating, StatusDropdown } from './MediaPageControls';
 import { CompanyName, PublisherLine } from './CompanyLinks';
 import { CoverImage } from '../../shared/CoverImage';
 import { SpoilerChip } from '../../spoilers/SpoilerShield';
+import { navigateInApp } from '../../../lib/shared/navigation/navigate-in-app';
 
 interface Props {
   data: MediaPageData;
@@ -20,8 +21,8 @@ interface Props {
   mediaInLibrary: boolean;
   isFavorited: boolean;
   retryingSync: boolean;
-  eventAggregateStatus: string;
-  eventAggregateRating: number;
+  libStatus: string;
+  libRating: number;
   onProposeChanges: () => void;
   onRetrySync: () => void;
   onCopyLink: () => void;
@@ -46,8 +47,8 @@ export function MediaHero({
   mediaInLibrary,
   isFavorited,
   retryingSync,
-  eventAggregateStatus,
-  eventAggregateRating,
+  libStatus,
+  libRating,
   onProposeChanges,
   onRetrySync,
   onCopyLink: handleCopyLink,
@@ -62,8 +63,6 @@ export function MediaHero({
   // from being logged separately. Expansions are allowed as independent entries
   // since they're typically sold and played separately (e.g., RE4 Separate Ways).
   const isBlockedEdition = !!data.parentGame && data.format !== 'EXPANSION';
-  // API-Sports competitions have their own base entry and child season pages.
-  // Each season keeps its own matches and progress entry.
   // A bundle (e.g. "The Great Ace Attorney Chronicles") isn't a playable
   // title on its own — its contained works are — so it gets the same
   // "can't be logged/edited here" treatment as a blocked edition, just with
@@ -180,7 +179,7 @@ export function MediaHero({
               onClick={() => {
                 if (previewMode) return;
                 if (isBlockedEdition) {
-                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true&subId=${encodeURIComponent(currentId)}`;
+                  navigateInApp(`/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true&subId=${encodeURIComponent(currentId)}`);
                   return;
                 }
                 if (isBundle) return;
@@ -188,7 +187,7 @@ export function MediaHero({
               }}
               onKeyDown={e => !previewMode && (e.key === 'Enter' || e.key === ' ') && (
                 isBlockedEdition
-                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true&subId=${encodeURIComponent(currentId)}`)
+                  ? navigateInApp(`/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true&subId=${encodeURIComponent(currentId)}`)
                   : isBundle
                   ? undefined
                   : handleCoverClick()
@@ -256,13 +255,13 @@ export function MediaHero({
             <div className="media-library-widget-box">
               <div className="media-library-row-horizontal">
                 <StatusDropdown
-                  status={eventAggregateStatus}
+                  status={libStatus}
                   progressStatus={data.progressStatus}
                   progressLabel={data.progressLabel}
                   onChange={handleStatusChange}
                   t={tm}
                 />
-                <StarRating rating={eventAggregateRating} onRate={handleRate} t={tm} />
+                <StarRating rating={libRating} onRate={handleRate} t={tm} />
               </div>
             </div>
             )}

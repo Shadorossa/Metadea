@@ -15,15 +15,15 @@ import { toMediumCover } from '../media/small-cover';
 import { moveItem } from '../shared/collections/move-item';
 import { readJukeboxPreferences, writeJukeboxPreferences } from './jukebox-preferences';
 import { applyFavoriteToggle, themeDisplayTitle, toFavoriteKeys, type FavoriteToggleContext } from './jukebox-favorites';
+import { claimJukeboxAudio, claimJukeboxBoot, type AudioListeners } from './jukebox-audio-host';
 import {
-  clampVolume, currentTheme, cycleRepeat, effectiveVolume, findQueueIndex, jukeboxStore, nextIndex, prevIndex, themeKey,
-  withQueue, withShuffle, type JukeboxState,
+  clampVolume, currentTheme, cycleRepeat, effectiveVolume, findQueueIndex, jukeboxStore, nextIndex, prevIndex, stepAfterEnded,
+  themeKey, withCurrentIndex, withQueue, withShuffle, type JukeboxState,
 } from './jukebox-store';
 
 const THEME_OVERLAY_SELECTOR = '.theme-player-overlay';
 
 let audio: HTMLAudioElement | null = null;
-let initialized = false;
 // Bumped on every load so a slow source resolution for a theme the user
 // already skipped past cannot clobber the element.
 let loadToken = 0;
@@ -131,71 +131,70 @@ function installMediaSessionHandlers(): void {
 
 // ── Element ──────────────────────────────────────────────────────────────
 
-// One audio element per window, whatever module instance asks: a second
-// copy of this module (dev HMR, a chunk loaded under another URL) must not
-// start a second element that plays on top of the first.
-const AUDIO_GLOBAL_KEY = '__metadeaJukeboxAudio';
-type AudioHost = { [AUDIO_GLOBAL_KEY]?: HTMLAudioElement };
+function audioListeners(element: HTMLAudioElement): AudioListeners {
+  return [
+    ['play', () => {
+      patch({ status: 'playing', error: false });
+      updateMediaSessionState();
+      publishPresence();
+    }],
+    ['pause', () => {
+      if (element.ended) return;
+      patch({ status: 'paused' });
+      updateMediaSessionState();
+      publishPresence();
+    }],
+    ['timeupdate', () => {
+      patch({ time: element.currentTime, duration: Number.isFinite(element.duration) ? element.duration : 0 });
+    }],
+    ['durationchange', () => {
+      patch({ duration: Number.isFinite(element.duration) ? element.duration : 0 });
+      publishPresence();
+    }],
+    ['seeked', publishPresence],
+    ['ratechange', publishPresence],
+    ['ended', onEnded],
+    ['error', () => {
+      // Ignore errors from an emptied/aborted source (src removed or being
+      // replaced); only a failure of the current track counts.
+      if (!element.currentSrc || element.error?.code === MediaError.MEDIA_ERR_ABORTED) return;
+      onLoadError();
+    }],
+  ];
+}
 
+// One audio element per window, whatever module copy asks (see
+// jukebox-audio-host.ts): a copy loaded later takes over the element and
+// its events instead of stopping it.
 function ensureAudio(): HTMLAudioElement {
   if (audio) return audio;
-  const host = globalThis as unknown as AudioHost;
-  const orphan = host[AUDIO_GLOBAL_KEY];
-  if (orphan) {
-    orphan.pause();
-    orphan.removeAttribute('src');
-    orphan.load();
-  }
-  const element = new Audio();
-  host[AUDIO_GLOBAL_KEY] = element;
-  element.preload = 'auto';
-  element.volume = effectiveVolume(jukeboxStore.get().volume, duckFactor);
-  element.addEventListener('play', () => {
-    patch({ status: 'playing', error: false });
-    updateMediaSessionState();
-    publishPresence();
-  });
-  element.addEventListener('pause', () => {
-    if (element.ended) return;
-    patch({ status: 'paused' });
-    updateMediaSessionState();
-    publishPresence();
-  });
-  element.addEventListener('timeupdate', () => {
-    patch({ time: element.currentTime, duration: Number.isFinite(element.duration) ? element.duration : 0 });
-  });
-  element.addEventListener('durationchange', () => {
-    patch({ duration: Number.isFinite(element.duration) ? element.duration : 0 });
-    publishPresence();
-  });
-  element.addEventListener('seeked', publishPresence);
-  element.addEventListener('ratechange', publishPresence);
-  element.addEventListener('ended', onEnded);
-  element.addEventListener('error', () => {
-    // Ignore errors from an emptied/aborted source (src removed or being
-    // replaced); only a failure of the current track counts.
-    if (!element.currentSrc || element.error?.code === MediaError.MEDIA_ERR_ABORTED) return;
-    onLoadError();
-  });
+  const { element, adopted } = claimJukeboxAudio(globalThis, () => {
+    const created = new Audio();
+    created.preload = 'auto';
+    created.volume = effectiveVolume(jukeboxStore.get().volume, duckFactor);
+    return created;
+  }, audioListeners);
   audio = element;
+  // Media keys go to whichever copy now owns the element.
+  if (adopted) installMediaSessionHandlers();
   return element;
 }
 
 function onEnded(): void {
   const state = jukeboxStore.get();
-  const target = nextIndex(state, 'ended');
-  if (target === null) {
+  const step = stepAfterEnded(state);
+  if (step.type === 'stop') {
     patch({ status: 'paused', time: state.duration });
     updateMediaSessionState();
     dropPresence();
     return;
   }
-  if (target === state.index && audio) {
+  if (step.type === 'replay' && audio) {
     audio.currentTime = 0;
     audio.play().catch(onPlayRejected);
     return;
   }
-  loadIndex(target, true);
+  if (step.type === 'play') loadIndex(step.index, true);
 }
 
 // play() rejects with AbortError when a pause() or a new src interrupts
@@ -291,6 +290,13 @@ export function resume(): void {
     return;
   }
   const element = ensureAudio();
+  // The queue ran out (repeat off): Play moves on, wrapping to the first
+  // theme, instead of replaying only the last one.
+  if (element.ended) {
+    const target = nextIndex(state, 'manual');
+    if (target !== null) playAt(target);
+    return;
+  }
   if (!element.src || state.error) {
     playAt(state.index);
     return;
@@ -448,11 +454,15 @@ function installYieldRules(): void {
 // ── Boot ─────────────────────────────────────────────────────────────────
 
 // Idempotent: the island calls it on every mount, the work happens once
-// per app session. Restores preferences, loads the favourites and points
-// at the last theme without playing it.
+// per app session (per window, not per module copy). Restores preferences,
+// loads the favourites and points at the last theme without playing it.
 export async function initJukebox(): Promise<void> {
-  if (initialized || typeof window === 'undefined') return;
-  initialized = true;
+  if (typeof window === 'undefined') return;
+  if (!claimJukeboxBoot(globalThis)) {
+    // A later copy of this module: take the element over, boot is done.
+    ensureAudio();
+    return;
+  }
   const prefs = readJukeboxPreferences();
   jukeboxStore.set(withShuffle({ ...jukeboxStore.get(), volume: prefs.volume, repeat: prefs.repeat }, prefs.shuffle));
   ensureAudio().volume = effectiveVolume(prefs.volume, duckFactor);
@@ -467,7 +477,7 @@ export async function initJukebox(): Promise<void> {
   const state = jukeboxStore.get();
   const restored = findQueueIndex(state.queue, prefs.lastKey);
   if (restored !== null && state.index === null) {
-    patch({ index: restored, status: 'paused' });
+    jukeboxStore.set(withCurrentIndex(state, restored));
     updateMediaSessionMetadata(state.queue[restored]);
   }
 }

@@ -59,7 +59,7 @@ describe('share-link codec', () => {
   });
 
   it('round-trips ids with colons, dots, tildes and non-ASCII', () => {
-    for (const rest of ['apisports:football:39', 'a.b~c', '100%', 'ñ:ü', 'OL1W']) {
+    for (const rest of ['provider:sub:39', 'a.b~c', '100%', 'ñ:ü', 'OL1W']) {
       const escaped = escapeIdSegment(rest);
       expect(escaped).toMatch(/^[A-Za-z0-9_.~-]+$/);
       expect(unescapeIdSegment(escaped)).toBe(rest);

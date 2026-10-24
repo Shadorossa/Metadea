@@ -33,6 +33,7 @@ import { usePrEditorPreviews } from './pr-editor/usePrEditorPreviews';
 import { usePrEditorDraftActions } from './pr-editor/usePrEditorDraftActions';
 import { PrEditorHeader } from '../shared/PrEditorHeader';
 import { getT } from '../../i18n/runtime';
+import { navigateInApp } from '../../lib/shared/navigation/navigate-in-app';
 
 export type { BundledRelation, EditableRelation, PreparedMediaProposal, PrEditorSessionHandle, PrEditorSessionTab } from '../../lib/media/editor/pr-editor-types';
 import type { PreparedMediaProposal, PrEditorSessionHandle, PrEditorSessionTab } from '../../lib/media/editor/pr-editor-types';
@@ -492,7 +493,7 @@ export function PrEditorModal({ externalId, initialTab = 'general', initialRelat
             </p>
             <div className="pr-editor-login-actions">
               <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={requestClose}>{pe.close}</button>
-              <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { window.location.href = '/settings'; }}>
+              <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => navigateInApp('/settings')}>
                 {pe.go_to_settings}
               </button>
             </div>

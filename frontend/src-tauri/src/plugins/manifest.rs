@@ -36,7 +36,7 @@ pub const EVENTS: &[&str] = &["library.changed", "progress.changed", "session.en
 pub const SOURCE_TYPES: &[&str] = &["manga", "comic", "lnovel", "book"];
 /// Work types a media-page action or panel may target.
 pub const WORK_TYPES: &[&str] = &[
-    "anime", "manga", "lnovel", "book", "comic", "movie", "series", "game", "vn", "event",
+    "anime", "manga", "lnovel", "book", "comic", "movie", "series", "game", "vn",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

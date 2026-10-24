@@ -111,16 +111,6 @@
       }
     },
     {
-      "name": "event id with provider prefix and colons",
-      "path": "/e/apisports~football~39~2024.252F25/premier-league-2024/--",
-      "data": {
-        "externalId": "event:apisports:football:39:2024%2F25",
-        "title": "Premier League",
-        "year": 2024,
-        "genres": []
-      }
-    },
-    {
       "name": "Japanese title",
       "path": "/a/5114/fullmetal-alchemist-2009/acad-90--6Yu844Gu6Yys6YeR6KGT5birIEZVTExNRVRBTCBBTENIRU1JU1Q",
       "data": {

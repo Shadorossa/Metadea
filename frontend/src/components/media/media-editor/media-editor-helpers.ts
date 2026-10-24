@@ -16,7 +16,6 @@ export function getProgressConfig(type: string, format: string | undefined, tm: 
   // book's progress fell through to the generic label below and its
   // total (page count) was never wired up at all.
   else if (type === 'book')                            label = tm.progress_pages;
-  else if (type === 'event')                           label = tm.stat_matches;
   else                                                 label = tm.editor.progress;
 
   // A movie is a single sitting, not a run of seasons — even though it's
@@ -25,7 +24,6 @@ export function getProgressConfig(type: string, format: string | undefined, tm: 
   const label2 =
     isMovie ? null :
     base === 'anime' || base === 'series'      ? tm.progress_seasons :
-    base === 'event'                           ? tm.progress_seasons :
     base === 'manga' || base === 'lnovel'      ? tm.progress_volumes : null;
 
   const step = base === 'game' || base === 'vnovel' ? 0.5 : 1;

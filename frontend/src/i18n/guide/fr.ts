@@ -469,7 +469,6 @@ export const guideFr: Translations['guide'] = {
       },
       tips: {
         t1: "Sous Windows, les clés sont stockées chiffrées dans la base de données de Metadea.",
-        t2: "API-Sports sert aux événements sportifs, un type désactivé pour le moment.",
       },
     },
     anilist: {

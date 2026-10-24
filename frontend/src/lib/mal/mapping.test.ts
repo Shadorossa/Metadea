@@ -16,7 +16,7 @@ describe('malKindForType', () => {
     expect(malKindForType('anime_tv')).toBe('anime');
     expect(malKindForType('manga')).toBe('manga');
     expect(malKindForType('lnovel')).toBe('manga');
-    for (const type of ['game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event', 'character', '', null, undefined]) {
+    for (const type of ['game', 'vnovel', 'movie', 'series', 'book', 'comic', 'character', '', null, undefined]) {
       expect(malKindForType(type)).toBeNull();
     }
   });

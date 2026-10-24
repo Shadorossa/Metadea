@@ -9,7 +9,6 @@ export interface EnvConfig {
   tmdb_api_key?:       string;
   anilist_client_id?:  string;
   comicvine_api_key?:  string;
-  apisports_api_key?:  string;
   // RetroAchievements (username + Web API key; Metadea only reads progress).
   ra_username?:        string;
   ra_api_key?:         string;

@@ -71,6 +71,10 @@ export const STORAGE_KEYS = {
   // Local > Videojuegos: IGDB's launcher verdict per pending game, 7-day TTL
   // (lib/local/pending-launcher-memo.ts).
   pendingLauncherMemo: 'metadea_local_pending_launcher_memo',
+  // The Steam owned-games list (ids, names, playtime), so Local and
+  // Profile > Logros paint without the Web API round trip
+  // (lib/local/steam-owned-games.ts).
+  steamOwnedGames: 'metadea_steam_owned_games',
   // Home's last rendered view-model, for an instant first paint
   // (lib/home/home-snapshot.ts), and the tiny layout hint derived from it
   // that home.astro's inline pre-paint script reads (it mirrors this

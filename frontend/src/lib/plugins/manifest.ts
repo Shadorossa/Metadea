@@ -16,7 +16,7 @@ export type PluginEventName = (typeof PLUGIN_EVENTS)[number];
 export const SOURCE_TYPES = ['manga', 'comic', 'lnovel', 'book'] as const;
 export type SourceWorkType = (typeof SOURCE_TYPES)[number];
 
-export const WORK_TYPES = ['anime', 'manga', 'lnovel', 'book', 'comic', 'movie', 'series', 'game', 'vn', 'event'] as const;
+export const WORK_TYPES = ['anime', 'manga', 'lnovel', 'book', 'comic', 'movie', 'series', 'game', 'vn'] as const;
 
 export type SettingType = 'string' | 'secret' | 'number' | 'boolean' | 'select' | 'url';
 

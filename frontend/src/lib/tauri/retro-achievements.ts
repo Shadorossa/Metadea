@@ -173,6 +173,11 @@ export async function raGetGameProgress(raGameId: number, forceRefresh = false):
   return invoke<RaCached<RaGameProgress>>('ra_get_game_progress', { raGameId, forceRefresh });
 }
 
+// Disk only: the cached row whatever its age, or null — never the network.
+export async function raGetCachedGameProgress(raGameId: number): Promise<RaCached<RaGameProgress> | null> {
+  return tauriTry<RaCached<RaGameProgress> | null>('ra_get_cached_game_progress', null, { raGameId });
+}
+
 export async function raGetProfileProgress(forceRefresh = false): Promise<RaCached<RaProfileProgress>> {
   return invoke<RaCached<RaProfileProgress>>('ra_get_profile_progress', { forceRefresh });
 }

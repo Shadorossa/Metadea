@@ -14,7 +14,6 @@ vi.mock('../search/providers/openlibrary', () => ({
 }));
 vi.mock('../search/providers/tmdb', () => ({ fetchTmdbDetail: vi.fn() }));
 vi.mock('../search/providers/comicvine', () => ({ fetchComicVineVolume: vi.fn() }));
-vi.mock('../search/providers/apisports', () => ({ fetchApiSportsEvent: vi.fn() }));
 vi.mock('./mappers/anilist-mapper', () => ({
   mapAniListToMedia: vi.fn(),
   mapAniListCharacterEdges: vi.fn(),
@@ -38,7 +37,6 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { fetchComicVineVolume } from '../search/providers/comicvine';
-import { fetchApiSportsEvent } from '../search/providers/apisports';
 import { mapAniListToMedia } from './mappers/anilist-mapper';
 import { mapOpenLibToMedia } from './mappers/openlibrary-mapper';
 import { mapComicVineToMedia } from './mappers/comicvine-mapper';
@@ -135,12 +133,6 @@ describe('fetchMediaDataInternal routing', () => {
     expect(await fetchMediaDataInternal('series:5')).toEqual(page('series:5'));
     expect(fetchTmdbDetail).toHaveBeenCalledWith(5, 'series');
     expect(mapTmdbToMedia).toHaveBeenCalledWith({ id: 5 }, 'series', 'series:5');
-  });
-
-  it('hands event ids straight to the API-Sports provider', async () => {
-    vi.mocked(fetchApiSportsEvent).mockResolvedValue(page('event:apisports:football:39'));
-    expect(await fetchMediaDataInternal('event:apisports:football:39')).toEqual(page('event:apisports:football:39'));
-    expect(fetchApiSportsEvent).toHaveBeenCalledWith('event:apisports:football:39');
   });
 
   it('routes comics through ComicVine by numeric volume id', async () => {

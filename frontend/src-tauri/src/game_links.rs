@@ -95,15 +95,22 @@ pub fn lookup_game_links(
 // of scan_all_games, right before prune_stale_game_links below. Also keeps
 // `name` fresh so restore_missing_seen_games (below) has something to show
 // once a game later drops out of every live source.
+// Runs on every Local visit for every scanned game: one transaction and one
+// prepared statement instead of a separate commit per row, which held the
+// DB lock for the whole loop.
 pub fn touch_games_seen(conn: &rusqlite::Connection, games: &[(String, String, String)]) {
     let now = chrono::Utc::now().to_rfc3339();
-    for (launcher, link_key, name) in games {
-        let _ = conn.execute(
+    let Ok(tx) = conn.unchecked_transaction() else { return };
+    {
+        let Ok(mut stmt) = tx.prepare(
             "INSERT INTO local_games_seen (launcher, link_key, last_seen_at, name) VALUES (?1, ?2, ?3, ?4)
              ON CONFLICT(launcher, link_key) DO UPDATE SET last_seen_at = excluded.last_seen_at, name = excluded.name",
-            rusqlite::params![launcher, link_key, now, name],
-        );
+        ) else { return };
+        for (launcher, link_key, name) in games {
+            let _ = stmt.execute(rusqlite::params![launcher, link_key, now, name]);
+        }
     }
+    let _ = tx.commit();
 }
 
 // A game scan_all_games' live sources (install-folder scans, Steam's owned-
@@ -247,18 +254,33 @@ pub fn move_game_link_key(conn: &rusqlite::Connection, old_key: &str, new_key: &
     Ok(())
 }
 
-pub fn prune_stale_game_links(conn: &rusqlite::Connection) {
+// `shown` is every (launcher, link_key) the grid is about to show, restored
+// not-installed ghosts included: a ghost is never "seen" again, so without
+// it a link the user just picked for an uninstalled game was deleted by the
+// very next scan.
+pub fn prune_stale_game_links(conn: &rusqlite::Connection, shown: &std::collections::HashSet<(String, String)>) {
     let cutoff = (chrono::Utc::now() - chrono::Duration::days(GAME_LINK_GRACE_DAYS)).to_rfc3339();
-    let _ = conn.execute(
-        "DELETE FROM local_game_links
+    let stale: Vec<(String, String)> = match conn.prepare(
+        "SELECT launcher, link_key FROM local_game_links
          WHERE NOT EXISTS (
              SELECT 1 FROM local_games_seen lgs
              WHERE lgs.launcher = local_game_links.launcher
                AND lgs.link_key = local_game_links.link_key
                AND lgs.last_seen_at >= ?1
          )",
-        [cutoff],
-    );
+    ) {
+        Ok(mut stmt) => stmt
+            .query_map([cutoff], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+            .map(|rows| rows.filter_map(|r| r.ok()).collect())
+            .unwrap_or_default(),
+        Err(_) => return,
+    };
+    for (launcher, link_key) in stale.into_iter().filter(|key| !shown.contains(key)) {
+        let _ = conn.execute(
+            "DELETE FROM local_game_links WHERE launcher = ?1 AND link_key = ?2",
+            rusqlite::params![launcher, link_key],
+        );
+    }
 }
 
 #[cfg(test)]
@@ -313,5 +335,35 @@ mod tests {
         let names: Vec<&str> = restored.iter().map(|g| g.name.as_str()).collect();
         assert_eq!(names, vec!["ELDEN RING"]);
         assert_eq!(restored[0].installed, Some(false));
+    }
+
+    fn link(conn: &rusqlite::Connection, launcher: &str, key: &str, external_id: &str) {
+        conn.execute(
+            "INSERT INTO local_game_links (launcher, link_key, external_id, updated_at, manual) VALUES (?1, ?2, ?3, 'now', 1)",
+            rusqlite::params![launcher, key, external_id],
+        )
+        .unwrap();
+    }
+
+    fn linked_keys(conn: &rusqlite::Connection) -> Vec<String> {
+        let mut stmt = conn.prepare("SELECT link_key FROM local_game_links ORDER BY link_key").unwrap();
+        stmt.query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect()
+    }
+
+    // The owner's uninstalled Xbox Minecraft: its seen row is months old and
+    // keyed by a legacy path, so the ghost (keyed by name) is never "seen"
+    // again. Its link must survive while the ghost is on the grid.
+    #[test]
+    fn links_of_shown_games_survive_and_links_of_gone_games_are_pruned() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        seen(&conn, "xbox", r"C:\XboxGames\Minecraft Launcher", "Minecraft Launcher");
+        link(&conn, "xbox", "Minecraft Launcher", "game:135400");
+        link(&conn, "steam", "1245620", "game:119133");
+
+        let shown = std::collections::HashSet::from([("xbox".to_string(), "Minecraft Launcher".to_string())]);
+        prune_stale_game_links(&conn, &shown);
+
+        assert_eq!(linked_keys(&conn), vec!["Minecraft Launcher"]);
     }
 }

@@ -5,7 +5,7 @@ import { getT } from '../../i18n/runtime';
 import { mergeSteamEditionAchievements } from '../../lib/local/steam-achievements-merge';
 import { toSteamAchievementsModel } from '../../lib/retro-achievements/achievement-cell-adapter';
 import { AchievementIcons } from './AchievementIcons';
-import { loadAchievements, type AchievementGame } from '../../lib/profile/achievement-data';
+import { loadAchievements, refreshAchievements, type AchievementGame } from '../../lib/profile/achievement-data';
 
 function AchievementCover({ game }: { game: AchievementGame }) {
   const sources = [game.cover, ...game.coverFallbacks].filter((source, index, all) => !!source && all.indexOf(source) === index);
@@ -27,9 +27,27 @@ export function AchievementsSection() {
   useEffect(() => {
     let cancelled = false;
     const endLoading = beginGlobalLoading();
-    loadAchievements().then(rows => { if (!cancelled) setGames(rows); })
-      .catch(() => { if (!cancelled) setGames([]); })
-      .finally(endLoading);
+    let loading = true;
+    const stopLoading = () => {
+      if (!loading) return;
+      loading = false;
+      endLoading();
+    };
+    // Paint from disk first, then swap in whatever the network refresh
+    // changed. An empty disk pass (first run, nothing cached yet) keeps the
+    // loader up instead of flashing the empty state.
+    loadAchievements().catch(() => [] as AchievementGame[])
+      .then(rows => {
+        if (cancelled) return null;
+        if (rows.length) {
+          setGames(rows);
+          stopLoading();
+        }
+        return refreshAchievements();
+      })
+      .then(rows => { if (!cancelled && rows) setGames(rows); })
+      .catch(() => { if (!cancelled) setGames(current => current ?? []); })
+      .finally(stopLoading);
     return () => { cancelled = true; };
   }, []);
 

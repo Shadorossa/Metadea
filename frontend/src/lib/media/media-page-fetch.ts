@@ -6,7 +6,6 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { fetchComicVineVolume } from '../search/providers/comicvine';
-import { fetchApiSportsEvent } from '../search/providers/apisports';
 import { mapAniListToMedia } from './mappers/anilist-mapper';
 import { mapOpenLibToMedia } from './mappers/openlibrary-mapper';
 import { mapComicVineToMedia } from './mappers/comicvine-mapper';
@@ -68,10 +67,6 @@ export async function fetchMediaDataInternal(rawId: string, allowBlocked = false
     if (!numericId) return null;
     const raw = await fetchTmdbDetail(numericId, type);
     return raw ? mapTmdbToMedia(raw, type, rawId) : null;
-  }
-
-  if (type === 'event') {
-    return fetchApiSportsEvent(rawId);
   }
 
   if (type === 'comic') {

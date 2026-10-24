@@ -267,6 +267,26 @@ pub async fn ra_get_game_progress(
     .await
 }
 
+/// The cached progress row for `ra_game_id`, whatever its age (flagged
+/// stale once past its TTL), without touching the network — so a list can
+/// paint from disk first and refresh through `ra_get_game_progress` after.
+#[tauri::command]
+pub async fn ra_get_cached_game_progress(
+    app_handle: tauri::AppHandle,
+    ra_game_id: u32,
+) -> Result<Option<RaCached<RaGameProgress>>, String> {
+    let db = app_handle.state::<MetadeaDb>();
+    let Some(creds) = credentials(&db)? else { return Ok(None) };
+    let key = cache::game_progress_key(&creds.username, ra_game_id);
+    let Some(row) = read_cache(&db, &key, cache::TTL_GAME_PROGRESS_SECS)? else { return Ok(None) };
+    Ok(Some(RaCached {
+        data: client::parse_game_progress(&row.json)?,
+        fetched_at: row.fetched_at,
+        from_cache: true,
+        stale: !row.fresh,
+    }))
+}
+
 #[tauri::command]
 pub async fn ra_get_profile_progress(
     app_handle: tauri::AppHandle,

@@ -5,12 +5,12 @@ export const ANILIST_TYPES = ['anime', 'manga', 'lnovel'] as const;
 export const IGDB_TYPES = ['game', 'vnovel'] as const;
 
 export const ALL_MEDIA_TYPES = [
-  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'series', 'movie', 'book', 'comic', 'event', 'character',
+  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'series', 'movie', 'book', 'comic', 'character',
 ] as const;
 
 // Central feature locks: remove a type here to re-enable it everywhere that
 // exposes a media-type selector or aggregates cross-type search results.
-export const DISABLED_MEDIA_TYPES: readonly string[] = ['event'];
+export const DISABLED_MEDIA_TYPES: readonly string[] = [];
 
 export function isMediaTypeDisabled(type: string): boolean {
   return DISABLED_MEDIA_TYPES.includes(type);
@@ -18,7 +18,7 @@ export function isMediaTypeDisabled(type: string): boolean {
 
 // Search tab order (includes 'all' sentinel)
 export const SEARCH_TAB_TYPES = [
-  'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'event', 'character', 'staff',
+  'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'character', 'staff',
 ] as const;
 
 // Types that have a dedicated detail page. 'staff' isn't in ALL_MEDIA_TYPES
@@ -26,7 +26,7 @@ export const SEARCH_TAB_TYPES = [
 // have one — it resolves to the existing /author page (person:a<id>, same
 // as an AniList staff link from quick search), not a new /staff page.
 export const DETAIL_SUPPORTED_TYPES = [
-  'anime', 'manga', 'lnovel', 'book', 'comic', 'event', 'game', 'vnovel', 'movie', 'series', 'character', 'staff',
+  'anime', 'manga', 'lnovel', 'book', 'comic', 'game', 'vnovel', 'movie', 'series', 'character', 'staff',
 ] as const;
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
@@ -45,7 +45,6 @@ export function getTypeLabel(type: string): string {
     movie: t.search?.types?.movie,
     book: t.search?.types?.book,
     comic: t.search?.types?.comic,
-    event: t.search?.types?.event,
     character: t.search?.types?.character,
     staff: t.search?.types?.staff,
   };

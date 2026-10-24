@@ -1,5 +1,4 @@
 import type { MediaType, SearchResult } from './index';
-import type { ApiSportsDiscipline } from './providers/apisports';
 import { SEARCH_TAB_TYPES } from '../media/media-types';
 import { STORAGE_KEYS } from '../storage/storage-keys';
 
@@ -13,8 +12,6 @@ export type SearchStatus = 'idle' | 'loading' | 'done' | 'error' | 'missing-keys
 export interface PersistedSearchState {
   query: string;
   mediaType: MediaType;
-  eventDiscipline?: ApiSportsDiscipline | '';
-  eventSeasonsUnified?: boolean;
   results: SearchResult[];
   status: SearchStatus;
   page: number;
@@ -45,15 +42,13 @@ export function loadPersistedSearchState(): PersistedSearchState | null {
 // read in a mount effect instead (after hydration), matching SSR on the
 // first render and correcting it a tick later, same as the existing
 // persisted-search-state restore just below it.
-export function getUrlSearchParams(): { query: string; mediaType: MediaType; eventDiscipline: ApiSportsDiscipline | '' } | null {
+export function getUrlSearchParams(): { query: string; mediaType: MediaType } | null {
   const params = new URLSearchParams(window.location.search);
   const q = params.get('q');
   if (!q) return null;
   const rawType = params.get('type');
   const mediaType: MediaType = rawType && (SEARCH_TAB_TYPES as readonly string[]).includes(rawType) ? rawType as MediaType : 'all';
-  const rawDiscipline = params.get('discipline');
-  const eventDiscipline: ApiSportsDiscipline | '' = rawDiscipline === 'football' || rawDiscipline === 'basketball' ? rawDiscipline : '';
-  return { query: q, mediaType, eventDiscipline };
+  return { query: q, mediaType };
 }
 
 // Mirrors .results-grid's own breakpoints (search.css) so Todos' per-type

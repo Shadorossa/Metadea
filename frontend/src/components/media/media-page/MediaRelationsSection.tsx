@@ -4,17 +4,16 @@ import type { Translations } from '../../../i18n/index';
 import type { MediaEpisode, MediaTheme } from '../../../lib/tauri';
 import type { MediaPageData } from '../../../lib/media/types';
 import type { SagaEntry } from '../../../lib/anilist/saga';
-import type { EventMatch } from '../../../lib/search/providers/apisports';
 import { bucketRelations } from '../../../lib/media/media-page-data';
 import { stripSeasonSuffix } from '../../../lib/media/mappers/mapper-utils';
 import { MediaStoreLinks } from '../MediaStoreLinks';
 import { GGDEALS_MEDIA_TYPES, ggDealsLink } from '../../../lib/media/ggdeals-link';
 import { Pagination } from '../Pagination';
-import { EpisodeCard, MatchCard, RelationCard, ThemeCardItem } from './MediaPageCards';
+import { EpisodeCard, RelationCard, ThemeCardItem } from './MediaPageCards';
 import { SectionTabs } from './MediaPageControls';
 import type { MediaSpoilers } from './useMediaSpoilers';
 
-export type RelationsTab = 'related' | 'recommended' | 'editions' | 'episodes' | 'matches' | 'seasons' | 'themes' | 'read';
+export type RelationsTab = 'related' | 'recommended' | 'editions' | 'episodes' | 'seasons' | 'themes' | 'read';
 
 // .media-relations-grid is a fixed 4-column grid — 3 rows worth per page.
 export const EPISODE_PAGE_SIZE = 12;
@@ -32,10 +31,8 @@ interface Props {
   setRelationPage: Dispatch<SetStateAction<number>>;
   episodes: MediaEpisode[];
   themes: MediaTheme[];
-  matches: EventMatch[];
   animeSeasonChain: SagaEntry[];
   showsSeasonsTab: boolean;
-  isEventCompetition: boolean;
   hasEpisodes: boolean;
   hasThemes: boolean;
   displayCover: string | null;
@@ -61,10 +58,8 @@ export function MediaRelationsSection({
   setRelationPage,
   episodes,
   themes,
-  matches,
   animeSeasonChain,
   showsSeasonsTab,
-  isEventCompetition,
   hasEpisodes,
   hasThemes,
   displayCover,
@@ -90,19 +85,15 @@ export function MediaRelationsSection({
     : relatedRelationsRaw;
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
-  const hasMatches              = data.type === 'event' && matches.length > 0;
   const tmdbSeasons             = data.type === 'series' ? (data.seasons ?? []) : [];
-  const eventSeasons            = isEventCompetition ? (data.seasons ?? []) : [];
   const hasSeasonsTab            = showsSeasonsTab
     ? animeSeasonChain.length > 1
-    : isEventCompetition
-    ? eventSeasons.length > 0
     : tmdbSeasons.length > 0;
   const storeLinks = data.storeLinks ?? [];
   const ggDeals = GGDEALS_MEDIA_TYPES.includes(data.type) && data.titleMain
     ? { url: ggDealsLink({ title: data.titleMain, storeLinks }), label: tm.ggdeals_link }
     : undefined;
-  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasMatches || hasSeasonsTab || hasThemes || !!readTab;
+  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasSeasonsTab || hasThemes || !!readTab;
   const visibleRelations = relationsTab === 'recommended'
     ? recommendedRelations
     : relationsTab === 'editions'
@@ -126,7 +117,6 @@ export function MediaRelationsSection({
                 ...(hasRecommendedRelations ? [{ key: 'recommended', label: tm.relations.RECOMMENDATION, active: relationsTab === 'recommended', onClick: () => { setRelationsTab('recommended'); setRelationPage(1); } }] : []),
                 ...(hasSeasonsTab ? [{ key: 'seasons', label: tm.stat_seasons, active: relationsTab === 'seasons', onClick: () => { setRelationsTab('seasons'); setRelationPage(1); } }] : []),
                 ...(hasEpisodes ? [{ key: 'episodes', label: tm.stat_episodes, active: relationsTab === 'episodes', onClick: () => { setRelationsTab('episodes'); setRelationPage(1); } }] : []),
-                ...(hasMatches ? [{ key: 'matches', label: tm.stat_matches, active: relationsTab === 'matches', onClick: () => { setRelationsTab('matches'); setRelationPage(1); } }] : []),
                 ...(hasThemes ? [{ key: 'themes', label: tm.section_themes, active: relationsTab === 'themes', onClick: () => { setRelationsTab('themes'); setRelationPage(1); } }] : []),
                 ...(readTab ? [{ key: 'read', label: readTab.label, active: relationsTab === 'read', onClick: () => { setRelationsTab('read'); setRelationPage(1); } }] : []),
               ] : []}
@@ -161,88 +151,44 @@ export function MediaRelationsSection({
                 )}
               </>
             )
-          ) : relationsTab === 'matches' ? (
-            matches.length > 0 && (
-              <>
-                <div className="media-relations-grid">
-                  {matches
-                    .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
-                    .map(match => <MatchCard key={match.id} match={match} />)}
-                </div>
-                {matches.length > EPISODE_PAGE_SIZE && (
-                  <Pagination
-                    currentPage={relationPage}
-                    totalPages={Math.ceil(matches.length / EPISODE_PAGE_SIZE)}
-                    onChange={setRelationPage}
-                  />
-                )}
-              </>
-            )
           ) : relationsTab === 'seasons' ? (
             // Reuses RelationCard (cover + title + a small top label) for both
             // sources — an anime's own chain member gets "T{n}" (or "Estás
             // aquí" on whichever one is the page currently open, same label
             // SagaViewerModal already uses), a TMDB season gets its own
             // TMDB-provided poster instead of the series' main cover.
-            (showsSeasonsTab ? animeSeasonChain.length > 0 : isEventCompetition ? eventSeasons.length > 0 : tmdbSeasons.length > 0) && (
-              isEventCompetition ? (
-                <>
-                  <div className="media-relations-grid">
-                    {eventSeasons
-                      .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
-                      .map(season => (
-                        <RelationCard
-                          key={season.externalId ?? season.seasonNumber}
-                          relation={{
-                            url: season.externalId ? `/media?id=${encodeURIComponent(season.externalId)}` : undefined,
-                            cover: season.coverUrl,
-                            typeLabel: tm.stat_season,
-                            title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
-                          }}
-                        />
-                      ))}
-                  </div>
-                  {eventSeasons.length > EPISODE_PAGE_SIZE && (
-                    <Pagination
-                      currentPage={relationPage}
-                      totalPages={Math.ceil(eventSeasons.length / EPISODE_PAGE_SIZE)}
-                      onChange={setRelationPage}
-                    />
-                  )}
-                </>
-              ) : (
-                <div className="media-relations-grid">
-                  {showsSeasonsTab
-                    ? animeSeasonChain.map((entry, i) => (
-                        <RelationCard
-                          key={entry.externalId}
-                          onRevealCover={spoilers?.isRelatedCoverHidden(entry.externalId, animeSeasonChain.slice(0, i).map(e => e.externalId))
-                            ? () => spoilers.revealRelatedCover(entry.externalId)
-                            : undefined}
-                          relation={{
-                            url: `/media?id=${encodeURIComponent(entry.externalId)}`,
-                            cover: entry.cover,
-                            typeLabel: `${tm.stat_season} ${i + 1}`,
-                            // The badge above already says which season this
-                            // is - stripSeasonSuffix hides "2nd Season"/"The
-                            // Final Season" wording from the title itself
-                            // instead of showing it twice.
-                            title: stripSeasonSuffix(entry.title),
-                          }}
-                        />
-                      ))
-                    : tmdbSeasons.map(season => (
-                        <RelationCard
-                          key={season.seasonNumber}
-                          relation={{
-                            cover: season.coverUrl,
-                            typeLabel: `${tm.stat_season} ${season.seasonNumber}`,
-                            title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
-                          }}
-                        />
-                      ))}
-                </div>
-              )
+            (showsSeasonsTab ? animeSeasonChain.length > 0 : tmdbSeasons.length > 0) && (
+              <div className="media-relations-grid">
+                {showsSeasonsTab
+                  ? animeSeasonChain.map((entry, i) => (
+                      <RelationCard
+                        key={entry.externalId}
+                        onRevealCover={spoilers?.isRelatedCoverHidden(entry.externalId, animeSeasonChain.slice(0, i).map(e => e.externalId))
+                          ? () => spoilers.revealRelatedCover(entry.externalId)
+                          : undefined}
+                        relation={{
+                          url: `/media?id=${encodeURIComponent(entry.externalId)}`,
+                          cover: entry.cover,
+                          typeLabel: `${tm.stat_season} ${i + 1}`,
+                          // The badge above already says which season this
+                          // is - stripSeasonSuffix hides "2nd Season"/"The
+                          // Final Season" wording from the title itself
+                          // instead of showing it twice.
+                          title: stripSeasonSuffix(entry.title),
+                        }}
+                      />
+                    ))
+                  : tmdbSeasons.map(season => (
+                      <RelationCard
+                        key={season.seasonNumber}
+                        relation={{
+                          cover: season.coverUrl,
+                          typeLabel: `${tm.stat_season} ${season.seasonNumber}`,
+                          title: season.name || `${tm.stat_seasons} ${season.seasonNumber}`,
+                        }}
+                      />
+                    ))}
+              </div>
             )
           ) : relationsTab === 'episodes' ? (
             episodes.length > 0 && (() => {
