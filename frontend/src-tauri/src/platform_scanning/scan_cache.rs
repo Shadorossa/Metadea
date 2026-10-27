@@ -121,14 +121,8 @@ pub(super) fn join_signatures<I: IntoIterator<Item = String>>(parts: I) -> Strin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
-    fn temp_root(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("metadea-scan-cache-{}-{}", std::process::id(), name));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    use crate::test_support::tempdir as temp_root;
 
     fn game(name: &str) -> LocalGame {
         LocalGame::installed(name.to_string(), "steam", Some(name.to_string()), None)

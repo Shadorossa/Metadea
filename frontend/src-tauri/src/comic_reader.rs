@@ -114,62 +114,42 @@ mod natural_cmp_tests {
     use super::natural_cmp;
     use std::cmp::Ordering;
 
+    // (a, b, a cmp b); every pair is also checked reversed.
     #[test]
-    fn compares_digit_runs_numerically() {
-        assert_eq!(natural_cmp("page2.jpg", "page10.jpg"), Ordering::Less);
-        assert_eq!(natural_cmp("page10.jpg", "page2.jpg"), Ordering::Greater);
-    }
-
-    #[test]
-    fn identical_strings_are_equal() {
-        assert_eq!(natural_cmp("page7.jpg", "page7.jpg"), Ordering::Equal);
-        assert_eq!(natural_cmp("", ""), Ordering::Equal);
-    }
-
-    #[test]
-    fn a_strict_prefix_sorts_first() {
-        assert_eq!(natural_cmp("page", "page1"), Ordering::Less);
-        assert_eq!(natural_cmp("page1", "page"), Ordering::Greater);
-        assert_eq!(natural_cmp("", "a"), Ordering::Less);
-    }
-
-    #[test]
-    fn leading_zeros_do_not_affect_numeric_equality() {
-        assert_eq!(natural_cmp("page007", "page7"), Ordering::Equal);
-        assert_eq!(natural_cmp("page02.jpg", "page2.jpg"), Ordering::Equal);
-    }
-
-    #[test]
-    fn handles_multiple_numeric_runs() {
-        assert_eq!(natural_cmp("v1.9", "v1.10"), Ordering::Less);
-        assert_eq!(natural_cmp("ch2-p10", "ch2-p9"), Ordering::Greater);
-        assert_eq!(natural_cmp("ch10-p1", "ch2-p9"), Ordering::Greater);
-    }
-
-    #[test]
-    fn falls_back_to_char_order_after_equal_numbers() {
-        assert_eq!(natural_cmp("1a", "1b"), Ordering::Less);
-        assert_eq!(natural_cmp("1b", "1a"), Ordering::Greater);
-    }
-
-    #[test]
-    fn digit_versus_letter_uses_plain_char_order() {
-        assert_eq!(natural_cmp("2", "a"), Ordering::Less);
-        assert_eq!(natural_cmp("A", "a"), Ordering::Less);
-    }
-
-    #[test]
-    fn non_ascii_characters_compare_by_code_point() {
-        assert_eq!(natural_cmp("é", "z"), Ordering::Greater);
-        assert_eq!(natural_cmp("página2", "página10"), Ordering::Less);
-        // Fullwidth digits are not ASCII digits, so they compare as chars.
-        assert_eq!(natural_cmp("２", "１０"), Ordering::Greater);
-    }
-
-    #[test]
-    fn numbers_that_overflow_u64_are_treated_as_zero() {
-        assert_eq!(natural_cmp("99999999999999999999999", "1"), Ordering::Less);
-        assert_eq!(natural_cmp("99999999999999999999999", "0"), Ordering::Equal);
+    fn orders_names_naturally() {
+        use Ordering::*;
+        let cases = [
+            // Digit runs compare numerically.
+            ("page2.jpg", "page10.jpg", Less),
+            ("page7.jpg", "page7.jpg", Equal),
+            ("", "", Equal),
+            // A strict prefix sorts first.
+            ("page", "page1", Less),
+            ("", "a", Less),
+            // Leading zeros don't change the number.
+            ("page007", "page7", Equal),
+            ("page02.jpg", "page2.jpg", Equal),
+            // Several numeric runs.
+            ("v1.9", "v1.10", Less),
+            ("ch2-p10", "ch2-p9", Greater),
+            ("ch10-p1", "ch2-p9", Greater),
+            // Char order after equal numbers.
+            ("1a", "1b", Less),
+            // Digit vs letter, case: plain char order.
+            ("2", "a", Less),
+            ("A", "a", Less),
+            // Non-ASCII by code point; fullwidth digits are chars, not digits.
+            ("é", "z", Greater),
+            ("página2", "página10", Less),
+            ("２", "１０", Greater),
+            // Numbers overflowing u64 count as zero.
+            ("99999999999999999999999", "1", Less),
+            ("99999999999999999999999", "0", Equal),
+        ];
+        for (a, b, expected) in cases {
+            assert_eq!(natural_cmp(a, b), expected, "{a:?} vs {b:?}");
+            assert_eq!(natural_cmp(b, a), expected.reverse(), "{b:?} vs {a:?}");
+        }
     }
 }
 

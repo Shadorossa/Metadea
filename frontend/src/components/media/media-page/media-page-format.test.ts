@@ -3,55 +3,35 @@ import { formatEpisodeNumber, formatThemeEpisodes, mergeSeasonThemes } from './m
 import type { MediaTheme } from '../../../lib/tauri';
 
 describe('formatEpisodeNumber', () => {
-  it('renders a regular episode as a plain number', () => {
-    expect(formatEpisodeNumber(1)).toBe('1');
-    expect(formatEpisodeNumber(24)).toBe('24');
-  });
-
-  // Specials are stored as negative numbers so they sort after the run.
-  it('renders a negative number as a special', () => {
-    expect(formatEpisodeNumber(-1)).toBe('Sp1');
-    expect(formatEpisodeNumber(-12)).toBe('Sp12');
-  });
-
-  it('renders zero as a plain number', () => {
-    expect(formatEpisodeNumber(0)).toBe('0');
+  it.each([
+    ['a regular episode as a plain number', 1, '1'],
+    ['a two-digit episode as a plain number', 24, '24'],
+    // Specials are stored as negative numbers so they sort after the run.
+    ['a negative number as a special', -1, 'Sp1'],
+    ['a two-digit negative number as a special', -12, 'Sp12'],
+    ['zero as a plain number', 0, '0'],
+  ])('renders %s', (_name, episode, expected) => {
+    expect(formatEpisodeNumber(episode)).toBe(expected);
   });
 });
 
 describe('formatThemeEpisodes', () => {
-  it('returns null for empty input', () => {
-    expect(formatThemeEpisodes(null, 0)).toBeNull();
-    expect(formatThemeEpisodes(undefined, 0)).toBeNull();
-    expect(formatThemeEpisodes('   ', 0)).toBeNull();
-  });
-
-  it('trims and passes through when there is no offset', () => {
-    expect(formatThemeEpisodes('  1-13  ', 0)).toBe('1-13');
-    expect(formatThemeEpisodes('1-13', -5)).toBe('1-13');
-  });
-
-  it('shifts every number by the offset', () => {
-    expect(formatThemeEpisodes('1-13', 24)).toBe('25-37');
-    expect(formatThemeEpisodes('5', 10)).toBe('15');
-  });
-
-  it('shifts every number in a comma-separated list', () => {
-    expect(formatThemeEpisodes('1, 3, 5', 10)).toBe('11, 13, 15');
-  });
-
-  // A range already past the offset is absolute, not season-relative, so
-  // shifting it again would double-count.
-  it('leaves a range that already starts past the offset alone', () => {
-    expect(formatThemeEpisodes('25-37', 24)).toBe('25-37');
-  });
-
-  it('shifts when the first number equals the offset', () => {
-    expect(formatThemeEpisodes('24-30', 24)).toBe('48-54');
-  });
-
-  it('passes through text with no numbers', () => {
-    expect(formatThemeEpisodes('ED', 24)).toBe('ED');
+  it.each<[string, string | null | undefined, number, string | null]>([
+    ['returns null for null input', null, 0, null],
+    ['returns null for undefined input', undefined, 0, null],
+    ['returns null for blank input', '   ', 0, null],
+    ['trims and passes through with a zero offset', '  1-13  ', 0, '1-13'],
+    ['passes through with a negative offset', '1-13', -5, '1-13'],
+    ['shifts every number in a range by the offset', '1-13', 24, '25-37'],
+    ['shifts a single number by the offset', '5', 10, '15'],
+    ['shifts every number in a comma-separated list', '1, 3, 5', 10, '11, 13, 15'],
+    // A range already past the offset is absolute, not season-relative, so
+    // shifting it again would double-count.
+    ['leaves a range that already starts past the offset alone', '25-37', 24, '25-37'],
+    ['shifts when the first number equals the offset', '24-30', 24, '48-54'],
+    ['passes through text with no numbers', 'ED', 24, 'ED'],
+  ])('%s', (_name, episodes, offset, expected) => {
+    expect(formatThemeEpisodes(episodes, offset)).toBe(expected);
   });
 });
 

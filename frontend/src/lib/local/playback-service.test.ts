@@ -5,54 +5,53 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // with the controls mode), raise the modal store the NowPlayingBar renders
 // PlayerModal from, and on `player://ended` persist mpv's exact position.
 
-const mocks = vi.hoisted(() => ({
-  playerOpen: vi.fn(async (_request: Record<string, unknown>) => ({ work_name: 'Show', queue: [], episode_labels: [], titles: [] })),
-  playerEngineAvailable: vi.fn(async () => true),
-  playerStopClose: vi.fn(async () => {}),
-  playerSetPause: vi.fn(async () => {}),
-  playerNext: vi.fn(async () => {}),
-  playerGetStatus: vi.fn(async () => null),
-  saveResumePosition: vi.fn(async () => {}),
-  getResumePosition: vi.fn(async () => 42.5),
-  clearResumePosition: vi.fn(async () => {}),
-  saveLibraryEntry: vi.fn(async (entry: unknown) => entry),
-  deleteEpisodeHistoryEntry: vi.fn(async () => {}),
-  deleteLibraryEntry: vi.fn(async () => {}),
-  showEpisodeWatchedToast: vi.fn(async () => {}),
-  endedHandlers: [] as Array<(payload: unknown) => void>,
-  toastHandlers: [] as Array<(payload: unknown) => void>,
-}));
+// Grouped per mocked module (spread into each vi.mock factory) and also
+// flattened so tests read `mocks.<fn>`.
+const mocks = vi.hoisted(() => {
+  const tauri = {
+    saveLibraryEntry: vi.fn(async (entry: unknown) => entry),
+    deleteEpisodeHistoryEntry: vi.fn(async () => {}),
+    deleteLibraryEntry: vi.fn(async () => {}),
+  };
+  const resume = {
+    saveResumePosition: vi.fn(async () => {}),
+    getResumePosition: vi.fn(async () => 42.5),
+    clearResumePosition: vi.fn(async () => {}),
+  };
+  const player = {
+    playerOpen: vi.fn(async (_request: Record<string, unknown>) => ({ work_name: 'Show', queue: [], episode_labels: [], titles: [] })),
+    playerEngineAvailable: vi.fn(async () => true),
+    playerStopClose: vi.fn(async () => {}),
+    playerSetPause: vi.fn(async () => {}),
+    playerNext: vi.fn(async () => {}),
+    playerGetStatus: vi.fn(async () => null),
+    showEpisodeWatchedToast: vi.fn(async () => {}),
+  };
+  return {
+    tauri, resume, player, ...tauri, ...resume, ...player,
+    endedHandlers: [] as Array<(payload: unknown) => void>,
+    toastHandlers: [] as Array<(payload: unknown) => void>,
+  };
+});
 
 vi.mock('../tauri', () => ({
-  saveLibraryEntry: mocks.saveLibraryEntry,
+  ...mocks.tauri,
   saveEpisodeHistoryEntry: vi.fn(async () => {}),
   addSequelToPlanning: vi.fn(async () => null),
   getEpisodeHistory: vi.fn(async () => [
     { id: 'older', external_id: 'anime-1', episode_number: 4, watched_at: '2026-01-01 10:00:00' },
     { id: 'newest', external_id: 'anime-1', episode_number: 4, watched_at: '2026-02-01 10:00:00' },
   ]),
-  deleteEpisodeHistoryEntry: mocks.deleteEpisodeHistoryEntry,
-  deleteLibraryEntry: mocks.deleteLibraryEntry,
 }));
-vi.mock('../tauri/resume-position', () => ({
-  getResumePosition: mocks.getResumePosition,
-  saveResumePosition: mocks.saveResumePosition,
-  clearResumePosition: mocks.clearResumePosition,
-}));
+vi.mock('../tauri/resume-position', () => mocks.resume);
 vi.mock('../tauri/player', () => ({
-  playerOpen: mocks.playerOpen,
-  playerEngineAvailable: mocks.playerEngineAvailable,
-  playerStopClose: mocks.playerStopClose,
-  playerSetPause: mocks.playerSetPause,
-  playerNext: mocks.playerNext,
-  playerGetStatus: mocks.playerGetStatus,
+  ...mocks.player,
   listenPlayerStatus: vi.fn(async () => () => {}),
   listenPlayerTrackChanged: vi.fn(async () => () => {}),
   listenPlayerEnded: vi.fn(async (handler: (payload: unknown) => void) => {
     mocks.endedHandlers.push(handler);
     return () => {};
   }),
-  showEpisodeWatchedToast: mocks.showEpisodeWatchedToast,
   listenToastAction: vi.fn(async (handler: (payload: unknown) => void) => {
     mocks.toastHandlers.push(handler);
     return () => {};
@@ -142,19 +141,8 @@ describe('startQueuePlayback (internal engine)', () => {
     expect(playbackStore.get()).toBeNull();
   });
 
-  it('marks the episode watched instead when the engine stopped past 80 %', async () => {
-    await startQueuePlayback(target());
-    mocks.endedHandlers.forEach(handler => handler({
-      reason: 'navigate', position_secs: 1300, duration_secs: 1420, playlist_index: 1, path: 'C:\\S\\e4.mkv',
-    }));
-    await Promise.resolve();
-
-    expect(mocks.saveLibraryEntry).toHaveBeenCalledTimes(1);
-    expect((mocks.saveLibraryEntry.mock.calls[0][0] as { progress: number }).progress).toBe(4);
-    expect(mocks.saveResumePosition).not.toHaveBeenCalled();
-  });
-
-  it('shows the native Undo toast for the mark and reverts it on toast://action', async () => {
+  // The ended `reason` is ignored: any stop past 80 % marks instead of saving a resume point.
+  it('marks past 80 %, shows the native Undo toast and reverts it on toast://action', async () => {
     const flush = () => new Promise(resolve => setTimeout(resolve, 0));
     await startQueuePlayback(target());
     mocks.endedHandlers.forEach(handler => handler({
@@ -162,6 +150,9 @@ describe('startQueuePlayback (internal engine)', () => {
     }));
     await flush();
 
+    expect(mocks.saveLibraryEntry).toHaveBeenCalledTimes(1);
+    expect((mocks.saveLibraryEntry.mock.calls[0][0] as { progress: number }).progress).toBe(4);
+    expect(mocks.saveResumePosition).not.toHaveBeenCalled();
     expect(mocks.showEpisodeWatchedToast).toHaveBeenCalledTimes(1);
     const [workName, label, token] = mocks.showEpisodeWatchedToast.mock.calls[0] as unknown as [string, string, number];
     expect(workName).toBe('Show');

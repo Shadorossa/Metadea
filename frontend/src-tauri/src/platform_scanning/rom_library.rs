@@ -728,12 +728,7 @@ mod tests {
         assert_eq!(games.iter().map(|g| g.base.file_name.as_str()).collect::<Vec<_>>(), vec!["Game.3ds", "Other.3ds"]);
     }
 
-    fn temp_root(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("metadea-rom-library-{}-{}", std::process::id(), name));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    use crate::test_support::tempdir as temp_root;
 
     #[test]
     fn scan_uses_only_the_configured_extensions_and_skips_the_emulator_dir() {

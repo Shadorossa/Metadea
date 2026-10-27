@@ -158,12 +158,7 @@ pub async fn write_routes(
 mod tagged_path_tests {
     use super::*;
 
-    fn temp_root(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("metadea-tagged-{}-{}", std::process::id(), name));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    use crate::test_support::tempdir as temp_root;
 
     #[test]
     fn finds_a_nested_tagged_folder_depth_first_in_listing_order() {

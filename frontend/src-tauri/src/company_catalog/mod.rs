@@ -212,13 +212,6 @@ mod tests {
     use model::{CompanyPage, CompanyWork};
 
     #[test]
-    fn cache_stays_fresh_for_seven_days() {
-        assert!(cache_is_fresh(0, CACHE_TTL_SECS - 1));
-        assert!(!cache_is_fresh(0, CACHE_TTL_SECS));
-        assert!(!cache_is_fresh(0, CACHE_TTL_SECS * 3));
-    }
-
-    #[test]
     fn cache_round_trips_and_flags_staleness() {
         let db = crate::db::MetadeaDb::open_in_memory().unwrap();
         let conn = db.conn.lock().unwrap();

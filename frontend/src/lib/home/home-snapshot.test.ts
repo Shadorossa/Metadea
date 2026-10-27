@@ -12,16 +12,7 @@ import {
   snapshotCalendar,
   updateHomeSnapshot,
 } from './home-snapshot';
-
-function memoryStorage() {
-  const map = new Map<string, string>();
-  return {
-    getItem: (k: string) => map.get(k) ?? null,
-    setItem: (k: string, v: string) => { map.set(k, v); },
-    removeItem: (k: string) => { map.delete(k); },
-    map,
-  };
-}
+import { memoryStorage } from '../../../tests/support/memory-storage';
 
 const today = new Date(2026, 8, 23, 12);
 const anniversaryItem = { externalId: 'game:136', type: 'game', title: 'DMC3', coverUrl: null, year: 2022, yearsAgo: 4 };
@@ -40,7 +31,7 @@ describe('home snapshot', () => {
     const calendar = snapshotCalendar(snapshot, today);
     expect(calendar?.[0].releaseDate).toBeInstanceOf(Date);
     expect(calendar?.[0].releaseDate.getDate()).toBe(30);
-    expect(JSON.parse(storage.map.get(STORAGE_KEYS.homeLayoutHint)!)).toEqual({ d: '2026-09-23', a: 1, g: 0, f: 0, fp: 0, c: 0 });
+    expect(JSON.parse(storage.data.get(STORAGE_KEYS.homeLayoutHint)!)).toEqual({ d: '2026-09-23', a: 1, g: 0, f: 0, fp: 0, c: 0 });
   });
 
   it('ignores slices for another day or month', () => {
@@ -60,7 +51,7 @@ describe('home snapshot', () => {
     updateHomeSnapshot({ date: '2026-09-23' }, storage);
     clearHomeSnapshot(storage);
     expect(readHomeSnapshot(storage)).toBeNull();
-    expect(storage.map.has(STORAGE_KEYS.homeLayoutHint)).toBe(false);
+    expect(storage.data.has(STORAGE_KEYS.homeLayoutHint)).toBe(false);
   });
 
   it('fingerprints the library and compares id lists', () => {

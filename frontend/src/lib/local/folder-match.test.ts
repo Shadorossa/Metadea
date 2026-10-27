@@ -36,23 +36,16 @@ function dir(name: string): LocalFolderEntry {
 }
 
 describe('normalizeForMatch', () => {
-  it('lowercases and collapses separators into single spaces', () => {
-    expect(normalizeForMatch('Attack on Titan')).toBe('attack on titan');
-    expect(normalizeForMatch('attack-on-titan_S1')).toBe('attack on titan s1');
-    expect(normalizeForMatch('Title...')).toBe('title');
-  });
-
-  it('strips accents', () => {
-    expect(normalizeForMatch('Pokémon: Édition')).toBe('pokemon edition');
-  });
-
-  it('drops non-latin text entirely', () => {
-    expect(normalizeForMatch('エースをねらえ！')).toBe('');
-  });
-
-  it('returns an empty string for blank input', () => {
-    expect(normalizeForMatch('')).toBe('');
-    expect(normalizeForMatch('   ')).toBe('');
+  it.each([
+    ['lowercases', 'Attack on Titan', 'attack on titan'],
+    ['collapses separators into single spaces', 'attack-on-titan_S1', 'attack on titan s1'],
+    ['drops trailing separators', 'Title...', 'title'],
+    ['strips accents', 'Pokémon: Édition', 'pokemon edition'],
+    ['drops non-latin text entirely', 'エースをねらえ！', ''],
+    ['returns an empty string for empty input', '', ''],
+    ['returns an empty string for blank input', '   ', ''],
+  ])('%s: %j', (_name, input, expected) => {
+    expect(normalizeForMatch(input)).toBe(expected);
   });
 });
 
@@ -78,44 +71,25 @@ describe('isRedundantEpisodeName', () => {
 });
 
 describe('extractTitleSeason', () => {
-  it('returns null for empty input', () => {
-    expect(extractTitleSeason(null)).toBeNull();
-    expect(extractTitleSeason(undefined)).toBeNull();
-    expect(extractTitleSeason('')).toBeNull();
-  });
-
-  it('reads ordinal season and gig markers', () => {
-    expect(extractTitleSeason('Ghost in the Shell: Stand Alone Complex 2nd GIG')).toBe(2);
-    expect(extractTitleSeason('Attack on Titan 3rd Season')).toBe(3);
-    expect(extractTitleSeason('Attack on Titan Season 4')).toBe(4);
-  });
-
-  it('reads a bare S-number marker', () => {
-    expect(extractTitleSeason('Title S2')).toBe(2);
-  });
-
-  it('does not read an SxxExx episode marker as a season', () => {
-    expect(extractTitleSeason('Title S01E05')).toBeNull();
-  });
-
-  it('reads a trailing installment number, including full-width digits', () => {
-    expect(extractTitleSeason('Uchouten Kazoku 2')).toBe(2);
-    expect(extractTitleSeason('エースをねらえ！２')).toBe(2);
-    expect(extractTitleSeason('Title - 12')).toBe(12);
-  });
-
-  it('ignores trailing numbers longer than two digits', () => {
-    expect(extractTitleSeason('Mob Psycho 100')).toBeNull();
-    expect(extractTitleSeason('Blade Runner 2049')).toBeNull();
-  });
-
-  it('never returns zero', () => {
-    expect(extractTitleSeason('Season 0')).toBeNull();
-  });
-
-  it('returns null when there is no marker at all', () => {
-    expect(extractTitleSeason('Stand Alone Complex')).toBeNull();
-    expect(extractTitleSeason('The Big O II')).toBeNull();
+  it.each<[string, string | null | undefined, number | null]>([
+    ['null input', null, null],
+    ['undefined input', undefined, null],
+    ['empty input', '', null],
+    ['ordinal gig marker', 'Ghost in the Shell: Stand Alone Complex 2nd GIG', 2],
+    ['ordinal season marker', 'Attack on Titan 3rd Season', 3],
+    ['season-number marker', 'Attack on Titan Season 4', 4],
+    ['bare S-number marker', 'Title S2', 2],
+    ['an SxxExx episode marker is not a season', 'Title S01E05', null],
+    ['trailing installment number', 'Uchouten Kazoku 2', 2],
+    ['trailing full-width installment digit', 'エースをねらえ！２', 2],
+    ['trailing number after a dash', 'Title - 12', 12],
+    ['ignores a three-digit trailing number', 'Mob Psycho 100', null],
+    ['ignores a four-digit trailing number', 'Blade Runner 2049', null],
+    ['never returns zero', 'Season 0', null],
+    ['no marker at all', 'Stand Alone Complex', null],
+    ['roman numerals are not a marker', 'The Big O II', null],
+  ])('%s: %j', (_name, input, expected) => {
+    expect(extractTitleSeason(input)).toBe(expected);
   });
 });
 
@@ -237,157 +211,83 @@ describe('findMatchingFile', () => {
 });
 
 describe('formatEpisodeLabel', () => {
-  it('defaults the season to 1 and zero-pads both numbers', () => {
-    expect(formatEpisodeLabel(null, 5)).toBe('S01E05');
-    expect(formatEpisodeLabel(2, 12)).toBe('S02E12');
-    expect(formatEpisodeLabel(1, 123)).toBe('S01E123');
-  });
-
-  it('uses volume labels for books, manga and light novels', () => {
-    expect(formatEpisodeLabel(null, 3, 'manga')).toBe('Vol.03');
-    expect(formatEpisodeLabel(null, 3, 'lnovel')).toBe('Vol.03');
-    expect(formatEpisodeLabel(null, 3, 'book')).toBe('Vol.03');
-  });
-
-  it('uses issue numbers for comics', () => {
-    expect(formatEpisodeLabel(null, 7, 'comic')).toBe('No.07');
-  });
-
-  it('returns an empty label for movies', () => {
-    expect(formatEpisodeLabel(null, 1, 'movie')).toBe('');
-  });
-
-  it('falls back to SxxExx for any other media type', () => {
-    expect(formatEpisodeLabel(null, 1, 'anime')).toBe('S01E01');
-    expect(formatEpisodeLabel(3, 1, 'tv')).toBe('S03E01');
+  it.each<[string, number | null, number, string | undefined, string]>([
+    ['defaults the season to 1 and zero-pads', null, 5, undefined, 'S01E05'],
+    ['zero-pads the season', 2, 12, undefined, 'S02E12'],
+    ['keeps three-digit episodes', 1, 123, undefined, 'S01E123'],
+    ['volume label for manga', null, 3, 'manga', 'Vol.03'],
+    ['volume label for light novels', null, 3, 'lnovel', 'Vol.03'],
+    ['volume label for books', null, 3, 'book', 'Vol.03'],
+    ['issue number for comics', null, 7, 'comic', 'No.07'],
+    ['empty label for movies', null, 1, 'movie', ''],
+    ['SxxExx for anime', null, 1, 'anime', 'S01E01'],
+    ['SxxExx for tv', 3, 1, 'tv', 'S03E01'],
+  ])('%s', (_name, season, episode, type, expected) => {
+    expect(formatEpisodeLabel(season, episode, type)).toBe(expected);
   });
 });
 
 describe('cleanFilenameForDisplay', () => {
-  it('drops bracketed groups, extension and trailing separators', () => {
-    expect(cleanFilenameForDisplay('[Group] Title - 03 (1080p).mkv')).toBe('Title - 03');
-  });
-
-  it('cuts everything from the first quality tag onward', () => {
-    expect(cleanFilenameForDisplay('Title.2019.1080p.BluRay.x264.mkv')).toBe('Title.2019');
-  });
-
-  it('strips a leading bare number', () => {
-    expect(cleanFilenameForDisplay('01 - Eizouken - S01E01 1080p x264.mkv')).toBe('Eizouken - S01E01');
-  });
-
-  it('strips a leading episode, volume, issue or tomo marker', () => {
-    expect(cleanFilenameForDisplay('S01E01 - Title.mkv')).toBe('Title');
-    expect(cleanFilenameForDisplay('Vol. 3 - Title.cbz')).toBe('Title');
-    expect(cleanFilenameForDisplay('No.12 Title.cbr')).toBe('Title');
-    expect(cleanFilenameForDisplay('Tomo 2_Title.cbz')).toBe('Title');
-  });
-
-  it('handles trailing dots and empty input', () => {
-    expect(cleanFilenameForDisplay('Title...')).toBe('Title');
-    expect(cleanFilenameForDisplay('')).toBe('');
+  it.each([
+    ['drops bracketed groups, extension and trailing separators', '[Group] Title - 03 (1080p).mkv', 'Title - 03'],
+    ['cuts everything from the first quality tag onward', 'Title.2019.1080p.BluRay.x264.mkv', 'Title.2019'],
+    ['strips a leading bare number', '01 - Eizouken - S01E01 1080p x264.mkv', 'Eizouken - S01E01'],
+    ['strips a leading episode marker', 'S01E01 - Title.mkv', 'Title'],
+    ['strips a leading volume marker', 'Vol. 3 - Title.cbz', 'Title'],
+    ['strips a leading issue marker', 'No.12 Title.cbr', 'Title'],
+    ['strips a leading tomo marker', 'Tomo 2_Title.cbz', 'Title'],
+    ['handles trailing dots', 'Title...', 'Title'],
+    ['handles empty input', '', ''],
+  ])('%s', (_name, input, expected) => {
+    expect(cleanFilenameForDisplay(input)).toBe(expected);
   });
 });
 
 describe('extractEpisodeInfo', () => {
-  it('returns null when nothing numeric is present', () => {
-    expect(extractEpisodeInfo('')).toBeNull();
-    expect(extractEpisodeInfo('Akira.mkv')).toBeNull();
-    expect(extractEpisodeInfo('Movie [1080p].mkv')).toBeNull();
-  });
-
-  it('reads a bare trailing number from a release-group filename', () => {
-    expect(extractEpisodeInfo('[Group] Title - 03 (1080p).mkv')).toEqual({ season: null, episode: 3, episodeTitle: 'Title' });
-  });
-
-  it('reads SxxExx and NxNN season markers', () => {
-    expect(extractEpisodeInfo('Title S02E05.mkv')).toEqual({ season: 2, episode: 5, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title 1x05.mkv')).toEqual({ season: 1, episode: 5, episodeTitle: 'Title' });
-  });
-
-  it('uses the text after the marker as the episode title', () => {
-    expect(extractEpisodeInfo('Ghost in the Shell (S.A.C) - S01 E01 - SA - Section-9 (1080p - DUAL Audio).mkv'))
-      .toEqual({ season: 1, episode: 1, episodeTitle: 'SA - Section-9' });
-  });
-
-  it('strips a leading bare number from the before-text fallback', () => {
-    expect(extractEpisodeInfo('1 - Eizouken ni wa Te wo Dasu na! - S01E01.mkv'))
-      .toEqual({ season: 1, episode: 1, episodeTitle: 'Eizouken ni wa Te wo Dasu na!' });
-  });
-
-  it('drops a release revision marker before parsing', () => {
-    expect(extractEpisodeInfo('Title - S01E04v2.mkv')).toEqual({ season: 1, episode: 4, episodeTitle: 'Title' });
-  });
-
-  it('keeps a standalone bracketed number as the episode', () => {
-    expect(extractEpisodeInfo('[Shin Ace o Nerae!][01][BDRIP][1080p].mkv')).toEqual({ season: null, episode: 1, episodeTitle: null });
-  });
-
-  it('reads explicit episode, capitulo, chapter and volume markers', () => {
-    expect(extractEpisodeInfo('Title - Episode 12.mkv')).toEqual({ season: null, episode: 12, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title - Capitulo 4.mkv')).toEqual({ season: null, episode: 4, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title Vol.3 Ch.12.cbz')).toEqual({ season: null, episode: 12, episodeTitle: 'Title Vol.3' });
-    expect(extractEpisodeInfo('Title v03.cbz')).toEqual({ season: null, episode: 3, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title Tomo 5.cbz')).toEqual({ season: null, episode: 5, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title No.8.cbr')).toEqual({ season: null, episode: 8, episodeTitle: 'Title' });
-  });
-
-  // Markers only allow ONE separator between keyword and number, so
-  // "Vol. 3" / "Ch. 12" / "No. 8" (dot + space) are not recognized as such.
-  it('falls back to the last standalone number when marker separators are doubled', () => {
-    expect(extractEpisodeInfo('Title Vol. 3 Ch. 12.cbz')).toEqual({ season: null, episode: 12, episodeTitle: 'Title Vol. 3 Ch' });
-    expect(extractEpisodeInfo('Title No. 8.cbr')).toEqual({ season: null, episode: 8, episodeTitle: 'Title No' });
-  });
-
-  it('does not recognize a bare "c" chapter prefix', () => {
-    expect(extractEpisodeInfo('Title c012.cbz')).toBeNull();
-  });
-
-  it('reads OVA, SP and decimal special markers', () => {
-    expect(extractEpisodeInfo('Title OVA 2.mkv')).toEqual({ season: null, episode: 2, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title SP1.mkv')).toEqual({ season: null, episode: 1, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title #0.8.mkv')).toEqual({ season: null, episode: 0.8, episodeTitle: 'Title' });
-  });
-
-  it('never treats the trailing "e" of a title word as an episode marker', () => {
-    expect(extractEpisodeInfo('Title 03.mkv')).toEqual({ season: null, episode: 3, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('One Piece 1015.mkv')).toEqual({ season: null, episode: 1015, episodeTitle: 'One Piece' });
-  });
-
-  it('never treats a title ending in ch/cap/sp/ova as an episode marker', () => {
-    expect(extractEpisodeInfo('Bleach 3.mkv')).toEqual({ season: null, episode: 3, episodeTitle: 'Bleach' });
-    expect(extractEpisodeInfo('Handicap 2.mkv')).toEqual({ season: null, episode: 2, episodeTitle: 'Handicap' });
-    expect(extractEpisodeInfo('Wasp 4.mkv')).toEqual({ season: null, episode: 4, episodeTitle: 'Wasp' });
-    expect(extractEpisodeInfo('Nova 5.mkv')).toEqual({ season: null, episode: 5, episodeTitle: 'Nova' });
-    expect(extractEpisodeInfo('Bleach ch03.mkv')).toEqual({ season: null, episode: 3, episodeTitle: 'Bleach' });
-  });
-
-  it('still reads the E marker as a standalone token', () => {
-    expect(extractEpisodeInfo('Title E01.mkv')).toEqual({ season: null, episode: 1, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title - E1.mkv')).toEqual({ season: null, episode: 1, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('Title.E07.mkv')).toEqual({ season: null, episode: 7, episodeTitle: 'Title' });
-    expect(extractEpisodeInfo('E12.mkv')).toEqual({ season: null, episode: 12, episodeTitle: null });
-  });
-
-  it('never reads digits glued to letters as an episode', () => {
-    expect(extractEpisodeInfo('Title NCED1.mkv')).toBeNull();
-  });
-
-  it('prefers a non-resolution number in the last-resort scan', () => {
-    expect(extractEpisodeInfo('Akira - 1988 - 1080p.mkv')).toEqual({ season: null, episode: 1988, episodeTitle: null });
-    expect(extractEpisodeInfo('Akira 1080 1988 x.mkv')).toEqual({ season: null, episode: 1988, episodeTitle: null });
-  });
-
-  it('falls back to a resolution number when it is the only standalone one', () => {
-    expect(extractEpisodeInfo('Show 720 x264.mkv')).toEqual({ season: null, episode: 720, episodeTitle: null });
-  });
-
-  it('ignores a resolution number glued to its unit', () => {
-    expect(extractEpisodeInfo('Show 720p.mkv')).toBeNull();
-  });
-
-  it('keeps quality tags after the marker as the episode title', () => {
-    expect(extractEpisodeInfo('Title.S01E05.720p.mkv')).toEqual({ season: 1, episode: 5, episodeTitle: '720p' });
+  it.each<[string, string, ReturnType<typeof extractEpisodeInfo>]>([
+    ['nothing numeric: empty', '', null],
+    ['nothing numeric: bare title', 'Akira.mkv', null],
+    ['nothing numeric: only a quality tag', 'Movie [1080p].mkv', null],
+    ['bare trailing number from a release-group filename', '[Group] Title - 03 (1080p).mkv', { season: null, episode: 3, episodeTitle: 'Title' }],
+    ['SxxExx season marker', 'Title S02E05.mkv', { season: 2, episode: 5, episodeTitle: 'Title' }],
+    ['NxNN season marker', 'Title 1x05.mkv', { season: 1, episode: 5, episodeTitle: 'Title' }],
+    ['text after the marker is the episode title', 'Ghost in the Shell (S.A.C) - S01 E01 - SA - Section-9 (1080p - DUAL Audio).mkv', { season: 1, episode: 1, episodeTitle: 'SA - Section-9' }],
+    ['strips a leading bare number from the before-text fallback', '1 - Eizouken ni wa Te wo Dasu na! - S01E01.mkv', { season: 1, episode: 1, episodeTitle: 'Eizouken ni wa Te wo Dasu na!' }],
+    ['drops a release revision marker before parsing', 'Title - S01E04v2.mkv', { season: 1, episode: 4, episodeTitle: 'Title' }],
+    ['keeps a standalone bracketed number as the episode', '[Shin Ace o Nerae!][01][BDRIP][1080p].mkv', { season: null, episode: 1, episodeTitle: null }],
+    ['explicit episode marker', 'Title - Episode 12.mkv', { season: null, episode: 12, episodeTitle: 'Title' }],
+    ['explicit capitulo marker', 'Title - Capitulo 4.mkv', { season: null, episode: 4, episodeTitle: 'Title' }],
+    ['explicit chapter marker', 'Title Vol.3 Ch.12.cbz', { season: null, episode: 12, episodeTitle: 'Title Vol.3' }],
+    ['explicit v-volume marker', 'Title v03.cbz', { season: null, episode: 3, episodeTitle: 'Title' }],
+    ['explicit tomo marker', 'Title Tomo 5.cbz', { season: null, episode: 5, episodeTitle: 'Title' }],
+    ['explicit No. marker', 'Title No.8.cbr', { season: null, episode: 8, episodeTitle: 'Title' }],
+    // Markers only allow ONE separator between keyword and number, so
+    // "Vol. 3" / "Ch. 12" / "No. 8" (dot + space) are not recognized as such.
+    ['doubled Vol./Ch. separators fall back to the last standalone number', 'Title Vol. 3 Ch. 12.cbz', { season: null, episode: 12, episodeTitle: 'Title Vol. 3 Ch' }],
+    ['doubled No. separator falls back to the last standalone number', 'Title No. 8.cbr', { season: null, episode: 8, episodeTitle: 'Title No' }],
+    ['does not recognize a bare "c" chapter prefix', 'Title c012.cbz', null],
+    ['OVA special marker', 'Title OVA 2.mkv', { season: null, episode: 2, episodeTitle: 'Title' }],
+    ['SP special marker', 'Title SP1.mkv', { season: null, episode: 1, episodeTitle: 'Title' }],
+    ['decimal special marker', 'Title #0.8.mkv', { season: null, episode: 0.8, episodeTitle: 'Title' }],
+    ['trailing "e" of a title word is not a marker', 'Title 03.mkv', { season: null, episode: 3, episodeTitle: 'Title' }],
+    ['trailing "e" of a title word is not a marker (long number)', 'One Piece 1015.mkv', { season: null, episode: 1015, episodeTitle: 'One Piece' }],
+    ['title ending in ch is not a marker', 'Bleach 3.mkv', { season: null, episode: 3, episodeTitle: 'Bleach' }],
+    ['title ending in cap is not a marker', 'Handicap 2.mkv', { season: null, episode: 2, episodeTitle: 'Handicap' }],
+    ['title ending in sp is not a marker', 'Wasp 4.mkv', { season: null, episode: 4, episodeTitle: 'Wasp' }],
+    ['title ending in ova is not a marker', 'Nova 5.mkv', { season: null, episode: 5, episodeTitle: 'Nova' }],
+    ['title ending in ch before a real ch marker', 'Bleach ch03.mkv', { season: null, episode: 3, episodeTitle: 'Bleach' }],
+    ['standalone E marker', 'Title E01.mkv', { season: null, episode: 1, episodeTitle: 'Title' }],
+    ['standalone E marker after a dash', 'Title - E1.mkv', { season: null, episode: 1, episodeTitle: 'Title' }],
+    ['standalone E marker after a dot', 'Title.E07.mkv', { season: null, episode: 7, episodeTitle: 'Title' }],
+    ['standalone E marker with no title', 'E12.mkv', { season: null, episode: 12, episodeTitle: null }],
+    ['never reads digits glued to letters as an episode', 'Title NCED1.mkv', null],
+    ['prefers a non-resolution number in the last-resort scan', 'Akira - 1988 - 1080p.mkv', { season: null, episode: 1988, episodeTitle: null }],
+    ['prefers a non-resolution number after a bare resolution', 'Akira 1080 1988 x.mkv', { season: null, episode: 1988, episodeTitle: null }],
+    ['falls back to a resolution number when it is the only standalone one', 'Show 720 x264.mkv', { season: null, episode: 720, episodeTitle: null }],
+    ['ignores a resolution number glued to its unit', 'Show 720p.mkv', null],
+    ['keeps quality tags after the marker as the episode title', 'Title.S01E05.720p.mkv', { season: 1, episode: 5, episodeTitle: '720p' }],
+  ])('%s: %j', (_name, input, expected) => {
+    expect(extractEpisodeInfo(input)).toEqual(expected);
   });
 });
 

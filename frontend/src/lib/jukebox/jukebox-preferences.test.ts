@@ -4,15 +4,7 @@ import {
   DEFAULT_JUKEBOX_PREFERENCES, parseJukeboxPreferences, readJukeboxPreferences, serializeJukeboxPreferences,
   writeJukeboxPreferences, type PreferenceStorage,
 } from './jukebox-preferences';
-
-function memoryStorage(initial: Record<string, string> = {}): PreferenceStorage & { data: Record<string, string> } {
-  const data = { ...initial };
-  return {
-    data,
-    getItem: key => (key in data ? data[key] : null),
-    setItem: (key, value) => { data[key] = value; },
-  };
-}
+import { memoryStorage } from '../../../tests/support/memory-storage';
 
 describe('parseJukeboxPreferences', () => {
   it('returns defaults for a missing or broken slot', () => {
@@ -37,7 +29,7 @@ describe('serialize / read / write', () => {
   it('round-trips through an injected storage under the registered key', () => {
     const storage = memoryStorage();
     writeJukeboxPreferences({ volume: 0.25, shuffle: true, repeat: 'all', lastKey: 'b::ED2' }, storage);
-    expect(Object.keys(storage.data)).toEqual([STORAGE_KEYS.jukeboxPreferences]);
+    expect([...storage.data.keys()]).toEqual([STORAGE_KEYS.jukeboxPreferences]);
     expect(readJukeboxPreferences(storage)).toEqual({ volume: 0.25, shuffle: true, repeat: 'all', lastKey: 'b::ED2' });
   });
 

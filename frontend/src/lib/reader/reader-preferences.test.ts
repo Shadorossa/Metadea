@@ -8,15 +8,7 @@ import {
   withFontSizeDelta,
   type StorageLike,
 } from './reader-preferences';
-
-function memoryStorage(initial: Record<string, string> = {}): StorageLike & { data: Record<string, string> } {
-  const data = { ...initial };
-  return {
-    data,
-    getItem: key => (key in data ? data[key] : null),
-    setItem: (key, value) => { data[key] = value; },
-  };
-}
+import { memoryStorage } from '../../../tests/support/memory-storage';
 
 describe('normalizeReaderPreferences', () => {
   it('returns the defaults for garbage input', () => {
@@ -43,7 +35,7 @@ describe('persistence', () => {
     const storage = memoryStorage();
     const prefs = { ...DEFAULT_READER_PREFERENCES, theme: 'paper' as const, fontSize: 24 };
     saveReaderPreferences(storage, prefs);
-    expect(Object.keys(storage.data)).toEqual([READER_PREFERENCES_KEY]);
+    expect([...storage.data.keys()]).toEqual([READER_PREFERENCES_KEY]);
     expect(loadReaderPreferences(storage)).toEqual(prefs);
   });
 

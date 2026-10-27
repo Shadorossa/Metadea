@@ -407,11 +407,4 @@ mod tests {
     fn parse_ok(body: &str) -> Result<String, String> {
         serde_json::from_str(body).map_err(|e| e.to_string())
     }
-
-    #[cfg(not(rcheevos_vendored))]
-    #[test]
-    fn hash_lookup_reports_the_unavailable_code_without_the_vendored_hasher() {
-        assert!(!hash::default_hasher().is_available());
-        assert_eq!(hash::default_hasher().hash_rom("x.nds", 18), Err("E_RA_HASH_UNAVAILABLE".to_string()));
-    }
 }

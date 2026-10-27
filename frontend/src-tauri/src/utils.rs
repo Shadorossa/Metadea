@@ -98,41 +98,22 @@ mod safe_archive_path_tests {
     use std::path::{Path, PathBuf};
 
     #[test]
-    fn keeps_a_plain_relative_entry() {
-        assert_eq!(
-            safe_archive_path(Path::new("pages/001.jpg")),
-            Some(PathBuf::from("pages").join("001.jpg"))
-        );
-    }
-
-    #[test]
-    fn drops_current_dir_components() {
-        assert_eq!(
-            safe_archive_path(Path::new("./pages/./001.jpg")),
-            Some(PathBuf::from("pages").join("001.jpg"))
-        );
-    }
-
-    #[test]
-    fn rejects_parent_dir_traversal() {
-        assert_eq!(safe_archive_path(Path::new("../evil.png")), None);
-        assert_eq!(safe_archive_path(Path::new("pages/../../evil.png")), None);
-    }
-
-    #[test]
-    fn rejects_windows_style_traversal() {
-        assert_eq!(safe_archive_path(Path::new(r"..\..\evil.png")), None);
-    }
-
-    #[test]
-    fn rejects_absolute_paths() {
-        assert_eq!(safe_archive_path(Path::new("/etc/passwd")), None);
-        assert_eq!(safe_archive_path(Path::new(r"C:\Windows\System32\evil.dll")), None);
-    }
-
-    #[test]
-    fn rejects_an_empty_entry() {
-        assert_eq!(safe_archive_path(Path::new("")), None);
-        assert_eq!(safe_archive_path(Path::new("./")), None);
+    fn keeps_relative_entries_and_rejects_escapes() {
+        let pages = Some(PathBuf::from("pages").join("001.jpg"));
+        for (entry, expected) in [
+            ("pages/001.jpg", pages.clone()),
+            // `.` components are dropped.
+            ("./pages/./001.jpg", pages),
+            // Traversal (either separator), absolute paths, empty entries.
+            ("../evil.png", None),
+            ("pages/../../evil.png", None),
+            (r"..\..\evil.png", None),
+            ("/etc/passwd", None),
+            (r"C:\Windows\System32\evil.dll", None),
+            ("", None),
+            ("./", None),
+        ] {
+            assert_eq!(safe_archive_path(Path::new(entry)), expected, "{entry:?}");
+        }
     }
 }

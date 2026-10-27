@@ -7,27 +7,19 @@ import { createElement, type ComponentType } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { CatalogSummary, CharacterEntry, DayJourney, LibraryEntry, ListInfo } from '../../lib/tauri';
+import { libraryEntry } from '../../../tests/support/library-entry';
+import { memoryStorage } from '../../../tests/support/memory-storage';
 
 // preferences.ts reads localStorage at render time; node has none.
 beforeAll(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: Storage }).localStorage = {
-    getItem: key => store.get(key) ?? null,
-    setItem: (key, value) => { store.set(key, String(value)); },
-    removeItem: key => { store.delete(key); },
-    clear: () => store.clear(),
-    key: i => [...store.keys()][i] ?? null,
-    get length() { return store.size; },
-  };
+  (globalThis as { localStorage?: Storage }).localStorage = memoryStorage();
 });
 
 function entry(external_id: string, status: string, rating: number | null, notes: string | null = null): LibraryEntry {
-  return {
-    id: external_id, user_id: '', external_id, type: external_id.split(':')[0], status, rating, rating_2: null,
-    progress: 3, progress_2: 0, minutes_spent: 0, is_favorite: 0, is_platinum: 0, tags: null, notes,
-    added_at: '2026-01-10', updated_at: '2026-02-01', selected_platform: null, selected_version: null,
+  return libraryEntry({
+    external_id, user_id: '', status, rating, notes, progress: 3, added_at: '2026-01-10', updated_at: '2026-02-01',
     started_at: '2026-01-10', finished_at: status === 'completed' ? '2026-02-01' : null,
-  } as LibraryEntry;
+  });
 }
 
 const items: LibraryEntry[] = [
@@ -132,11 +124,15 @@ async function load() {
   return { own: render(false), pub: render(true) };
 }
 
-// The first test pays the cold import of every profile section module,
-// which can pass vitest's 5 s default in a full, parallel run.
-describe('profile sections: own vs public parity', { timeout: 30_000 }, () => {
-  it('renders every tab with the same section order and classes', async () => {
-    const { own, pub } = await load();
+// The renders are read-only, so every test shares one. The cold import of
+// every profile section module can pass vitest's default hook timeout in a
+// full, parallel run.
+describe('profile sections: own vs public parity', () => {
+  let own: Awaited<ReturnType<typeof load>>['own'];
+  let pub: Awaited<ReturnType<typeof load>>['pub'];
+  beforeAll(async () => { ({ own, pub } = await load()); }, 30_000);
+
+  it('renders every tab with the same section order and classes', () => {
     for (let i = 0; i < own.length; i++) {
       const [tab, ownHtml] = own[i];
       const [, pubHtml] = pub[i];
@@ -145,8 +141,7 @@ describe('profile sections: own vs public parity', { timeout: 30_000 }, () => {
     }
   });
 
-  it('keeps the overview composition: Hall of Fame, stats row, monthly history, recent activity', async () => {
-    const { own, pub } = await load();
+  it('keeps the overview composition: Hall of Fame, stats row, monthly history, recent activity', () => {
     const overview = (html: string) => {
       const order = ['hof-wrapper', 'profile-stats-bar', 'profile-bottom-grid', 'monthly-history', 'activity'];
       return order.map(cls => html.indexOf(`class="${cls}`)).map(i => (i >= 0 ? 'present' : 'missing'));
@@ -165,8 +160,7 @@ describe('profile sections: own vs public parity', { timeout: 30_000 }, () => {
     expect(stats).toBeLessThan(bottom);
   });
 
-  it('hides owner-only controls in read-only mode', async () => {
-    const { own, pub } = await load();
+  it('hides owner-only controls in read-only mode', () => {
     const ownFav = own.find(([t]) => t === 'favorites')![1];
     const pubFav = pub.find(([t]) => t === 'favorites')![1];
     expect(ownFav).toContain('fav-reorder-btn');

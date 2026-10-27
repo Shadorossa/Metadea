@@ -4,18 +4,12 @@ import { buildGameItem, buildMediaItem, gameItemKey, isRomGame, sqliteTimestampT
 import type { LocalGame } from '../tauri/local-library';
 import type { LibraryEntry } from '../tauri/library';
 import type { LocalMediaItem } from '../local/local-media-item';
+import { libraryEntry } from '../../../tests/support/library-entry';
+
+const entry = (partial: Partial<LibraryEntry>) => libraryEntry({ status: 'watching', ...partial });
 
 function item(partial: Partial<BigPictureItem> & Pick<BigPictureItem, 'key' | 'title'>): BigPictureItem {
   return { kind: 'game', cover: null, hero: null, category: 'videojuegos', installed: true, favorite: false, lastActivity: null, ...partial };
-}
-
-function entry(partial: Partial<LibraryEntry>): LibraryEntry {
-  return {
-    id: '1', user_id: 'local', external_id: 'x', type: 'anime', status: 'watching', rating: null, rating_2: null,
-    progress: 0, progress_2: 0, minutes_spent: 0, is_favorite: 0, is_platinum: 0, tags: null, notes: null,
-    added_at: null, updated_at: null, selected_platform: null, selected_version: null, started_at: null, finished_at: null,
-    ...partial,
-  };
 }
 
 describe('deriveBigPictureTabs', () => {

@@ -630,12 +630,7 @@ pub async fn steam_get_cached_achievements(
 mod tests {
     use super::*;
 
-    fn temp_game_dir(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("metadea-steam-{tag}-{}-{}", std::process::id(), now_secs()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    use crate::test_support::tempdir as temp_game_dir;
 
     fn progress() -> Vec<serde_json::Value> {
         vec![

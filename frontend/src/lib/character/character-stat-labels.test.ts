@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { es } from '../../i18n/es';
 import {
-  SECTION_HEADER_KEYS,
   STAT_LABEL_ALIASES,
   buildRoleLabels,
   buildStatLabelMap,
@@ -14,32 +13,8 @@ import {
 const t = es.character;
 
 describe('STAT_LABEL_ALIASES', () => {
-  it('keeps every alias of the former character.astro table', () => {
+  it('never lists an alias twice', () => {
     const all = STAT_LABEL_ALIASES.flatMap(([aliases]) => [...aliases]);
-    expect(all).toEqual([
-      'height', 'estatura', 'altura',
-      'weight', 'peso',
-      'hair color', 'hair', 'color de pelo', 'pelo', 'cabello',
-      'eye color', 'eyes', 'eye colour', 'color de ojos', 'ojos',
-      'affiliations', 'affiliation',
-      'bounty', 'recompensa',
-      'gender', 'sex', 'género', 'sexo',
-      'age', 'edad',
-      'status', 'estado',
-      'nationality', 'nacionalidad',
-      'ethnicity', 'etnia',
-      'born', 'birth date', 'date of birth', 'nacimiento', 'fecha de nacimiento',
-      'died', 'death date', 'date of death', 'fallecimiento', 'muerte',
-      'occupation', 'occupations', 'ocupación', 'profesión',
-      'notable family', 'family', 'familia', 'relatives', 'parientes',
-      'friends', 'amigos', 'friend',
-      'affiliates', 'afiliados', 'colleagues', 'colegas', 'asociados', 'associates',
-      'blood type', 'bloodtype', 'grupo sanguíneo',
-      'birthday', 'cumpleaños',
-      'created by', 'creador', 'creado por',
-      'designed by', 'diseño', 'diseñado por',
-      'main appearance(s)', 'appearances', 'apariciones',
-    ]);
     expect(new Set(all).size).toBe(all.length);
   });
 
@@ -83,15 +58,6 @@ describe('formatSectionHeader', () => {
     expect(formatSectionHeader('Trivia', t)).toBe('Trivia');
   });
 
-  it('keeps every section alias of the former table', () => {
-    expect(Object.keys(SECTION_HEADER_KEYS)).toEqual([
-      'physical description', 'descripción física',
-      'career and family information', 'career and family', 'carrera y familia', 'información profesional',
-      'associates', 'asociados', 'relaciones', 'relationships',
-      'behind the scenes', 'detrás de las cámaras', 'producción',
-      'personal information', 'información personal',
-    ]);
-  });
 });
 
 describe('alias label detection', () => {

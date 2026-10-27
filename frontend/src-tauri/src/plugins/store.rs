@@ -196,11 +196,8 @@ pub fn work_link_set(conn: &Connection, external_id: &str, link: Option<&WorkLin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::MetadeaDb;
 
-    fn db() -> MetadeaDb {
-        MetadeaDb::open_in_memory().unwrap()
-    }
+    use crate::test_support::db;
 
     fn tokens(list: &[&str]) -> BTreeSet<String> {
         list.iter().map(|s| s.to_string()).collect()

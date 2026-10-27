@@ -176,15 +176,7 @@ pub(crate) mod tests {
     use std::io::{Cursor, Write};
     use zip::write::SimpleFileOptions;
 
-    pub(crate) fn temp_dir(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "metadea-plugin-test-{tag}-{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
-        ));
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    pub(crate) use crate::test_support::tempdir as temp_dir;
 
     pub(crate) fn zip_of(entries: &[(&str, &[u8])]) -> Vec<u8> {
         let mut buffer = Cursor::new(Vec::new());

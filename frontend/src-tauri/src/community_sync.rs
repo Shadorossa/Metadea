@@ -703,15 +703,7 @@ mod tests {
     use super::*;
     use crate::db::MetadeaDb;
 
-    fn temp_dir(tag: &str) -> std::path::PathBuf {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-        let dir = std::env::temp_dir().join(format!("metadea-community-{tag}-{}-{nanos}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    use crate::test_support::tempdir as temp_dir;
 
     // A community database.db with one of everything the merge reconciles
     // (catalog rows, a saga edge, a saga, a story arc), returned as the

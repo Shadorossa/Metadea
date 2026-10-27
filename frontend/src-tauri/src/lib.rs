@@ -77,6 +77,8 @@ mod vestigial_cleanup;
 mod yearly_bingo;
 #[cfg(test)]
 mod ipc_size_probe;
+#[cfg(test)]
+mod test_support;
 
 use tauri::Manager;
 

@@ -28,43 +28,28 @@ mod sanitize_capture_folder_name_tests {
     use super::sanitize_capture_folder_name;
 
     #[test]
-    fn keeps_ordinary_names_untouched() {
-        assert_eq!(sanitize_capture_folder_name("Teen Titans"), "Teen Titans");
-        assert_eq!(sanitize_capture_folder_name("Año Nuevo 2024"), "Año Nuevo 2024");
-    }
-
-    #[test]
-    fn replaces_reserved_characters_and_control_chars_with_underscore() {
-        assert_eq!(
-            sanitize_capture_folder_name(r#"a<b>c:d"e/f\g|h?i*j"#),
-            "a_b_c_d_e_f_g_h_i_j"
-        );
-        assert_eq!(sanitize_capture_folder_name("a\tb\nc"), "a_b_c");
-    }
-
-    #[test]
-    fn trims_surrounding_whitespace_then_dots() {
-        assert_eq!(sanitize_capture_folder_name("  .Name.  "), "Name");
-        assert_eq!(sanitize_capture_folder_name("...Name..."), "Name");
-    }
-
-    #[test]
-    fn inner_whitespace_left_after_dot_trimming_is_kept() {
-        assert_eq!(sanitize_capture_folder_name(". Name ."), " Name ");
-    }
-
-    #[test]
-    fn falls_back_to_default_when_nothing_usable_remains() {
-        assert_eq!(sanitize_capture_folder_name(""), "Obra");
-        assert_eq!(sanitize_capture_folder_name("   "), "Obra");
-        assert_eq!(sanitize_capture_folder_name("."), "Obra");
-        assert_eq!(sanitize_capture_folder_name(".."), "Obra");
-        assert_eq!(sanitize_capture_folder_name("..."), "Obra");
-    }
-
-    #[test]
-    fn a_name_made_only_of_reserved_characters_becomes_underscores() {
-        assert_eq!(sanitize_capture_folder_name("***"), "___");
+    fn sanitises_folder_names() {
+        for (input, expected) in [
+            // Ordinary names are untouched.
+            ("Teen Titans", "Teen Titans"),
+            ("Año Nuevo 2024", "Año Nuevo 2024"),
+            // Reserved and control characters become underscores.
+            (r#"a<b>c:d"e/f\g|h?i*j"#, "a_b_c_d_e_f_g_h_i_j"),
+            ("a\tb\nc", "a_b_c"),
+            ("***", "___"),
+            // Whitespace, then dots, are trimmed; inner whitespace stays.
+            ("  .Name.  ", "Name"),
+            ("...Name...", "Name"),
+            (". Name .", " Name "),
+            // Nothing usable left: the default name.
+            ("", "Obra"),
+            ("   ", "Obra"),
+            (".", "Obra"),
+            ("..", "Obra"),
+            ("...", "Obra"),
+        ] {
+            assert_eq!(sanitize_capture_folder_name(input), expected, "{input:?}");
+        }
     }
 }
 

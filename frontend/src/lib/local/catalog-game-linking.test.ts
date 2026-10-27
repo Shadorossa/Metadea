@@ -119,49 +119,25 @@ describe('sourceCatalogOf', () => {
 });
 
 describe('findEditionPrefixMatch', () => {
-  it('matches a title followed only by edition keywords', () => {
-    const dc = game('Death Stranding Directors Cut');
-    expect(findEditionPrefixMatch('Death Stranding', [dc])).toBe(dc);
-    const goty = game('The Witcher 3 Game of the Year Edition');
-    expect(findEditionPrefixMatch('The Witcher 3', [goty])).toBeUndefined();
-    const hd = game('Okami HD');
-    expect(findEditionPrefixMatch('Okami HD', [hd])).toBeUndefined();
-    expect(findEditionPrefixMatch('Okami', [hd])).toBeUndefined();
-    const hd2 = game('Ico Okami HD');
-    expect(findEditionPrefixMatch('Ico Okami', [hd2])).toBe(hd2);
-  });
-
-  it('matches every apostrophe spelling of Director\'s Cut', () => {
-    const straight = game("Death Stranding Director's Cut");
-    expect(findEditionPrefixMatch('Death Stranding', [straight])).toBe(straight);
-    const curly = game('Death Stranding Director’s Cut');
-    expect(findEditionPrefixMatch('Death Stranding', [curly])).toBe(curly);
-    const backtick = game('Death Stranding Director`s Cut');
-    expect(findEditionPrefixMatch('Death Stranding', [backtick])).toBe(backtick);
-  });
-
-  it('ignores apostrophes on the title side too', () => {
-    const remastered = game("Marvel's Spider-Man Remastered");
-    expect(findEditionPrefixMatch('Marvel’s Spider-Man', [remastered])).toBe(remastered);
-  });
-
-  it('rejects trailing words that are not edition keywords', () => {
-    expect(findEditionPrefixMatch('Silent Hill 2', [game('Silent Hill 2 Remake')])).toBeUndefined();
-    expect(findEditionPrefixMatch('Dark Souls', [game('Dark Souls Prepare to Die Edition')])).toBeUndefined();
-  });
-
-  it('never fuzzy-matches unrelated titles sharing a numeric suffix', () => {
-    expect(findEditionPrefixMatch('Bayonetta 3', [game('Yakuza 3 Remastered')])).toBeUndefined();
-  });
-
-  it('refuses a single-token title', () => {
-    expect(findEditionPrefixMatch('Doom', [game('Doom Eternal')])).toBeUndefined();
-    expect(findEditionPrefixMatch('Okami', [game('Okami HD')])).toBeUndefined();
-  });
-
   // Exact equality is not a prefix match here; callers check equality first.
-  it('does not return an exactly-equal name', () => {
-    expect(findEditionPrefixMatch('Death Stranding', [game('Death Stranding')])).toBeUndefined();
+  it.each([
+    ['edition keyword suffix', 'Death Stranding', 'Death Stranding Directors Cut', true],
+    ['non-edition suffix words', 'The Witcher 3', 'The Witcher 3 Game of the Year Edition', false],
+    ['exactly-equal multi-token name', 'Okami HD', 'Okami HD', false],
+    ['single-token title', 'Okami', 'Okami HD', false],
+    ['single-token title', 'Doom', 'Doom Eternal', false],
+    ['multi-token title + HD', 'Ico Okami', 'Ico Okami HD', true],
+    ["straight apostrophe Director's Cut",'Death Stranding', "Death Stranding Director's Cut", true],
+    ['curly apostrophe Director’s Cut', 'Death Stranding', 'Death Stranding Director’s Cut', true],
+    ['backtick Director`s Cut', 'Death Stranding', 'Death Stranding Director`s Cut', true],
+    ['apostrophe on the title side', 'Marvel’s Spider-Man', "Marvel's Spider-Man Remastered", true],
+    ['trailing non-keyword word', 'Silent Hill 2', 'Silent Hill 2 Remake', false],
+    ['trailing non-keyword words', 'Dark Souls', 'Dark Souls Prepare to Die Edition', false],
+    ['unrelated title sharing a numeric suffix', 'Bayonetta 3', 'Yakuza 3 Remastered', false],
+    ['exactly-equal name', 'Death Stranding', 'Death Stranding', false],
+  ])('%s: %s vs %s -> %s', (_label, title, name, matches) => {
+    const candidate = game(name);
+    expect(findEditionPrefixMatch(title, [candidate])).toBe(matches ? candidate : undefined);
   });
 
   it('returns the first matching game in list order', () => {

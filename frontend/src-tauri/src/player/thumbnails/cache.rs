@@ -217,12 +217,7 @@ mod tests {
     use super::*;
     use std::time::Duration;
 
-    fn temp_root(name: &str) -> PathBuf {
-        let root = std::env::temp_dir().join(format!("metadea-thumb-cache-{name}-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&root);
-        fs::create_dir_all(&root).unwrap();
-        root
-    }
+    use crate::test_support::tempdir as temp_root;
 
     fn make_entry(root: &Path, key: &str, bytes: usize, age_secs: u64) {
         let dir = entry_dir(root, key);

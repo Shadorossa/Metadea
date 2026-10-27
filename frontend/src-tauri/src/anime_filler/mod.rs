@@ -549,9 +549,7 @@ pub async fn filler_remove_link(
 mod tests {
     use super::*;
 
-    fn db() -> crate::db::MetadeaDb {
-        crate::db::MetadeaDb::open_in_memory().unwrap()
-    }
+    use crate::test_support::db;
 
     fn state(fetched_at: Option<i64>, is_airing: bool, failed_at: Option<i64>) -> Option<ShowFetchState> {
         Some(ShowFetchState { fetched_at, is_airing, failed_at })

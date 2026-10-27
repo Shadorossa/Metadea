@@ -34,23 +34,19 @@ describe('buildPrEditorChangeSummary', () => {
     expect(buildPrEditorChangeSummary(params())).toBe(NO_CHANGES);
   });
 
-  it('reports blocking and unblocking', () => {
-    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: '2024-01-01' }), originalEntry: catalog({ blocked_at: null }) })))
-      .toBe('- Blocked (hidden from Metadea)');
-    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: null }), originalEntry: catalog({ blocked_at: '2024-01-01' }) })))
-      .toBe('- Unblocked (restored to Metadea)');
-  });
-
-  it('never reports a new entry with an explicit null blocked_at as unblocked', () => {
-    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: null }), originalEntry: null }))).toBe(NO_CHANGES);
-    expect(buildPrEditorChangeSummary(params({ entry: catalog(), originalEntry: null }))).toBe(NO_CHANGES);
-    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: null }), originalEntry: catalog() }))).toBe(NO_CHANGES);
-    expect(buildPrEditorChangeSummary(params({ entry: catalog(), originalEntry: catalog({ blocked_at: null }) }))).toBe(NO_CHANGES);
-  });
-
-  it('still reports a new entry that is blocked from the start', () => {
-    expect(buildPrEditorChangeSummary(params({ entry: catalog({ blocked_at: '2024-01-01' }), originalEntry: null })))
-      .toBe('- Blocked (hidden from Metadea)');
+  const BLOCKED = '- Blocked (hidden from Metadea)';
+  const UNBLOCKED = '- Unblocked (restored to Metadea)';
+  // A new entry with an explicit null blocked_at is never reported as unblocked.
+  it.each([
+    ['blocking', catalog({ blocked_at: '2024-01-01' }), catalog({ blocked_at: null }), BLOCKED],
+    ['unblocking', catalog({ blocked_at: null }), catalog({ blocked_at: '2024-01-01' }), UNBLOCKED],
+    ['new entry, explicit null', catalog({ blocked_at: null }), null, NO_CHANGES],
+    ['new entry, no blocked_at', catalog(), null, NO_CHANGES],
+    ['null vs missing', catalog({ blocked_at: null }), catalog(), NO_CHANGES],
+    ['missing vs null', catalog(), catalog({ blocked_at: null }), NO_CHANGES],
+    ['new entry blocked from the start', catalog({ blocked_at: '2024-01-01' }), null, BLOCKED],
+  ])('blocked_at: %s', (_name, entry, originalEntry, expected) => {
+    expect(buildPrEditorChangeSummary(params({ entry, originalEntry }))).toBe(expected);
   });
 
   it('formats an added, removed and changed field with its DIFF_FIELDS label', () => {

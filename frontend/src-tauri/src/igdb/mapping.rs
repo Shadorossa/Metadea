@@ -159,57 +159,28 @@ mod name_has_edition_word_tests {
     use super::name_has_edition_word;
 
     #[test]
-    fn matches_edition_as_a_whole_word() {
-        assert!(name_has_edition_word("Skyrim Definitive Edition"));
-        assert!(name_has_edition_word("Game of the Year Edition"));
-        assert!(name_has_edition_word("EDITION"));
-    }
-
-    #[test]
-    fn expedition_33_is_not_an_edition() {
-        assert!(!name_has_edition_word("Clair Obscur: Expedition 33"));
-        assert!(!name_has_edition_word("Expedition 33"));
-    }
-
-    #[test]
-    fn matches_remaster_variants_and_dlc_case_insensitively() {
-        assert!(name_has_edition_word("Dark Souls Remastered"));
-        assert!(name_has_edition_word("Shadow of the Colossus remaster"));
-        assert!(name_has_edition_word("Some Game - DLC"));
-        assert!(name_has_edition_word("some game dlc"));
-    }
-
-    #[test]
-    fn splits_on_any_non_alphanumeric_character() {
-        assert!(name_has_edition_word("Game (Remastered)"));
-        assert!(name_has_edition_word("Game/DLC"));
-        assert!(name_has_edition_word("Game: Edition"));
-    }
-
-    #[test]
-    fn does_not_match_partial_or_pluralised_tokens() {
-        assert!(!name_has_edition_word("Editions"));
-        assert!(!name_has_edition_word("edition2"));
-        assert!(!name_has_edition_word("Re-master"));
-        assert!(!name_has_edition_word("Remasters"));
-    }
-
-    #[test]
-    fn other_edition_keywords_are_not_covered_by_this_check() {
-        assert!(!name_has_edition_word("Game Deluxe"));
-        assert!(!name_has_edition_word("Game GOTY"));
-        assert!(!name_has_edition_word("Game Ultimate Bundle"));
-    }
-
-    #[test]
-    fn ordinary_titles_are_not_flagged() {
-        assert!(!name_has_edition_word("The Last of Us"));
-        assert!(!name_has_edition_word(""));
-    }
-
-    #[test]
-    fn non_ascii_lookalikes_do_not_match() {
-        assert!(!name_has_edition_word("Jeu Édition"));
+    fn flags_only_whole_edition_remaster_and_dlc_words() {
+        for name in [
+            "Skyrim Definitive Edition", "Game of the Year Edition", "EDITION",
+            // Remaster variants and DLC, any case.
+            "Dark Souls Remastered", "Shadow of the Colossus remaster", "Some Game - DLC", "some game dlc",
+            // Any non-alphanumeric splits words.
+            "Game (Remastered)", "Game/DLC", "Game: Edition",
+        ] {
+            assert!(name_has_edition_word(name), "{name}");
+        }
+        for name in [
+            // Expedition 33 is not an edition.
+            "Clair Obscur: Expedition 33", "Expedition 33",
+            // Partial or plural tokens.
+            "Editions", "edition2", "Re-master", "Remasters",
+            // Other edition keywords are a different check.
+            "Game Deluxe", "Game GOTY", "Game Ultimate Bundle",
+            // Ordinary titles and non-ASCII lookalikes.
+            "The Last of Us", "", "Jeu Édition",
+        ] {
+            assert!(!name_has_edition_word(name), "{name}");
+        }
     }
 }
 

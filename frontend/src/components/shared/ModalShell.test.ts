@@ -44,44 +44,31 @@ describe('resolveTabTarget', () => {
   const first = el('first');
   const middle = el('middle');
   const last = el('last');
+  const outside = el('outside');
+  const unlisted = el('tabindex-minus-one');
   const cycle = [first, middle, last];
 
-  it('wraps from the last element to the first on Tab', () => {
-    expect(resolveTabTarget(cycle, last, false)).toBe(first);
-  });
-
-  it('wraps from the first element to the last on Shift+Tab', () => {
-    expect(resolveTabTarget(cycle, first, true)).toBe(last);
-  });
-
-  it('leaves the browser default alone strictly inside the cycle', () => {
-    expect(resolveTabTarget(cycle, middle, false)).toBeNull();
-    expect(resolveTabTarget(cycle, middle, true)).toBeNull();
-    expect(resolveTabTarget(cycle, first, false)).toBeNull();
-    expect(resolveTabTarget(cycle, last, true)).toBeNull();
-  });
-
-  it('re-enters the cycle when focus is outside the panel or on the panel itself', () => {
-    const outside = el('outside');
-    expect(resolveTabTarget(cycle, outside, false)).toBe(first);
-    expect(resolveTabTarget(cycle, outside, true)).toBe(last);
-    expect(resolveTabTarget(cycle, null, false)).toBe(first);
-    expect(resolveTabTarget(cycle, null, true)).toBe(last);
-  });
-
-  it('keeps the default move for an unlisted element inside the panel', () => {
-    const unlisted = el('tabindex-minus-one');
-    expect(resolveTabTarget(cycle, unlisted, false, true)).toBeNull();
-    expect(resolveTabTarget(cycle, unlisted, true, true)).toBeNull();
-  });
-
-  it('returns null for an empty cycle so the caller can focus the panel', () => {
-    expect(resolveTabTarget([], null, false)).toBeNull();
-  });
-
-  it('cycles a single element onto itself', () => {
-    expect(resolveTabTarget([first], first, false)).toBe(first);
-    expect(resolveTabTarget([first], first, true)).toBe(first);
+  it.each<[string, FakeEl[], FakeEl | null, boolean, boolean, FakeEl | null]>([
+    ['wraps from the last element to the first on Tab', cycle, last, false, false, first],
+    ['wraps from the first element to the last on Shift+Tab', cycle, first, true, false, last],
+    // Strictly inside the cycle the browser default is left alone.
+    ['inside: middle, Tab', cycle, middle, false, false, null],
+    ['inside: middle, Shift+Tab', cycle, middle, true, false, null],
+    ['inside: first, Tab', cycle, first, false, false, null],
+    ['inside: last, Shift+Tab', cycle, last, true, false, null],
+    // Focus outside the panel or on the panel itself re-enters the cycle.
+    ['re-enters from outside on Tab', cycle, outside, false, false, first],
+    ['re-enters from outside on Shift+Tab', cycle, outside, true, false, last],
+    ['re-enters from the panel on Tab', cycle, null, false, false, first],
+    ['re-enters from the panel on Shift+Tab', cycle, null, true, false, last],
+    // An unlisted element inside the panel keeps the default move.
+    ['unlisted inside the panel, Tab', cycle, unlisted, false, true, null],
+    ['unlisted inside the panel, Shift+Tab', cycle, unlisted, true, true, null],
+    ['returns null for an empty cycle so the caller can focus the panel', [], null, false, false, null],
+    ['cycles a single element onto itself on Tab', [first], first, false, false, first],
+    ['cycles a single element onto itself on Shift+Tab', [first], first, true, false, first],
+  ])('%s', (_name, list, active, shift, inPanel, expected) => {
+    expect(resolveTabTarget(list, active, shift, inPanel)).toBe(expected);
   });
 });
 
@@ -106,48 +93,9 @@ describe('createModalStack', () => {
     expect(stack.size).toBe(1);
   });
 
-  it('hands Escape/trap down one level at a time as nested modals close', () => {
-    // PrEditorModal -> MediaSearchPopup -> ImageCropModal (own React root).
-    const stack = createModalStack<object>();
-    const editor = {};
-    const popup = {};
-    const cropper = {};
-    stack.push(editor);
-    stack.push(popup);
-    stack.push(cropper);
-    expect([editor, popup, cropper].map(token => stack.isTop(token))).toEqual([false, false, true]);
-
-    stack.remove(cropper);
-    expect([editor, popup].map(token => stack.isTop(token))).toEqual([false, true]);
-
-    stack.remove(popup);
-    expect(stack.isTop(editor)).toBe(true);
-  });
-
-  it('lets a backgrounded session tab leave the stack without disturbing what is above it', () => {
-    // Two session editors: A goes display:none (inactive) while a popup
-    // opened from B is still up — the popup must stay on top.
-    const stack = createModalStack<object>();
-    const editorA = {};
-    const editorB = {};
-    const popup = {};
-    stack.push(editorA);
-    stack.push(editorB);
-    stack.push(popup);
-
-    stack.remove(editorA);
-    expect(stack.isTop(popup)).toBe(true);
-    expect(stack.size).toBe(2);
-
-    stack.remove(popup);
-    expect(stack.isTop(editorB)).toBe(true);
-
-    stack.push(editorA);
-    expect(stack.isTop(editorA)).toBe(true);
-    expect(stack.isTop(editorB)).toBe(false);
-  });
-
   it('tolerates out-of-order removal and re-pushing an existing token', () => {
+    // Out-of-order removal is a backgrounded session tab leaving the stack
+    // while a popup above it stays on top.
     const stack = createModalStack<object>();
     const a = {};
     const b = {};

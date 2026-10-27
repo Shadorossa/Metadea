@@ -203,108 +203,39 @@ mod assign_saga_order_indices_tests {
     use super::assign_saga_order_indices;
     use std::collections::HashMap;
 
-    fn ids(items: &[&str]) -> Vec<String> {
-        items.iter().map(|s| s.to_string()).collect()
-    }
-
-    fn existing(pairs: &[(&str, f64)]) -> HashMap<String, f64> {
+    fn map(pairs: &[(&str, f64)]) -> HashMap<String, f64> {
         pairs.iter().map(|(k, v)| (k.to_string(), *v)).collect()
     }
 
-    fn get(result: &HashMap<String, f64>, id: &str) -> f64 {
-        result[id]
-    }
-
+    // (chain, stored order_index values, expected full result)
     #[test]
-    fn renumbers_from_100_when_nothing_is_anchored() {
-        let result = assign_saga_order_indices(&ids(&["a", "b", "c"]), &HashMap::new());
-        assert_eq!(get(&result, "a"), 100.0);
-        assert_eq!(get(&result, "b"), 101.0);
-        assert_eq!(get(&result, "c"), 102.0);
-    }
-
-    #[test]
-    fn empty_chain_yields_empty_result() {
-        assert!(assign_saga_order_indices(&[], &existing(&[("a", 1.0)])).is_empty());
-    }
-
-    #[test]
-    fn keeps_existing_values_when_already_monotonic() {
-        let result = assign_saga_order_indices(
-            &ids(&["a", "b", "c"]),
-            &existing(&[("a", 100.0), ("b", 150.0), ("c", 300.0)]),
-        );
-        assert_eq!(get(&result, "a"), 100.0);
-        assert_eq!(get(&result, "b"), 150.0);
-        assert_eq!(get(&result, "c"), 300.0);
-    }
-
-    #[test]
-    fn extends_the_front_by_whole_steps_below_the_first_anchor() {
-        let result = assign_saga_order_indices(&ids(&["x", "y", "a"]), &existing(&[("a", 100.0)]));
-        assert_eq!(get(&result, "x"), 98.0);
-        assert_eq!(get(&result, "y"), 99.0);
-        assert_eq!(get(&result, "a"), 100.0);
-    }
-
-    #[test]
-    fn extends_the_back_by_whole_steps_above_the_last_anchor() {
-        let result = assign_saga_order_indices(&ids(&["a", "x", "y"]), &existing(&[("a", 100.5)]));
-        assert_eq!(get(&result, "a"), 100.5);
-        assert_eq!(get(&result, "x"), 101.5);
-        assert_eq!(get(&result, "y"), 102.5);
-    }
-
-    #[test]
-    fn inserted_between_two_anchors_takes_the_midpoint() {
-        let result = assign_saga_order_indices(
-            &ids(&["a", "n", "c"]),
-            &existing(&[("a", 100.0), ("c", 101.0)]),
-        );
-        assert_eq!(get(&result, "n"), 100.5);
-    }
-
-    #[test]
-    fn several_inserted_between_anchors_are_spaced_evenly() {
-        let result = assign_saga_order_indices(
-            &ids(&["a", "n1", "n2", "n3", "c"]),
-            &existing(&[("a", 100.0), ("c", 104.0)]),
-        );
-        assert_eq!(get(&result, "n1"), 101.0);
-        assert_eq!(get(&result, "n2"), 102.0);
-        assert_eq!(get(&result, "n3"), 103.0);
-    }
-
-    #[test]
-    fn non_monotonic_anchors_trigger_a_full_renumber() {
-        let result = assign_saga_order_indices(
-            &ids(&["a", "b", "c"]),
-            &existing(&[("a", 200.0), ("c", 100.0)]),
-        );
-        assert_eq!(get(&result, "a"), 100.0);
-        assert_eq!(get(&result, "b"), 101.0);
-        assert_eq!(get(&result, "c"), 102.0);
-    }
-
-    #[test]
-    fn equal_anchor_values_also_trigger_a_full_renumber() {
-        let result = assign_saga_order_indices(
-            &ids(&["a", "b"]),
-            &existing(&[("a", 100.0), ("b", 100.0)]),
-        );
-        assert_eq!(get(&result, "a"), 100.0);
-        assert_eq!(get(&result, "b"), 101.0);
-    }
-
-    #[test]
-    fn existing_ids_outside_the_chain_are_ignored() {
-        let result = assign_saga_order_indices(
-            &ids(&["a", "b"]),
-            &existing(&[("zzz", 5.0), ("a", 100.0)]),
-        );
-        assert_eq!(result.len(), 2);
-        assert_eq!(get(&result, "a"), 100.0);
-        assert_eq!(get(&result, "b"), 101.0);
+    fn assigns_order_indices() {
+        let cases: &[(&[&str], &[(&str, f64)], &[(&str, f64)])] = &[
+            // Nothing anchored: renumber from 100.
+            (&["a", "b", "c"], &[], &[("a", 100.0), ("b", 101.0), ("c", 102.0)]),
+            (&[], &[("a", 1.0)], &[]),
+            // Already monotonic: kept as is.
+            (&["a", "b", "c"], &[("a", 100.0), ("b", 150.0), ("c", 300.0)], &[("a", 100.0), ("b", 150.0), ("c", 300.0)]),
+            // Whole steps below the first anchor / above the last.
+            (&["x", "y", "a"], &[("a", 100.0)], &[("x", 98.0), ("y", 99.0), ("a", 100.0)]),
+            (&["a", "x", "y"], &[("a", 100.5)], &[("a", 100.5), ("x", 101.5), ("y", 102.5)]),
+            // Between two anchors: midpoint, or evenly spaced.
+            (&["a", "n", "c"], &[("a", 100.0), ("c", 101.0)], &[("a", 100.0), ("n", 100.5), ("c", 101.0)]),
+            (
+                &["a", "n1", "n2", "n3", "c"],
+                &[("a", 100.0), ("c", 104.0)],
+                &[("a", 100.0), ("n1", 101.0), ("n2", 102.0), ("n3", 103.0), ("c", 104.0)],
+            ),
+            // Non-monotonic or equal anchors: full renumber.
+            (&["a", "b", "c"], &[("a", 200.0), ("c", 100.0)], &[("a", 100.0), ("b", 101.0), ("c", 102.0)]),
+            (&["a", "b"], &[("a", 100.0), ("b", 100.0)], &[("a", 100.0), ("b", 101.0)]),
+            // Stored ids outside the chain are ignored.
+            (&["a", "b"], &[("zzz", 5.0), ("a", 100.0)], &[("a", 100.0), ("b", 101.0)]),
+        ];
+        for (chain, stored, expected) in cases {
+            let chain: Vec<String> = chain.iter().map(|s| s.to_string()).collect();
+            assert_eq!(assign_saga_order_indices(&chain, &map(stored)), map(expected), "{chain:?} {stored:?}");
+        }
     }
 }
 

@@ -34,13 +34,19 @@ const strings = {
 
 const singles = (...ids: string[]) => ids.map(id => [entry(id)]);
 
+function compute(
+  panels: SagaEntry[][],
+  libraryRows: Record<string, Partial<SagaCompletionLibraryRow>> = {},
+  catalogRows: Record<string, Partial<SagaCompletionCatalogRow>> = {},
+) {
+  return computeSagaCompletion(panels, library(libraryRows), catalog(catalogRows), { currentYear: CURRENT_YEAR });
+}
+
 describe('computeSagaCompletion', () => {
   it('counts same-type members as plain works and picks the count headline', () => {
-    const result = computeSagaCompletion(
+    const result = compute(
       singles('game:1', 'game:2', 'game:3', 'game:4', 'game:5', 'game:6', 'game:7'),
-      library({ 'game:1': { status: 'completed' }, 'game:2': { status: 'completed' }, 'game:3': { status: 'completed' }, 'game:4': { status: 'completed' }, 'game:5': { status: 'playing' } }),
-      catalog({}),
-      { currentYear: CURRENT_YEAR },
+      { 'game:1': { status: 'completed' }, 'game:2': { status: 'completed' }, 'game:3': { status: 'completed' }, 'game:4': { status: 'completed' }, 'game:5': { status: 'playing' } },
     );
     expect(result.completedCount).toBe(4);
     expect(result.totalCount).toBe(7);
@@ -50,11 +56,10 @@ describe('computeSagaCompletion', () => {
   });
 
   it('uses the percent headline listing every type when the saga mixes types', () => {
-    const result = computeSagaCompletion(
+    const result = compute(
       singles('anime:1', 'movie:2', 'anime:3'),
-      library({ 'anime:1': { status: 'completed', progress: 12 }, 'movie:2': { status: 'completed' }, 'anime:3': { status: 'watching', progress: 6 } }),
-      catalog({ 'anime:1': { total_count: 12 }, 'anime:3': { total_count: 24 } }),
-      { currentYear: CURRENT_YEAR },
+      { 'anime:1': { status: 'completed', progress: 12 }, 'movie:2': { status: 'completed' }, 'anime:3': { status: 'watching', progress: 6 } },
+      { 'anime:1': { total_count: 12 }, 'anime:3': { total_count: 24 } },
     );
     // 12 + 1 + 6 consumed of 12 + 1 + 24 units.
     expect(result.weightedPercent).toBe(51);
@@ -64,11 +69,10 @@ describe('computeSagaCompletion', () => {
   });
 
   it('weights episodic members by progress over total episodes', () => {
-    const result = computeSagaCompletion(
+    const result = compute(
       singles('anime:1', 'anime:2'),
-      library({ 'anime:1': { status: 'completed', progress: 26 }, 'anime:2': { status: 'watching', progress: 25 } }),
-      catalog({ 'anime:1': { total_count: 26 }, 'anime:2': { total_count: 74 } }),
-      { currentYear: CURRENT_YEAR },
+      { 'anime:1': { status: 'completed', progress: 26 }, 'anime:2': { status: 'watching', progress: 25 } },
+      { 'anime:1': { total_count: 26 }, 'anime:2': { total_count: 74 } },
     );
     expect(result.weightedPercent).toBe(51);
     expect(result.completedCount).toBe(1);
@@ -77,32 +81,28 @@ describe('computeSagaCompletion', () => {
   });
 
   it('clamps progress to the known total and a completed entry counts as fully consumed', () => {
-    const result = computeSagaCompletion(
+    const result = compute(
       singles('manga:1', 'manga:2'),
-      library({ 'manga:1': { status: 'completed', progress: 3 }, 'manga:2': { status: 'reading', progress: 500 } }),
-      catalog({ 'manga:1': { total_count: 100 }, 'manga:2': { total_count: 100 } }),
-      { currentYear: CURRENT_YEAR },
+      { 'manga:1': { status: 'completed', progress: 3 }, 'manga:2': { status: 'reading', progress: 500 } },
+      { 'manga:1': { total_count: 100 }, 'manga:2': { total_count: 100 } },
     );
     expect(result.weightedPercent).toBe(100);
   });
 
   it('treats an unknown total as a single all-or-nothing unit', () => {
-    const result = computeSagaCompletion(
+    const result = compute(
       singles('anime:1', 'anime:2'),
-      library({ 'anime:1': { status: 'watching', progress: 40 }, 'anime:2': { status: 'completed', progress: 40 } }),
-      catalog({}),
-      { currentYear: CURRENT_YEAR },
+      { 'anime:1': { status: 'watching', progress: 40 }, 'anime:2': { status: 'completed', progress: 40 } },
     );
     expect(result.weightedPercent).toBe(50);
     expect(result.completedCount).toBe(1);
   });
 
   it('excludes upcoming members from the denominator but reports them', () => {
-    const result = computeSagaCompletion(
+    const result = compute(
       [[entry('game:1')], [entry('game:2')], [entry('game:3', 2027)], [entry('game:4')]],
-      library({ 'game:1': { status: 'completed' }, 'game:2': { status: 'completed' } }),
-      catalog({ 'game:4': { status: 'NOT_YET_RELEASED' } }),
-      { currentYear: CURRENT_YEAR },
+      { 'game:1': { status: 'completed' }, 'game:2': { status: 'completed' } },
+      { 'game:4': { status: 'NOT_YET_RELEASED' } },
     );
     expect(result.totalCount).toBe(2);
     expect(result.upcomingCount).toBe(2);
@@ -110,11 +110,10 @@ describe('computeSagaCompletion', () => {
   });
 
   it('counts an alternative-editions panel once, through its furthest edition', () => {
-    const result = computeSagaCompletion(
+    const result = compute(
       [[entry('anime:1'), entry('anime:1b')], [entry('anime:2')]],
-      library({ 'anime:1': { status: 'watching', progress: 2 }, 'anime:1b': { status: 'completed', progress: 10 } }),
-      catalog({ 'anime:1': { total_count: 12 }, 'anime:1b': { total_count: 10 }, 'anime:2': { total_count: 10 } }),
-      { currentYear: CURRENT_YEAR },
+      { 'anime:1': { status: 'watching', progress: 2 }, 'anime:1b': { status: 'completed', progress: 10 } },
+      { 'anime:1': { total_count: 12 }, 'anime:1b': { total_count: 10 }, 'anime:2': { total_count: 10 } },
     );
     expect(result.totalCount).toBe(2);
     expect(result.completedCount).toBe(1);
@@ -123,29 +122,21 @@ describe('computeSagaCompletion', () => {
 });
 
 describe('isSagaCompletionVisible', () => {
-  it('hides the bar at or under one percent', () => {
-    const result = computeSagaCompletion(
+  it.each([
+    ['hides the bar at or under one percent', 1, 1, false],
+    ['shows the bar above one percent', 4, 2, true],
+  ])('%s', (_name, progress, percent, visible) => {
+    const result = compute(
       singles('anime:1', 'anime:2'),
-      library({ 'anime:1': { status: 'watching', progress: 1 } }),
-      catalog({ 'anime:1': { total_count: 100 }, 'anime:2': { total_count: 100 } }),
-      { currentYear: CURRENT_YEAR },
+      { 'anime:1': { status: 'watching', progress } },
+      { 'anime:1': { total_count: 100 }, 'anime:2': { total_count: 100 } },
     );
-    expect(result.weightedPercent).toBe(1);
-    expect(isSagaCompletionVisible(result)).toBe(false);
-  });
-
-  it('shows the bar above one percent', () => {
-    const result = computeSagaCompletion(
-      singles('anime:1', 'anime:2'),
-      library({ 'anime:1': { status: 'watching', progress: 4 } }),
-      catalog({ 'anime:1': { total_count: 100 }, 'anime:2': { total_count: 100 } }),
-      { currentYear: CURRENT_YEAR },
-    );
-    expect(isSagaCompletionVisible(result)).toBe(true);
+    expect(result.weightedPercent).toBe(percent);
+    expect(isSagaCompletionVisible(result)).toBe(visible);
   });
 
   it('hides the bar when the user has no library rows in the saga', () => {
-    const result = computeSagaCompletion(singles('game:1'), library({}), catalog({}), { currentYear: CURRENT_YEAR });
+    const result = compute(singles('game:1'));
     expect(result.weightedPercent).toBe(0);
     expect(isSagaCompletionVisible(result)).toBe(false);
   });

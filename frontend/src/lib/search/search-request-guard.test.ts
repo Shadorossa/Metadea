@@ -66,10 +66,15 @@ function fakeTimers() {
 }
 
 describe('SearchDebouncer', () => {
-  it('fires once with the final value after the quiet period, not per keystroke', () => {
+  // 300 ms quiet period, 2-char minimum, on fake timers.
+  function setup() {
     const { timers, advance } = fakeTimers();
     const run = vi.fn();
-    const debouncer = new SearchDebouncer(run, 300, 2, timers);
+    return { run, debouncer: new SearchDebouncer(run, 300, 2, timers), advance };
+  }
+
+  it('fires once with the final value after the quiet period, not per keystroke', () => {
+    const { run, debouncer, advance } = setup();
     for (const q of ['o', 'on', 'one', 'one ', 'one p', 'one pi', 'one pie', 'one piec', 'one piece']) {
       debouncer.submit(q);
       advance(100);
@@ -81,9 +86,7 @@ describe('SearchDebouncer', () => {
   });
 
   it('never schedules anything below the minimum length', () => {
-    const { timers, advance } = fakeTimers();
-    const run = vi.fn();
-    const debouncer = new SearchDebouncer(run, 300, 2, timers);
+    const { run, debouncer, advance } = setup();
     debouncer.submit('o');
     expect(debouncer.isPending).toBe(false);
     advance(1000);
@@ -91,9 +94,7 @@ describe('SearchDebouncer', () => {
   });
 
   it('a shorter query cancels a pending longer one', () => {
-    const { timers, advance } = fakeTimers();
-    const run = vi.fn();
-    const debouncer = new SearchDebouncer(run, 300, 2, timers);
+    const { run, debouncer, advance } = setup();
     debouncer.submit('one');
     debouncer.submit('o');
     advance(1000);
@@ -101,9 +102,7 @@ describe('SearchDebouncer', () => {
   });
 
   it('flush() runs immediately and drops the pending call; cancel() drops it silently', () => {
-    const { timers, advance } = fakeTimers();
-    const run = vi.fn();
-    const debouncer = new SearchDebouncer(run, 300, 2, timers);
+    const { run, debouncer, advance } = setup();
     debouncer.submit('one');
     debouncer.flush('one piece');
     expect(run).toHaveBeenCalledTimes(1);

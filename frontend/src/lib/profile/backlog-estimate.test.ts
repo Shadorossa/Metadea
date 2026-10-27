@@ -11,17 +11,9 @@ import {
   estimatePace,
   formatDuration,
 } from './backlog-estimate';
+import { libraryEntry as entry } from '../../../tests/support/library-entry';
 
 const t = es as unknown as Translations;
-
-function entry(overrides: Partial<LibraryEntry> & { external_id: string; type: string }): LibraryEntry {
-  return {
-    id: overrides.external_id, user_id: 'u', status: 'planning', rating: null, rating_2: null,
-    progress: 0, progress_2: 0, minutes_spent: 0, is_favorite: 0, is_platinum: 0, tags: null, notes: null,
-    added_at: null, updated_at: null, selected_platform: null, selected_version: null, started_at: null, finished_at: null,
-    ...overrides,
-  };
-}
 
 function catalog(entries: Array<Partial<CatalogSummary> & { external_id: string }>): Map<string, CatalogSummary> {
   return new Map(entries.map(e => [e.external_id, { id: e.external_id, type: 'anime', format: null, ...e } as CatalogSummary]));
@@ -30,59 +22,34 @@ function catalog(entries: Array<Partial<CatalogSummary> & { external_id: string 
 const NOW = new Date('2026-09-23T12:00:00Z');
 
 describe('estimateItemRemaining', () => {
-  it('anime: remaining episodes × catalog episode length', () => {
-    const r = estimateItemRemaining(entry({ external_id: 'a', type: 'anime', progress: 4 }), { external_id: 'a', type: 'anime', total_count: 12, time_length: 25 } as CatalogSummary);
-    expect(r).toEqual({ minutes: 8 * 25, usedFallback: false });
+  const movie = { external_id: 'm', type: 'anime', format: 'MOVIE', time_length: 95 } as CatalogSummary;
+
+  // A bare number asserts only `minutes`.
+  it.each<[string, Partial<LibraryEntry>, Partial<CatalogSummary> | undefined, { minutes: number; usedFallback: boolean } | number | null]>([
+    ['anime: remaining episodes × catalog episode length', { external_id: 'a', type: 'anime', progress: 4 }, { external_id: 'a', type: 'anime', total_count: 12, time_length: 25 }, { minutes: 8 * 25, usedFallback: false }],
+    ['anime without episode length falls back to 24 min and flags it', { external_id: 'a', type: 'anime' }, { external_id: 'a', type: 'anime', total_count: 12, time_length: null }, { minutes: 12 * 24, usedFallback: true }],
+    ['series with unknown total assumes the fallback episode count at 45 min', { external_id: 's', type: 'series', progress: 2 }, undefined, { minutes: (10 - 2) * 45, usedFallback: true }],
+    ['movie: whole runtime', { external_id: 'm', type: 'anime' }, movie, { minutes: 95, usedFallback: false }],
+    ['movie: 0 once any progress is logged', { external_id: 'm', type: 'anime', progress: 1 }, movie, 0],
+    ['movie without catalog row', { external_id: 'm', type: 'movie' }, undefined, { minutes: 110, usedFallback: true }],
+    ['manga: remaining chapters × 8 min', { external_id: 'mg', type: 'manga', progress: 30 }, { external_id: 'mg', type: 'manga', total_count: 100 }, { minutes: 70 * 8, usedFallback: false }],
+    ['lnovel: remaining volumes × 6 h, read from progress_2/total_count_2', { external_id: 'ln', type: 'lnovel', progress: 200, progress_2: 3 }, { external_id: 'ln', type: 'lnovel', total_count: 500, total_count_2: 10 }, { minutes: 7 * 360, usedFallback: false }],
+    ['book: pages × 1.5 min when known', { external_id: 'b', type: 'book', progress: 100 }, { external_id: 'b', type: 'book', total_count: 300 }, { minutes: 300, usedFallback: false }],
+    ['book: 8 h flat otherwise', { external_id: 'b', type: 'book' }, undefined, { minutes: 480, usedFallback: true }],
+    ['comic: remaining issues × 20 min', { external_id: 'c', type: 'comic', progress: 1 }, { external_id: 'c', type: 'comic', total_count: 4 }, { minutes: 60, usedFallback: false }],
+    // time_length is not hours-to-beat, so games are always low confidence.
+    ['game: 20 h minus hours played', { external_id: 'g', type: 'game', progress: 5 }, { external_id: 'g', type: 'game', time_length: 90 }, { minutes: 15 * 60, usedFallback: true }],
+    ['game: never below 0', { external_id: 'g', type: 'game', progress: 40 }, undefined, 0],
+    ['vnovel: time_length hours minus hours played', { external_id: 'v', type: 'vnovel', progress: 10 }, { external_id: 'v', type: 'vnovel', time_length: 50 }, { minutes: 40 * 60, usedFallback: false }],
+    ['vnovel: 30 h without time_length', { external_id: 'v', type: 'vnovel' }, undefined, { minutes: 30 * 60, usedFallback: true }],
+    ['returns null for types without a duration model', { external_id: 'x', type: 'character' }, undefined, null],
+  ])('%s', (_name, row, summary, expected) => {
+    const r = estimateItemRemaining(entry(row), summary as CatalogSummary | undefined);
+    if (typeof expected === 'number') expect(r?.minutes).toBe(expected);
+    else expect(r).toEqual(expected);
   });
 
-  it('anime without episode length falls back to 24 min and flags it', () => {
-    const r = estimateItemRemaining(entry({ external_id: 'a', type: 'anime' }), { external_id: 'a', type: 'anime', total_count: 12, time_length: null } as CatalogSummary);
-    expect(r).toEqual({ minutes: 12 * 24, usedFallback: true });
-  });
-
-  it('series with unknown total assumes the fallback episode count at 45 min', () => {
-    const r = estimateItemRemaining(entry({ external_id: 's', type: 'series', progress: 2 }), undefined);
-    expect(r).toEqual({ minutes: (10 - 2) * 45, usedFallback: true });
-  });
-
-  it('movie: whole runtime, 0 once any progress is logged', () => {
-    const row = { external_id: 'm', type: 'anime', format: 'MOVIE', time_length: 95 } as CatalogSummary;
-    expect(estimateItemRemaining(entry({ external_id: 'm', type: 'anime' }), row)).toEqual({ minutes: 95, usedFallback: false });
-    expect(estimateItemRemaining(entry({ external_id: 'm', type: 'anime', progress: 1 }), row)?.minutes).toBe(0);
-    expect(estimateItemRemaining(entry({ external_id: 'm', type: 'movie' }), undefined)).toEqual({ minutes: 110, usedFallback: true });
-  });
-
-  it('manga: remaining chapters × 8 min', () => {
-    const r = estimateItemRemaining(entry({ external_id: 'mg', type: 'manga', progress: 30 }), { external_id: 'mg', type: 'manga', total_count: 100 } as CatalogSummary);
-    expect(r).toEqual({ minutes: 70 * 8, usedFallback: false });
-  });
-
-  it('lnovel: remaining volumes × 6 h, read from progress_2/total_count_2', () => {
-    const r = estimateItemRemaining(entry({ external_id: 'ln', type: 'lnovel', progress: 200, progress_2: 3 }), { external_id: 'ln', type: 'lnovel', total_count: 500, total_count_2: 10 } as CatalogSummary);
-    expect(r).toEqual({ minutes: 7 * 360, usedFallback: false });
-  });
-
-  it('book: pages × 1.5 min when known, 8 h flat otherwise', () => {
-    expect(estimateItemRemaining(entry({ external_id: 'b', type: 'book', progress: 100 }), { external_id: 'b', type: 'book', total_count: 300 } as CatalogSummary)).toEqual({ minutes: 300, usedFallback: false });
-    expect(estimateItemRemaining(entry({ external_id: 'b', type: 'book' }), undefined)).toEqual({ minutes: 480, usedFallback: true });
-  });
-
-  it('comic: remaining issues × 20 min', () => {
-    expect(estimateItemRemaining(entry({ external_id: 'c', type: 'comic', progress: 1 }), { external_id: 'c', type: 'comic', total_count: 4 } as CatalogSummary)).toEqual({ minutes: 60, usedFallback: false });
-  });
-
-  it('game: 20 h minus hours played, always low confidence (time_length is not hours-to-beat)', () => {
-    expect(estimateItemRemaining(entry({ external_id: 'g', type: 'game', progress: 5 }), { external_id: 'g', type: 'game', time_length: 90 } as CatalogSummary)).toEqual({ minutes: 15 * 60, usedFallback: true });
-    expect(estimateItemRemaining(entry({ external_id: 'g', type: 'game', progress: 40 }), undefined)?.minutes).toBe(0);
-  });
-
-  it('vnovel: time_length hours or 30 h, minus hours played', () => {
-    expect(estimateItemRemaining(entry({ external_id: 'v', type: 'vnovel', progress: 10 }), { external_id: 'v', type: 'vnovel', time_length: 50 } as CatalogSummary)).toEqual({ minutes: 40 * 60, usedFallback: false });
-    expect(estimateItemRemaining(entry({ external_id: 'v', type: 'vnovel' }), undefined)).toEqual({ minutes: 30 * 60, usedFallback: true });
-  });
-
-  it('returns null for types without a duration model', () => {
-    expect(estimateItemRemaining(entry({ external_id: 'x', type: 'character' }), undefined)).toBeNull();
+  it('has no duration rule for characters', () => {
     expect(BACKLOG_TYPE_RULES.character).toBeUndefined();
   });
 });

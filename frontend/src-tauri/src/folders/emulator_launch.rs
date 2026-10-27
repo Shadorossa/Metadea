@@ -63,74 +63,39 @@ mod build_emulator_args_tests {
 
     const ROM: &str = r"C:\Roms\Some Game (USA) [v1.1].iso";
 
-    fn args(template: &str) -> Vec<String> {
-        build_emulator_args(template, ROM)
-    }
-
+    // (template, expected argv) — the rom path is ROM unless stated.
     #[test]
-    fn empty_launch_args_yields_only_the_rom_path() {
-        assert_eq!(args(""), vec![ROM]);
-        assert_eq!(args("   \t "), vec![ROM]);
-    }
-
-    #[test]
-    fn substitutes_placeholder_as_one_atomic_argument_even_with_spaces() {
-        assert_eq!(args("-f {ROM}"), vec!["-f", ROM]);
-    }
-
-    #[test]
-    fn appends_rom_path_when_template_has_no_placeholder() {
-        assert_eq!(args("-f --fullscreen"), vec!["-f", "--fullscreen", ROM]);
-    }
-
-    #[test]
-    fn strips_user_quotes_around_placeholder() {
-        assert_eq!(args(r#"-f "{ROM}""#), vec!["-f", ROM]);
-    }
-
-    #[test]
-    fn substitutes_placeholder_embedded_in_a_larger_token() {
-        assert_eq!(args("--path={ROM}"), vec![format!("--path={ROM}")]);
-    }
-
-    #[test]
-    fn substitutes_every_placeholder_and_does_not_append_again() {
-        assert_eq!(args("{ROM} -x {ROM}"), vec![ROM, "-x", ROM]);
-    }
-
-    #[test]
-    fn keeps_users_own_quoted_flag_values_grouped() {
-        assert_eq!(
-            args(r#"-c "my config.cfg" {ROM}"#),
-            vec!["-c", "my config.cfg", ROM]
-        );
-    }
-
-    #[test]
-    fn placeholder_is_case_sensitive_so_lowercase_rom_token_is_left_alone() {
-        assert_eq!(args("{rom}"), vec!["{rom}", ROM]);
-    }
-
-    #[test]
-    fn unbalanced_quote_swallows_the_rest_of_the_template_into_one_token() {
-        assert_eq!(args(r#""-f {ROM}"#), vec![format!("-f {ROM}")]);
-    }
-
-    #[test]
-    fn relative_rom_path_is_passed_through_unchanged() {
-        assert_eq!(
-            build_emulator_args("{ROM}", "roms/game.nes"),
-            vec!["roms/game.nes"]
-        );
-        assert_eq!(
-            build_emulator_args("-f", "roms/game.nes"),
-            vec!["-f", "roms/game.nes"]
-        );
-    }
-
-    #[test]
-    fn splits_on_any_whitespace_including_tabs_and_collapses_runs() {
-        assert_eq!(args("-a\t-b   -c"), vec!["-a", "-b", "-c", ROM]);
+    fn builds_argv_from_the_template() {
+        let rom = ROM.to_string();
+        let cases: Vec<(&str, Vec<String>)> = vec![
+            // No template: just the rom.
+            ("", vec![rom.clone()]),
+            ("   	 ", vec![rom.clone()]),
+            // {ROM} is one atomic argument even with spaces.
+            ("-f {ROM}", vec!["-f".into(), rom.clone()]),
+            // No placeholder: the rom is appended.
+            ("-f --fullscreen", vec!["-f".into(), "--fullscreen".into(), rom.clone()]),
+            // User quotes around the placeholder are dropped.
+            (r#"-f "{ROM}""#, vec!["-f".into(), rom.clone()]),
+            // Embedded in a larger token.
+            ("--path={ROM}", vec![format!("--path={ROM}")]),
+            // Every placeholder is substituted; nothing appended.
+            ("{ROM} -x {ROM}", vec![rom.clone(), "-x".into(), rom.clone()]),
+            // The user's own quoted values stay grouped.
+            (r#"-c "my config.cfg" {ROM}"#, vec!["-c".into(), "my config.cfg".into(), rom.clone()]),
+            // Case-sensitive: {rom} is left alone and the rom appended.
+            ("{rom}", vec!["{rom}".into(), rom.clone()]),
+            // An unbalanced quote swallows the rest into one token.
+            (r#""-f {ROM}"#, vec![format!("-f {ROM}")]),
+            // Any whitespace splits, runs collapse.
+            ("-a	-b   -c", vec!["-a".into(), "-b".into(), "-c".into(), rom.clone()]),
+        ];
+        for (template, expected) in cases {
+            assert_eq!(build_emulator_args(template, ROM), expected, "{template:?}");
+        }
+        // A relative rom path passes through unchanged.
+        assert_eq!(build_emulator_args("{ROM}", "roms/game.nes"), vec!["roms/game.nes"]);
+        assert_eq!(build_emulator_args("-f", "roms/game.nes"), vec!["-f", "roms/game.nes"]);
     }
 }
 

@@ -560,12 +560,7 @@ pub async fn igdb_force_by_igdb_id(
 mod index_tests {
     use super::*;
 
-    fn temp_root(name: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("metadea-index-{}-{}", std::process::id(), name));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        dir
-    }
+    use crate::test_support::tempdir as temp_root;
 
     #[test]
     fn legacy_entries_are_read_from_info_json_once_then_backfilled() {

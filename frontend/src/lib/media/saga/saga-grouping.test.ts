@@ -14,6 +14,14 @@ function rel(type: string, target: string, label = ''): DbMediaRelation {
 
 const byIndex = (ids: string[]) => (a: string, b: string) => ids.indexOf(a) - ids.indexOf(b);
 
+// Expected marker: the function hands back the very same input array.
+const SAME = Symbol('same');
+
+function expectOrder(actual: string[], ids: string[], expected: string[] | typeof SAME) {
+  if (expected === SAME) expect(actual).toBe(ids);
+  else expect(actual).toEqual(expected);
+}
+
 describe('createMetaResolver', () => {
   const current = { title: 'Inazuma Eleven', cover: 'ie.png', release_year: 2008 };
   const resolve = createMetaResolver('anime:1', current, { 'anime:2': { title: 'IE 2', cover: null } });
@@ -72,114 +80,50 @@ describe('classifySagaChain', () => {
 });
 
 describe('topoSortByPrecedes', () => {
-  it('returns the ids as given when there are no edges', () => {
-    const ids = ['b', 'a'];
-    expect(topoSortByPrecedes(ids, new Map(), byIndex(ids))).toBe(ids);
-  });
-
-  it('orders ids by the edges and breaks ties with the callback', () => {
-    const ids = ['c', 'b', 'a'];
-    const precedes = new Map([['a', new Set(['b'])]]);
-    expect(topoSortByPrecedes(ids, precedes, byIndex(ids))).toEqual(['c', 'a', 'b']);
-  });
-
-  it('falls back to the given order on a cycle', () => {
-    const ids = ['a', 'b'];
-    const precedes = new Map([['a', new Set(['b'])], ['b', new Set(['a'])]]);
-    expect(topoSortByPrecedes(ids, precedes, byIndex(ids))).toBe(ids);
-  });
-
-  it('ignores an edge that points outside the id list', () => {
-    const ids = ['a'];
-    const precedes = new Map([['a', new Set(['z'])]]);
-    expect(topoSortByPrecedes(ids, precedes, byIndex(ids))).toEqual(['a']);
-  });
-
-  it('keeps the manual order of the other members when one edge leaves the saga', () => {
+  it.each<[string, string[], [string, string[]][], string[] | typeof SAME]>([
+    ['returns the ids as given when there are no edges', ['b', 'a'], [], SAME],
+    ['orders ids by the edges and breaks ties with the callback', ['c', 'b', 'a'], [['a', ['b']]], ['c', 'a', 'b']],
+    ['falls back to the given order on a cycle', ['a', 'b'], [['a', ['b']], ['b', ['a']]], SAME],
+    ['ignores an edge that points outside the id list', ['a'], [['a', ['z']]], ['a']],
     // release-date order c, b, a; manual order a -> b, plus a stray edge to
     // a removed member `z` and an edge from `z` back into the saga.
-    const ids = ['c', 'b', 'a'];
-    const precedes = new Map([['a', new Set(['b', 'z'])], ['z', new Set(['c'])]]);
-    expect(topoSortByPrecedes(ids, precedes, byIndex(ids))).toEqual(['c', 'a', 'b']);
-  });
-
-  it('handles a single id', () => {
-    expect(topoSortByPrecedes(['a'], new Map([['a', new Set<string>()]]), () => 0)).toEqual(['a']);
+    ['keeps the manual order of the other members when one edge leaves the saga', ['c', 'b', 'a'], [['a', ['b', 'z']], ['z', ['c']]], ['c', 'a', 'b']],
+    ['handles a single id', ['a'], [['a', []]], ['a']],
+  ])('%s', (_name, ids, edges, expected) => {
+    const precedes = new Map(edges.map(([from, to]) => [from, new Set(to)]));
+    expectOrder(topoSortByPrecedes(ids, precedes, byIndex(ids)), ids, expected);
   });
 });
 
 describe('reconstructSagaOrder', () => {
-  it('keeps release-date order when there are no edges', () => {
-    const ids = ['anime:1', 'anime:2'];
-    expect(reconstructSagaOrder(ids, [[], []])).toBe(ids);
-  });
-
-  it('follows a saved SEQUEL edge over release-date order', () => {
-    expect(reconstructSagaOrder(['anime:2', 'anime:1'], [[], [rel('SEQUEL', 'anime:2')]])).toEqual(['anime:1', 'anime:2']);
-  });
-
-  it('counts a PREQUEL edge on the other row the same as a SEQUEL edge', () => {
-    expect(reconstructSagaOrder(['anime:2', 'anime:1'], [[rel('PREQUEL', 'anime:1')], []])).toEqual(['anime:1', 'anime:2']);
-  });
-
-  it('ignores edges to ids outside the saga and non-chronological relation types', () => {
-    const ids = ['anime:2', 'anime:1'];
-    expect(reconstructSagaOrder(ids, [[rel('SEQUEL', 'anime:99')], [rel('ADAPTATION', 'anime:2')]])).toBe(ids);
-  });
-
-  it('breaks ties between alternates by their saved in-group position', () => {
-    const order = reconstructSagaOrder(
-      ['a', 'b', 'c'],
-      [[rel('ALTERNATIVE', 'b', 'Alternate #2')], [rel('ALTERNATIVE', 'a', 'Alternate #1')], [rel('PREQUEL', 'a')]],
-    );
-    expect(order).toEqual(['b', 'a', 'c']);
-  });
-
-  // Characterization: the in-group position only takes effect once at
-  // least one SEQUEL/PREQUEL edge exists, since an empty edge set short-
-  // circuits to release-date order.
-  it('ignores in-group positions when the saga has no chronological edges at all', () => {
-    const ids = ['a', 'b'];
-    expect(reconstructSagaOrder(ids, [[rel('ALTERNATIVE', 'b', '#2')], [rel('ALTERNATIVE', 'a', '#1')]])).toBe(ids);
-  });
-
-  it('falls back to release-date order when the edges form a cycle', () => {
-    const ids = ['anime:1', 'anime:2'];
-    expect(reconstructSagaOrder(ids, [[rel('SEQUEL', 'anime:2')], [rel('SEQUEL', 'anime:1')]])).toBe(ids);
-  });
-
-  it('tolerates a missing relation list for an id', () => {
-    expect(reconstructSagaOrder(['anime:2', 'anime:1'], [undefined as unknown as DbMediaRelation[], [rel('SEQUEL', 'anime:2')]])).toEqual(['anime:1', 'anime:2']);
+  it.each<[string, string[], DbMediaRelation[][], string[] | typeof SAME]>([
+    ['keeps release-date order when there are no edges', ['anime:1', 'anime:2'], [[], []], SAME],
+    ['follows a saved SEQUEL edge over release-date order', ['anime:2', 'anime:1'], [[], [rel('SEQUEL', 'anime:2')]], ['anime:1', 'anime:2']],
+    ['counts a PREQUEL edge on the other row the same as a SEQUEL edge', ['anime:2', 'anime:1'], [[rel('PREQUEL', 'anime:1')], []], ['anime:1', 'anime:2']],
+    ['ignores edges to ids outside the saga and non-chronological relation types', ['anime:2', 'anime:1'], [[rel('SEQUEL', 'anime:99')], [rel('ADAPTATION', 'anime:2')]], SAME],
+    ['breaks ties between alternates by their saved in-group position', ['a', 'b', 'c'],
+      [[rel('ALTERNATIVE', 'b', 'Alternate #2')], [rel('ALTERNATIVE', 'a', 'Alternate #1')], [rel('PREQUEL', 'a')]], ['b', 'a', 'c']],
+    // Characterization: the in-group position only takes effect once at
+    // least one SEQUEL/PREQUEL edge exists, since an empty edge set short-
+    // circuits to release-date order.
+    ['ignores in-group positions when the saga has no chronological edges at all', ['a', 'b'], [[rel('ALTERNATIVE', 'b', '#2')], [rel('ALTERNATIVE', 'a', '#1')]], SAME],
+    ['falls back to release-date order when the edges form a cycle', ['anime:1', 'anime:2'], [[rel('SEQUEL', 'anime:2')], [rel('SEQUEL', 'anime:1')]], SAME],
+    ['tolerates a missing relation list for an id', ['anime:2', 'anime:1'], [undefined as unknown as DbMediaRelation[], [rel('SEQUEL', 'anime:2')]], ['anime:1', 'anime:2']],
+  ])('%s', (_name, ids, rels, expected) => {
+    expectOrder(reconstructSagaOrder(ids, rels), ids, expected);
   });
 });
 
 describe('filterToSequelChain', () => {
-  it('keeps only ids reachable from the start through PREQUEL/SEQUEL edges', () => {
-    const ids = ['a', 'b', 'c', 'd'];
-    const rels = [[rel('SEQUEL', 'b')], [rel('SEQUEL', 'c')], [], [rel('ALTERNATIVE', 'a')]];
-    expect(filterToSequelChain(ids, rels, 'a')).toEqual(['a', 'b', 'c']);
-  });
-
-  it('walks edges in both directions regardless of which row stores them', () => {
-    const ids = ['a', 'b'];
-    expect(filterToSequelChain(ids, [[], [rel('PREQUEL', 'a')]], 'a')).toEqual(['a', 'b']);
-  });
-
-  it('ignores edges to ids outside the list', () => {
-    expect(filterToSequelChain(['a'], [[rel('SEQUEL', 'z')]], 'a')).toEqual(['a']);
-  });
-
-  it('returns only the start id when it has no chronological edges', () => {
-    expect(filterToSequelChain(['a', 'b'], [[], []], 'a')).toEqual(['a']);
-  });
-
-  it('returns nothing when the start id is not in the list', () => {
-    expect(filterToSequelChain(['a', 'b'], [[rel('SEQUEL', 'b')], []], 'z')).toEqual([]);
-  });
-
-  it('preserves the original order of the surviving ids', () => {
-    const ids = ['c', 'a', 'b'];
-    const rels = [[rel('PREQUEL', 'b')], [rel('SEQUEL', 'b')], []];
-    expect(filterToSequelChain(ids, rels, 'a')).toEqual(['c', 'a', 'b']);
+  it.each<[string, string[], DbMediaRelation[][], string, string[]]>([
+    ['keeps only ids reachable from the start through PREQUEL/SEQUEL edges', ['a', 'b', 'c', 'd'],
+      [[rel('SEQUEL', 'b')], [rel('SEQUEL', 'c')], [], [rel('ALTERNATIVE', 'a')]], 'a', ['a', 'b', 'c']],
+    ['walks edges in both directions regardless of which row stores them', ['a', 'b'], [[], [rel('PREQUEL', 'a')]], 'a', ['a', 'b']],
+    ['ignores edges to ids outside the list', ['a'], [[rel('SEQUEL', 'z')]], 'a', ['a']],
+    ['returns only the start id when it has no chronological edges', ['a', 'b'], [[], []], 'a', ['a']],
+    ['returns nothing when the start id is not in the list', ['a', 'b'], [[rel('SEQUEL', 'b')], []], 'z', []],
+    ['preserves the original order of the surviving ids', ['c', 'a', 'b'], [[rel('PREQUEL', 'b')], [rel('SEQUEL', 'b')], []], 'a', ['c', 'a', 'b']],
+  ])('%s', (_name, ids, rels, start, expected) => {
+    expect(filterToSequelChain(ids, rels, start)).toEqual(expected);
   });
 });

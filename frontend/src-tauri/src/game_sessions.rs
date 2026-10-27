@@ -795,9 +795,7 @@ mod tests {
         }
     }
 
-    fn db() -> MetadeaDb {
-        MetadeaDb::open_in_memory().unwrap()
-    }
+    use crate::test_support::db;
 
     fn library_row(conn: &Connection, id: &str) -> Option<(f64, f64, String, String)> {
         conn.query_row(

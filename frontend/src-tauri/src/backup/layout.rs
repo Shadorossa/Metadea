@@ -126,15 +126,8 @@ fn walk(root: &Path, current: &Path, files: &mut Vec<SourceFile>, excluded: &mut
     Ok(())
 }
 
-/// A fresh, uniquely named folder under the system temp dir (tests only).
 #[cfg(test)]
-pub(crate) fn tempdir(tag: &str) -> PathBuf {
-    let mut bytes = [0u8; 8];
-    getrandom::getrandom(&mut bytes).unwrap();
-    let dir = std::env::temp_dir().join(format!("metadea-test-{tag}-{}-{}", std::process::id(), u64::from_le_bytes(bytes)));
-    fs::create_dir_all(&dir).unwrap();
-    dir
-}
+pub(crate) use crate::test_support::tempdir;
 
 #[cfg(test)]
 mod tests {

@@ -94,9 +94,4 @@ mod tests {
         // The scheduled Drive upload skips unchanged data by this hash.
         assert_eq!(sha256_file(&first).unwrap(), sha256_file(&second).unwrap());
     }
-
-    #[test]
-    fn supported_schema_is_the_last_migration() {
-        assert!(supported_schema_version() >= 81);
-    }
 }

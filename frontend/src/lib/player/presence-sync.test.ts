@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildPresenceSnapshot, computePresenceTimestamps, shouldResendPresence } from './presence-sync';
+import {
+  buildPresenceSnapshot, computePresenceTimestamps, formatPresenceLines, formatThemePresenceLines, shouldResendPresence,
+} from './presence-sync';
 
 const NOW = 1_000_000;
 
@@ -52,5 +54,48 @@ describe('shouldResendPresence', () => {
     expect(shouldResendPresence(playing, { ...playing, startTime: playing.startTime - 30 })).toBe(true);
     expect(shouldResendPresence(playing, { ...playing, endTime: playing.endTime + 600 })).toBe(true);
     expect(shouldResendPresence({ status: 'paused' }, { status: 'paused' })).toBe(false);
+  });
+});
+
+describe('formatPresenceLines', () => {
+  it('shows the series in details and the episode label + title in state', () => {
+    expect(formatPresenceLines({ title: 'Show', episodeNumber: 2, episodeLabel: 'S01E02', episodeTitle: 'The School of the Grassland', status: 'playing' }))
+      .toEqual({ details: 'Watching Show', state: 'S01E02 - The School of the Grassland' });
+  });
+
+  it('falls back to a zero-padded E<NN> when no label is known', () => {
+    expect(formatPresenceLines({ title: 'Show', episodeNumber: 2, status: 'playing' }).state).toBe('E02');
+    expect(formatPresenceLines({ title: 'Show', episodeNumber: 12, episodeTitle: 'Finale', status: 'playing' }).state).toBe('E12 - Finale');
+    expect(formatPresenceLines({ title: 'Show', episodeNumber: 3, episodeLabel: '  ', status: 'playing' }).state).toBe('E03');
+  });
+
+  it('keeps movies to their M label', () => {
+    expect(formatPresenceLines({ title: 'Film', episodeNumber: 1, episodeLabel: 'M01', episodeTitle: 'Film', status: 'playing' }).state).toBe('M01');
+  });
+
+  it('appends Paused while paused', () => {
+    expect(formatPresenceLines({ title: 'Show', episodeNumber: 2, episodeLabel: 'S01E02', episodeTitle: 'Pilot', status: 'paused' }).state)
+      .toBe('S01E02 - Pilot · Paused');
+    expect(formatPresenceLines({ title: 'Show', episodeNumber: 2, status: 'paused' }).state).toBe('E02 · Paused');
+  });
+});
+
+describe('formatThemePresenceLines', () => {
+  it('uses the song title with artists and media title', () => {
+    expect(formatThemePresenceLines({
+      themeLabel: 'OP1', songTitle: 'Colors', artists: 'FLOW', mediaTitle: 'Code Geass', status: 'playing',
+    })).toEqual({ details: 'Listening Colors', state: 'FLOW · Code Geass' });
+  });
+
+  it('falls back to the OP/ED label and omits missing artists', () => {
+    expect(formatThemePresenceLines({
+      themeLabel: 'ED2', songTitle: null, artists: null, mediaTitle: 'Code Geass', status: 'playing',
+    })).toEqual({ details: 'Listening ED2', state: 'Code Geass' });
+  });
+
+  it('appends Paused while paused', () => {
+    expect(formatThemePresenceLines({
+      themeLabel: 'OP1', songTitle: ' Colors ', artists: 'FLOW', mediaTitle: 'Code Geass', status: 'paused',
+    }).state).toBe('FLOW · Code Geass · Paused');
   });
 });

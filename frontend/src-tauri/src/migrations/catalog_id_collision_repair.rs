@@ -47,19 +47,11 @@ mod tests {
         conn.query_row(sql, [], |r| r.get(0)).unwrap()
     }
 
-    fn count(conn: &Connection, sql: &str) -> i64 {
-        conn.query_row(sql, [], |r| r.get(0)).unwrap()
-    }
+    use crate::test_support::count;
 
     #[test]
     fn clears_leaked_country_and_resyncs_the_shadowed_work() {
-        let conn = Connection::open_in_memory().unwrap();
-        crate::db::ensure_base_schema(&conn).unwrap();
-        let index = super::super::MIGRATIONS
-            .iter()
-            .position(|(version, _)| *version == 94)
-            .unwrap();
-        super::super::run(&conn, &super::super::MIGRATIONS[..index]).unwrap();
+        let conn = super::super::db_before(94);
 
         conn.execute_batch(
             "INSERT INTO media_catalog (id, external_id, type, source, title_main, country_code) VALUES

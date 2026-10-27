@@ -480,15 +480,7 @@ pub async fn export_ui_theme_starter(app_handle: tauri::AppHandle) -> Result<Str
 mod tests {
     use super::*;
 
-    fn temp_root(tag: &str) -> PathBuf {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0);
-        let dir = std::env::temp_dir().join(format!("metadea-ui-themes-{tag}-{nanos}"));
-        std::fs::create_dir_all(&dir).expect("temp root");
-        dir
-    }
+    use crate::test_support::tempdir as temp_root;
 
     fn write_theme(root: &Path, id: &str, manifest: &str, css: Option<&str>) -> PathBuf {
         let dir = root.join(id);

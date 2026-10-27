@@ -350,9 +350,7 @@ pub async fn get_social_character_reactions(
 mod tests {
     use super::*;
 
-    fn db() -> crate::db::MetadeaDb {
-        crate::db::MetadeaDb::open_in_memory().unwrap()
-    }
+    use crate::test_support::db;
 
     fn ids(items: &[CharacterReactionItem]) -> Vec<&str> {
         items.iter().map(|i| i.external_id.as_str()).collect()

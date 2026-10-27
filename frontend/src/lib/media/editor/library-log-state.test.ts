@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { canRedoEntry, canUndoEntry, createEmptyVersionEntry, entryInit, entryReducer, type EntryState } from './library-log-state';
-import { UNDO_HISTORY_LIMIT } from '../../shared/state/undo-history';
 
 const ID = 'game:1';
 
@@ -69,10 +68,10 @@ describe('entryReducer undo/redo', () => {
     expect(entryReducer(state, { type: 'UNDO' }).logs[ID].notes).toBe('');
   });
 
-  it('is bounded and a later load starts a fresh history', () => {
-    let state = loaded();
-    for (let i = 0; i < UNDO_HISTORY_LIMIT + 3; i++) state = entryReducer(state, { type: 'UPDATE_LOG', updates: { progress: i } });
-    expect(state.history.past).toHaveLength(UNDO_HISTORY_LIMIT);
+  // The history bound itself is covered by undo-history.test.ts.
+  it('a later load starts a fresh history', () => {
+    const state = entryReducer(loaded(), { type: 'UPDATE_LOG', updates: { progress: 1 } });
+    expect(canUndoEntry(state)).toBe(true);
     const reloaded = entryReducer(state, { type: 'LOAD_LOG', id: 'game:2', entry: createEmptyVersionEntry('game:2') });
     expect(canUndoEntry(reloaded)).toBe(false);
     expect(canUndoEntry(entryReducer(state, { type: 'LOAD_HISTORY', history: {}, foundKey: null }))).toBe(false);

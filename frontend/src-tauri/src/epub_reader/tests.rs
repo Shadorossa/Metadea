@@ -15,12 +15,7 @@ impl Drop for TempBook {
     }
 }
 
-fn temp_dir(tag: &str) -> PathBuf {
-    let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-    let dir = std::env::temp_dir().join(format!("metadea-epub-test-{tag}-{}-{nanos}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
-}
+use crate::test_support::tempdir as temp_dir;
 
 fn write_zip(path: &Path, entries: &[(&str, &str)]) {
     let file = std::fs::File::create(path).unwrap();

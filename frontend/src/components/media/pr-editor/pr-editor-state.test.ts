@@ -5,7 +5,6 @@ import {
   originalBundledIds, originalEditableRelationTypes, originalRecommendationIds, prEditorReducer,
   type PrEditorDraft, type PrEditorState,
 } from './pr-editor-state';
-import { UNDO_HISTORY_LIMIT } from '../../../lib/shared/state/undo-history';
 import { buildPrEditorChangeSummary } from './pr-editor-change-summary';
 
 const ID = 'anime:1';
@@ -175,10 +174,10 @@ describe('prEditorReducer undo/redo', () => {
     expect(prEditorReducer(undone, { type: 'undo' }).draft.entry?.synopsis).toBe('Old synopsis');
   });
 
-  it('is bounded and load/reset/resync start a fresh history', () => {
-    let state = loaded();
-    for (let i = 0; i < UNDO_HISTORY_LIMIT + 5; i++) state = prEditorReducer(state, { type: 'edit', patch: { sagaName: `n${i}` } });
-    expect(state.history.past).toHaveLength(UNDO_HISTORY_LIMIT);
+  // The history bound itself is covered by undo-history.test.ts.
+  it('load/reset start a fresh history', () => {
+    const state = prEditorReducer(loaded(), { type: 'edit', patch: { sagaName: 'n' } });
+    expect(canUndo(state)).toBe(true);
     expect(canUndo(prEditorReducer(state, { type: 'reset' }))).toBe(false);
     expect(canUndo(prEditorReducer(state, { type: 'load', patch: { bundleChildren: [] } }))).toBe(false);
   });

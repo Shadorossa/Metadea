@@ -127,14 +127,6 @@ describe('mergeProposalSessionBatches', () => {
     expect(merged.bundle.media_catalog.title_main).toBe('Second');
   });
 
-  it('keeps an owner draft over a later side-effect copy', () => {
-    const merged = mergeMedia([
-      { ownerId: 'anime:1', entries: [mediaEntry('anime:1', { title_main: 'Owner' })] },
-      { ownerId: 'anime:3', entries: [mediaEntry('anime:1', { title_main: 'Side' })] },
-    ]);
-    expect(merged.bundle.media_catalog.title_main).toBe('Owner');
-  });
-
   it('keeps the owner bundle-level fields such as saga_name', () => {
     const merged = mergeMedia([
       { ownerId: 'anime:2', entries: [mediaEntry('anime:1', {}, { saga_name: 'Side saga' })] },

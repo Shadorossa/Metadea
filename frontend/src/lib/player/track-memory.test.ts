@@ -2,18 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   forgetTrackMemory, getTrackMemory, markManualCycle, pruneMemory, rememberTrack, takeManualCycle,
 } from './track-memory';
-
-function memoryStorage(): Storage {
-  const data = new Map<string, string>();
-  return {
-    get length() { return data.size; },
-    clear: () => data.clear(),
-    getItem: key => data.get(key) ?? null,
-    key: index => [...data.keys()][index] ?? null,
-    removeItem: key => { data.delete(key); },
-    setItem: (key, value) => { data.set(key, value); },
-  };
-}
+import { memoryStorage } from '../../../tests/support/memory-storage';
 
 describe('track memory', () => {
   beforeEach(() => {

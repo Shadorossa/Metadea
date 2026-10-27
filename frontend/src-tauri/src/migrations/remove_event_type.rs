@@ -19,21 +19,12 @@ pub(crate) fn migrate(tx: &Transaction) -> SqlResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use rusqlite::Connection;
 
-    fn count(conn: &Connection, sql: &str) -> i64 {
-        conn.query_row(sql, [], |r| r.get(0)).unwrap()
-    }
+    use crate::test_support::count;
 
     #[test]
     fn removes_event_tables_rows_and_key() {
-        let conn = Connection::open_in_memory().unwrap();
-        crate::db::ensure_base_schema(&conn).unwrap();
-        let index = super::super::MIGRATIONS
-            .iter()
-            .position(|(version, _)| *version == 91)
-            .unwrap();
-        super::super::run(&conn, &super::super::MIGRATIONS[..index]).unwrap();
+        let conn = super::super::db_before(91);
 
         conn.execute_batch(
             "INSERT INTO media_catalog (id, external_id, type, title_main) VALUES

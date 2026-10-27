@@ -2,15 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createSpoilerReveals, spoilerItemKey } from './spoiler-reveals';
 import { readSpoilerSettings, writeSpoilerSettings, DEFAULT_SPOILER_SETTINGS } from './spoiler-settings';
 import { STORAGE_KEYS } from '../storage/storage-keys';
-
-function memoryStorage(initial: Record<string, string> = {}) {
-  const data = new Map(Object.entries(initial));
-  return {
-    data,
-    getItem: (key: string) => data.get(key) ?? null,
-    setItem: (key: string, value: string) => { data.set(key, value); },
-  };
-}
+import { memoryStorage } from '../../../tests/support/memory-storage';
 
 describe('spoiler reveals', () => {
   it('remembers a single item only until a full page reload', () => {

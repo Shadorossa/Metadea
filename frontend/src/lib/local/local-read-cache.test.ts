@@ -18,26 +18,9 @@ const mocks = vi.hoisted(() => ({
   getCatalogEntry: vi.fn(),
 }));
 
-vi.mock('../tauri', () => ({
-  getMediaRelationsForEditor: mocks.getMediaRelationsForEditor,
-  getLibraryEntry: mocks.getLibraryEntry,
-  getEpisodeHistory: mocks.getEpisodeHistory,
-  getAnilistPreSequelChecked: mocks.getAnilistPreSequelChecked,
-  getCatalogEntryForEditor: mocks.getCatalogEntryForEditor,
-  getBaseEditionCandidatesForRedirect: mocks.getBaseEditionCandidatesForRedirect,
-  scanFolderContents: mocks.scanFolderContents,
-  findTaggedPath: mocks.findTaggedPath,
-  getCatalogEntriesFullByIds: mocks.getCatalogEntriesFullByIds,
-  igdbGetGameDetail: mocks.igdbGetGameDetail,
-  getMediaCompanies: mocks.getMediaCompanies,
-  readGameInfo: mocks.readGameInfo,
-  steamGetPlayerAchievements: mocks.steamGetPlayerAchievements,
-  steamGetCachedAchievements: mocks.steamGetCachedAchievements,
-  steamLang: () => 'english',
-  // lib/media/port-redirect's own default reads (unused here: the cache
-  // hands it the memoised readers).
-  getCatalogEntry: mocks.getCatalogEntry,
-}));
+// getCatalogEntry is lib/media/port-redirect's own default read (unused
+// here: the cache hands it the memoised readers).
+vi.mock('../tauri', () => ({ ...mocks, steamLang: () => 'english' }));
 vi.mock('../tauri/catalog', () => ({ getCatalogEntry: mocks.getCatalogEntry }));
 
 import {

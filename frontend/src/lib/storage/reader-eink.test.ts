@@ -2,11 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { einkStorageKey, readEinkPreferences, saveEinkPreferences, type EinkStorage } from './reader-eink';
 import { STORAGE_KEYS } from './storage-keys';
 import { DEFAULT_EINK_PREFERENCES } from '../reader/eink-mode';
-
-function memoryStorage(initial: Record<string, string> = {}): EinkStorage & { data: Record<string, string> } {
-  const data = { ...initial };
-  return { data, getItem: key => (key in data ? data[key] : null), setItem: (key, value) => { data[key] = value; } };
-}
+import { memoryStorage } from '../../../tests/support/memory-storage';
 
 describe('reader E-Ink preferences storage', () => {
   it('keys each reader type under STORAGE_KEYS.readerEink', () => {
@@ -35,6 +31,6 @@ describe('reader E-Ink preferences storage', () => {
   it('normalises what it writes', () => {
     const storage = memoryStorage();
     saveEinkPreferences('epub', { enabled: true, warmth: 9, brightness: -1, refreshFlash: false }, storage);
-    expect(JSON.parse(storage.data[einkStorageKey('epub')])).toEqual({ enabled: true, warmth: 1, brightness: 0.35, refreshFlash: false });
+    expect(JSON.parse(storage.data.get(einkStorageKey('epub'))!)).toEqual({ enabled: true, warmth: 1, brightness: 0.35, refreshFlash: false });
   });
 });
