@@ -6,12 +6,13 @@
 //
 // Search this file for "DROP COLUMN" to find every column this app has
 // ever actually removed (as opposed to just stopped reading/writing).
-use rusqlite::{Connection, OptionalExtension, Result as SqlResult, Transaction};
+use rusqlite::{Connection, Result as SqlResult, Transaction};
 
-use crate::db::{current_schema_version, mark_migration, merge_fragmented_sagas};
+use crate::db::{current_schema_version, mark_migration};
 mod aniskip;
 mod anime_filler;
 mod catalog_id_collision_repair;
+mod character_repairs;
 mod community_sync_cursor;
 mod company_cache;
 mod continue_watching;
@@ -21,8 +22,11 @@ mod jukebox;
 mod mal;
 mod plugins;
 mod reconsumption;
+mod relation_repairs;
 mod remove_event_type;
+mod saga_repairs;
 mod sakuga;
+mod schema_repairs;
 mod social_profile_parity;
 mod tier_list_board;
 mod yearly_bingo;
@@ -38,17 +42,35 @@ pub(crate) mod wallpaper_cache;
 type Migration = fn(&Transaction) -> SqlResult<()>;
 
 pub(crate) const MIGRATIONS: &[(i64, Migration)] = &[
-    (1, m1), (2, m2), (3, m3), (4, m4), (5, m5), (6, m6), (7, m7), (8, m8), (9, m9),
+    (1, m1), (2, m2), (3, m3), (4, m4),
+    (5, relation_repairs::dedupe_relations_per_pair),
+    (6, m6), (7, m7),
+    (8, relation_repairs::backfill_reciprocal_edges),
+    (9, relation_repairs::canonicalize_type_labels),
     (10, m10), (11, m11), (12, m12), (13, m13), (14, m14), (15, m15),
     // Migration 16 was reverted before release — see m17's comment.
-    (17, m17), (18, m18), (19, m19), (20, m20), (21, m21), (22, m22), (23, m23),
-    (24, m24), (25, m25), (26, m26), (27, m27), (28, m28), (29, m29), (30, m30),
-    (31, m31), (32, m32), (33, m33), (34, m34), (35, m35), (36, m36), (37, m37),
-    (38, m38), (39, m39), (40, m40), (41, m41), (42, m42), (43, m43), (44, m44),
-    (45, m45), (46, m46), (47, m47), (48, m48), (49, m49), (50, m50), (51, m51),
-    (52, m52), (53, m53), (54, m54), (55, m55), (56, m56), (57, m57), (58, m58),
-    (59, m59), (60, m60), (61, m61), (62, m62), (63, m63), (64, m64), (65, m65),
-    (66, m66), (67, m67), (68, m68), (69, m69),
+    (17, m17), (18, m18), (19, m19),
+    (20, relation_repairs::fix_inverted_adaptation_reciprocal),
+    (21, saga_repairs::drop_superseded_anchor_sagas),
+    (22, saga_repairs::merge_fragmented),
+    (23, m23), (24, m24), (25, m25), (26, m26),
+    (27, relation_repairs::fix_adaptation_reciprocal_to_source),
+    (28, m28), (29, m29), (30, m30), (31, m31), (32, m32),
+    (33, character_repairs::refile_light_novel_appearances),
+    (34, m34), (35, m35), (36, m36),
+    (37, schema_repairs::add_missing_custom_color),
+    (38, m38), (39, m39),
+    (40, character_repairs::unify_character_ids),
+    (41, m41), (42, m42), (43, m43), (44, m44), (45, m45), (46, m46), (47, m47),
+    (48, m48), (49, m49), (50, m50),
+    (51, character_repairs::unify_character_ids),
+    (52, m52), (53, m53), (54, m54),
+    (55, saga_repairs::rename_after_earliest_member),
+    (56, m56),
+    (57, schema_repairs::recreate_media_theme_with_slug),
+    (58, m58), (59, m59), (60, m60), (61, m61), (62, m62),
+    (63, saga_repairs::rename_after_earliest_member),
+    (64, m64), (65, m65), (66, m66), (67, m67), (68, m68), (69, m69),
     (70, aniskip::add_mal_id_and_aniskip_cache),
     (71, retro_achievements::migrate),
     (72, epub_reader::migrate),
@@ -78,6 +100,24 @@ pub(crate) const MIGRATIONS: &[(i64, Migration)] = &[
 
 pub(crate) fn run_migrations(conn: &Connection) -> SqlResult<()> {
     run(conn, MIGRATIONS)
+}
+
+// Test fixture for one migration: a database migrated up to (not
+// including) `version`, to seed the rows that version has to deal with.
+#[cfg(test)]
+fn db_before(version: i64) -> Connection {
+    let conn = Connection::open_in_memory().unwrap();
+    crate::db::ensure_base_schema(&conn).unwrap();
+    let index = MIGRATIONS.iter().position(|(v, _)| *v == version).unwrap();
+    run(&conn, &MIGRATIONS[..index]).unwrap();
+    conn
+}
+
+// Applies `version` alone on a db_before(version) database.
+#[cfg(test)]
+fn apply(conn: &Connection, version: i64) {
+    let index = MIGRATIONS.iter().position(|(v, _)| *v == version).unwrap();
+    run(conn, &MIGRATIONS[..=index]).unwrap();
 }
 
 fn run(conn: &Connection, migrations: &[(i64, Migration)]) -> SqlResult<()> {
@@ -151,34 +191,6 @@ fn m4(tx: &Transaction) -> SqlResult<()> {
     add_column(tx, "ALTER TABLE character_appearances ADD COLUMN character_name TEXT")
 }
 
-fn m5(tx: &Transaction) -> SqlResult<()> {
-    // media_relations used to key on (media, related, relation_type),
-    // which let the same target accumulate more than one row over time —
-    // most visibly, an old sync writing the raw display label as
-    // relation_type ("Expanded Edition") and a later one writing the
-    // canonical key ("EXPANDED_GAME") for the exact same pair, so the
-    // same related title rendered twice in a row's relations. Rebuild
-    // the table keyed on (media, related) only, keeping the
-    // most-recently-written row per pair (rowid DESC + INSERT OR IGNORE
-    // = first-seen-wins-per-key, so the newest survives).
-    tx.execute_batch(
-        "CREATE TABLE IF NOT EXISTS media_relations_v5 (
-            media_external_id         TEXT NOT NULL,
-            related_media_external_id TEXT NOT NULL,
-            relation_type             TEXT NOT NULL,
-            type_label                TEXT NOT NULL,
-            PRIMARY KEY (media_external_id, related_media_external_id)
-         );
-         INSERT OR IGNORE INTO media_relations_v5
-            (media_external_id, related_media_external_id, relation_type, type_label)
-         SELECT media_external_id, related_media_external_id, relation_type, type_label
-         FROM media_relations
-         ORDER BY rowid DESC;
-         DROP TABLE media_relations;
-         ALTER TABLE media_relations_v5 RENAME TO media_relations;"
-    )
-}
-
 fn m6(tx: &Transaction) -> SqlResult<()> {
     // Custom favorite images used to store an arbitrary remote image_url
     // read straight from the DB at render time — broken in release
@@ -217,56 +229,6 @@ fn m7(tx: &Transaction) -> SqlResult<()> {
          CREATE INDEX IF NOT EXISTS idx_episode_history_external_id
             ON episode_history(external_id);"
     )
-}
-
-fn m8(tx: &Transaction) -> SqlResult<()> {
-    // Backfill: media_relations rows saved before save_media_relations /
-    // import_proposal_bundle started writing the reciprocal edge (see
-    // reciprocal_relation() in media_catalog.rs) could be one-directional
-    // — a SEQUEL on one side with no matching PREQUEL on the other. The
-    // saga chain's recursive walk only follows a row's own
-    // media_external_id column forward, so a missing reciprocal edge
-    // silently truncated the chain right there. INSERT OR IGNORE so an
-    // already-curated (possibly different) classification on the other
-    // side is never overwritten — this only fills genuine gaps.
-    let pairs: &[(&str, &str, &str)] = &[
-        ("SEQUEL", "PREQUEL", "Prequel"),
-        ("PREQUEL", "SEQUEL", "Sequel"),
-        ("SOURCE", "ADAPTATION", "Adaptation"),
-        ("ADAPTATION", "SOURCE", "Source Material"),
-        ("EPISODE", "PART_OF", "Part of"),
-        ("UPDATE", "PART_OF", "Part of"),
-    ];
-    for (from_type, recip_type, recip_label) in pairs {
-        tx.execute(
-            "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
-             SELECT related_media_external_id, media_external_id, ?2, ?3
-             FROM media_relations WHERE relation_type = ?1",
-            rusqlite::params![from_type, recip_type, recip_label],
-        )?;
-    }
-    Ok(())
-}
-
-fn m9(tx: &Transaction) -> SqlResult<()> {
-    // Backfill: media_relations.type_label used to be written from
-    // whichever UI language the editor's app happened to be in (see
-    // PrEditorModal.tsx's now-removed `relationLabels` write path), so
-    // rows saved from a Spanish-language session hold Spanish text
-    // ("Secuela", "Precuela", ...) instead of the canonical English the
-    // shared community catalog expects. relation_type itself (the
-    // actual key everything else matches on) was never affected by that
-    // bug, so it's a reliable source to re-derive the correct label
-    // from — this just re-applies canonical_relation_label() to every
-    // row regardless of its current type_label, which is simpler and
-    // more robust than trying to detect "is this already English".
-    for (relation_type, label) in canonical_relation_labels() {
-        tx.execute(
-            "UPDATE media_relations SET type_label = ?2 WHERE relation_type = ?1 AND type_label != ?2",
-            rusqlite::params![relation_type, label],
-        )?;
-    }
-    Ok(())
 }
 
 fn m10(tx: &Transaction) -> SqlResult<()> {
@@ -375,56 +337,6 @@ fn m19(tx: &Transaction) -> SqlResult<()> {
     // at all — the fast path could never show it, only a live fetch
     // could, so it always flashed in after the rest of the page.
     add_column(tx, "ALTER TABLE media_catalog ADD COLUMN title_english TEXT")
-}
-
-fn m20(tx: &Transaction) -> SqlResult<()> {
-    // Fix inverted reciprocal relation for ADAPTATION (previously mapped to SOURCE,
-    // which erroneously marked anime adaptations as the "Source Material" of their original manga).
-    tx.execute(
-        "UPDATE media_relations
-         SET relation_type = 'ADAPTATION', type_label = 'Adaptation'
-         WHERE relation_type = 'SOURCE' AND (related_media_external_id LIKE 'anime:%' OR related_media_external_id LIKE 'movie:%' OR related_media_external_id LIKE 'series:%')",
-        [],
-    )?;
-    Ok(())
-}
-
-fn m21(tx: &Transaction) -> SqlResult<()> {
-    // save_cached_saga anchors a saga's id on its lexicographically-
-    // smallest member — adding an earlier-released member later shifts
-    // that anchor to a new id, but the *old* sagas row was never
-    // cleaned up, only ever left to linger as an apparent duplicate of
-    // the same saga (first surfaced by the admin panel's Sagas tab,
-    // which lists every sagas row unfiltered). A superseded row is
-    // identifiable without tracking history: its own id now shows up as
-    // a plain *member* of some other, current saga_id — a work is never
-    // legitimately both a saga's own anchor and another saga's member
-    // at once. ON DELETE CASCADE on saga_relations.saga_id handles the
-    // now-pointless relations rows that go with it.
-    tx.execute(
-        "DELETE FROM sagas WHERE id IN (
-            SELECT s.id FROM sagas s
-            WHERE EXISTS (
-                SELECT 1 FROM saga_relations sr
-                WHERE sr.media_external_id = s.id AND sr.saga_id != s.id
-            )
-         )",
-        [],
-    )?;
-    Ok(())
-}
-
-fn m22(tx: &Transaction) -> SqlResult<()> {
-    // Migration 21 only caught sagas whose own anchor shifted (the old
-    // anchor still shows up as a plain member of the live saga). It
-    // missed the more common fragmentation: the collaborative-catalog PR
-    // pipeline mis-anchoring *every* saga member as its own standalone
-    // single-member saga in the first place (see merge_fragmented_sagas'
-    // own doc comment for why) — visible as the same saga name appearing
-    // once per member instead of once total. Rebuilds sagas/
-    // saga_relations from the real PREQUEL/SEQUEL graph instead of
-    // trusting that bookkeeping.
-    merge_fragmented_sagas(tx)
 }
 
 fn m23(tx: &Transaction) -> SqlResult<()> {
@@ -536,29 +448,6 @@ fn m26(tx: &Transaction) -> SqlResult<()> {
     Ok(())
 }
 
-fn m27(tx: &Transaction) -> SqlResult<()> {
-    // reciprocal_relation() (media_catalog.rs) used to map ADAPTATION's
-    // reciprocal to ADAPTATION instead of SOURCE — so an anime whose
-    // manga source was only ever seen via that manga's own SOURCE
-    // relation reciprocating onto the anime (rather than the anime's
-    // own live AniList fetch, which correctly says SOURCE directly)
-    // got mislabeled "Adaptation" instead of "Source Material" on its
-    // own page. Mirrors migration 20's same corrective pattern for the
-    // opposite direction. AniList never tags an anime/movie/series'
-    // own relation to its manga/book source as ADAPTATION directly —
-    // only this buggy reciprocal insert could have produced that
-    // combination, so this is safe to correct unconditionally.
-    tx.execute(
-        "UPDATE media_relations
-         SET relation_type = 'SOURCE', type_label = 'Source Material'
-         WHERE relation_type = 'ADAPTATION'
-           AND (media_external_id LIKE 'anime:%' OR media_external_id LIKE 'movie:%' OR media_external_id LIKE 'series:%')
-           AND (related_media_external_id LIKE 'manga:%' OR related_media_external_id LIKE 'lnovel:%' OR related_media_external_id LIKE 'book:%')",
-        [],
-    )?;
-    Ok(())
-}
-
 fn m28(tx: &Transaction) -> SqlResult<()> {
     // The real column removal for developer_badge/publishers_csv — see
     // migration 26's comment. Same DROP COLUMN this app already relies
@@ -635,43 +524,6 @@ fn m32(tx: &Transaction) -> SqlResult<()> {
     drop_column(tx, "ALTER TABLE media_catalog DROP COLUMN sync_failed_count")
 }
 
-fn m33(tx: &Transaction) -> SqlResult<()> {
-    // One-time cleanup for character_appearances rows keyed "manga:<N>"
-    // that should have been "lnovel:<N>" — AniList's `type` field can't
-    // tell manga from light novel (both are type MANGA, only `format`
-    // distinguishes them), and earlier appearance-seeding code used
-    // `type` bare, filing every light-novel appearance under the wrong
-    // id. A manga:<N>/lnovel:<N> pair sharing the same numeric id can
-    // only be the same underlying AniList entry (AniList ids are unique
-    // regardless of type/format), so a lnovel:<N> catalog row already
-    // existing is solid proof the manga:<N> appearance is the stray one.
-    //
-    // Step 1: rename in place wherever nothing already occupies the
-    // correct id for that character (silently skipped by OR IGNORE
-    // when it does, handled by step 2 instead).
-    tx.execute(
-        "UPDATE OR IGNORE character_appearances
-         SET media_external_id = 'lnovel:' || substr(media_external_id, 7)
-         WHERE media_external_id LIKE 'manga:%'
-           AND EXISTS (SELECT 1 FROM media_catalog WHERE external_id = 'lnovel:' || substr(character_appearances.media_external_id, 7))",
-        [],
-    )?;
-    // Step 2: drop whatever's left under the wrong id once its correct
-    // sibling exists for that same character (covers both the rename's
-    // IGNORE'd conflicts and any pre-existing duplicate).
-    tx.execute(
-        "DELETE FROM character_appearances
-         WHERE media_external_id LIKE 'manga:%'
-           AND EXISTS (
-               SELECT 1 FROM character_appearances b
-               WHERE b.character_external_id = character_appearances.character_external_id
-                 AND b.media_external_id = 'lnovel:' || substr(character_appearances.media_external_id, 7)
-           )",
-        [],
-    )?;
-    Ok(())
-}
-
 fn m34(tx: &Transaction) -> SqlResult<()> {
     // A media's character grid used to have no stable order at all —
     // get_media_characters had no ORDER BY, so SQLite returned rows in
@@ -717,21 +569,6 @@ fn m36(tx: &Transaction) -> SqlResult<()> {
     add_column(tx, "ALTER TABLE user_profile ADD COLUMN server_user_id TEXT")
 }
 
-fn m37(tx: &Transaction) -> SqlResult<()> {
-    // custom_color has been part of the base (fresh-install) schema for
-    // a long time, but never had a matching migration here — any
-    // database created before it was added is missing this column
-    // entirely. get_user_info's SELECT names it explicitly, so on those
-    // databases *every* call failed outright with "no such column:
-    // custom_color" — silently swallowed by the frontend's tauriTry
-    // fallback into `{}`, making bio/display_name/font/theme/
-    // rating_system all silently read back as their hardcoded JS
-    // defaults on every load, even though save_user_info was writing
-    // the real values correctly the whole time. A fresh database already
-    // has this column, so "duplicate column" here is expected and harmless.
-    add_column(tx, "ALTER TABLE user_profile ADD COLUMN custom_color TEXT NOT NULL DEFAULT '#c084fc'")
-}
-
 fn m38(tx: &Transaction) -> SqlResult<()> {
     // social_user_list shipped in v0.3.81 without status/progress —
     // needed so a visited profile's Overview tab can compute the same
@@ -750,14 +587,6 @@ fn m39(tx: &Transaction) -> SqlResult<()> {
     // its own row here; this is one more field on each of those rows,
     // not a new dimension of versioning).
     add_column(tx, "ALTER TABLE user_library ADD COLUMN rating_2 REAL")
-}
-
-fn m40(tx: &Transaction) -> SqlResult<()> {
-    // character:<N> id scheme unification (AniList/Comic Vine/TMDB) —
-    // see fix_character_ids' own doc comment in vestigial_cleanup.rs,
-    // which is where this temporary fixup actually lives.
-    crate::vestigial_cleanup::fix_character_ids(tx);
-    Ok(())
 }
 
 fn m41(tx: &Transaction) -> SqlResult<()> {
@@ -912,11 +741,6 @@ fn m50(tx: &Transaction) -> SqlResult<()> {
     add_column(tx, "ALTER TABLE user_lists ADD COLUMN is_ranked INTEGER NOT NULL DEFAULT 0")
 }
 
-fn m51(tx: &Transaction) -> SqlResult<()> {
-    crate::vestigial_cleanup::fix_character_ids(tx);
-    Ok(())
-}
-
 fn m52(tx: &Transaction) -> SqlResult<()> {
     // Where the in-app comic/manga/book reader last left off inside one
     // archive/document — same "resume position" idea as
@@ -979,80 +803,6 @@ fn m54(tx: &Transaction) -> SqlResult<()> {
     Ok(())
 }
 
-// (title_main, release_year, release_month, release_day) of one saga member.
-type SagaMemberRow = (String, Option<i64>, Option<i64>, Option<i64>);
-
-// Shared body of migrations 55 and 63: renames every saga whose name is
-// one of its own members' titles (the auto-fallback signal, never a
-// curator-typed name) to its earliest-released member's title.
-fn rename_sagas_after_earliest_member(tx: &Transaction) -> SqlResult<()> {
-    let saga_ids: Vec<String> = {
-        let mut stmt = tx.prepare("SELECT id FROM sagas")?;
-        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
-        rows.filter_map(|r| r.ok()).collect()
-    };
-
-    for saga_id in saga_ids {
-        let members: Vec<SagaMemberRow> = {
-            let mut stmt = tx.prepare(
-                "SELECT mc.title_main, mc.release_year, mc.release_month, mc.release_day
-                 FROM saga_relations sr JOIN media_catalog mc ON mc.external_id = sr.media_external_id
-                 WHERE sr.saga_id = ?1",
-            )?;
-            let rows = stmt.query_map([&saga_id], |r| {
-                Ok((r.get::<_, String>(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
-            })?;
-            rows.filter_map(|r| r.ok()).collect()
-        };
-        if members.is_empty() { continue; }
-
-        let current_name: String = match tx.query_row(
-            "SELECT name FROM sagas WHERE id = ?1", [&saga_id], |r| r.get(0),
-        ).optional()? {
-            Some(n) => n,
-            None => continue,
-        };
-        if !members.iter().any(|(title, ..)| *title == current_name) {
-            continue; // curator-typed name — don't touch
-        }
-
-        // Same "unknown sorts last" sentinel as sagas.rs's own
-        // release_date_key (9999/12/31) — kept as plain numbers here
-        // since this runs once, pre-refactor, against raw SQL rows
-        // rather than a SagaEntry.
-        let earliest = members.iter().min_by_key(|(_, y, m, d)| {
-            (y.unwrap_or(9999), m.unwrap_or(12), d.unwrap_or(31))
-        });
-        if let Some((earliest_title, ..)) = earliest {
-            if *earliest_title != current_name {
-                tx.execute(
-                    "UPDATE sagas SET name = ?1 WHERE id = ?2",
-                    rusqlite::params![earliest_title, &saga_id],
-                )?;
-            }
-        }
-    }
-    Ok(())
-}
-
-fn m55(tx: &Transaction) -> SqlResult<()> {
-    // save_cached_saga's no-explicit-name fallback used to reuse the
-    // anchor entry's own title — the anchor being whichever member's
-    // external_id sorts smallest as plain TEXT (a stable key for the
-    // `sagas` row, unrelated to release order: AniList ids aren't
-    // zero-padded, so e.g. "anime:100784" sorts before "anime:918" as a
-    // string even though it's a 2018 entry and 918 is the 2006
-    // original). A saga several members deep could end up permanently
-    // named after a late sequel instead of its first work. Re-derive
-    // every saga currently named after ANY one of its own members'
-    // title — the signal that the name was this auto-fallback, never
-    // something a curator actually typed (nobody hand-types a saga name
-    // that happens to exactly match one member's own title) — to
-    // whichever member has the earliest release date instead. Curator-
-    // typed names (not matching any member's title) are left untouched.
-    rename_sagas_after_earliest_member(tx)
-}
-
 fn m56(tx: &Transaction) -> SqlResult<()> {
     // Openings/endings from animethemes.moe (the "Temas" tab on an
     // anime's media page) — cached locally after the first fetch, same
@@ -1068,32 +818,6 @@ fn m56(tx: &Transaction) -> SqlResult<()> {
     // keys on instead.
     tx.execute_batch(
         "CREATE TABLE IF NOT EXISTS media_theme (
-            external_id  TEXT NOT NULL,
-            slug         TEXT NOT NULL,
-            theme_type   TEXT NOT NULL,
-            sequence     INTEGER NOT NULL,
-            song_title   TEXT,
-            artists      TEXT,
-            episodes     TEXT,
-            video_url    TEXT,
-            PRIMARY KEY (external_id, slug)
-         );",
-    )
-}
-
-fn m57(tx: &Transaction) -> SqlResult<()> {
-    // Migration 56 above was edited in place (to switch the primary key
-    // from (external_id, theme_type, sequence) to (external_id, slug))
-    // after some installs had already run it — CREATE TABLE IF NOT
-    // EXISTS is a no-op against a table that already exists with the
-    // OLD (slug-less) schema, so those installs got stuck on it,
-    // failing every save with "no column named slug". Pure cache data
-    // (fully re-fetched from animethemes.moe on the next visit to any
-    // anime's "Temas" tab, same as media_episode), so dropping and
-    // recreating loses nothing that matters.
-    tx.execute_batch(
-        "DROP TABLE IF EXISTS media_theme;
-         CREATE TABLE media_theme (
             external_id  TEXT NOT NULL,
             slug         TEXT NOT NULL,
             theme_type   TEXT NOT NULL,
@@ -1152,12 +876,6 @@ fn m61(tx: &Transaction) -> SqlResult<()> {
 
 fn m62(tx: &Transaction) -> SqlResult<()> {
     add_column(tx, "ALTER TABLE media_theme ADD COLUMN versions TEXT")
-}
-
-fn m63(tx: &Transaction) -> SqlResult<()> {
-    // Fix any saga whose name matches one of its member entries' title,
-    // ensuring it uses the chronologically earliest member's title.
-    rename_sagas_after_earliest_member(tx)
 }
 
 fn m64(tx: &Transaction) -> SqlResult<()> {
@@ -1289,40 +1007,6 @@ fn m69(tx: &Transaction) -> SqlResult<()> {
             undone_at  TEXT
         );",
     )
-}
-
-// Canonical (always-English) relation_type -> type_label pairs — mirrors
-// frontend/src/i18n/en.ts's `media.relations` table plus the few keys
-// (EPISODE/UPDATE/PART_OF/SOURCE) that are only ever written as hardcoded
-// English literals in the frontend rather than through that i18n table.
-// Kept here (not shared with media_catalog.rs's reciprocal_relation, which
-// only needs a handful of these) since this is a one-off backfill list, not
-// a piece of ongoing relation-writing logic.
-fn canonical_relation_labels() -> &'static [(&'static str, &'static str)] {
-    &[
-        ("SEQUEL", "Sequel"), ("PREQUEL", "Prequel"), ("SIDE_STORY", "Side story"),
-        ("ALTERNATIVE", "Alternative"), ("ADAPTATION", "Adaptation"), ("PARENT", "Parent Story"),
-        ("BASE_EDITION", "Base Edition"),
-        ("SUMMARY", "Summary"), ("SPIN_OFF", "Spin-off"), ("OTHER", "Other"),
-        ("CHARACTER", "Character"), ("CONTAINS", "Contains"), ("RECOMMENDATION", "Recommended"),
-        ("EDITIONS", "Editions"),
-        ("REL_ADAPTATION", "Adaptation"),
-        ("REL_SOURCE", "Source Material"),
-        ("REL_ALTERNATIVE", "Alternative Version"),
-        ("REMASTER", "Remaster"),
-        ("REMAKE", "Remake"),
-        ("EXPANDED_GAME", "Expanded Edition"),
-        ("REL_UPDATE", "Update"),
-        ("DLC", "DLC"),
-        ("EXPANSION", "Content Expansion"),
-        ("STANDALONE", "Standalone Expansion"),
-        ("FORK", "Fork"),
-        ("SEASON", "Season"),
-        ("SOURCE", "Source Material"),
-        ("EPISODE", "Episode"),
-        ("UPDATE", "Update"),
-        ("PART_OF", "Part of"),
-    ]
 }
 
 #[cfg(test)]
