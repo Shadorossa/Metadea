@@ -91,6 +91,37 @@ const { t } = Astro.props;
 
     <section class="settings-connections-group">
       <div class="settings-connections-group-header">
+        <h3 class="settings-connections-group-title" data-i18n="settings.connections_group_games">{t.settings.connections_group_games}</h3>
+        <span class="settings-connections-group-divider" aria-hidden="true">|</span>
+        <span class="settings-connections-group-services">Backloggd</span>
+      </div>
+      <div class="settings-connections-row">
+        <!-- Backloggd import: the CSV the Toolkittd extension exports (see mount/backloggd.ts) -->
+        <div class="settings-auth-block">
+          <div class="settings-auth-info">
+            <div class="settings-auth-text">
+              <div class="settings-auth-name-row">
+                <span class="settings-auth-name">Backloggd</span>
+              </div>
+              <span class="settings-auth-status" data-i18n="backloggd.import_hint">{t.backloggd.import_hint}</span>
+              <button class="settings-auth-link" id="backloggd-extension-btn" type="button" data-i18n="backloggd.get_extension"
+                >{t.backloggd.get_extension}</button
+              >
+            </div>
+          </div>
+          <div class="settings-auth-actions">
+            <button class="btn btn--sm btn--secondary" id="backloggd-import-btn" type="button">
+              <Fragment set:html={ICON_IMPORT_DOWNLOAD} />
+              <span data-i18n="backloggd.import_btn">{t.backloggd.import_btn}</span>
+            </button>
+            <input type="file" id="backloggd-import-file" accept=".csv,text/csv" hidden />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-connections-group">
+      <div class="settings-connections-group-header">
         <h3 class="settings-connections-group-title" data-i18n="settings.connections_group_visual_novels">{t.settings.connections_group_visual_novels}</h3>
         <span class="settings-connections-group-divider" aria-hidden="true">|</span>
         <span class="settings-connections-group-services">VNDB</span>

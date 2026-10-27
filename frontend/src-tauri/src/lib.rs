@@ -246,6 +246,7 @@ pub fn run() {
             igdb::igdb_get_relation_graph,
             igdb::igdb_get_cover_by_steam_id,
             igdb::igdb_search_candidates,
+            igdb::igdb_games_by_slugs,
             igdb::igdb_force_by_igdb_id,
             igdb::read_metadata_index,
             igdb::read_game_info,

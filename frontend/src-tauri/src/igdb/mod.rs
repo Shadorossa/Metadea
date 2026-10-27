@@ -11,6 +11,7 @@ mod detail;
 mod images;
 mod mapping;
 mod search;
+mod slugs;
 
 pub use batch::*;
 pub use cache::*;
@@ -20,6 +21,7 @@ pub use detail::*;
 pub use images::*;
 pub(crate) use mapping::*;
 pub use search::*;
+pub use slugs::*;
 
 // -- Env config -----------------------------------------------------------
 // Moved to igdb_env.rs; read_env_config re-exported so comicvine.rs's

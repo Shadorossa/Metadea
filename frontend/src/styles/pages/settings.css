@@ -1642,6 +1642,24 @@
   margin-right: 4px;
 }
 
+.settings-auth-actions .btn {
+  white-space: nowrap;
+}
+
+/* A text-only action under an auth block's status line (Backloggd's
+   "Get Toolkittd"), so the block keeps a single button row. */
+.settings-auth-link {
+  padding: 0;
+  margin-top: 0.15rem;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .settings-auth-status--mono {
   font-family: monospace;
 }

@@ -171,6 +171,23 @@ export async function igdbSearchCandidates(gameName: string, romPlatform?: strin
   return tauriCmd<IgdbCandidate[]>('igdb_search_candidates', [], { gameName, romPlatform: romPlatform ?? null });
 }
 
+/** IGDB game behind a URL slug (igdb/slugs.rs); unknown slugs are absent. */
+export interface IgdbSlugMatch {
+  slug: string;
+  id: number;
+  name: string;
+  cover_url: string | null;
+  release_year: number | null;
+  /** Filed as `vnovel:` rather than `game:`. */
+  is_vn: boolean;
+}
+
+/** Rejects with an E_IGDB_* code (missing keys, auth, network). */
+export async function igdbGamesBySlugs(slugs: string[]): Promise<IgdbSlugMatch[]> {
+  if (slugs.length === 0) return [];
+  return invoke<IgdbSlugMatch[]>('igdb_games_by_slugs', { slugs });
+}
+
 export async function igdbForceByIgdbId(appId: string, gameName: string, igdbId: number): Promise<string> {
   return tauriCmd<string>('igdb_force_by_igdb_id', '', { appId, gameName, igdbId });
 }
