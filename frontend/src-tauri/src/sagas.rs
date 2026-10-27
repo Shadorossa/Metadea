@@ -207,10 +207,12 @@ mod assign_saga_order_indices_tests {
         pairs.iter().map(|(k, v)| (k.to_string(), *v)).collect()
     }
 
+    type Indices<'a> = &'a [(&'a str, f64)];
+
     // (chain, stored order_index values, expected full result)
     #[test]
     fn assigns_order_indices() {
-        let cases: &[(&[&str], &[(&str, f64)], &[(&str, f64)])] = &[
+        let cases: &[(&[&str], Indices, Indices)] = &[
             // Nothing anchored: renumber from 100.
             (&["a", "b", "c"], &[], &[("a", 100.0), ("b", 101.0), ("c", 102.0)]),
             (&[], &[("a", 1.0)], &[]),
