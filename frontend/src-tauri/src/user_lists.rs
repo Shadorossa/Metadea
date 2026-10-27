@@ -325,6 +325,24 @@ pub async fn get_list_items(
     Ok(items)
 }
 
+// `<username>_<n>` with the next free n. SQLite's SUBSTR/LENGTH count
+// characters, so the prefix length is in characters too (a byte length
+// made every name with an accent, e.g. "José", reuse `_1` and fail the
+// PRIMARY KEY); the prefix is compared exactly rather than with LIKE, where
+// `_` and `%` in a username are wildcards.
+fn next_list_key(conn: &rusqlite::Connection, username: &str) -> Result<String, String> {
+    let prefix = format!("{}_", username.to_lowercase());
+    let max_n: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(CAST(SUBSTR(key, ?1) AS INTEGER)), 0)
+             FROM user_lists WHERE SUBSTR(key, 1, ?2) = ?3 AND is_fav = 0",
+            rusqlite::params![prefix.chars().count() as i64 + 1, prefix.chars().count() as i64, prefix],
+            |r| r.get(0),
+        )
+        .str_err()?;
+    Ok(format!("{prefix}{}", max_n + 1))
+}
+
 #[tauri::command]
 pub async fn create_user_list(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -335,19 +353,7 @@ pub async fn create_user_list(
 ) -> Result<String, String> {
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
-    let prefix = format!("{}_", username.to_lowercase());
-    let prefix_like = format!("{}%", prefix);
-
-    let max_n: i64 = conn
-        .query_row(
-            "SELECT COALESCE(MAX(CAST(SUBSTR(key, ?1) AS INTEGER)), 0)
-             FROM user_lists WHERE key LIKE ?2 AND is_fav = 0",
-            rusqlite::params![prefix.len() as i64 + 1, prefix_like],
-            |r| r.get(0),
-        )
-        .unwrap_or(0);
-
-    let key = format!("{}{}", prefix, max_n + 1);
+    let key = next_list_key(&conn, &username)?;
     let lt = list_type.unwrap_or_else(|| "media".to_string());
 
     conn.execute(
@@ -458,4 +464,30 @@ pub async fn reorder_list_items(
     }
     tx.commit().str_err()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod list_key_tests {
+    use super::next_list_key;
+
+    #[test]
+    fn numbers_keys_per_user_with_accents_and_wildcard_characters() {
+        let db = crate::test_support::db();
+        let conn = db.conn.lock().unwrap();
+        let add = |key: &str| {
+            conn.execute(
+                "INSERT INTO user_lists (key, name, description, is_fav, is_private, list_type, created_at, updated_at)
+                 VALUES (?1, 'n', '', 0, 0, 'media', 't', 't')",
+                [key],
+            )
+            .unwrap();
+        };
+        assert_eq!(next_list_key(&conn, "José").unwrap(), "josé_1");
+        add("josé_1");
+        assert_eq!(next_list_key(&conn, "José").unwrap(), "josé_2");
+        // `_` in a username is not a LIKE wildcard: a_b's lists don't count for axb.
+        add("a_b_7");
+        assert_eq!(next_list_key(&conn, "axb").unwrap(), "axb_1");
+        assert_eq!(next_list_key(&conn, "a_b").unwrap(), "a_b_8");
+    }
 }

@@ -151,15 +151,18 @@ pub(crate) fn apply_reconsumption_transition(
 }
 
 // A `complete` row in user_activity for the completion that just happened,
-// dated today — the first run's finish date stays on the row and on its own
-// occurrence-1 event (frontend/src/lib/profile/journey.ts writes that one).
+// dated today in the user's local timezone (the `now` timestamp is UTC, and
+// its first 10 characters dated anything finished after local midnight east
+// of UTC to the day before) — the first run's finish date stays on the row
+// and on its own occurrence-1 event (frontend/src/lib/profile/journey.ts
+// writes that one).
 pub(crate) fn log_completion_event(
     conn: &rusqlite::Connection,
     entry: &LibraryEntry,
     occurrence: i64,
     now: &str,
 ) -> Result<(), String> {
-    let date = now.get(..10).unwrap_or(now);
+    let date = chrono::Local::now().format("%Y-%m-%d").to_string();
     conn.execute(
         "INSERT INTO user_activity (id, date, event_type, external_id, media_type, timestamp, occurrence)
          VALUES (?1, ?2, 'complete', ?3, ?4, ?5, ?6)",
@@ -537,11 +540,21 @@ pub async fn write_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>
     let map: std::collections::HashMap<String, Vec<String>> = serde_json::from_str(&content).str_err()?;
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
-    // `content` is always the complete map (read via read_monthly_history), so a
-    // month absent here means "cleared" — wipe the whole table before rewriting,
-    // not just the months that still have entries, or removals never persist.
-    tx.execute("DELETE FROM monthly_history", []).str_err()?;
-    for (month, ids) in &map {
+    store_monthly_history(&tx, &map)?;
+    tx.commit().str_err()
+}
+
+// `map` is always the complete map read_monthly_history returned, so a
+// month absent here means "cleared" — every row that read could return is
+// wiped before rewriting. Rows of blocked works are not in that read (it
+// filters blocked_media_catalog), so they are kept rather than deleted:
+// blocking a work hides its history, it must not erase it.
+fn store_monthly_history(tx: &rusqlite::Transaction, map: &std::collections::HashMap<String, Vec<String>>) -> Result<(), String> {
+    tx.execute(
+        "DELETE FROM monthly_history WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)",
+        [],
+    ).str_err()?;
+    for (month, ids) in map {
         for (pos, id) in ids.iter().enumerate() {
             tx.execute(
                 "INSERT INTO monthly_history (month, external_id, position) VALUES (?1, ?2, ?3)",
@@ -549,7 +562,7 @@ pub async fn write_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>
             ).str_err()?;
         }
     }
-    tx.commit().str_err()
+    Ok(())
 }
 
 
@@ -655,6 +668,41 @@ pub(crate) fn load_user_journey(conn: &rusqlite::Connection) -> Result<Vec<Journ
 mod typed_read_tests {
     use super::*;
 
+    // An editor save rewrites the journey/history it read, which never
+    // includes blocked works: their rows must survive the rewrite.
+    #[test]
+    fn rewriting_journey_and_history_keeps_blocked_works_rows() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let mut conn = db.conn.lock().unwrap();
+        conn.execute_batch(
+            "INSERT INTO media_catalog (id, external_id, type, title_main, blocked_at) VALUES
+                ('1', 'anime:1', 'anime', 'Visible', NULL), ('2', 'anime:2', 'anime', 'Blocked', '2026-01-01');
+             INSERT INTO user_activity (date, event_type, external_id, timestamp) VALUES
+                ('2024-01-01', 'complete', 'anime:1', 't'), ('2024-01-02', 'complete', 'anime:2', 't');
+             INSERT INTO monthly_history (month, external_id, position) VALUES ('2024-01', 'anime:1', 0), ('2024-01', 'anime:2', 1);",
+        ).unwrap();
+
+        let tx = conn.transaction().unwrap();
+        store_user_journey(&tx, &[serde_json::json!({ "date": "2024-03-03", "events": [
+            { "externalId": "anime:1", "type": "start", "timestamp": "t" },
+        ]})]).unwrap();
+        store_monthly_history(&tx, &std::collections::HashMap::from([("2024-03".to_string(), vec!["anime:1".to_string()])])).unwrap();
+        tx.commit().unwrap();
+
+        let rows = |sql: &str| -> Vec<String> {
+            let mut stmt = conn.prepare(sql).unwrap();
+            stmt.query_map([], |r| r.get(0)).unwrap().map(Result::unwrap).collect()
+        };
+        assert_eq!(rows("SELECT external_id || ' ' || event_type || ' ' || date FROM user_activity ORDER BY 1"), [
+            "anime:1 start 2024-03-03",
+            "anime:2 complete 2024-01-02",
+        ]);
+        assert_eq!(rows("SELECT external_id || ' ' || month FROM monthly_history ORDER BY 1"), [
+            "anime:1 2024-03",
+            "anime:2 2024-01",
+        ]);
+    }
+
     #[test]
     fn typed_journey_serializes_to_the_same_shape_as_the_string_command() {
         let db = crate::db::MetadeaDb::open_in_memory().unwrap();
@@ -717,14 +765,22 @@ pub async fn write_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>, c
     let days: Vec<serde_json::Value> = serde_json::from_str(&content).str_err()?;
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
-    // Full replace — journey.ts always writes the complete array. Wrapped in
-    // a transaction (same pattern as write_monthly_history above) so the
-    // DELETE and every re-INSERT commit together — without this, an
-    // interruption (crash, power loss) between the DELETE and the loop
-    // finishing used to leave user_activity empty except for whatever had
-    // already been reinserted, permanently losing the rest of the journey.
-    tx.execute("DELETE FROM user_activity", []).str_err()?;
-    for day in &days {
+    store_user_journey(&tx, &days)?;
+    tx.commit().str_err()
+}
+
+// Full replace — journey.ts always writes the complete array. Run inside one
+// transaction (see write_user_journey) so the DELETE and every re-INSERT
+// commit together; an interruption between them used to lose the rest of
+// the journey. Like store_monthly_history, events of blocked works are kept:
+// read_user_journey never returned them, so their absence here is not a
+// deletion.
+fn store_user_journey(tx: &rusqlite::Transaction, days: &[serde_json::Value]) -> Result<(), String> {
+    tx.execute(
+        "DELETE FROM user_activity WHERE external_id NOT IN (SELECT external_id FROM blocked_media_catalog)",
+        [],
+    ).str_err()?;
+    for day in days {
         let date = day.get("date").and_then(|x| x.as_str()).unwrap_or("");
         if let Some(events) = day.get("events").and_then(|x| x.as_array()) {
             for event in events {
@@ -744,5 +800,5 @@ pub async fn write_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>, c
             }
         }
     }
-    tx.commit().str_err()
+    Ok(())
 }

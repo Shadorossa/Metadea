@@ -662,7 +662,7 @@ fn load_active_in(conn: &Connection) -> rusqlite::Result<Vec<ActiveSession>> {
 }
 
 /// Closes a session in one transaction: drops its persisted row, logs it
-/// and adds its minutes to the library entry (creating a game / in_progress
+/// and adds its minutes to the library entry (creating a game / playing
 /// entry when missing). Sessions shorter than 15 s, never started, or with
 /// no library id are dropped without a trace.
 pub(crate) fn record_session_end_in(conn: &mut Connection, session: &ActiveSession, ended_unix: i64) -> Result<SessionOutcome, String> {
@@ -729,14 +729,18 @@ fn add_playtime_minutes_in(conn: &Connection, external_id: &str, minutes: i64) -
         }
         None => {
             let total = minutes as f64;
+            // 'playing' is the in-progress status for games (media-types.ts
+            // IN_PROGRESS_STATUSES); this used to write 'in_progress', which
+            // no list, stat or dropdown recognises (migration 97 repairs it).
+            let kind = if external_id.starts_with("vnovel:") { "vnovel" } else { "game" };
             conn.execute(
                 "INSERT INTO user_library (
                     id, user_id, external_id, type, status, progress, progress_2, minutes_spent,
                     is_favorite, is_platinum, added_at, updated_at, started_at
-                ) VALUES (?1, 'local', ?2, 'game', 'in_progress', ?3, 0, ?4, 0, 0, ?5, ?5, ?6)",
+                ) VALUES (?1, 'local', ?2, ?7, 'playing', ?3, 0, ?4, 0, 0, ?5, ?5, ?6)",
                 rusqlite::params![
                     crate::db::generate_id(), external_id, progress_hours(total), total, now_text,
-                    now.format("%Y-%m-%d").to_string(),
+                    now.format("%Y-%m-%d").to_string(), kind,
                 ],
             )
             .str_err()?;
@@ -840,7 +844,7 @@ mod tests {
         let outcome = record_session_end_in(&mut conn, &s, 1_000 + 5_400).unwrap();
         assert_eq!(outcome, SessionOutcome { seconds: 5_400, minutes_added: 90, recorded: true });
         let (minutes, progress, kind, status) = library_row(&conn, "igdb:1").unwrap();
-        assert_eq!((minutes, progress, kind.as_str(), status.as_str()), (90.0, 1.5, "game", "in_progress"));
+        assert_eq!((minutes, progress, kind.as_str(), status.as_str()), (90.0, 1.5, "game", "playing"));
         assert_eq!(log_count(&conn, "igdb:1"), 1);
         assert!(load_active_in(&conn).unwrap().is_empty());
     }

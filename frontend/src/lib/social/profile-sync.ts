@@ -50,7 +50,7 @@ function recordAttempt(record: SyncAttemptRecord): void {
 // feed just needs "what happened, when", not the day-bucket structure the
 // local Profile page's calendar view uses it for.
 async function compileActivity(): Promise<{ activity: unknown[]; journey: JourneyPayloadEvent[] }> {
-  const journey = await readUserJourneyTyped().catch(() => []);
+  const journey = await readUserJourneyTyped();
   const flat = journey.flatMap(day =>
     day.events
       .filter(event => event.type === 'complete')
@@ -65,7 +65,7 @@ async function compileActivity(): Promise<{ activity: unknown[]; journey: Journe
 // The whole library (the Worker keeps it as this device's snapshot) with
 // real time spent and re-runs — see buildLibraryPayload.
 async function compileLibrary(): Promise<LibraryPayloadItem[]> {
-  const entries = await getAllLibraryEntries().catch(() => []);
+  const entries = await getAllLibraryEntries();
   return buildLibraryPayload(entries, isDualRatingEnabled());
 }
 
@@ -131,7 +131,7 @@ async function compileWebProfile(
 // the user-created ones, since those are what someone else's profile has
 // any use rendering.
 async function compileLists(): Promise<unknown[]> {
-  const lists = await getAllUserLists().catch(() => []);
+  const lists = await getAllUserLists();
   // A list marked private (Editar > Privada) never leaves this device —
   // excluded here rather than relying on the server to filter it, so it
   // can't end up in the request body at all.
@@ -141,7 +141,7 @@ async function compileLists(): Promise<unknown[]> {
     name: l.name,
     description: l.description,
     is_fav: false,
-    items: await getListItems(l.key).catch(() => []),
+    items: await getListItems(l.key),
   })));
 }
 
@@ -181,12 +181,16 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
   }
 
   try {
+    // Library, journey, favourites, monthly history and lists are sent as
+    // this device's full snapshot, so a failed read must abort the sync
+    // (the catch below records it) — sending [] in their place used to
+    // blank the public profile until the next sync.
     const [info, { activity, journey }, library, favorites, monthlyHistory, lists, customAvatar, customBanner, shareAvatar, characterReactions, bingo] = await Promise.all([
       getUserInfo().catch(() => ({} as Record<string, unknown>)),
       compileActivity(),
       compileLibrary(),
-      readUserFavoritesTyped().catch(() => ({})),
-      readMonthlyHistoryTyped().catch(() => ({})),
+      readUserFavoritesTyped(),
+      readMonthlyHistoryTyped(),
       compileLists(),
       getImage(STORAGE_KEYS.profileAvatarCustom).catch(() => null),
       getImage(STORAGE_KEYS.profileBannerCustom).catch(() => null),

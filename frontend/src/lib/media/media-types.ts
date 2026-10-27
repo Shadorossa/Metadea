@@ -109,6 +109,20 @@ export function isReadingType(type: string | null | undefined): boolean {
   return type != null && READING_TYPES.has(type);
 }
 
+/** The in-progress status word for a work of `type`. */
+export function inProgressStatusFor(type: string | null | undefined): (typeof IN_PROGRESS_STATUSES)[number] {
+  if (type === 'game' || type === 'vnovel') return 'playing';
+  return isReadingType(type) ? 'reading' : 'watching';
+}
+
+/** An AniList list status as the app status of a work of `type`: CURRENT
+ *  and REPEATING (a re-run is still in progress) take the type's own
+ *  in-progress word — a manga is 'reading', never 'watching'. */
+export function appStatusFromAniList(status: string | null | undefined, type: string): string | undefined {
+  if (status === 'CURRENT' || status === 'REPEATING') return inProgressStatusFor(type);
+  return ANILIST_TO_APP_STATUS[status ?? ''];
+}
+
 // Priority order for picking one "representative" status out of several
 // seasons of the same unified anime chain — an in-progress season always
 // wins (you're actively watching the work as a whole), completed only wins

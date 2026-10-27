@@ -33,30 +33,40 @@ export function useLibraryEntry(currentId: string, mediaType: string | undefined
   // this instead of leaving the unsaved draft on screen.
   const lastKnownEntry = useRef<LibraryEntry | null>(null);
 
+  // In-page navigation to another work keeps the previous work's state until
+  // the new read lands; it never counts for the new id, so neither the hero
+  // nor a quick click in the meantime acts on it (a click used to save the
+  // change onto the previous work). A read that answers after the id
+  // changed again is ignored.
+  const current = entry?.external_id === currentId ? entry : null;
+
   useEffect(() => {
     if (!mediaType || !currentId) return;
-
+    let cancelled = false;
     readLibraryEntryCached(currentId)
       .then(fetched => {
+        if (cancelled) return;
         lastKnownEntry.current = fetched;
         setEntry(fetched);
       })
       .catch(() => {});
+    return () => { cancelled = true; };
   }, [currentId, mediaType]);
 
   const updateLocal = useCallback((overrides: Partial<LibraryEntry>): LibraryEntry => {
     const draft: LibraryEntry = {
-      id: '', user_id: 'local', external_id: currentId, type: mediaType ?? '',
+      id: '', user_id: 'local', type: mediaType ?? '',
       status: null, rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
       is_favorite: 0, is_platinum: 0, tags: null, notes: null,
       added_at: null, updated_at: null, selected_platform: null, selected_version: null,
       started_at: null, finished_at: null,
-      ...entry,
+      ...current,
       ...overrides,
+      external_id: currentId,
     };
     setEntry(draft);
     return draft;
-  }, [currentId, mediaType, entry]);
+  }, [currentId, mediaType, current]);
 
   const applySaved = useCallback((saved: LibraryEntry) => {
     lastKnownEntry.current = saved;
@@ -73,10 +83,10 @@ export function useLibraryEntry(currentId: string, mediaType: string | undefined
   }, []);
 
   return {
-    entry,
-    status: entry?.status ?? '',
-    rating: entry?.rating ?? 0,
-    inLibrary: !!entry?.status,
+    entry: current,
+    status: current?.status ?? '',
+    rating: current?.rating ?? 0,
+    inLibrary: !!current?.status,
     updateLocal,
     applySaved,
     applyDeleted,

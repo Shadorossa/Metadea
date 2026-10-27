@@ -36,6 +36,8 @@ import { toMediumCover } from '../media/small-cover';
 import { setPlaybackPresence, clearPlaybackPresence } from './discord-presence';
 import { createExternalStore } from '../shared/state/external-store';
 import { emitSessionEnded } from '../plugins/host-events';
+import { localTodayDate } from '../shared/text/format-date';
+import { nextProgress } from '../media/library-progress';
 
 export interface PlaybackQueueItem {
   episodeNumber: number;
@@ -225,14 +227,14 @@ async function markEpisodeWatched(episodeNumber: number, positionSecs = lastKnow
   // "dd/mm/aaaa" placeholder) for anything else, including a real
   // timestamp string that LOOKS like a valid non-empty value everywhere
   // else in the code.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localTodayDate();
   const startedAt = libraryEntry.started_at ?? today;
   const finishedAt = finishing ? today : libraryEntry.finished_at;
 
   try {
     const saved = await saveLibraryEntry({
       ...libraryEntry,
-      progress:    episodeNumber,
+      progress:    nextProgress(libraryEntry, episodeNumber),
       status:      nextStatus,
       started_at:  startedAt,
       finished_at: finishedAt,

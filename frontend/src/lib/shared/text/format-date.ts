@@ -68,3 +68,11 @@ export function formatMonthLabel(year: number, month: number): string {
 export function formatMonthName(date: Date): string {
   return date.toLocaleDateString(getLocaleCode(), { month: 'long' }).replace(/^./, c => c.toUpperCase());
 }
+
+/** YYYY-MM-DD in the user's local timezone (native date inputs, library
+ *  started/finished dates) — not the UTC day `toISOString()` gives, which
+ *  is yesterday for anything finished after local midnight east of UTC. */
+export function localTodayDate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}

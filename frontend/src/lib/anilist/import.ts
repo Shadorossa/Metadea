@@ -3,7 +3,7 @@ import type { LibraryEntry } from '../tauri';
 import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
 import { saveMediaCompanies } from '../tauri/companies';
-import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../media/media-types';
+import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, appStatusFromAniList } from '../media/media-types';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
 import { getT } from '../../i18n/runtime';
@@ -23,7 +23,9 @@ query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
     mediaList(userId: $userId, type: $type) {
       mediaId
       status
-      score
+      # The app stores ratings on 0-10; without a format AniList answers in
+      # the user's own scale (85 for POINT_100, 4 for POINT_5).
+      score(format: POINT_10_DECIMAL)
       progress
       progressVolumes
       startedAt { year month day }
@@ -298,7 +300,7 @@ export async function importFromAniList(
         user_id: 'local',
         external_id: externalId,
         type: entryType,
-        status: ANILIST_TO_APP_STATUS[mediaItem.status] ?? 'planning',
+        status: appStatusFromAniList(mediaItem.status, entryType) ?? 'planning',
         rating: mediaItem.score && mediaItem.score > 0 ? mediaItem.score : null,
         rating_2: null,
         progress: mediaItem.progress ?? 0,
@@ -399,13 +401,16 @@ export async function mergeAniListItemsIntoLibrary(
     const importId = formatMediaId(mediaType, format, anilistId);
     const existing = existingMap.get(importId);
 
-    const newStatus = ANILIST_TO_APP_STATUS[mediaItem.status] ?? 'planning';
     const newType = mapMediaType(mediaType, format);
-    const newRating = mediaItem.score && mediaItem.score > 0 ? (mediaItem.score as number) : null;
+    const newStatus = appStatusFromAniList(mediaItem.status, newType) ?? 'planning';
+    // A score or date the remote list doesn't have keeps the local one: the
+    // import adds what AniList/MAL know, it never erases what only Metadea
+    // knows (a MAL row without a score used to wipe the local rating).
+    const newRating = mediaItem.score && mediaItem.score > 0 ? (mediaItem.score as number) : (existing?.rating ?? null);
     const newProgress = mediaItem.progress ?? 0;
     const newProgress2 = mediaItem.progressVolumes ?? 0;
-    const newStartedAt = formatFuzzyDate(mediaItem.startedAt) || null;
-    const newFinishedAt = formatFuzzyDate(mediaItem.completedAt) || null;
+    const newStartedAt = formatFuzzyDate(mediaItem.startedAt) || (existing?.started_at ?? null);
+    const newFinishedAt = formatFuzzyDate(mediaItem.completedAt) || (existing?.finished_at ?? null);
     const newNotes = mediaItem.notes === undefined ? (existing?.notes ?? null) : mediaItem.notes;
 
     if (existing) {

@@ -20,6 +20,7 @@ mod emulator_screenshots;
 mod game_sessions;
 mod jukebox;
 mod legacy_sequel_aliases;
+mod library_entry_repair;
 mod mal;
 mod plugins;
 mod reconsumption;
@@ -100,6 +101,7 @@ pub(crate) const MIGRATIONS: &[(i64, Migration)] = &[
     (94, catalog_id_collision_repair::migrate),
     (95, relation_label_repair::migrate),
     (96, legacy_sequel_aliases::migrate),
+    (97, library_entry_repair::migrate),
 ];
 
 pub(crate) fn run_migrations(conn: &Connection) -> SqlResult<()> {

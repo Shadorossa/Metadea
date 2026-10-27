@@ -63,11 +63,18 @@ export async function addSequelToPlanning(externalId: string): Promise<string | 
   const sequel = relations.find(r => r.relation_type === 'SEQUEL');
   if (!sequel) return null;
 
-  // Already tracked in some status (including a prior "planning" the user
-  // set themselves, or already watching/dropped/whatever) — never override
-  // an existing choice, only fill in a genuinely untracked sequel.
-  const existing = await getLibraryEntry(sequel.related_media_external_id).catch(() => null);
-  if (existing?.status) return null;
+  // Any existing entry — a status the user picked, or a status-less one that
+  // only holds a rating, favourite or notes — is never touched: saving the
+  // blank draft over it lost those fields, and the auto-mark undo then
+  // deleted the entry outright. Only a genuinely untracked sequel is added,
+  // and a failed read is not taken as "untracked".
+  let existing: LibraryEntry | null;
+  try {
+    existing = await getLibraryEntry(sequel.related_media_external_id);
+  } catch {
+    return null;
+  }
+  if (existing) return null;
 
   const meta = await getCatalogEntry(sequel.related_media_external_id).catch(() => null);
   if (!meta?.type) return null;

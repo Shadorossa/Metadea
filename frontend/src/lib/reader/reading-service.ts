@@ -8,6 +8,8 @@
 import { saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, type LibraryEntry } from '../tauri';
 import { clearReadingProgress } from '../tauri/comic-reader';
 import { syncToAniList, isAniListType } from '../media/anilist-sync';
+import { localTodayDate } from '../shared/text/format-date';
+import { nextProgress } from '../media/library-progress';
 
 // Same three-way status-by-type split playback-service.ts uses for watching
 // — 'comic' added here since it's a reading type (see READING_TYPES,
@@ -48,7 +50,7 @@ export async function markChapterRead(
     : libraryEntry.status === 'planning'
     ? (START_STATUS_BY_TYPE[libraryEntry.type] ?? libraryEntry.status)
     : libraryEntry.status;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localTodayDate();
   const startedAt = libraryEntry.started_at ?? today;
   const finishedAt = finishing ? today : libraryEntry.finished_at;
 
@@ -57,11 +59,11 @@ export async function markChapterRead(
     || (libraryEntry.total_count_2 != null && libraryEntry.total_count_2 > 0));
   const chapterProgress = progressUnit === 'chapters'
     ? Math.max(libraryEntry.progress ?? 0, progressNumber)
-    : progressNumber;
+    : nextProgress(libraryEntry, progressNumber);
   const saved = await saveLibraryEntry({
     ...libraryEntry,
     progress: tracksVolumes ? (libraryEntry.progress ?? 0) : chapterProgress,
-    progress_2: tracksVolumes ? progressNumber : (libraryEntry.progress_2 ?? 0),
+    progress_2: tracksVolumes ? nextProgress(libraryEntry, progressNumber, 'progress_2') : (libraryEntry.progress_2 ?? 0),
     status: nextStatus,
     started_at: startedAt,
     finished_at: finishedAt,
