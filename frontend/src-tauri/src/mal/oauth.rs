@@ -5,7 +5,6 @@
 // link (src/deep_link.rs) and is exchanged here. Tokens live encrypted in
 // `user_sessions` (service = 'mal') as one JSON blob, same DPAPI wrapping
 // as the AniList/GitHub tokens.
-use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 
 use crate::db::{MetadeaDb, ToStringErr};
@@ -168,33 +167,22 @@ pub async fn refresh_tokens(client_id: &str, refresh_token: &str) -> Result<Stor
 
 pub fn save_tokens(db: &MetadeaDb, tokens: &StoredTokens) -> Result<(), String> {
     let json = serde_json::to_string(tokens).str_err()?;
-    let encrypted = crate::utils::encrypt_secret(&json)?;
-    let now = chrono::Utc::now().to_rfc3339();
     let conn = db.conn.lock().str_err()?;
-    conn.execute(
-        "INSERT INTO user_sessions (service, token, updated_at) VALUES (?1, ?2, ?3)
-         ON CONFLICT(service) DO UPDATE SET token = excluded.token, updated_at = excluded.updated_at",
-        rusqlite::params![SERVICE, encrypted, now],
-    )
-    .map(|_| ())
-    .str_err()
+    crate::sessions::save_session_token(&conn, SERVICE, &json, None)
 }
 
 pub fn load_tokens(db: &MetadeaDb) -> Result<Option<StoredTokens>, String> {
-    let stored: Option<String> = {
+    let stored = {
         let conn = db.conn.lock().str_err()?;
-        conn.query_row("SELECT token FROM user_sessions WHERE service = ?1", [SERVICE], |row| row.get(0))
-            .optional()
-            .str_err()?
+        crate::sessions::load_session_token(&conn, SERVICE)?
     };
-    let Some(stored) = stored else { return Ok(None) };
-    let json = crate::utils::decrypt_secret(&stored)?;
+    let Some((json, _)) = stored else { return Ok(None) };
     serde_json::from_str(&json).map(Some).str_err()
 }
 
 pub fn delete_tokens(db: &MetadeaDb) -> Result<(), String> {
     let conn = db.conn.lock().str_err()?;
-    conn.execute("DELETE FROM user_sessions WHERE service = ?1", [SERVICE]).map(|_| ()).str_err()
+    crate::sessions::delete_session_token(&conn, SERVICE)
 }
 
 #[cfg(test)]

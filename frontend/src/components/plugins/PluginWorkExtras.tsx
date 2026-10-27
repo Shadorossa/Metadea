@@ -10,7 +10,7 @@ import { interpolate } from '../../lib/shared/text/interpolate';
 import { openExternalUrl } from '../../lib/tauri/game-launch';
 import { notifySystem } from '../../lib/notifications/notifications';
 import { getPluginRuntime } from '../../lib/plugins/runtime-instance';
-import type { PluginWorkContext } from '../../lib/plugins/work-context';
+import { workForPlugin, type PluginWorkContext } from '../../lib/plugins/work-context';
 import type { WorkPanelData } from '../../lib/plugins/plugin-results';
 import type { PluginInfo } from '../../lib/tauri/plugins';
 import { pluginErrorText } from './plugin-error-text';
@@ -44,7 +44,7 @@ export function PluginWorkExtras({ work }: Props) {
     setPanelData({});
     for (const { plugin, item } of panels) {
       const key = `${plugin.id}/${item.id}`;
-      runtime.invoke(plugin.id, 'workPanels.render', item.id, [work])
+      runtime.invoke(plugin.id, 'workPanels.render', item.id, [workForPlugin(work)])
         .then(data => { if (alive) setPanelData(prev => ({ ...prev, [key]: data })); })
         // A failing panel is simply not shown; the plugin card in Settings
         // carries the error badge.
@@ -58,7 +58,7 @@ export function PluginWorkExtras({ work }: Props) {
     const key = `${plugin.id}/${actionId}`;
     setRunning(key);
     try {
-      const result = await runtime.invoke(plugin.id, 'workActions.run', actionId, [work]);
+      const result = await runtime.invoke(plugin.id, 'workActions.run', actionId, [workForPlugin(work)]);
       const name = plugin.manifest?.name ?? plugin.id;
       if (result.type === 'toast') showToast(result.message, result.level);
       else if (result.type === 'openUrl') {

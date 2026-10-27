@@ -18,6 +18,14 @@ export type SourceWorkType = (typeof SOURCE_TYPES)[number];
 
 export const WORK_TYPES = ['anime', 'manga', 'lnovel', 'book', 'comic', 'movie', 'series', 'game', 'vn'] as const;
 
+/** The app's own media type (external_id prefix) in the plugin vocabulary
+ *  above: the app files visual novels under `vnovel`, plugins declare `vn`.
+ *  Every value handed to a plugin or matched against a manifest goes
+ *  through this, so a plugin declaring `vn` shows on visual-novel pages. */
+export function toPluginWorkType(appType: string): string {
+  return appType === 'vnovel' ? 'vn' : appType;
+}
+
 export type SettingType = 'string' | 'secret' | 'number' | 'boolean' | 'select' | 'url';
 
 export interface SettingOption { value: string; label: string }

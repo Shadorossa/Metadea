@@ -2,54 +2,12 @@ import { importFromAniList, syncFromAniList, type ImportProgress } from '../../.
 import { showModal, hideModal } from '../../../lib/dom/modal-utils';
 import { byId } from '../../../lib/dom/dom';
 import { getT } from '../../../i18n/runtime';
+import { createImportProgressModal } from './import-progress-modal';
 
 const ALL_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MANGA', 'ONE_SHOT', 'NOVEL'];
 
 function selectedFormats(): string[] {
   return ALL_FORMATS.filter(f => (byId<HTMLInputElement>(`fmt-${f}`))?.checked);
-}
-
-function updateProgressUI(progress: ImportProgress) {
-  const statusEl = document.getElementById('import-status');
-  const progressEl = document.getElementById('import-progress');
-  const countEl = document.getElementById('import-count');
-
-  if (statusEl) {
-    statusEl.textContent = progress.status === 'done' && progress.failed
-      ? getT().settings.anilist_import_partial
-          .replace('{done}', String(progress.total - progress.failed))
-          .replace('{total}', String(progress.total))
-          .replace('{failed}', String(progress.failed))
-      : progress.message || progress.status;
-  }
-  if (progressEl && progress.total > 0) {
-    progressEl.style.width = `${(progress.current / progress.total) * 100}%`;
-  }
-  if (countEl) countEl.textContent = `${progress.current}/${progress.total}`;
-}
-
-function createProgressModal(title: string) {
-  const modal = document.createElement('div');
-  modal.id = 'anilist-import-progress-modal';
-  modal.className = 'settings-progress-modal';
-  modal.innerHTML = `
-    <h3 class="settings-progress-modal-title">${title}</h3>
-    <div class="settings-progress-box">
-      <div class="settings-progress-status" id="import-status">${getT().settings.github_starting}</div>
-      <div class="settings-progress-track">
-        <div id="import-progress" class="settings-progress-fill" style="width: 0%;"></div>
-      </div>
-      <div class="settings-progress-count" id="import-count">0/0</div>
-    </div>
-  `;
-
-  const backdrop = document.createElement('div');
-  backdrop.id = 'anilist-import-progress-backdrop';
-  backdrop.className = 'settings-modal-backdrop';
-
-  document.body.appendChild(backdrop);
-  document.body.appendChild(modal);
-  return { modal, backdrop };
 }
 
 export function initAniListImportUI(showToast: (msg?: string) => void) {
@@ -90,16 +48,14 @@ export function initAniListImportUI(showToast: (msg?: string) => void) {
     }
 
     hideChooseModal();
-    const { modal, backdrop } = createProgressModal(title);
+    const progressModal = createImportProgressModal(title);
 
     try {
-      const result = await transfer(formats, updateProgressUI);
-      modal.remove();
-      backdrop.remove();
+      const result = await transfer(formats, progress => progressModal.update(progress));
+      progressModal.remove();
       showToast(result.ok ? successMessage(result) : getT().settings.error_with_message.replace('{message}', result.error ?? ''));
     } catch (e) {
-      modal.remove();
-      backdrop.remove();
+      progressModal.remove();
       const message = e instanceof Error ? e.message : (kind === 'import' ? getT().settings.anilist_import_failed : getT().settings.anilist_sync_failed);
       showToast(getT().settings.error_with_message.replace('{message}', message));
     } finally {

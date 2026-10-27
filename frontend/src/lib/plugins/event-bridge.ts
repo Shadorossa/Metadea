@@ -4,12 +4,12 @@
 // context from BaseLayout; workers only start for plugins that subscribe.
 import { getPluginRuntime } from './runtime-instance';
 import { SESSION_ENDED_EVENT, type SessionEndedDetail } from './host-events';
-import type { PluginEventName } from './manifest';
+import { toPluginWorkType, type PluginEventName } from './manifest';
 
 const LIBRARY_DEBOUNCE_MS = 1_000;
 
 function typeOf(externalId: string): string {
-  return externalId.split(':')[0] ?? '';
+  return toPluginWorkType(externalId.split(':')[0] ?? '');
 }
 
 let installed = false;

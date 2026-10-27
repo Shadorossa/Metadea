@@ -6,7 +6,7 @@
 //   (textless) first, then HD, then best voted, then widest; `original` size.
 // - Games / visual novels (IGDB, user's key): landscape `artworks` (never one
 //   typed "with logo", transparent or animated), then `screenshots`; `t_1080p`.
-// - AniList anime / manga: TMDB backdrops of the show the app already mapped
+// - AniList anime / manga / light novels: TMDB backdrops of the show the app already mapped
 //   the entry to (the curator's `episode_source_id`, or the TMDB episode list
 //   it matched — `media_episode.source_key` `tmdb:<id>:…`). Otherwise the
 //   AniList banner stored in the catalog, marked `banner` (≈1900×400: the
@@ -115,7 +115,8 @@ fn parse_external_id(external_id: &str) -> Option<Source> {
         "movie" => Some(Source::TmdbMovie(id)),
         "series" => Some(Source::TmdbTv(id)),
         "game" | "vnovel" => Some(Source::Igdb(id)),
-        "anime" | "manga" => Some(Source::AniList),
+        // Same AniList-backed prefixes as infer_source_from_id (media_catalog.rs).
+        "anime" | "manga" | "lnovel" => Some(Source::AniList),
         _ => None,
     }
 }

@@ -1639,6 +1639,8 @@ export const es: Translations = {
     roms_rename_undo: "Deshacer",
     roms_rename_undone: "{count} archivos restaurados",
     play_game: "Jugar",
+    play_variant: "Jugar {name}",
+    legacy_variant: "Legacy",
     play_media: "Reproducir",
     play_failed: "No se pudo reproducir: {error}",
     now_playing: "Reproduciendo",

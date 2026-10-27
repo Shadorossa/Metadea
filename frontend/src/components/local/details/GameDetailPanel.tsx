@@ -626,12 +626,12 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   type="button"
                   className="local-game-detail-play local-game-detail-play--legacy"
                   onClick={() => launchGame(legacyVariant)}
-                  title={`Jugar ${legacyVariant.name}`}
+                  title={t.local.play_variant.replace('{name}', legacyVariant.name)}
                 >
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                     <polygon points="5 3 19 12 5 21 5 3" />
                   </svg>
-                  {legacyVariantLabel ?? 'Legacy'}
+                  {legacyVariantLabel ?? t.local.legacy_variant}
                 </button>
               )}
             </div>

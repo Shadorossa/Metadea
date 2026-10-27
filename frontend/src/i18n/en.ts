@@ -1638,6 +1638,8 @@ export const en = {
     roms_rename_undo: "Undo",
     roms_rename_undone: "{count} files restored",
     play_game: "Play",
+    play_variant: "Play {name}",
+    legacy_variant: "Legacy",
     play_media: "Play",
     play_failed: "Could not play: {error}",
     now_playing: "Playing",

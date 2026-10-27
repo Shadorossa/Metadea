@@ -1639,6 +1639,8 @@ export const ru: Translations = {
     roms_rename_undo: "Отменить",
     roms_rename_undone: "Восстановлено файлов: {count}",
     play_game: "Играть",
+    play_variant: "Играть в {name}",
+    legacy_variant: "Legacy",
     play_media: "Воспроизвести",
     play_failed: "Не удалось воспроизвести: {error}",
     now_playing: "Воспроизводится",

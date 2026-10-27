@@ -7,6 +7,7 @@ on:
     paths:
       - 'catalog/**.json'
       - 'scripts/build-database.js'
+      - 'frontend/src-tauri/src/fixtures/relations/relation-vocabulary.json'
   workflow_dispatch:
     inputs:
       cleanup_hashes:

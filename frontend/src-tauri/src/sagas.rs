@@ -6,7 +6,7 @@ use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use crate::db::ToStringErr;
-use crate::media_catalog::{existing_catalog_ids, infer_source_from_id, COMMUNITY_DB_URL};
+use crate::media_catalog::{existing_catalog_ids, COMMUNITY_DB_URL};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SagaEntry {
@@ -404,26 +404,15 @@ pub async fn save_cached_saga(
         let now = Utc::now().to_rfc3339();
 
         if !existing_ids.contains(&entry.external_id) {
-            tx.execute(
-                "INSERT OR IGNORE INTO media_catalog (
-                    id, external_id, type, source, format, title_main, cover_url, release_year, release_month, release_day, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
-                rusqlite::params![
-                    crate::db::generate_id(),
-                    &entry.external_id,
-                    &entry.media_type,
-                    infer_source_from_id(&entry.external_id),
-                    &entry.format,
-                    &entry.title,
-                    &entry.cover,
-                    &entry.year,
-                    &entry.month,
-                    &entry.day,
-                    &now,
-                    &now,
-                ],
-            )
-            .str_err()?;
+            crate::media_catalog::insert_catalog_stub(&tx, &crate::media_catalog::CatalogStub {
+                external_id: &entry.external_id,
+                title: Some(&entry.title),
+                cover: entry.cover.as_deref(),
+                format: entry.format.as_deref(),
+                release_year: entry.year,
+                release_month: entry.month,
+                release_day: entry.day,
+            }, &now)?;
         }
 
         // Insert relation
@@ -645,10 +634,9 @@ fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite:
         return Ok(Vec::new());
     }
 
-    // Two batched queries covering every kept component's members at once,
-    // instead of one query per component or per member.
+    // Batched queries covering every kept component's members at once (one
+    // set per SQL_IN_CHUNK ids), instead of one query per component or member.
     let all_member_ids: Vec<String> = components.values().flatten().cloned().collect();
-    let placeholders = all_member_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
 
     // (title, cover, release_year, release_month, release_day) — the date
     // fields drive member ordering below (chronological, not lexicographic
@@ -656,56 +644,60 @@ fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite:
     // others in a scrambled order unrelated to release sequence).
     type MemberInfo = (Option<String>, Option<String>, Option<i64>, Option<i64>, Option<i64>);
     let mut info: std::collections::HashMap<String, MemberInfo> = std::collections::HashMap::new();
-    {
-        // Excludes locally-blocked entries here (not from `components` itself)
-        // so a blocked member just quietly drops out of the list below, the
-        // same way visible_media_catalog used to filter get_all_sagas.
-        let sql = format!(
-            "SELECT mc.external_id, mc.title_main, mc.cover_url, mc.release_year, mc.release_month, mc.release_day
-             FROM {table_prefix}media_catalog mc
-             WHERE mc.external_id IN ({placeholders})
-               AND NOT EXISTS (SELECT 1 FROM blocked_media_catalog b WHERE b.external_id = mc.external_id)"
-        );
-        let mut stmt = conn.prepare(&sql)?;
-        let params = rusqlite::params_from_iter(all_member_ids.iter());
-        let rows = stmt.query_map(params, |r| {
-            Ok((r.get::<_, String>(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?))
-        })?;
-        for (id, title, cover, year, month, day) in rows.filter_map(|r| r.ok()) {
-            info.insert(id, (title, cover, year, month, day));
-        }
-    }
-
     let mut names: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    {
-        // sagas is a newer table than media_relations in some older community
-        // snapshots — a missing-table prepare error just leaves `names` empty
-        // rather than failing the whole list.
-        let sql = format!("SELECT id, name FROM {table_prefix}sagas WHERE id IN ({placeholders}) AND name != ''");
-        if let Ok(mut stmt) = conn.prepare(&sql) {
-            let params = rusqlite::params_from_iter(all_member_ids.iter());
-            if let Ok(rows) = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))) {
-                for (id, name) in rows.filter_map(|r| r.ok()) {
-                    names.insert(id, name);
+    let mut order_hints: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    // Chunked like every other unbounded IN list (db.rs, SQL_IN_CHUNK).
+    for chunk in all_member_ids.chunks(crate::db::SQL_IN_CHUNK) {
+        let placeholders = crate::db::sql_placeholders(chunk.len());
+        {
+            // Excludes locally-blocked entries here (not from `components` itself)
+            // so a blocked member just quietly drops out of the list below, the
+            // same way visible_media_catalog used to filter get_all_sagas.
+            let sql = format!(
+                "SELECT mc.external_id, mc.title_main, mc.cover_url, mc.release_year, mc.release_month, mc.release_day
+                 FROM {table_prefix}media_catalog mc
+                 WHERE mc.external_id IN ({placeholders})
+                   AND NOT EXISTS (SELECT 1 FROM blocked_media_catalog b WHERE b.external_id = mc.external_id)"
+            );
+            let mut stmt = conn.prepare(&sql)?;
+            let params = rusqlite::params_from_iter(chunk.iter());
+            let rows = stmt.query_map(params, |r| {
+                Ok((r.get::<_, String>(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?))
+            })?;
+            for (id, title, cover, year, month, day) in rows.filter_map(|r| r.ok()) {
+                info.insert(id, (title, cover, year, month, day));
+            }
+        }
+
+        {
+            // sagas is a newer table than media_relations in some older community
+            // snapshots — a missing-table prepare error just leaves `names` empty
+            // rather than failing the whole list.
+            let sql = format!("SELECT id, name FROM {table_prefix}sagas WHERE id IN ({placeholders}) AND name != ''");
+            if let Ok(mut stmt) = conn.prepare(&sql) {
+                let params = rusqlite::params_from_iter(chunk.iter());
+                if let Ok(rows) = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))) {
+                    for (id, name) in rows.filter_map(|r| r.ok()) {
+                        names.insert(id, name);
+                    }
                 }
             }
         }
-    }
 
-    // Manual order_index wins over the date sort below, but only when EVERY
-    // visible member has one — a mix (e.g. a graph-only reconciled member)
-    // falls back entirely to the date sort rather than interleaving both.
-    let mut order_hints: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
-    {
-        let sql = format!(
-            "SELECT media_external_id, order_index FROM {table_prefix}saga_relations
-             WHERE media_external_id IN ({placeholders}) AND order_index IS NOT NULL"
-        );
-        if let Ok(mut stmt) = conn.prepare(&sql) {
-            let params = rusqlite::params_from_iter(all_member_ids.iter());
-            if let Ok(rows) = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?))) {
-                for (id, order) in rows.filter_map(|r| r.ok()) {
-                    order_hints.insert(id, order);
+        // Manual order_index wins over the date sort below, but only when EVERY
+        // visible member has one — a mix (e.g. a graph-only reconciled member)
+        // falls back entirely to the date sort rather than interleaving both.
+        {
+            let sql = format!(
+                "SELECT media_external_id, order_index FROM {table_prefix}saga_relations
+                 WHERE media_external_id IN ({placeholders}) AND order_index IS NOT NULL"
+            );
+            if let Ok(mut stmt) = conn.prepare(&sql) {
+                let params = rusqlite::params_from_iter(chunk.iter());
+                if let Ok(rows) = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?))) {
+                    for (id, order) in rows.filter_map(|r| r.ok()) {
+                        order_hints.insert(id, order);
+                    }
                 }
             }
         }

@@ -19,9 +19,11 @@ mod continue_watching;
 mod emulator_screenshots;
 mod game_sessions;
 mod jukebox;
+mod legacy_sequel_aliases;
 mod mal;
 mod plugins;
 mod reconsumption;
+mod relation_label_repair;
 mod relation_repairs;
 mod remove_event_type;
 mod saga_repairs;
@@ -96,6 +98,8 @@ pub(crate) const MIGRATIONS: &[(i64, Migration)] = &[
     (92, crate::vestigial_cleanup::drop_unused_tables_and_lists),
     (93, community_sync_cursor::migrate),
     (94, catalog_id_collision_repair::migrate),
+    (95, relation_label_repair::migrate),
+    (96, legacy_sequel_aliases::migrate),
 ];
 
 pub(crate) fn run_migrations(conn: &Connection) -> SqlResult<()> {

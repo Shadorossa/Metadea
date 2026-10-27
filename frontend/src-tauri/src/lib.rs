@@ -71,6 +71,8 @@ mod user_metadata;
 mod utils;
 mod discord;
 mod ui_themes;
+mod css_sanitize;
+mod sessions;
 mod vestigial_cleanup;
 mod yearly_bingo;
 #[cfg(test)]

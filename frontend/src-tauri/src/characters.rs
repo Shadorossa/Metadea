@@ -3,7 +3,7 @@ use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use crate::db::ToStringErr;
-use crate::media_catalog::{existing_catalog_ids, infer_type_from_id, infer_source_from_id};
+use crate::media_catalog::existing_catalog_ids;
 
 fn image_data_dir(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     app_handle.path().app_data_dir().str_err()
@@ -329,22 +329,12 @@ pub async fn save_character_appearances(
         ).str_err()?;
 
         if !existing_ids.contains(&a.media_external_id) {
-            let media_type = infer_type_from_id(&a.media_external_id);
-            tx.execute(
-                "INSERT OR IGNORE INTO media_catalog (
-                    id, external_id, type, source, title_main, cover_url, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-                rusqlite::params![
-                    crate::db::generate_id(),
-                    &a.media_external_id,
-                    &media_type,
-                    infer_source_from_id(&a.media_external_id),
-                    &a.title,
-                    &a.cover,
-                    &now,
-                    &now,
-                ],
-            ).str_err()?;
+            crate::media_catalog::insert_catalog_stub(&tx, &crate::media_catalog::CatalogStub {
+                external_id: &a.media_external_id,
+                title: a.title.as_deref(),
+                cover: a.cover.as_deref(),
+                ..Default::default()
+            }, &now)?;
         }
     }
     tx.commit().str_err()?;

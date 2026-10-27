@@ -160,22 +160,15 @@ pub async fn comicvine_search(
     let limit_str = PAGE_SIZE.to_string();
     let offset_str = offset.to_string();
 
-    COMICVINE_BUDGET.acquire().await;
-
-    let resp = client
-        .get(format!("{COMICVINE_BASE}/search/"))
-        .query(&[
-            ("api_key", api_key.as_str()),
-            ("format", "json"),
-            ("query", query.as_str()),
-            ("resources", "volume"),
-            ("limit", limit_str.as_str()),
-            ("offset", offset_str.as_str()),
-            ("field_list", FIELD_LIST),
-        ])
-        .send()
-        .await
-        .map_err(|e| format!("Comic Vine request failed: {e}"))?;
+    let resp = comicvine_send(client, &api_key, "/search/", &[
+        ("query", query.as_str()),
+        ("resources", "volume"),
+        ("limit", limit_str.as_str()),
+        ("offset", offset_str.as_str()),
+        ("field_list", FIELD_LIST),
+    ])
+    .await
+    .map_err(request_failed)?;
 
     if !resp.status().is_success() {
         let status = resp.status();
@@ -186,7 +179,7 @@ pub async fn comicvine_search(
     let parsed = resp
         .json::<ComicVineSearchResponse>()
         .await
-        .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+        .map_err(parse_failed)?;
 
     let has_more = offset + (parsed.results.len() as i64) < parsed.number_of_total_results;
     Ok(ComicVineSearchPage { volumes: parsed.results, has_more })
@@ -215,22 +208,15 @@ pub async fn comicvine_search_characters(
     let limit_str = PAGE_SIZE.to_string();
     let offset_str = offset.to_string();
 
-    COMICVINE_BUDGET.acquire().await;
-
-    let resp = client
-        .get(format!("{COMICVINE_BASE}/search/"))
-        .query(&[
-            ("api_key", api_key.as_str()),
-            ("format", "json"),
-            ("query", query.as_str()),
-            ("resources", "character"),
-            ("limit", limit_str.as_str()),
-            ("offset", offset_str.as_str()),
-            ("field_list", "id,name,image,publisher,deck,description"),
-        ])
-        .send()
-        .await
-        .map_err(|e| format!("Comic Vine request failed: {e}"))?;
+    let resp = comicvine_send(client, &api_key, "/search/", &[
+        ("query", query.as_str()),
+        ("resources", "character"),
+        ("limit", limit_str.as_str()),
+        ("offset", offset_str.as_str()),
+        ("field_list", "id,name,image,publisher,deck,description"),
+    ])
+    .await
+    .map_err(request_failed)?;
 
     if !resp.status().is_success() {
         let status = resp.status();
@@ -241,7 +227,7 @@ pub async fn comicvine_search_characters(
     let parsed = resp
         .json::<ComicVineCharacterSearchResponse>()
         .await
-        .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+        .map_err(parse_failed)?;
 
     let has_more = offset + (parsed.results.len() as i64) < parsed.number_of_total_results;
     Ok(ComicVineCharacterSearchPage { characters: parsed.results, has_more })
@@ -260,18 +246,10 @@ pub async fn comicvine_get_volume(
     let api_key = comicvine_api_key(&app_handle).await?;
     let client = crate::http::http_client();
 
-    COMICVINE_BUDGET.acquire().await;
-
-    let resp = client
-        .get(format!("{COMICVINE_BASE}/volume/{VOLUME_RESOURCE_PREFIX}-{volume_id}/"))
-        .query(&[
-            ("api_key", api_key.as_str()),
-            ("format", "json"),
-            ("field_list", VOLUME_DETAIL_FIELD_LIST),
-        ])
-        .send()
+    let path = format!("/volume/{VOLUME_RESOURCE_PREFIX}-{volume_id}/");
+    let resp = comicvine_send(client, &api_key, &path, &[("field_list", VOLUME_DETAIL_FIELD_LIST)])
         .await
-        .map_err(|e| format!("Comic Vine request failed: {e}"))?;
+        .map_err(request_failed)?;
 
     if !resp.status().is_success() {
         return Ok(None);
@@ -280,7 +258,7 @@ pub async fn comicvine_get_volume(
     let mut parsed = resp
         .json::<ComicVineDetailResponse>()
         .await
-        .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+        .map_err(parse_failed)?;
 
     if let Some(volume) = parsed.results.as_mut() {
         let first_id = volume.first_issue.as_ref().map(|i| i.id);
@@ -345,19 +323,13 @@ async fn fetch_images_by_ids(client: &reqwest::Client, api_key: &str, resource_p
     let ids_str: Vec<String> = ids.iter().take(100).map(|id| id.to_string()).collect();
     let filter = format!("id:{}", ids_str.join("|"));
 
-    COMICVINE_BUDGET.acquire().await;
-
-    let resp = match client
-        .get(format!("{COMICVINE_BASE}/{resource_plural}/"))
-        .query(&[
-            ("api_key", api_key),
-            ("format", "json"),
-            ("filter", filter.as_str()),
-            ("field_list", "id,image"),
-            ("limit", "100"),
-        ])
-        .send()
-        .await
+    let path = format!("/{resource_plural}/");
+    let resp = match comicvine_send(client, api_key, &path, &[
+        ("filter", filter.as_str()),
+        ("field_list", "id,image"),
+        ("limit", "100"),
+    ])
+    .await
     {
         Ok(r) => r,
         Err(_) => return map,
@@ -421,15 +393,8 @@ struct ComicVineIssueEnrichment {
 }
 
 async fn fetch_issue_enrichment(client: &reqwest::Client, api_key: &str, issue_id: u64) -> Option<ComicVineIssueEnrichment> {
-    COMICVINE_BUDGET.acquire().await;
-    let resp = client
-        .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
-        .query(&[
-            ("api_key", api_key),
-            ("format", "json"),
-            ("field_list", ISSUE_ENRICHMENT_FIELD_LIST),
-        ])
-        .send()
+    let path = format!("/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/");
+    let resp = comicvine_send(client, api_key, &path, &[("field_list", ISSUE_ENRICHMENT_FIELD_LIST)])
         .await
         .ok()?;
 
@@ -489,15 +454,8 @@ pub async fn comicvine_get_issues_cast(
 }
 
 async fn fetch_issue_cover_date(client: &reqwest::Client, api_key: &str, issue_id: u64) -> Option<String> {
-    COMICVINE_BUDGET.acquire().await;
-    let resp = client
-        .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
-        .query(&[
-            ("api_key", api_key),
-            ("format", "json"),
-            ("field_list", ISSUE_DATE_FIELD_LIST),
-        ])
-        .send()
+    let path = format!("/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/");
+    let resp = comicvine_send(client, api_key, &path, &[("field_list", ISSUE_DATE_FIELD_LIST)])
         .await
         .ok()?;
 
@@ -575,22 +533,15 @@ pub async fn comicvine_get_issues(
         let limit_str = LIMIT.to_string();
         let offset_str = offset.to_string();
 
-        COMICVINE_BUDGET.acquire().await;
-
-        let resp = client
-            .get(format!("{COMICVINE_BASE}/issues/"))
-            .query(&[
-                ("api_key", api_key.as_str()),
-                ("format", "json"),
-                ("filter", filter.as_str()),
-                ("limit", limit_str.as_str()),
-                ("offset", offset_str.as_str()),
-                ("sort", "issue_number:asc"),
-                ("field_list", ISSUE_FIELD_LIST),
-            ])
-            .send()
-            .await
-            .map_err(|e| format!("Comic Vine request failed: {e}"))?;
+        let resp = comicvine_send(client, &api_key, "/issues/", &[
+            ("filter", filter.as_str()),
+            ("limit", limit_str.as_str()),
+            ("offset", offset_str.as_str()),
+            ("sort", "issue_number:asc"),
+            ("field_list", ISSUE_FIELD_LIST),
+        ])
+        .await
+        .map_err(request_failed)?;
 
         if !resp.status().is_success() {
             break;
@@ -599,7 +550,7 @@ pub async fn comicvine_get_issues(
         let parsed = resp
             .json::<ComicVineIssuesResponse>()
             .await
-            .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+            .map_err(parse_failed)?;
 
         let page_len = parsed.results.len() as u32;
         all_issues.extend(parsed.results);
@@ -675,18 +626,10 @@ pub async fn comicvine_get_issue(
     let api_key = comicvine_api_key(&app_handle).await?;
     let client = crate::http::http_client();
 
-    COMICVINE_BUDGET.acquire().await;
-
-    let resp = client
-        .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
-        .query(&[
-            ("api_key", api_key.as_str()),
-            ("format", "json"),
-            ("field_list", ISSUE_DETAIL_FIELD_LIST),
-        ])
-        .send()
+    let path = format!("/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/");
+    let resp = comicvine_send(client, &api_key, &path, &[("field_list", ISSUE_DETAIL_FIELD_LIST)])
         .await
-        .map_err(|e| format!("Comic Vine request failed: {e}"))?;
+        .map_err(request_failed)?;
 
     if !resp.status().is_success() {
         return Ok(None);
@@ -695,7 +638,7 @@ pub async fn comicvine_get_issue(
     let mut parsed = resp
         .json::<ComicVineIssueDetailResponse>()
         .await
-        .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+        .map_err(parse_failed)?;
 
     if let Some(issue) = parsed.results.as_mut() {
         enrich_character_images(client, &api_key, &mut issue.character_credits).await;
@@ -874,18 +817,35 @@ async fn arc_api_key(app_handle: &tauri::AppHandle) -> Result<String, String> {
     comicvine_api_key(app_handle).await.map_err(|_| COMICVINE_KEY_MISSING.to_string())
 }
 
-// One budgeted GET. The reqwest error is stripped of its URL, which carries
-// the api_key query parameter.
-async fn comicvine_get(client: &reqwest::Client, api_key: &str, path: &str, params: &[(&str, &str)]) -> Result<String, String> {
+// One budgeted GET, shared by every command. The URL carries the api_key
+// query parameter, and a reqwest error's Display prints its URL, so the
+// error is always stripped of it here; a response's own errors (`.json()`,
+// `.text()`) carry the URL too and are stripped by their callers.
+async fn comicvine_send(client: &reqwest::Client, api_key: &str, path: &str, params: &[(&str, &str)]) -> Result<reqwest::Response, reqwest::Error> {
     COMICVINE_BUDGET.acquire().await;
     let mut query: Vec<(&str, &str)> = vec![("api_key", api_key), ("format", "json")];
     query.extend_from_slice(params);
-    let resp = client
+    client
         .get(format!("{COMICVINE_BASE}{path}"))
         .query(&query)
         .send()
         .await
-        .map_err(|e| with_detail(COMICVINE_NETWORK, e.without_url()))?;
+        .map_err(reqwest::Error::without_url)
+}
+
+// The older commands' prose errors, with the key-bearing URL stripped.
+fn request_failed(e: reqwest::Error) -> String {
+    format!("Comic Vine request failed: {}", e.without_url())
+}
+
+fn parse_failed(e: reqwest::Error) -> String {
+    format!("Comic Vine parse failed: {}", e.without_url())
+}
+
+async fn comicvine_get(client: &reqwest::Client, api_key: &str, path: &str, params: &[(&str, &str)]) -> Result<String, String> {
+    let resp = comicvine_send(client, api_key, path, params)
+        .await
+        .map_err(|e| with_detail(COMICVINE_NETWORK, e))?;
     let status = resp.status();
     if !status.is_success() {
         return Err(with_detail(COMICVINE_API, format!("HTTP {status}")));

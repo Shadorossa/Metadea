@@ -9,6 +9,21 @@ use crate::media_catalog::COMMUNITY_DB_URL;
 // a query referencing it with "no such column". Shared by every optional-
 // column guard in sync_community_catalog instead of each repeating its own
 // `pragma_table_info` query.
+// media_catalog columns a community sync copies (blocked_at is handled on
+// its own). scripts/build-database.js has to write every one of them into
+// the community database, or a merged PR's value is silently dropped — see
+// the test below.
+const COMMUNITY_CATALOG_COLUMNS: &[&str] = &[
+    "id", "external_id", "banners_csv", "country_code", "cover_url",
+    "favorites_count", "format", "genres_csv", "genres_tag_csv",
+    "parent_id", "platforms_csv",
+    "ratings_count", "release_day", "release_end_day", "release_end_month", "release_end_year",
+    "release_month", "release_year", "score_global",
+    "shop_links_csv", "source", "source_url", "status", "synopsis",
+    "time_length", "title_english", "title_main", "title_native", "title_romaji", "total_count", "total_count_2",
+    "type", "issue_source_id", "episode_source_id",
+];
+
 fn attached_db_has_column(conn: &rusqlite::Connection, db: &str, table: &str, column: &str) -> bool {
     conn.query_row(
         &format!("SELECT COUNT(*) FROM pragma_table_info('{table}', '{db}') WHERE name = '{column}'"),
@@ -168,19 +183,10 @@ fn merge_community_catalog(
         // community submission (see sync_state's own table for that now),
         // and authors_csv no longer exists at all (media_author/
         // media_by_author are the only source of author data now).
-        let possible_cols = [
-            "id", "external_id", "banners_csv", "country_code", "cover_url",
-            "favorites_count", "format", "genres_csv", "genres_tag_csv",
-            "parent_id", "platforms_csv",
-            "ratings_count", "release_day", "release_end_day", "release_end_month", "release_end_year",
-            "release_month", "release_year", "score_global",
-            "shop_links_csv", "source", "source_url", "status", "synopsis",
-            "time_length", "title_english", "title_main", "title_native", "title_romaji", "total_count", "total_count_2",
-            "type", "issue_source_id", "episode_source_id"
-        ];
+        let possible_cols = COMMUNITY_CATALOG_COLUMNS;
 
         let mut select_cols = Vec::new();
-        for col in possible_cols {
+        for &col in possible_cols {
             if attached_db_has_column(&tx, "community", "media_catalog", col) {
                 select_cols.push(col);
             }
@@ -799,5 +805,20 @@ mod tests {
         assert_eq!(load_cursor(&conn).unwrap().content_sha256, sha256_hex(&updated));
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(test)]
+mod catalog_column_tests {
+    // build-database.js once left out blocked_at, country_code, title_english,
+    // source_url and release_end_*, so those never reached any install.
+    #[test]
+    fn build_script_writes_every_column_the_sync_reads() {
+        let script = include_str!("../../../scripts/build-database.js");
+        let start = script.find("const CATALOG_COLUMNS = [").expect("CATALOG_COLUMNS");
+        let list = &script[start..start + script[start..].find("];").unwrap()];
+        for col in super::COMMUNITY_CATALOG_COLUMNS.iter().chain(["blocked_at"].iter()) {
+            assert!(list.contains(&format!("'{col}'")), "build-database.js CATALOG_COLUMNS lacks {col}");
+        }
     }
 }

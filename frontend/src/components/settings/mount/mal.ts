@@ -13,13 +13,12 @@ import { openExternalUrl } from '../../../lib/tauri/game-launch';
 import { isTauri } from '../../../lib/tauri/bridge';
 import { importMalList } from '../../../lib/mal/import';
 import { parseDeepLinkTarget } from '../../../lib/deep-link/deep-link-routes';
-import type { ImportProgress } from '../../../lib/anilist/import';
 import { formatAppError } from '../../../lib/errors/format-error';
 import { setAuthButtonBusy } from './auth-button';
 import { showAuthConnected, showAuthDisconnected } from './auth-status';
 import { showModal, hideModal } from '../../../lib/dom/modal-utils';
 import { byId } from '../../../lib/dom/dom';
-import { escapeHtml } from '../../../lib/shared/text/sanitize-html';
+import { createImportProgressModal } from './import-progress-modal';
 import { getT } from '../../../i18n/runtime';
 import { showToast } from '../../../lib/dom/toast';
 
@@ -196,38 +195,6 @@ export function initMal(showSettingsToast: (msg?: string) => void) {
 
 // ── Import ────────────────────────────────────────────────────────────────────
 
-function createProgressModal(title: string) {
-  const t = getT();
-  const modal = document.createElement('div');
-  modal.id = 'mal-import-progress-modal';
-  modal.className = 'settings-progress-modal';
-  modal.innerHTML = `
-    <h3 class="settings-progress-modal-title">${escapeHtml(title)}</h3>
-    <div class="settings-progress-box">
-      <div class="settings-progress-status" id="mal-import-status">${escapeHtml(t.settings.github_starting)}</div>
-      <div class="settings-progress-track">
-        <div id="mal-import-progress" class="settings-progress-fill" style="width: 0%;"></div>
-      </div>
-      <div class="settings-progress-count" id="mal-import-count">0/0</div>
-    </div>
-  `;
-  const backdrop = document.createElement('div');
-  backdrop.id = 'mal-import-progress-backdrop';
-  backdrop.className = 'settings-modal-backdrop';
-  document.body.appendChild(backdrop);
-  document.body.appendChild(modal);
-  return { modal, backdrop };
-}
-
-function updateProgressUI(progress: ImportProgress) {
-  const statusEl = document.getElementById('mal-import-status');
-  const progressEl = document.getElementById('mal-import-progress');
-  const countEl = document.getElementById('mal-import-count');
-  if (statusEl) statusEl.textContent = progress.message || progress.status;
-  if (progressEl && progress.total > 0) progressEl.style.width = `${(progress.current / progress.total) * 100}%`;
-  if (countEl) countEl.textContent = `${progress.current}/${progress.total}`;
-}
-
 function initMalImport(importBtn: HTMLButtonElement | null, showSettingsToast: (msg?: string) => void) {
   if (!importBtn) return;
   let running = false;
@@ -235,9 +202,9 @@ function initMalImport(importBtn: HTMLButtonElement | null, showSettingsToast: (
     if (running) return;
     running = true;
     const t = getT().mal;
-    const { modal, backdrop } = createProgressModal(t.import_title);
+    const progressModal = createImportProgressModal(t.import_title);
     try {
-      const result = await importMalList(['anime', 'manga'], updateProgressUI);
+      const result = await importMalList(['anime', 'manga'], progress => progressModal.update(progress));
       if (!result.ok) {
         showToast(getT().settings.error_with_message.replace('{message}', formatAppError(result.error ?? '', getT())), 'error');
         return;
@@ -260,8 +227,7 @@ function initMalImport(importBtn: HTMLButtonElement | null, showSettingsToast: (
     } catch (err) {
       showToast(getT().settings.error_with_message.replace('{message}', formatAppError(err, getT())), 'error');
     } finally {
-      modal.remove();
-      backdrop.remove();
+      progressModal.remove();
       running = false;
     }
   });

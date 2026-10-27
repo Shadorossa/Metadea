@@ -3,17 +3,9 @@ import { invoke } from '../../../lib/tauri';
 import { fetchCommitHistoryForPath, type CatalogFileCommit } from '../../../lib/github/api';
 import { catalogFilePath } from '../../../lib/github/catalog-paths';
 import { getT } from '../../../i18n/runtime';
+import { formatRelativeTime } from '../../../lib/local/save-format';
+import { getLocaleCode } from '../../../lib/shared/text/format-date';
 
-function relativeTime(timestamp: number): string {
-  const diffMs = Date.now() - timestamp;
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'hace un momento';
-  if (minutes < 60) return `hace ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `hace ${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `hace ${days} d`;
-}
 
 interface Props {
   externalId: string;
@@ -55,7 +47,7 @@ export function PrEditorChangelogPanel({ externalId }: Props) {
               <span className="pr-editor-changelog-item-text">
                 {c.message}{c.author ? ` — @${c.author}` : ''}
               </span>
-              <span className="pr-editor-changelog-item-time">{relativeTime(c.timestamp)}</span>
+              <span className="pr-editor-changelog-item-time">{formatRelativeTime(c.timestamp, Date.now(), getLocaleCode())}</span>
             </li>
           ))}
         </ul>

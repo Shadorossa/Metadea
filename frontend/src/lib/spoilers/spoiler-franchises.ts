@@ -174,7 +174,7 @@ function orderedPair(relation: SpoilerRelation): [string, string] | null {
   const owner = relation.media_external_id;
   if (!owner || !SEQUEL_RELATION_TYPES.has(relation.relation_type)) return null;
   const target = relation.related_media_external_id;
-  const isSequel = relation.relation_type === 'SEQUEL' || relation.relation_type === 'SECUELA';
+  const isSequel = relation.relation_type === 'SEQUEL';
   return isSequel ? [owner, target] : [target, owner];
 }
 

@@ -63,7 +63,8 @@ pub(crate) async fn get(auth: &TmdbAuth, path: &str, query: &[(&str, String)]) -
     if let Some(key) = &auth.api_key {
         request = request.query(&[("api_key", key)]);
     }
-    let response = request.send().await.map_err(|e| FetchError::Api(e.to_string()))?;
+    // without_url: the URL can carry the api_key query parameter.
+    let response = request.send().await.map_err(|e| FetchError::Api(e.without_url().to_string()))?;
     let status = response.status();
     if status.as_u16() == 404 {
         return Err(FetchError::NotFound);
@@ -71,7 +72,7 @@ pub(crate) async fn get(auth: &TmdbAuth, path: &str, query: &[(&str, String)]) -
     if !status.is_success() {
         return Err(FetchError::Api(format!("TMDB HTTP {status}")));
     }
-    response.json().await.map_err(|e| FetchError::Api(e.to_string()))
+    response.json().await.map_err(|e| FetchError::Api(e.without_url().to_string()))
 }
 
 /// `company/{id}` or `network/{id}` → page header.

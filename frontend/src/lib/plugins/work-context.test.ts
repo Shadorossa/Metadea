@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { anilistIdOf, buildWorkContext, normalizeTitle, pickBestMatch } from './work-context';
+import { anilistIdOf, buildWorkContext, normalizeTitle, pickBestMatch, workForPlugin } from './work-context';
+import { contributionsFor } from './extension-points';
+import type { PluginContributions } from './manifest';
 import type { SourceSearchItem } from './plugin-results';
 
 const work = buildWorkContext({
@@ -39,5 +41,23 @@ describe('pickBestMatch', () => {
   it('refuses a far-off year and unrelated titles', () => {
     expect(pickBestMatch([item({ title: 'Spice and Wolf', year: 2016 })], work)).toBeNull();
     expect(pickBestMatch([item({ title: 'Spice' })], work)).toBeNull();
+  });
+});
+
+describe('plugin work type vocabulary', () => {
+  const vn = buildWorkContext({ externalId: 'vnovel:1399', type: 'vnovel', titleMain: 'VN' });
+
+  it('sends visual novels to plugins as vn', () => {
+    expect(workForPlugin(vn).type).toBe('vn');
+    expect(workForPlugin(work).type).toBe('manga');
+  });
+
+  it('matches a vn contribution on a visual-novel page', () => {
+    const contributes = {
+      sources: [],
+      workActions: [{ id: 'a', label: 'A', types: ['vn'] }, { id: 'b', label: 'B', types: ['game'] }],
+      workPanels: [],
+    } as unknown as PluginContributions;
+    expect(contributionsFor(contributes, 'workActions', 'vnovel').map(i => i.id)).toEqual(['a']);
   });
 });

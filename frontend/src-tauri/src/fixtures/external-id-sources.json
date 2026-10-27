@@ -1,0 +1,18 @@
+{
+  "_comment": "external_id → [type, source] as media_catalog.rs's infer_type_from_id / infer_source_from_id answer it; lib/media/external-id.ts is checked against the same table. A null source means none.",
+  "cases": {
+    "anime:1": ["anime", "anilist"],
+    "manga:2": ["manga", "anilist"],
+    "lnovel:3": ["lnovel", "anilist"],
+    "movie:4": ["movie", "tmdb"],
+    "series:1399": ["series", "tmdb"],
+    "game:1399": ["game", "igdb"],
+    "vnovel:5": ["vnovel", "igdb"],
+    "book:OL45680278W": ["book", "openlibrary"],
+    "comic:6": ["comic", "comicvine"],
+    "manga:issue-571155": ["manga", "comicvine"],
+    "comic:issue-7": ["comic", "comicvine"],
+    "plain": ["anime", "anilist"],
+    "event:x": ["event", null]
+  }
+}

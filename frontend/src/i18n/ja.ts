@@ -1639,6 +1639,8 @@ export const ja: Translations = {
     roms_rename_undo: "元に戻す",
     roms_rename_undone: "{count} 件のファイルを元に戻しました",
     play_game: "プレイ",
+    play_variant: "{name} をプレイ",
+    legacy_variant: "レガシー",
     play_media: "再生",
     play_failed: "再生できませんでした: {error}",
     now_playing: "再生中",

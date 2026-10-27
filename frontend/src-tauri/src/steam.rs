@@ -19,6 +19,28 @@ fn steam_api_key(db: &crate::db::MetadeaDb) -> Result<Option<String>, String> {
         .map(|s| crate::utils::decrypt_secret_or_plaintext(&s)))
 }
 
+// One Steam Web API GET. The key travels as a query parameter and a reqwest
+// error's Display prints the URL, so every error (send or body) comes back
+// stripped of it; callers format it like before.
+async fn steam_api_get(
+    client: &reqwest::Client,
+    method: &str,
+    api_key: &str,
+    params: &[(&str, &str)],
+) -> Result<serde_json::Value, String> {
+    let resp = client
+        .get(format!("https://api.steampowered.com/{method}/"))
+        .query(&[("key", api_key)])
+        .query(params)
+        .send()
+        .await
+        .map_err(|e| e.without_url().to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("Steam API error (HTTP {})", resp.status()));
+    }
+    resp.json().await.map_err(|e| e.without_url().to_string())
+}
+
 fn is_hidden_achievement(schema: Option<&serde_json::Value>) -> bool {
     match schema.and_then(|achievement| achievement.get("hidden")) {
         Some(serde_json::Value::Bool(hidden)) => *hidden,
@@ -246,15 +268,12 @@ async fn fetch_progress(
     app_id: &str,
     lang: &str,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let url = format!(
-        "https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/\
-         ?key={api_key}&steamid={steam_id}&appid={app_id}&l={lang}"
-    );
-    let resp = client.get(&url).send().await.str_err()?;
-    if !resp.status().is_success() {
-        return Err(format!("Steam API error (HTTP {})", resp.status()));
-    }
-    let json: serde_json::Value = resp.json().await.str_err()?;
+    let json = steam_api_get(client, "ISteamUserStats/GetPlayerAchievements/v1", api_key, &[
+        ("steamid", steam_id),
+        ("appid", app_id),
+        ("l", lang),
+    ])
+    .await?;
     Ok(json["playerstats"]["achievements"].as_array().cloned().unwrap_or_default())
 }
 
@@ -264,15 +283,9 @@ async fn fetch_schema(
     app_id: &str,
     lang: &str,
 ) -> Option<Vec<serde_json::Value>> {
-    let url = format!(
-        "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/\
-         ?key={api_key}&appid={app_id}&l={lang}"
-    );
-    let resp = client.get(&url).send().await.ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    let json: serde_json::Value = resp.json().await.ok()?;
+    let json = steam_api_get(client, "ISteamUserStats/GetSchemaForGame/v2", api_key, &[("appid", app_id), ("l", lang)])
+        .await
+        .ok()?;
     Some(
         json["game"]["availableGameStats"]["achievements"]
             .as_array()
@@ -563,18 +576,12 @@ pub async fn steam_get_owned_games(
     let steam_id =
         detect_steam_user_id().ok_or("Could not detect Steam user ID from loginusers.vdf")?;
 
-    let url = format!(
-        "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/\
-         ?key={}&steamid={}&include_appinfo=true&include_played_free_games=true",
-        api_key, steam_id
-    );
-
-    let client = crate::http::http_client();
-    let resp = client.get(&url).send().await.str_err()?;
-    if !resp.status().is_success() {
-        return Err(format!("Steam API error (HTTP {})", resp.status()));
-    }
-    let json: serde_json::Value = resp.json().await.str_err()?;
+    let json = steam_api_get(crate::http::http_client(), "IPlayerService/GetOwnedGames/v1", &api_key, &[
+        ("steamid", steam_id.as_str()),
+        ("include_appinfo", "true"),
+        ("include_played_free_games", "true"),
+    ])
+    .await?;
     Ok(json["response"].clone())
 }
 

@@ -443,7 +443,7 @@ export default function LocalLibrary({ ssrLocal, ssrSearchTypes }: { ssrLocal?: 
     for (const id of idsForGame.values()) find(id);
     const idSet = new Set(parent.keys());
     const sagaRelations = allRelations.filter(r =>
-      (r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL' || r.relation_type === 'PRECUELA' || r.relation_type === 'SECUELA') &&
+      (r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL') &&
       !!r.media_external_id && idSet.has(r.media_external_id) && idSet.has(r.related_media_external_id),
     );
     for (const relation of sagaRelations) union(relation.media_external_id!, relation.related_media_external_id);

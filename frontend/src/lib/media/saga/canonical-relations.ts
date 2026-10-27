@@ -1,6 +1,7 @@
 // Fixed English vocabulary persisted to media_relations.type_label,
 // independent of the UI's active locale — not derived from i18n/en.ts so it
-// doesn't depend on any one locale file existing. Display-time translation
+// doesn't depend on any one locale file existing. Must match the labels the
+// Rust side writes (relation-vocabulary.json, see below). Display-time translation
 // happens separately (see media-relations.ts's sortRelationsForDisplay).
 export const CANONICAL_RELATION_LABELS: Record<string, string> = {
   SEQUEL: 'Sequel', PREQUEL: 'Prequel', SIDE_STORY: 'Side story',
@@ -19,6 +20,7 @@ export const CANONICAL_RELATION_LABELS: Record<string, string> = {
   EDITIONS: 'Editions',
   ISSUE: 'Issue',
   EPISODE: 'Episode',
+  UPDATE: 'Update',
   REL_ADAPTATION: 'Adaptation',
   // Same concept/label as SOURCE — the generic editor's own prefixed
   // spelling (see RELATION_TYPE_RECIPROCAL below), directly selectable so a
@@ -33,8 +35,8 @@ export const CANONICAL_RELATION_LABELS: Record<string, string> = {
   EXPANDED_GAME: 'Expanded Edition',
   REL_UPDATE: 'Update',
   DLC: 'DLC',
-  EXPANSION: 'Expansion',
-  STANDALONE: 'Standalone',
+  EXPANSION: 'Content Expansion',
+  STANDALONE: 'Standalone Expansion',
   FORK: 'Fork',
   SEASON: 'Season',
   PART_OF: 'Part of',
@@ -43,8 +45,9 @@ export const CANONICAL_RELATION_LABELS: Record<string, string> = {
 // Mirrors the backend's reciprocal_relation() (media_catalog.rs) exactly —
 // used to group PrEditorModal's Relations dropdown by "what label the OTHER
 // work ends up showing", not to write anything itself (the actual write
-// happens server-side in save_media_relations). Keep these two in sync by
-// hand; there's no way to share code across the Rust/TS boundary here.
+// happens server-side in save_media_relations). Both this file and the Rust
+// side are checked against src-tauri/src/fixtures/relations/
+// relation-vocabulary.json by their test suites.
 // Types with no reciprocal (CHARACTER/EDITIONS/ISSUE/RECOMMENDATION/
 // BASE_EDITION — see media_catalog.rs's own comment on why BASE_EDITION has
 // none) are simply absent, and render ungrouped.
@@ -60,6 +63,6 @@ export const RELATION_TYPE_RECIPROCAL: Record<string, string> = {
   // Bundled In/Contains pair (PART_OF) instead of BASE_EDITION — it isn't a
   // separate purchasable product the way a remaster/DLC/expansion is.
   REL_UPDATE: 'PART_OF', SEASON: 'PART_OF',
-  REMASTER: 'BASE_EDITION', REMAKE: 'REMAKE', EXPANDED_GAME: 'EXPANDED_GAME',
+  REMASTER: 'BASE_EDITION', REMAKE: 'BASE_EDITION', EXPANDED_GAME: 'BASE_EDITION',
   DLC: 'BASE_EDITION', EXPANSION: 'BASE_EDITION', STANDALONE: 'BASE_EDITION',
 };

@@ -59,12 +59,19 @@ CREATE TABLE media_catalog (
     title_main           TEXT DEFAULT '',
     title_romaji         TEXT DEFAULT '',
     title_native         TEXT DEFAULT '',
+    title_english        TEXT,
     synopsis             TEXT,
     cover_url            TEXT,
     banners_csv          TEXT DEFAULT '',
     release_year         INTEGER,
     release_month        INTEGER,
     release_day          INTEGER,
+    release_end_year     INTEGER,
+    release_end_month    INTEGER,
+    release_end_day      INTEGER,
+    country_code         TEXT,
+    source_url           TEXT,
+    blocked_at           TEXT,
     time_length          INTEGER,
     status               TEXT,
     score_global         REAL,
@@ -207,23 +214,23 @@ CREATE INDEX IF NOT EXISTS story_arc_items_arc_idx ON story_arc_items(arc_id);
 CREATE INDEX IF NOT EXISTS story_arc_items_media_idx ON story_arc_items(media_external_id);
 `;
 
-// Mirrors reciprocal_relation() in media_catalog.rs — PrEditorModal already
-// writes both sides of PREQUEL/SEQUEL and the REL_TYPE_TO_PAIR types by hand,
-// so this is only a safety net for any bundle that (now or in the future)
-// doesn't go through that exact save path.
-const RECIPROCAL_RELATION = {
-  SEQUEL: ['PREQUEL', 'Prequel'],
-  PREQUEL: ['SEQUEL', 'Sequel'],
-  SOURCE: ['ADAPTATION', 'Adaptation'],
-  ADAPTATION: ['SOURCE', 'Source Material'],
-  EPISODE: ['PART_OF', 'Part of'],
-  UPDATE: ['PART_OF', 'Part of'],
-};
+// reciprocal_relation() in media_catalog.rs, read from the same table both
+// app test suites check it against (it used to be a hand copy holding 6 of
+// its ~20 entries). PrEditorModal already writes both sides of PREQUEL/
+// SEQUEL and the REL_TYPE_TO_PAIR types by hand, so this is only a safety
+// net for any bundle that doesn't go through that exact save path.
+const RECIPROCAL_RELATION = JSON.parse(fs.readFileSync(
+  path.join(__dirname, '..', 'frontend', 'src-tauri', 'src', 'fixtures', 'relations', 'relation-vocabulary.json'),
+  'utf8',
+)).reciprocals;
 
+// Every column community_sync.rs copies out of this database must be here
+// (its tests check), or a merged PR's value for it is silently dropped.
 const CATALOG_COLUMNS = [
   'id', 'external_id', 'parent_id', 'type', 'format', 'source',
-  'title_main', 'title_romaji', 'title_native', 'synopsis', 'cover_url', 'banners_csv',
-  'release_year', 'release_month', 'release_day', 'time_length', 'status', 'score_global',
+  'title_main', 'title_romaji', 'title_native', 'title_english', 'synopsis', 'cover_url', 'banners_csv',
+  'release_year', 'release_month', 'release_day', 'release_end_year', 'release_end_month', 'release_end_day',
+  'country_code', 'source_url', 'blocked_at', 'time_length', 'status', 'score_global',
   'favorites_count', 'ratings_count', 'total_count', 'total_count_2', 'issue_source_id', 'episode_source_id',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv', 'authors_csv',
   'last_synced_at', 'sync_failed_count', 'last_sync_error', 'manually_edited_at', 'created_at', 'updated_at',

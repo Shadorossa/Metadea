@@ -122,11 +122,6 @@ describe('reconstructSagaOrder', () => {
     expect(reconstructSagaOrder(['anime:2', 'anime:1'], [[rel('PREQUEL', 'anime:1')], []])).toEqual(['anime:1', 'anime:2']);
   });
 
-  it('understands the legacy Spanish relation labels', () => {
-    expect(reconstructSagaOrder(['anime:2', 'anime:1'], [[], [rel('SECUELA', 'anime:2')]])).toEqual(['anime:1', 'anime:2']);
-    expect(reconstructSagaOrder(['anime:2', 'anime:1'], [[rel('PRECUELA', 'anime:1')], []])).toEqual(['anime:1', 'anime:2']);
-  });
-
   it('ignores edges to ids outside the saga and non-chronological relation types', () => {
     const ids = ['anime:2', 'anime:1'];
     expect(reconstructSagaOrder(ids, [[rel('SEQUEL', 'anime:99')], [rel('ADAPTATION', 'anime:2')]])).toBe(ids);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Translations } from '../../../i18n/index';
 import { getCatalogEntry, saveCatalogEntry } from '../../../lib/tauri/catalog';
 import { fetchMediaData } from '../../../lib/media/media-page-data';
+import { sourceOfExternalId, typeOfExternalId } from '../../../lib/media/external-id';
 import { AdminAddSearch } from '../AdminAddSearch';
 import type { EditorRequest } from '../admin-panel-types';
 
@@ -39,14 +40,9 @@ export function AddWorkTab({ t, openEditor }: Props) {
                 await saveCatalogEntry({
                   id: '',
                   external_id: externalId,
-                  type: externalId.split(':')[0],
+                  type: typeOfExternalId(externalId),
                   format: null,
-                  source: externalId.startsWith('game:') || externalId.startsWith('vnovel:') ? 'igdb'
-                    : externalId.startsWith('anime:') || externalId.startsWith('manga:') || externalId.startsWith('lnovel:') ? 'anilist'
-                    : externalId.startsWith('movie:') || externalId.startsWith('series:') ? 'tmdb'
-                    : externalId.startsWith('book:') ? 'openlibrary'
-                    : externalId.startsWith('comic:') ? 'comicvine'
-                    : null,
+                  source: sourceOfExternalId(externalId),
                   title_main: title,
                   title_romaji: null,
                   title_native: null,

@@ -186,6 +186,49 @@ pub(crate) fn infer_source_from_id(external_id: &str) -> Option<&'static str> {
     }
 }
 
+// A placeholder media_catalog row for a work something refers to (a
+// relation, saga member, character appearance, author credit) before its
+// own page was ever opened. Type and source always come from the id's
+// prefix; format and release date only when the referring row knew them.
+// OR IGNORE, so an existing row — including one inserted earlier in the
+// same transaction — always wins. Six call sites used to spell this out by
+// hand and had drifted (plain INSERT in two, the saga copy taking its type
+// from the caller).
+#[derive(Default)]
+pub(crate) struct CatalogStub<'a> {
+    pub external_id: &'a str,
+    pub title: Option<&'a str>,
+    pub cover: Option<&'a str>,
+    pub format: Option<&'a str>,
+    pub release_year: Option<i32>,
+    pub release_month: Option<i32>,
+    pub release_day: Option<i32>,
+}
+
+pub(crate) fn insert_catalog_stub(conn: &rusqlite::Connection, stub: &CatalogStub<'_>, now: &str) -> Result<(), String> {
+    conn.execute(
+        "INSERT OR IGNORE INTO media_catalog (
+            id, external_id, type, source, format, title_main, cover_url,
+            release_year, release_month, release_day, created_at, updated_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)",
+        rusqlite::params![
+            crate::db::generate_id(),
+            stub.external_id,
+            infer_type_from_id(stub.external_id),
+            infer_source_from_id(stub.external_id),
+            stub.format,
+            stub.title,
+            stub.cover,
+            stub.release_year,
+            stub.release_month,
+            stub.release_day,
+            now,
+        ],
+    )
+    .map(|_| ())
+    .str_err()
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[derive(Default)]
 pub struct MediaCatalogEntry {
@@ -756,6 +799,32 @@ mod summary_tests {
         assert_eq!(saved.external_id, "game:1399");
     }
 
+    // Shared with lib/media/external-id.ts (the admin "Add work" stub used
+    // to miss the `:issue-` → comicvine rule).
+    #[test]
+    fn external_id_type_and_source_match_the_shared_fixture() {
+        #[derive(serde::Deserialize)]
+        struct Fixture { cases: std::collections::BTreeMap<String, (String, Option<String>)> }
+        let fixture: Fixture = serde_json::from_str(include_str!("fixtures/external-id-sources.json")).unwrap();
+        for (id, (kind, source)) in &fixture.cases {
+            assert_eq!(&infer_type_from_id(id), kind, "{id}");
+            assert_eq!(infer_source_from_id(id), source.as_deref(), "{id}");
+        }
+    }
+
+    #[test]
+    fn catalog_stub_infers_type_and_never_overwrites() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        let stub = |title| CatalogStub { external_id: "manga:issue-7", title: Some(title), ..Default::default() };
+        insert_catalog_stub(&conn, &stub("First"), "t").unwrap();
+        // Same id again in the same batch: ignored, not a UNIQUE error.
+        insert_catalog_stub(&conn, &stub("Second"), "t").unwrap();
+        let row = load_catalog_entry(&conn, "manga:issue-7").unwrap().unwrap();
+        assert_eq!(row.title_main.as_deref(), Some("First"));
+        assert_eq!((row.r#type.as_str(), row.source.as_deref()), ("manga", Some("comicvine")));
+    }
+
     #[test]
     fn exact_row_wins_over_its_sibling() {
         let db = crate::db::MetadeaDb::open_in_memory().unwrap();
@@ -768,6 +837,32 @@ mod summary_tests {
         }
         assert_eq!(load_catalog_entry(&conn, "game:7").unwrap().unwrap().title_main.as_deref(), Some("Game"));
         assert_eq!(load_catalog_entry(&conn, "vnovel:7").unwrap().unwrap().title_main.as_deref(), Some("Novel"));
+    }
+
+    // Shared with lib/media/saga/canonical-relations.ts and
+    // scripts/build-database.js, which used to hold hand copies that drifted
+    // (REMAKE/EXPANDED_GAME reciprocals, EXPANSION/STANDALONE labels).
+    #[test]
+    fn relation_vocabulary_matches_the_shared_fixture() {
+        #[derive(serde::Deserialize)]
+        struct Vocabulary {
+            reciprocals: std::collections::BTreeMap<String, (String, String)>,
+            no_reciprocal: Vec<String>,
+            labels: std::collections::BTreeMap<String, String>,
+        }
+        let vocabulary: Vocabulary =
+            serde_json::from_str(include_str!("fixtures/relations/relation-vocabulary.json")).unwrap();
+        for (kind, (other, label)) in &vocabulary.reciprocals {
+            assert_eq!(reciprocal_relation(kind), Some((other.as_str(), label.as_str())), "{kind}");
+            assert_eq!(vocabulary.labels.get(other), Some(label), "label written for {other}");
+        }
+        for kind in &vocabulary.no_reciprocal {
+            assert_eq!(reciprocal_relation(kind), None, "{kind}");
+        }
+        for format in ["REMASTER", "REMAKE", "EXPANDED_GAME", "DLC", "EXPANSION", "STANDALONE"] {
+            let (kind, label) = format_to_edition_relation(format).unwrap();
+            assert_eq!(vocabulary.labels.get(kind).map(String::as_str), Some(label), "{format}");
+        }
     }
 
     #[test]

@@ -4,7 +4,7 @@
 // one entry here, the contribution kind in manifest.rs/manifest.ts, and a
 // section in docs/PLUGINS.md; the runtime and the worker SDK need no change
 // (the SDK dispatches any `register({ <kind>: { <id>: handler } })`).
-import type { PluginContributions, WorkContribution } from './manifest';
+import { toPluginWorkType, type PluginContributions, type WorkContribution } from './manifest';
 import type { ExtensionPointName } from './protocol';
 import {
   sanitizeActionResult,
@@ -44,11 +44,13 @@ export const EXTENSION_CALLS = {
 export type ExtensionCallKey = keyof typeof EXTENSION_CALLS;
 export type ExtensionResult<K extends ExtensionCallKey> = ReturnType<(typeof EXTENSION_CALLS)[K]['sanitize']>;
 
-/** Declared contributions of one kind that apply to a work type. */
+/** Declared contributions of one kind that apply to a work type (the app's
+ *  own type; mapped to the plugin vocabulary here). */
 export function contributionsFor(
   contributes: PluginContributions,
   point: 'workActions' | 'workPanels',
   workType: string,
 ): WorkContribution[] {
-  return contributes[point].filter(item => item.types.length === 0 || item.types.includes(workType));
+  const pluginType = toPluginWorkType(workType);
+  return contributes[point].filter(item => item.types.length === 0 || item.types.includes(pluginType));
 }

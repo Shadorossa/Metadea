@@ -1639,6 +1639,8 @@ export const it: Translations = {
     roms_rename_undo: "Annulla",
     roms_rename_undone: "{count} file ripristinati",
     play_game: "Gioca",
+    play_variant: "Gioca a {name}",
+    legacy_variant: "Legacy",
     play_media: "Riproduci",
     play_failed: "Impossibile riprodurre: {error}",
     now_playing: "In riproduzione",

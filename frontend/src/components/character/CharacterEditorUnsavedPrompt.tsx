@@ -28,9 +28,9 @@ export function CharacterEditorUnsavedPrompt({
       ) : (
         <>
           <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={onSubmit} disabled={submitting || !canSubmit}>
-            {submitting ? t.submitting : 'Submit proposal'}
+            {submitting ? t.submitting : getT().pr_editor.submit_proposal}
           </button>
-          <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onDiscard} disabled={submitting}>Descartar</button>
+          <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onDiscard} disabled={submitting}>{getT().pr_editor.discard}</button>
         </>
       )}
     </div>

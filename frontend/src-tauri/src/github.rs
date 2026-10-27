@@ -1,4 +1,3 @@
-use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use crate::db::ToStringErr;
@@ -32,15 +31,8 @@ pub fn save_github_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     token: String,
 ) -> Result<(), String> {
-    let encrypted = crate::utils::encrypt_secret(&token)?;
-    let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
-    conn.execute(
-        "INSERT INTO user_sessions (service, token, updated_at)
-         VALUES ('github', ?1, ?2)
-         ON CONFLICT(service) DO UPDATE SET token = excluded.token, updated_at = excluded.updated_at",
-        rusqlite::params![encrypted, now],
-    ).map(|_| ()).str_err()
+    crate::sessions::save_session_token(&conn, "github", &token, None)
 }
 
 #[tauri::command]
@@ -48,19 +40,7 @@ pub fn get_github_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Option<String>, String> {
     let conn = state.conn.lock().str_err()?;
-    let encrypted: Option<String> = conn
-        .query_row(
-            "SELECT token FROM user_sessions WHERE service = 'github'",
-            [],
-            |row| row.get(0),
-        )
-        .optional()
-        .str_err()?;
-
-    match encrypted {
-        None => Ok(None),
-        Some(stored) => Ok(Some(crate::utils::decrypt_secret(&stored)?)),
-    }
+    Ok(crate::sessions::load_session_token(&conn, "github")?.map(|(token, _)| token))
 }
 
 #[tauri::command]
@@ -68,8 +48,7 @@ pub fn delete_github_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<(), String> {
     let conn = state.conn.lock().str_err()?;
-    conn.execute("DELETE FROM user_sessions WHERE service = 'github'", [])
-        .map(|_| ()).str_err()
+    crate::sessions::delete_session_token(&conn, "github")
 }
 
 // ─── API commands ─────────────────────────────────────────────────────────────

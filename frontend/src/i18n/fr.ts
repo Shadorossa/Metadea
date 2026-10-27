@@ -1639,6 +1639,8 @@ export const fr: Translations = {
     roms_rename_undo: "Annuler",
     roms_rename_undone: "{count} fichiers restaurés",
     play_game: "Jouer",
+    play_variant: "Jouer à {name}",
+    legacy_variant: "Legacy",
     play_media: "Lire",
     play_failed: "Lecture impossible : {error}",
     now_playing: "Lecture en cours",

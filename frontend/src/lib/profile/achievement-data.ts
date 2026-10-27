@@ -185,7 +185,7 @@ async function readAchievementSources(): Promise<AchievementSources> {
   const [fullRows, sagaNames, sagaRelations] = await Promise.all([
     getCatalogEntriesFullByIds(catalogIds).catch(() => [] as MediaCatalogEntry[]),
     getSagaNames(catalogIds).catch(() => ({} as Record<string, string>)),
-    getMediaRelationsForIds(catalogIds, ['RECOMMENDATION', 'PREQUEL', 'SEQUEL', 'PRECUELA', 'SECUELA', 'REMAKE']).catch(() => [] as DbMediaRelation[]),
+    getMediaRelationsForIds(catalogIds, ['RECOMMENDATION', 'PREQUEL', 'SEQUEL', 'REMAKE']).catch(() => [] as DbMediaRelation[]),
   ]);
   return {
     libraryGames,
@@ -428,7 +428,7 @@ function sortAchievementGames(
   for (const id of visibleIds) find(id);
   for (const relation of relations) {
     const type = relation.relation_type.toUpperCase();
-    if (!['PREQUEL', 'SEQUEL', 'PRECUELA', 'SECUELA'].includes(type)) continue;
+    if (type !== 'PREQUEL' && type !== 'SEQUEL') continue;
     const mediaId = relation.media_external_id;
     const relatedId = relation.related_media_external_id;
     if (mediaId && relatedId && visibleIds.has(mediaId) && visibleIds.has(relatedId)) {

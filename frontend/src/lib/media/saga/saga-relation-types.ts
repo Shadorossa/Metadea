@@ -18,7 +18,7 @@ export const CONTAINS_RELATION_TYPES: string[] = ['EPISODE'];
 // Relations that define chronological saga chains. ALTERNATIVE belongs to
 // the broader conceptual component graph but does not impose an order.
 export const SEQUEL_RELATION_TYPES: ReadonlySet<string> = new Set([
-  'PREQUEL', 'SEQUEL', 'PRECUELA', 'SECUELA',
+  'PREQUEL', 'SEQUEL',
 ]);
 export const SAGA_COMPONENT_RELATION_TYPES: ReadonlySet<string> = new Set([
   ...SEQUEL_RELATION_TYPES, 'ALTERNATIVE',

@@ -526,14 +526,14 @@ export function CharacterPrEditorModal() {
 
         <div className="pr-editor-content-shell">
           <nav className="pr-editor-sidebar" aria-label={t.sections_label}>
-            <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')} title="General" aria-label="General">
+            <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')} title={getT().pr_editor.tab_general} aria-label={getT().pr_editor.tab_general}>
               <Settings size={18} strokeWidth={1.8} />
-              <span className="pr-editor-tab-label" aria-hidden="true">General</span>
+              <span className="pr-editor-tab-label" aria-hidden="true">{getT().pr_editor.tab_general}</span>
               {characteristicsChanged(draft.characteristics, baseline.characteristics) && <span className="pr-editor-tab-changed-dot" />}
             </button>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'appearances' ? ' active' : ''}`} onClick={() => setActiveTab('appearances')} title={t.appearances_tab} aria-label={t.appearances_tab}>
               <BookOpen size={18} strokeWidth={1.8} />
-              <span className="pr-editor-tab-label" aria-hidden="true">Appear.</span>
+              <span className="pr-editor-tab-label" aria-hidden="true">{t.appearances_tab}</span>
               {appearancesChanged(draft.appearances, baseline.appearances) && <span className="pr-editor-tab-changed-dot" />}
             </button>
             <button type="button" className={`pr-editor-tab-btn${activeTab === 'merges' ? ' active' : ''}`} onClick={() => setActiveTab('merges')} title={t.merge_section} aria-label={t.merge_section}>

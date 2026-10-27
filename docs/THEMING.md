@@ -245,8 +245,9 @@ access, so `read_ui_theme_css` rewrites it before injection
      elsewhere) — the same scheme as `wrapAssetUrl` in the frontend;
    - anything else (`http(s):`, `//host`, `data:`, `javascript:`, absolute
      paths, `..`) is replaced with `none`.
-5. `expression(`, `-moz-binding`, `behavior:`, `javascript:`, `vbscript:` and
-   `</style` are neutralised wherever they appear.
+5. `expression(`, `-moz-binding`, `behavior:`, `behaviour:`, `javascript:`,
+   `vbscript:` and `</style` are neutralised wherever they appear. EPUB
+   stylesheets go through the same sanitiser (`css_sanitize.rs`).
 6. All CSS files together must be ≤ 2 MB (`E_UI_THEME_CSS_TOO_LARGE`).
 7. Files are read only if they canonicalise inside the themes root, so a
    symlink pointing outside the folder is rejected.

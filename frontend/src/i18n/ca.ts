@@ -1639,6 +1639,8 @@ export const ca: Translations = {
     roms_rename_undo: "Desfés",
     roms_rename_undone: "{count} fitxers restaurats",
     play_game: "Juga",
+    play_variant: "Juga {name}",
+    legacy_variant: "Legacy",
     play_media: "Reprodueix",
     play_failed: "No s'ha pogut reproduir: {error}",
     now_playing: "Reproduint",

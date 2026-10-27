@@ -136,11 +136,7 @@ export function reconstructSagaOrder(dateOrderedIds: string[], relsByIndex: DbMe
   // only edge has to count exactly the same as a B->A SEQUEL edge would, or
   // that pair silently falls through to release-date order instead (which
   // is exactly wrong when the two didn't release in story order — e.g. a
-  // pair of movies/OVAs numbered "Semi-Final"/"Final" or similar). Also
-  // covers the pre-fix Spanish labels (SECUELA/PRECUELA) some libraries
-  // still have on disk, same as every other relation-type consumer in this
-  // app (library-grouping.ts, LibrarySection.tsx) already does — this was
-  // the one place still checking 'SEQUEL' alone.
+  // pair of movies/OVAs numbered "Semi-Final"/"Final" or similar).
   const precedes = new Map<string, Set<string>>();
   const addPrecedes = (earlierId: string, laterId: string) => {
     if (!precedes.has(earlierId)) precedes.set(earlierId, new Set());
@@ -161,9 +157,9 @@ export function reconstructSagaOrder(dateOrderedIds: string[], relsByIndex: DbMe
         continue;
       }
       if (!idSet.has(r.related_media_external_id)) continue;
-      if (r.relation_type === 'SEQUEL' || r.relation_type === 'SECUELA') {
+      if (r.relation_type === 'SEQUEL') {
         addPrecedes(ownerId, r.related_media_external_id);
-      } else if (r.relation_type === 'PREQUEL' || r.relation_type === 'PRECUELA') {
+      } else if (r.relation_type === 'PREQUEL') {
         addPrecedes(r.related_media_external_id, ownerId);
       }
     }

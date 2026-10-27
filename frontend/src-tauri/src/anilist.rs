@@ -1,4 +1,3 @@
-use rusqlite::OptionalExtension;
 use serde_json::Value;
 use crate::db::ToStringErr;
 
@@ -11,15 +10,8 @@ pub fn save_anilist_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     token: String,
 ) -> Result<(), String> {
-    let encrypted = crate::utils::encrypt_secret(&token)?;
-    let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
-    conn.execute(
-        "INSERT INTO user_sessions (service, token, updated_at)
-         VALUES ('anilist', ?1, ?2)
-         ON CONFLICT(service) DO UPDATE SET token = excluded.token, updated_at = excluded.updated_at",
-        rusqlite::params![encrypted, now],
-    ).map(|_| ()).str_err()
+    crate::sessions::save_session_token(&conn, "anilist", &token, None)
 }
 
 #[tauri::command]
@@ -27,19 +19,7 @@ pub fn get_anilist_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Option<String>, String> {
     let conn = state.conn.lock().str_err()?;
-    let encrypted: Option<String> = conn
-        .query_row(
-            "SELECT token FROM user_sessions WHERE service = 'anilist'",
-            [],
-            |row| row.get(0),
-        )
-        .optional()
-        .str_err()?;
-
-    match encrypted {
-        None => Ok(None),
-        Some(stored) => Ok(Some(crate::utils::decrypt_secret(&stored)?)),
-    }
+    Ok(crate::sessions::load_session_token(&conn, "anilist")?.map(|(token, _)| token))
 }
 
 #[tauri::command]
@@ -47,8 +27,7 @@ pub fn delete_anilist_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<(), String> {
     let conn = state.conn.lock().str_err()?;
-    conn.execute("DELETE FROM user_sessions WHERE service = 'anilist'", [])
-        .map(|_| ()).str_err()
+    crate::sessions::delete_session_token(&conn, "anilist")
 }
 
 #[tauri::command]

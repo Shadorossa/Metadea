@@ -1,6 +1,7 @@
 // The work a media page shows, as plugins see it (`workActions`,
 // `workPanels`, source matching): ids and titles only.
 import type { SourceSearchItem } from './plugin-results';
+import { toPluginWorkType } from './manifest';
 
 export interface PluginWorkContext {
   externalId: string;
@@ -10,6 +11,12 @@ export interface PluginWorkContext {
   anilistId: number | null;
   malId: number | null;
   year: number | null;
+}
+
+/** The work as sent to a plugin: same context, type in the plugin
+ *  vocabulary (`vn`, not the app's `vnovel`). */
+export function workForPlugin(work: PluginWorkContext): PluginWorkContext {
+  return { ...work, type: toPluginWorkType(work.type) };
 }
 
 /** AniList catalog ids are `anime:<n>`, `manga:<n>`, `lnovel:<n>`. */

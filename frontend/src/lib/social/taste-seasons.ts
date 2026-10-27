@@ -6,8 +6,6 @@ import type { TasteCompatibility, } from './taste-compatibility';
 import type { TasteRatingPair } from '../tauri/social-profile';
 import { createUnionFind } from '../shared/collections/union-find';
 
-const PREQUEL = new Set(['PREQUEL', 'PRECUELA']);
-const SEQUEL = new Set(['SEQUEL', 'SECUELA']);
 const isAnimeId = (id: string) => id.startsWith('anime:');
 
 /** Maps every anime in a sequel/prequel chain to the chain's base entry:
@@ -23,8 +21,8 @@ export function animeSeasonBaseResolver(
     const a = rel.media_external_id, b = rel.related_media_external_id;
     if (!a || !b || !isAnimeId(a) || !isAnimeId(b)) continue;
     const type = rel.relation_type.toUpperCase();
-    if (PREQUEL.has(type)) hasPrequel.add(a);
-    else if (SEQUEL.has(type)) hasPrequel.add(b);
+    if (type === 'PREQUEL') hasPrequel.add(a);
+    else if (type === 'SEQUEL') hasPrequel.add(b);
     else continue;
     graph.union(a, b);
   }
