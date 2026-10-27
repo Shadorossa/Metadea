@@ -18,6 +18,14 @@ export default defineConfig({
   },
 
   vite: {
+    build: {
+      // Tauri's CSP allows an inline <script> only by the sha256 of the page
+      // it was served with, and ClientRouter keeps the first page's CSP for
+      // the whole session — so every page must carry the same inline
+      // scripts. Never inline a processed script (Astro inlines small ones
+      // by this limit); they load as files from 'self' instead.
+      assetsInlineLimit: 0,
+    },
     optimizeDeps: {
       // Pre-bundled up front: otherwise the first page that imports one of
       // these mid-session makes Vite re-optimize, the already-loaded page

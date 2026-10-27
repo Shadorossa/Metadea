@@ -25,11 +25,14 @@ newer** (the app checks `mpv_client_api_version()` and refuses older ones).
 
 Search order at runtime (first hit wins):
 
-1. `<app resource dir>/libmpv-2.dll` — the bundled location (see step 3)
-2. `<directory of Metadea.exe>/libmpv-2.dll` — handy for `tauri dev`
+1. `<app resource dir>/resources/libmpv-2.dll` — the bundled location (see
+   step 3; Tauri keeps the `resources/` folder from tauri.conf.json, so the
+   installer puts it in `<install dir>/resources/`)
+2. `<app resource dir>/libmpv-2.dll`
+3. `<directory of Metadea.exe>/libmpv-2.dll` — handy for `tauri dev`
    (`src-tauri/target/debug/libmpv-2.dll`)
-3. `%METADEA_MPV_DIR%\libmpv-2.dll` — an explicit override
-4. the system loader's default search path (PATH)
+4. `%METADEA_MPV_DIR%\libmpv-2.dll` — an explicit override
+5. the system loader's default search path (PATH)
 
 For development, either drop the DLL into `src-tauri/target/debug/` or set
 `METADEA_MPV_DIR` to the folder that holds it.

@@ -1,5 +1,5 @@
 // Vite's ?raw import keeps this free of node typings (the project has none).
-import homePage from '../../pages/home.astro?raw';
+import homePrepaint from '../../../public/scripts/home-prepaint.js?raw';
 import { describe, expect, it } from 'vitest';
 import { STORAGE_KEYS } from '../storage/storage-keys';
 import {
@@ -60,7 +60,7 @@ describe('home snapshot', () => {
     expect(sameIds([{ id: 'a' }], [{ id: 'b' }], x => x.id)).toBe(false);
   });
 
-  it('home.astro pre-paint script reads the same layout-hint key', () => {
-    expect(homePage).toContain(`'${STORAGE_KEYS.homeLayoutHint}'`);
+  it('the pre-paint script (public/scripts/home-prepaint.js) reads the same layout-hint key', () => {
+    expect(homePrepaint).toContain(`'${STORAGE_KEYS.homeLayoutHint}'`);
   });
 });

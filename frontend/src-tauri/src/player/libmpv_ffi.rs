@@ -169,6 +169,10 @@ pub fn library_candidates(
     let file_name = library_file_name();
     let mut candidates = Vec::new();
     if let Some(dir) = resource_dir {
+        // tauri.conf.json bundles `resources/libmpv-2.dll`, and Tauri keeps
+        // that relative path: the installer puts it under
+        // `<install dir>/resources/`, not next to the exe.
+        candidates.push(dir.join("resources").join(file_name));
         candidates.push(dir.join(file_name));
     }
     if let Some(dir) = exe_dir {
@@ -539,7 +543,11 @@ mod tests {
         let resource = Path::new("/res");
         let exe = Path::new("/exe");
         let candidates = library_candidates(Some(resource), Some(exe), Some("  "));
-        assert_eq!(candidates, vec![resource.join(library_file_name()), exe.join(library_file_name())]);
+        assert_eq!(candidates, vec![
+            resource.join("resources").join(library_file_name()),
+            resource.join(library_file_name()),
+            exe.join(library_file_name()),
+        ]);
 
         let with_env = library_candidates(None, Some(exe), Some("/custom"));
         assert_eq!(with_env, vec![exe.join(library_file_name()), Path::new("/custom").join(library_file_name())]);
@@ -548,7 +556,7 @@ mod tests {
     #[test]
     fn duplicate_directories_are_collapsed() {
         let dir = Path::new("/same");
-        assert_eq!(library_candidates(Some(dir), Some(dir), None).len(), 1);
+        assert_eq!(library_candidates(Some(dir), Some(dir), None).len(), 2);
     }
 
     #[test]

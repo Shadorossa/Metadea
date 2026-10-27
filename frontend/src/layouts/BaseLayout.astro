@@ -46,6 +46,7 @@ import '../styles/core/themes/glitch.css';
 import '../styles/core/themes/luxury.css';
 import '../styles/core/themes/jungle.css';
 import '../styles/core/themes/blueprint.css';
+import { ClientOnlyDirective } from '../components/shared/ClientOnlyDirective';
 
 interface Props {
   title: string;
@@ -122,6 +123,7 @@ const t = useTranslations(lang);
          global bindings (mod+K, mod+1..6, alt+arrows, ?) and the "?" sheet.
          See lib/shared/keyboard/shortcut-registry.ts. -->
     <GlobalShortcuts client:load transition:persist />
+    <ClientOnlyDirective client:only="react" transition:persist />
     <!-- "What's new" modal: opens once per new app version with its
          CHANGELOG.md section, and from [data-open-changelog] buttons. -->
     <ChangelogLauncher client:load transition:persist />
