@@ -16,6 +16,29 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 
 ## [Unreleased]
 
+## [0.7.8] - 2026-10-27
+
+### Highlights
+
+- Import your Backloggd library from the CSV the Toolkittd browser extension exports.
+
+### Added
+
+- **Backloggd:** Settings › Connections › Games imports a Toolkittd CSV — status, rating, dates, playtime, likes, mastered games and reviews, matched to IGDB.
+
+### Fixed
+
+- Home stayed empty after opening it from another page until pressing F5 — Cause: each page's security policy only allowed its own startup scripts, and moving between pages kept the first page's policy.
+- Opening and ending theme videos, previews, Sakuga clips, the jukebox and the share-image preview could stay blank — Cause: the app's security policy didn't allow those media sources.
+- The built-in video player couldn't start in the installed app — Cause: it looked for its library in the wrong folder.
+- Saving a work in the editor erased the history of blocked works — Cause: the save rewrote the whole history without the rows it never loaded.
+- Finishing a season could replace a sequel you had rated or favourited, and undo then deleted it — Cause: only entries with a status counted as already tracked.
+- AniList scores were imported on the wrong scale and rewatches became "planned" — Cause: scores were read in your AniList format and repeats weren't mapped.
+- Games first tracked from a launcher session didn't show as in progress — Cause: they were saved with an unknown status.
+- A second custom list couldn't be created with an accented username — Cause: list numbering counted bytes instead of characters.
+- Rewatching an earlier episode or volume lowered your progress, and late-night finishes got yesterday's date — Cause: progress followed the last unit played and dates used UTC.
+- Importing from AniList or MyAnimeList could erase local ratings and dates, and profile sync could upload an empty library — Cause: missing remote values and failed reads replaced local data.
+
 ## [0.7.7] - 2026-10-27
 
 ### Fixed
