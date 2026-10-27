@@ -16,6 +16,23 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-10-27
+
+### Improved
+
+- **Security:** EPUB book styles go through the same protections as custom themes.
+- **Wallpapers:** light novels can use their AniList banner too.
+- **Translations:** a few untranslated labels in the character editor, Local and the editor history.
+
+### Fixed
+
+- A series could show the details of an unrelated game with the same number (Game of Thrones showed Professor Layton) — Cause: catalog lookups treated ids from different providers as the same work.
+- Error messages from Comic Vine, Steam and TMDB company pages could include your API key — Cause: request errors carried the full request address.
+- AniList and GitHub sign-ins saved by older versions stopped working — Cause: those tokens were stored unencrypted and were no longer read.
+- Plugins made for visual novels didn't show on visual-novel pages — Cause: the app and plugins named the type differently.
+- Remakes, expansions and standalone expansions were grouped or labelled inconsistently in the editor — Cause: the app and the backend used different relation tables.
+- Community catalog submissions lost the country, English title, end date and block status — Cause: the catalog build skipped those fields.
+
 ## [0.7.5] - 2026-10-24
 
 ### Highlights
