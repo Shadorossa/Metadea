@@ -16,6 +16,14 @@ Format rules (checked by `frontend/src/lib/changelog/changelog-content.test.ts`)
 
 ## [Unreleased]
 
+## [0.7.7] - 2026-10-27
+
+### Fixed
+
+- Home stayed empty on every launch until pressing F5 — Cause: a broken stylesheet reference in the build stopped the page from opening the database.
+- The community catalog no longer synced at startup and the activity feed didn't refresh — Cause: those modules were loaded from a path that doesn't exist in the installed app.
+- Game pause, game launch, IGDB progress and player events could be missed — Cause: their listeners were loaded in a way the installed app can't resolve.
+
 ## [0.7.6] - 2026-10-27
 
 ### Improved
