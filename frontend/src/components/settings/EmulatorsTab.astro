@@ -259,7 +259,7 @@ const { t } = Astro.props;
     // instead of using the previous visit's (possibly empty) snapshot.
     emulatorsDataReady = (async () => {
       try {
-        const { readEmulatorsConfig } = await import('../../lib/tauri');
+        const { readEmulatorsConfig } = await import('../../lib/tauri/emulators');
         emulatorsData = await readEmulatorsConfig();
         emulatorSelections = selectionsFrom(emulatorsData);
       } catch (error) {

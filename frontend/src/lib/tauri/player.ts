@@ -23,7 +23,7 @@ export const PLAYER_EVENTS = {
 
 async function invokePlayer<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) throw new Error('Tauri not available');
-  const { invoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
+  const { invoke } = await import('@tauri-apps/api/core');
   return invoke<T>(cmd, args);
 }
 
@@ -125,7 +125,7 @@ export type Unlisten = () => void;
 
 async function listenPlayerEvent<T>(name: string, handler: (payload: T) => void): Promise<Unlisten> {
   if (!isTauri()) return () => {};
-  const { listen } = await import(/* @vite-ignore */ '@tauri-apps/api/event');
+  const { listen } = await import('@tauri-apps/api/event');
   return listen<T>(name, event => handler(event.payload));
 }
 

@@ -73,6 +73,22 @@ const t = useTranslations(lang);
     <title data-i18n-doc-title={titleKey} data-i18n-suffix={titleKey ? titleSuffix : undefined}>{title}</title>
     <ClientRouter />
 
+    <!-- A dynamic import can list, as a preload dependency, the CSS of an
+         unrelated component chunk that only shares a module with it (Rollup
+         put lib/tauri/roms.ts inside LocalLibrary's chunk). Astro moves that
+         CSS into the page stylesheet and the file never exists in the build,
+         and Vite rejects the whole import over the failed preload — this
+         stopped initTauriDatabase from ever running on a page, so every IPC
+         read waited out bridge.ts's safety timeout and Home sat on its
+         placeholders until F5. The styles live in the page CSS already, so a
+         missing CSS preload is not worth failing the import for. -->
+    <script is:inline>
+      window.addEventListener('vite:preloadError', function (event) {
+        const reason = event.payload;
+        if (reason && /Unable to preload CSS/.test(String(reason.message))) event.preventDefault();
+      });
+    </script>
+
     <!-- React Refresh Dev Mock Workaround -->
     <script is:inline>
       if (typeof window !== 'undefined') {
@@ -203,7 +219,7 @@ const t = useTranslations(lang);
           const username = modalInput?.value.trim();
           if (username) {
             try {
-              const { storeAuthToken } = await import(/* @vite-ignore */ '../lib/tauri');
+              const { storeAuthToken } = await import('../lib/tauri/auth');
               await storeAuthToken('offline_token', username);
               if (localStorage.getItem(STORAGE_KEYS.onboardingCompleted) !== '1') {
                 window.location.replace('/welcome');
@@ -235,7 +251,7 @@ const t = useTranslations(lang);
         const { getT } = await import('../i18n/runtime');
         const tm = getT().settings;
         try {
-          const { syncCommunityCatalog: sync } = await import(/* @vite-ignore */ '../lib/tauri');
+          const { syncCommunityCatalog: sync } = await import('../lib/tauri/catalog');
           const imported = await sync();
           localStorage.setItem(STORAGE_KEYS.communityCatalogLastSync, String(Date.now()));
           if (imported > 0) {
@@ -364,7 +380,7 @@ const t = useTranslations(lang);
 
       document.addEventListener('astro:page-load', async () => {
         try {
-          const { initTauriDatabase } = await import('../lib/tauri');
+          const { initTauriDatabase } = await import('../lib/tauri/database');
           await initTauriDatabase();
           const { startLibraryReleaseNotifications } = await import('../lib/notifications/library-release-notifications');
           startLibraryReleaseNotifications();
@@ -394,7 +410,7 @@ const t = useTranslations(lang);
         if (!activityFeedsRefreshed) {
           activityFeedsRefreshed = true;
           setTimeout(async () => {
-            const { refreshActivityFeed, refreshGeneralActivityFeed } = await import(/* @vite-ignore */ '../lib/social/activity-feed');
+            const { refreshActivityFeed, refreshGeneralActivityFeed } = await import('../lib/social/activity-feed');
             refreshActivityFeed().catch(() => {});
             refreshGeneralActivityFeed().catch(() => {});
           }, 4000);

@@ -150,7 +150,7 @@ export async function igdbCancelMetadataBatch(): Promise<void> {
 // listenGameSessionEnded.
 export async function listenMetadataProgress(callback: (progress: MetadataBatchProgress) => void): Promise<() => void> {
   if (!isTauri() && !(await waitForTauriBridge())) return () => {};
-  const { listen } = await import(/* @vite-ignore */ '@tauri-apps/api/event');
+  const { listen } = await import('@tauri-apps/api/event');
   return listen<MetadataBatchProgress>('local-metadata-progress', event => callback(event.payload));
 }
 

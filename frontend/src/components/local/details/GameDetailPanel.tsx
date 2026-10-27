@@ -451,6 +451,11 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   } : null);
   const retroVisible = isRom && retro.consoleId !== undefined && retro.consoleId !== null;
   const retroProgress = retro.progress?.data ?? null;
+  // Derived from `t` before any useMemo reads it: a method call on `t`'s
+  // strings later in render reads to the React Compiler as a mutation of
+  // `t` and makes it drop the memos below.
+  const legacyPlayTitle = legacyVariant ? t.local.play_variant.replace('{name}', legacyVariant.name) : '';
+  const legacyLabel = legacyVariantLabel ?? t.local.legacy_variant;
   const retroPointsLabel = t.retro_achievements.points;
   const retroHardcoreLabel = t.retro_achievements.hardcore;
   const retroAchievements = useMemo(
@@ -626,12 +631,12 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   type="button"
                   className="local-game-detail-play local-game-detail-play--legacy"
                   onClick={() => launchGame(legacyVariant)}
-                  title={t.local.play_variant.replace('{name}', legacyVariant.name)}
+                  title={legacyPlayTitle}
                 >
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                     <polygon points="5 3 19 12 5 21 5 3" />
                   </svg>
-                  {legacyVariantLabel ?? t.local.legacy_variant}
+                  {legacyLabel}
                 </button>
               )}
             </div>

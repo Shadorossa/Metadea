@@ -17,7 +17,7 @@ export function initCommunityCatalogSync() {
       return { running: t.community_catalog_syncing, idle: t.community_catalog_sync_btn };
     },
     run: async () => {
-      const { syncCommunityCatalog } = await import('../../../lib/tauri');
+      const { syncCommunityCatalog } = await import('../../../lib/tauri/catalog');
       const imported = await syncCommunityCatalog();
       localStorage.setItem(STORAGE_KEYS.communityCatalogLastSync, String(Date.now()));
       const t = getT().settings;

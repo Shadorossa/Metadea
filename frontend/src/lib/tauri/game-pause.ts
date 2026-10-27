@@ -66,7 +66,7 @@ export async function listenGamePause(handlers: {
   onClosed: (payload: GamePauseClosed) => void;
 }): Promise<() => void> {
   if (!isTauri() && !(await waitForTauriBridge())) return () => {};
-  const { listen } = await import(/* @vite-ignore */ '@tauri-apps/api/event');
+  const { listen } = await import('@tauri-apps/api/event');
   const unlistenOpened = await listen('game-pause://opened', () => handlers.onOpened());
   const unlistenClosed = await listen<GamePauseClosed>('game-pause://closed', event => handlers.onClosed(event.payload));
   return () => { unlistenOpened(); unlistenClosed(); };

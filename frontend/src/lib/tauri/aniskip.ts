@@ -18,7 +18,7 @@ export interface AniskipSegment {
 
 async function invokeAniskip<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) throw new Error('Tauri not available');
-  const { invoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
+  const { invoke } = await import('@tauri-apps/api/core');
   return invoke<T>(cmd, args);
 }
 

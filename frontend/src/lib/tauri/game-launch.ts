@@ -78,7 +78,7 @@ export async function listenGameSessionEnded(
   callback: (payload: GameSessionEndedPayload) => void,
 ): Promise<() => void> {
   if (!isTauri() && !(await waitForTauriBridge())) return () => {};
-  const { listen } = await import(/* @vite-ignore */ '@tauri-apps/api/event');
+  const { listen } = await import('@tauri-apps/api/event');
   return listen<GameSessionEndedPayload>('game-session-ended', event => callback(event.payload));
 }
 
@@ -113,7 +113,7 @@ export async function listenGameSessionsChanged(
   callback: (sessions: ActiveGameSession[]) => void,
 ): Promise<() => void> {
   if (!isTauri() && !(await waitForTauriBridge())) return () => {};
-  const { listen } = await import(/* @vite-ignore */ '@tauri-apps/api/event');
+  const { listen } = await import('@tauri-apps/api/event');
   return listen<ActiveGameSession[]>('game-sessions-changed', event => callback(event.payload));
 }
 

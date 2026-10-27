@@ -15,7 +15,7 @@ export function initAniListImportUI(showToast: (msg?: string) => void) {
   const importChooseModal = byId<HTMLElement>('anilist-import-choose-modal');
 
   async function updateImportButtons() {
-    const { invoke } = await import('../../../lib/tauri');
+    const { invoke } = await import('../../../lib/tauri/bridge');
     const hasToken = await invoke('get_anilist_token').catch(() => null);
     if (importBtn) importBtn.disabled = !hasToken;
   }
