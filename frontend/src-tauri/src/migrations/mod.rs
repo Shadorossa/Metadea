@@ -11,6 +11,7 @@ use rusqlite::{Connection, OptionalExtension, Result as SqlResult, Transaction};
 use crate::db::{current_schema_version, mark_migration, merge_fragmented_sagas};
 mod aniskip;
 mod anime_filler;
+mod catalog_id_collision_repair;
 mod community_sync_cursor;
 mod company_cache;
 mod continue_watching;
@@ -72,6 +73,7 @@ pub(crate) const MIGRATIONS: &[(i64, Migration)] = &[
     (91, remove_event_type::migrate),
     (92, crate::vestigial_cleanup::drop_unused_tables_and_lists),
     (93, community_sync_cursor::migrate),
+    (94, catalog_id_collision_repair::migrate),
 ];
 
 pub(crate) fn run_migrations(conn: &Connection) -> SqlResult<()> {

@@ -23,13 +23,26 @@ fn cover_download_semaphore() -> &'static tokio::sync::Semaphore {
 pub(crate) const COMMUNITY_DB_URL: &str = "https://github.com/Shadorossa/Metadea/releases/download/catalog-latest/database.db";
 
 // Game and visual novel share one numeric IGDB id space, filed under
-// whichever prefix is_vn resolves to (see detect_vn in igdb.rs) — every
-// lookup below that only has the numeric id has to check both prefixes
-// since only one will ever actually resolve. Was independently spelled out
-// at each call site before being pulled out here as the one shared version.
-pub(crate) fn game_vnovel_siblings(num_id: &str) -> (String, String) {
-    (format!("vnovel:{num_id}"), format!("game:{num_id}"))
+// whichever prefix is_vn resolves to (see detect_vn in igdb.rs) — a lookup
+// of either one has to check both prefixes since only one will ever
+// actually resolve. Every other prefix has its own provider id space and
+// never expands: TMDB's series:1399 (Game of Thrones) and IGDB's game:1399
+// (Professor Layton and the Unwound Future) are unrelated works, and
+// expanding series:1399 used to load — and save over — the Layton row.
+// Binds LOOKUP_WHERE's ?1 = the exact id, ?2 = its sibling (or the exact
+// id again when it has none).
+fn lookup_params(external_id: &str) -> [String; 2] {
+    let sibling = match external_id.split_once(':') {
+        Some(("game", num_id)) => format!("vnovel:{num_id}"),
+        Some(("vnovel", num_id)) => format!("game:{num_id}"),
+        _ => external_id.to_string(),
+    };
+    [external_id.to_string(), sibling]
 }
+
+// Prefers the exact row over the sibling when both exist.
+const LOOKUP_WHERE: &str =
+    "WHERE external_id IN (?1, ?2) ORDER BY external_id = ?1 DESC LIMIT 1";
 
 // One IN-query instead of N+1 SELECT EXISTS per row.
 pub(crate) fn existing_catalog_ids(
@@ -284,30 +297,24 @@ pub(crate) fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCat
 #[tauri::command]
 pub async fn save_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
-    mut entry: MediaCatalogEntry,
+    entry: MediaCatalogEntry,
 ) -> Result<MediaCatalogEntry, String> {
     let conn = state.conn.lock().str_err()?;
+    store_catalog_entry(&conn, entry)
+}
 
-    let numeric_suffix = entry.external_id.split_once(':').map(|(_, id)| id);
-
-    let existing: Option<(String, String, String)> = if let Some(num_id) = numeric_suffix {
-        let (vnovel_id, game_id) = game_vnovel_siblings(num_id);
-        conn.query_row(
-            "SELECT id, external_id, created_at FROM media_catalog WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3",
-            [&entry.external_id, &vnovel_id, &game_id],
+pub(crate) fn store_catalog_entry(
+    conn: &rusqlite::Connection,
+    mut entry: MediaCatalogEntry,
+) -> Result<MediaCatalogEntry, String> {
+    let existing: Option<(String, String, String)> = conn
+        .query_row(
+            &format!("SELECT id, external_id, created_at FROM media_catalog {LOOKUP_WHERE}"),
+            lookup_params(&entry.external_id),
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .optional()
-        .str_err()?
-    } else {
-        conn.query_row(
-            "SELECT id, external_id, created_at FROM media_catalog WHERE external_id = ?1",
-            [&entry.external_id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        )
-        .optional()
-        .str_err()?
-    };
+        .str_err()?;
 
     if let Some((eid, orig_ext_id, eat)) = existing {
         if entry.id.is_empty() { entry.id = eid; }
@@ -486,24 +493,13 @@ pub(crate) fn load_catalog_entry(
     conn: &rusqlite::Connection,
     external_id: &str,
 ) -> Result<Option<MediaCatalogEntry>, String> {
-    if let Some((_, num_id)) = external_id.split_once(':') {
-        let (vnovel_id, game_id) = game_vnovel_siblings(num_id);
-        conn.query_row(
-            &format!("{} WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3", SELECT_VISIBLE),
-            [external_id, vnovel_id.as_str(), game_id.as_str()],
-            row_to_entry,
-        )
-        .optional()
-        .str_err()
-    } else {
-        conn.query_row(
-            &format!("{} WHERE external_id = ?1", SELECT_VISIBLE),
-            [external_id],
-            row_to_entry,
-        )
-        .optional()
-        .str_err()
-    }
+    conn.query_row(
+        &format!("{SELECT_VISIBLE} {LOOKUP_WHERE}"),
+        lookup_params(external_id),
+        row_to_entry,
+    )
+    .optional()
+    .str_err()
 }
 
 // Editor-only counterpart of get_catalog_entry. Normal lookups use the
@@ -727,6 +723,51 @@ mod summary_tests {
         let rows = load_catalog_summaries_by_ids(&conn, &request).unwrap();
         assert_eq!(ids(&rows), vec!["anime:1", "anime:5"]);
         assert!(load_catalog_summaries_by_ids(&conn, &[]).unwrap().is_empty());
+    }
+
+    fn stub(id: &str, title: &str, kind: &str) -> MediaCatalogEntry {
+        MediaCatalogEntry {
+            external_id: id.into(),
+            title_main: Some(title.into()),
+            r#type: kind.into(),
+            ..Default::default()
+        }
+    }
+
+    // TMDB series:1399 (Game of Thrones) and IGDB game:1399 (Professor
+    // Layton and the Unwound Future) share only the number: neither may
+    // load or overwrite the other's row.
+    #[test]
+    fn only_game_and_vnovel_share_a_numeric_id() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        store_catalog_entry(&conn, stub("game:1399", "Layton", "game")).unwrap();
+
+        assert!(load_catalog_entry(&conn, "series:1399").unwrap().is_none());
+        assert_eq!(load_catalog_entry(&conn, "vnovel:1399").unwrap().unwrap().external_id, "game:1399");
+
+        let saved = store_catalog_entry(&conn, stub("series:1399", "Juego de tronos", "series")).unwrap();
+        assert_eq!(saved.external_id, "series:1399");
+        assert_eq!(load_catalog_entry(&conn, "game:1399").unwrap().unwrap().title_main.as_deref(), Some("Layton"));
+        assert_eq!(load_catalog_entry(&conn, "series:1399").unwrap().unwrap().title_main.as_deref(), Some("Juego de tronos"));
+
+        // A vnovel save still lands on the game row it was reclassified to.
+        let saved = store_catalog_entry(&conn, stub("vnovel:1399", "Layton VN", "vnovel")).unwrap();
+        assert_eq!(saved.external_id, "game:1399");
+    }
+
+    #[test]
+    fn exact_row_wins_over_its_sibling() {
+        let db = crate::db::MetadeaDb::open_in_memory().unwrap();
+        let conn = db.conn.lock().unwrap();
+        for (id, title) in [("game:7", "Game"), ("vnovel:7", "Novel")] {
+            conn.execute(
+                "INSERT INTO media_catalog (id, external_id, type, title_main) VALUES (?1, ?1, 'game', ?2)",
+                [id, title],
+            ).unwrap();
+        }
+        assert_eq!(load_catalog_entry(&conn, "game:7").unwrap().unwrap().title_main.as_deref(), Some("Game"));
+        assert_eq!(load_catalog_entry(&conn, "vnovel:7").unwrap().unwrap().title_main.as_deref(), Some("Novel"));
     }
 
     #[test]

@@ -16,10 +16,15 @@ beforeEach(() => {
 });
 
 describe('siblingIds', () => {
-  it('adds the vnovel:/game: siblings of a numeric id, itself first', () => {
+  it('adds the other-prefix sibling of a game:/vnovel: id, itself first', () => {
     expect(siblingIds('game:12')).toEqual(['game:12', 'vnovel:12']);
     expect(siblingIds('vnovel:12')).toEqual(['vnovel:12', 'game:12']);
-    expect(siblingIds('anime:7')).toEqual(['anime:7', 'vnovel:7', 'game:7']);
+  });
+
+  it('never expands other prefixes: their ids are a different provider space', () => {
+    // TMDB series:1399 is Game of Thrones, IGDB game:1399 is a Layton game.
+    expect(siblingIds('series:1399')).toEqual(['series:1399']);
+    expect(siblingIds('anime:7')).toEqual(['anime:7']);
   });
 
   it('leaves non-numeric or prefix-less ids alone', () => {
@@ -34,6 +39,7 @@ describe('pickCatalogRowFor', () => {
     expect(pickCatalogRowFor('game:5', rows)?.external_id).toBe('vnovel:5');
     expect(pickCatalogRowFor('game:6', rows)?.external_id).toBe('game:6');
     expect(pickCatalogRowFor('game:7', rows)).toBeNull();
+    expect(pickCatalogRowFor('series:6', rows)).toBeNull();
   });
 });
 
@@ -42,7 +48,7 @@ describe('readFeedCatalogRows', () => {
     getCatalogEntriesByIds.mockResolvedValueOnce([row('manga:1'), row('vnovel:2')]);
     const first = await readFeedCatalogRows(['manga:1', 'game:2', 'manga:1', 'anime:3']);
     expect(getCatalogEntriesByIds).toHaveBeenCalledTimes(1);
-    expect(getCatalogEntriesByIds.mock.calls[0][0]).toEqual(expect.arrayContaining(['manga:1', 'game:2', 'vnovel:2', 'anime:3', 'vnovel:3', 'game:3']));
+    expect(getCatalogEntriesByIds.mock.calls[0][0]).toEqual(expect.arrayContaining(['manga:1', 'game:2', 'vnovel:2', 'anime:3']));
     expect(Object.keys(first).sort()).toEqual(['game:2', 'manga:1']);
     expect(first['game:2'].external_id).toBe('vnovel:2');
 
@@ -50,7 +56,7 @@ describe('readFeedCatalogRows', () => {
     getCatalogEntriesByIds.mockResolvedValueOnce([row('manga:9')]);
     const second = await readFeedCatalogRows(['manga:1', 'manga:9']);
     expect(getCatalogEntriesByIds).toHaveBeenCalledTimes(2);
-    expect(getCatalogEntriesByIds.mock.calls[1][0]).toEqual(['manga:9', 'vnovel:9', 'game:9']);
+    expect(getCatalogEntriesByIds.mock.calls[1][0]).toEqual(['manga:9']);
     expect(Object.keys(second).sort()).toEqual(['manga:1', 'manga:9']);
 
     // Everything known: no IPC at all.
@@ -68,7 +74,7 @@ describe('readFeedCatalogRows', () => {
     await a;
     await b;
     expect(getCatalogEntriesByIds).toHaveBeenCalledTimes(2);
-    expect(getCatalogEntriesByIds.mock.calls[1][0]).toEqual(['manga:2', 'vnovel:2', 'game:2']);
+    expect(getCatalogEntriesByIds.mock.calls[1][0]).toEqual(['manga:2']);
 
     invalidateFeedCatalogRows();
     getCatalogEntriesByIds.mockRejectedValueOnce(new Error('ipc'));

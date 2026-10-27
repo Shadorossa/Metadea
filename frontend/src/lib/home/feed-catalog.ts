@@ -5,11 +5,12 @@
 // through ONE get_catalog_entries_by_ids and keeps the rows across mounts,
 // so a Home revisit costs nothing here.
 //
-// get_catalog_entry has one quirk the batch command doesn't: an id whose
-// exact row is missing still resolves to the vnovel:/game: sibling with the
-// same numeric id (a game reclassified locally as a visual novel keeps its
-// feed card). The batch asks for those siblings too and picks per id the
-// same way — exact row first, then either sibling.
+// get_catalog_entry has one quirk the batch command doesn't: a game:/vnovel:
+// id whose exact row is missing still resolves to its sibling under the
+// other prefix (a game reclassified locally as a visual novel keeps its
+// feed card). The batch asks for that sibling too and picks per id the
+// same way — exact row first, then the sibling. Other prefixes have their
+// own id spaces (series:1399 is not game:1399) and never expand.
 import { getCatalogEntriesByIds, type CatalogSummary } from '../tauri/catalog';
 
 type Rows = ReadonlyMap<string, CatalogSummary>;
@@ -17,14 +18,12 @@ type Rows = ReadonlyMap<string, CatalogSummary>;
 const cached = new Map<string, CatalogSummary | null>();
 let inFlight: Promise<void> | null = null;
 
-/** `id` plus the vnovel:/game: siblings sharing its numeric id (none for an
- *  id without a `prefix:number` shape) — exported for tests. */
+/** `id` plus, for a game:/vnovel: id, its sibling under the other prefix
+ *  (none for any other prefix) — exported for tests. */
 export function siblingIds(id: string): string[] {
-  const colon = id.indexOf(':');
-  if (colon === -1) return [id];
-  const num = id.slice(colon + 1);
-  if (!/^\d+$/.test(num)) return [id];
-  return [...new Set([id, `vnovel:${num}`, `game:${num}`])];
+  const match = /^(game|vnovel):(\d+)$/.exec(id);
+  if (!match) return [id];
+  return [id, `${match[1] === 'game' ? 'vnovel' : 'game'}:${match[2]}`];
 }
 
 /** The row get_catalog_entry would have returned for `id` out of a batch
